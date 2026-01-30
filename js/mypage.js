@@ -479,10 +479,10 @@ function getBookingStatusText(bookingStatus, paymentStatus) {
     const ps = String(paymentStatus || '').toLowerCase();
 
     // B2B/B2C 판별: accountType 기반
-    // - accountType IN ('agent', 'admin') → B2B
+    // - accountType IN ('agent', 'admin_ph', 'admin_kr') → B2B
     // - accountType IN ('guest', 'guide', 'cs', '') → B2C
     const accountType = String(localStorage.getItem('accountType') || '').toLowerCase();
-    const isB2B = accountType === 'agent' || accountType === 'admin';
+    const isB2B = accountType === 'agent' || accountType === 'admin_ph' || accountType === 'admin_kr';
 
     // 공통 상태키 계산(예약내역/상세와 동일 규칙)
     let key = '';

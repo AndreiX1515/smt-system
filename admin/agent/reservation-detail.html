@@ -30,7 +30,7 @@
 		<!-- nav 들어올 자리 -->
 		<nav class="layout-nav"></nav>
 
-		<section class="layout-content">
+		<section class="layout-content layout-content-aside">
 			<div class="page-toolbar">
 				<a href="reservation-list.html" class="jw-button jw-button-back" aria-label="목록으로 돌아가기">
 					<img src="../image/arrow4.svg" alt="">
@@ -40,26 +40,62 @@
 				<div class="page-toolbar-actions">
 					<select class="select" id="reservationStatusSelect" disabled>
 						<option value="pending">Pending Approval</option>
+						<option value="pending_update" style="background:#fef3c7;">Pending Update Approval</option>
+						<option value="check_reject" style="background:#fee2e2;">Change Rejected</option>
+						<option value="pending_deposit">Waiting for Down Payment</option>
 						<option value="waiting_down_payment">Waiting for Down Payment</option>
 						<option value="checking_down_payment">Checking Down Payment</option>
 						<option value="waiting_second_payment">Waiting for Second Payment</option>
 						<option value="checking_second_payment">Checking Second Payment</option>
+						<option value="pending_balance">Waiting for Balance Payment</option>
 						<option value="waiting_balance">Waiting for Balance</option>
 						<option value="checking_balance">Checking Balance</option>
+						<option value="waiting_full_payment">Waiting for Full Payment</option>
+						<option value="checking_full_payment">Checking Full Payment</option>
 						<option value="rejected">Booking Rejected</option>
 						<option value="confirmed">Reservation Confirmed</option>
 						<option value="completed">Trip Completed</option>
 						<option value="cancelled">Reservation Cancelled</option>
 						<option value="refunded">Refund Completed</option>
 					</select>
-					
+
 					<button type="button" class="jw-button typeB" id="saveBtn">저장</button>
+					<button type="button" class="jw-button" id="acknowledgeRejectBtn" style="display: none; background: #3b82f6; color: #fff;">Confirm</button>
 					<button type="button" class="jw-button typeA" id="cancelReservationBtn" style="display:none;">예약 취소</button>
 				</div>
 			</div>
 
+			<div class="content-main">
 			<h1 class="page-title" data-lan-eng="Reservation Details">예약 상세</h1>
-			
+
+			<!-- Pending Update 배너 -->
+			<div id="pendingUpdateBanner" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+				<div style="display: flex; align-items: flex-start; gap: 12px;">
+					<span style="font-size: 24px;">⏳</span>
+					<div style="flex: 1;">
+						<div style="font-weight: 700; color: #92400e; font-size: 16px; margin-bottom: 4px;">Change Request Pending</div>
+						<div style="color: #a16207; font-size: 14px;" id="pendingUpdateBannerText">Your change request is waiting for admin approval.</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Check Reject 배너 -->
+			<div id="checkRejectBanner" style="display: none; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+				<div style="display: flex; align-items: flex-start; gap: 12px;">
+					<span style="font-size: 24px;">❌</span>
+					<div style="flex: 1;">
+						<div style="font-weight: 700; color: #b91c1c; font-size: 16px; margin-bottom: 4px;">Change Request Rejected</div>
+						<div style="color: #dc2626; font-size: 14px;" id="agentRejectReasonText"></div>
+						<div style="color: #991b1b; font-size: 12px; margin-top: 8px;" id="agentRejectReasonMeta"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Edit in Progress 배너 (product_edit pending with no newData) -->
+			<div id="editInProgressBanner" style="display: none; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+				<!-- Content will be populated by JavaScript -->
+			</div>
+
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">상품 및 예약 정보</p>
 				<a href="../common/reservation-location.html" target="_blank" id="meetingLocationLink"><span data-lan-eng="Meeting location">집합 위치</span><img src="../image/linkout.svg" alt=""></a>
@@ -80,7 +116,7 @@
 			</div>
 
 			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" data-lan-eng="Product Information">상품 정보</h2>
+				<h2 class="section-title" id="section-product" data-lan-eng="Product Information">상품 정보</h2>
 				<div class="product-edit-btns" id="productEditBtns">
 					<button type="button" id="editProductBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
 					<button type="button" id="saveProductBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
@@ -123,7 +159,7 @@
 			</div>
 
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Information">예약 정보</h2>
+			<h2 class="section-title jw-mgt32" id="section-reservation" data-lan-eng="Reservation Information">예약 정보</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 
@@ -166,7 +202,51 @@
 			</div>
 
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Payment Information">결제 정보</h2>
+			<h2 class="section-title jw-mgt32" id="section-payment" data-lan-eng="Payment Information">결제 정보</h2>
+
+			<!-- Reservation Summary -->
+			<div class="card-panel jw-mgt16" style="background: #F7FAFF; border: 1px solid #0050C8;">
+				<h3 class="card-panel-title" style="color: #0050C8;" data-lan-eng="Reservation Summary">Reservation Summary</h3>
+				<div class="card-panel-divider"></div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Booking ID">Booking ID</label>
+						<div class="form-control" id="summary_booking_id" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item col-span-2">
+						<label class="label-name" data-lan-eng="Product Name">Product Name</label>
+						<div class="form-control" id="summary_package_name" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Travel Period">Travel Period</label>
+						<div class="form-control" id="summary_trip_range" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Travelers">Travelers</label>
+						<div class="form-control" id="summary_travelers" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Total Amount">Total Amount</label>
+						<div class="form-control" id="summary_total_amount" style="background: #fff; font-weight: 600; color: #0050C8; display: flex; align-items: center;">-</div>
+					</div>
+				</div>
+				<!-- Amount Breakdown -->
+				<div id="amount-breakdown-section" class="jw-mgt16" style="display: none;">
+					<div style="border-top: 1px dashed #0050C8; margin: 16px 0;"></div>
+					<div style="font-weight: 600; color: #0050C8; margin-bottom: 12px;" data-lan-eng="Amount Breakdown">Amount Breakdown</div>
+					<div id="amount-breakdown-list" style="display: flex; flex-direction: column; gap: 8px;">
+						<!-- Breakdown items will be populated by JS -->
+					</div>
+				</div>
+				<!-- Price Adjustment (금액 조정 내역) -->
+				<div id="price-adjustment-section" class="jw-mgt16" style="display: none;">
+					<div style="border-top: 1px dashed #f59e0b; margin: 16px 0;"></div>
+					<div style="font-weight: 600; color: #d97706; margin-bottom: 12px;" data-lan-eng="Price Adjustment">Price Adjustment</div>
+					<div id="price-adjustment-info" style="font-size: 14px;">
+						<!-- Adjustment info will be populated by JS -->
+					</div>
+				</div>
+			</div>
 
 			<!-- 계좌 정보 박스 -->
 			<div class="card-panel jw-mgt16" style="background: #F0F7FF; border: 1px solid #0050C8;">
@@ -233,8 +313,9 @@
 							<div id="down_file_display" class="field-row jw-center" style="display:none;">
 								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="down_file_name"></span></div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="downloadDownFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
-									<button type="button" class="jw-button typeF" id="deleteDownFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="viewDownFileBtn" title="View"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="downloadDownFileBtn" title="Download"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteDownFileBtn" title="Delete"><img src="../image/button-close2.svg" alt=""></button>
 								</div>
 							</div>
 							<div id="down_file_upload">
@@ -284,8 +365,9 @@
 							<div id="second_file_display" class="field-row jw-center" style="display:none;">
 								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="second_file_name"></span></div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="downloadSecondFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
-									<button type="button" class="jw-button typeF" id="deleteSecondFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="viewSecondFileBtn" title="View"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="downloadSecondFileBtn" title="Download"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteSecondFileBtn" title="Delete"><img src="../image/button-close2.svg" alt=""></button>
 								</div>
 							</div>
 							<div id="second_file_upload">
@@ -339,8 +421,9 @@
 							<div id="balance_file_display" class="field-row jw-center" style="display:none;">
 								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="balance_file_name"></span></div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="downloadBalanceFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
-									<button type="button" class="jw-button typeF" id="deleteBalanceFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="viewBalanceFileBtn" title="View"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="downloadBalanceFileBtn" title="Download"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteBalanceFileBtn" title="Delete"><img src="../image/button-close2.svg" alt=""></button>
 								</div>
 							</div>
 							<div id="balance_file_upload">
@@ -393,8 +476,9 @@
 								<div id="full_file_display" class="field-row jw-center" style="display:none;">
 									<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="full_file_name"></span></div>
 									<div class="jw-center jw-gap10">
-										<button type="button" class="jw-button typeF" id="downloadFullFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
-										<button type="button" class="jw-button typeF" id="deleteFullFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+										<button type="button" class="jw-button typeF" id="viewFullFileBtn" title="View"><img src="../image/eye.svg" alt=""></button>
+										<button type="button" class="jw-button typeF" id="downloadFullFileBtn" title="Download"><img src="../image/buttun-download.svg" alt=""></button>
+										<button type="button" class="jw-button typeF" id="deleteFullFileBtn" title="Delete"><img src="../image/button-close2.svg" alt=""></button>
 									</div>
 								</div>
 								<div id="full_file_upload">
@@ -411,7 +495,7 @@
 			</div><!-- End of fullPaymentSection -->
 
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Agent Notes">에이전트 전달사항</h2>
+			<h2 class="section-title jw-mgt32" id="section-agent-notes" data-lan-eng="Agent Notes">에이전트 전달사항</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 					<div class="grid-item col-span-3">
@@ -424,7 +508,7 @@
 			</div>
 
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Flight Information">항공편 정보</h2>
+			<h2 class="section-title jw-mgt32" id="section-flight" data-lan-eng="Flight Information">항공편 정보</h2>
 			<div class="card-panel jw-mgt16">
 				<h3 class="grid-wrap-title" data-lan-eng="Departure Flight">출국편</h3>
 
@@ -493,7 +577,7 @@
 
 
 			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" data-lan-eng="Reservation Customer Information">예약 고객 정보</h2>
+				<h2 class="section-title" id="section-customer" data-lan-eng="Reservation Customer Information">예약 고객 정보</h2>
 				<div class="customer-edit-btns" id="customerEditBtns" style="display:none;">
 					<button type="button" id="editCustomerBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
 					<button type="button" id="saveCustomerBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
@@ -523,7 +607,7 @@
 
 
 			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" data-lan-eng="Traveler Information">여행 고객 정보</h2>
+				<h2 class="section-title" id="section-traveler" data-lan-eng="Traveler Information">여행 고객 정보</h2>
 			</div>
 			<div class="card-panel jw-mgt16">
 				<div class="traveler-summary-section">
@@ -671,18 +755,28 @@
 						</button>
 					</div>
 					<div class="modal-body traveler-modal-body">
-						<div class="traveler-cards-header">
-							<span class="traveler-count" id="traveler-edit-count">0 Travelers</span>
-							<div class="traveler-cards-actions">
-								<button type="button" class="jw-button typeA" onclick="addTravelerCardInEdit()">+ Add Traveler</button>
+						<!-- 왼쪽: 여행자 카드 영역 -->
+						<div class="traveler-modal-main">
+							<div class="traveler-cards-header">
+								<span class="traveler-count" id="traveler-edit-count">0 Travelers</span>
+								<div class="traveler-cards-actions">
+									<button type="button" class="jw-button typeA" onclick="addTravelerCardInEdit()">+ Add Traveler</button>
+								</div>
+							</div>
+							<div class="traveler-cards-container" id="traveler-cards-container">
+								<!-- 여행자 카드가 여기에 동적으로 추가됩니다 -->
 							</div>
 						</div>
-						<div class="traveler-cards-container" id="traveler-cards-container">
-							<!-- 여행자 카드가 여기에 동적으로 추가됩니다 -->
+						<!-- 오른쪽: 네비게이션 사이드바 -->
+						<div class="traveler-modal-sidebar" id="traveler-edit-modal-sidebar">
+							<div class="sidebar-title" data-lan-eng="Travelers">Travelers</div>
+							<div class="sidebar-nav-list" id="traveler-edit-sidebar-nav">
+								<!-- 여행자 네비게이션 아이템이 여기에 추가됩니다 -->
+							</div>
 						</div>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="jw-button typeB" onclick="saveAllTravelers()" data-lan-eng="Save">Save</button>
+						<button type="button" class="jw-button typeB" onclick="saveAllTravelers()" data-lan-eng="Next: Room Options">Next: Room Options</button>
 						<button type="button" class="jw-button typeD" onclick="closeTravelerEditModal()" data-lan-eng="Cancel">Cancel</button>
 					</div>
 				</div>
@@ -880,9 +974,9 @@
 					}
 				}
 
-				/* 여행자 Edit 모달 스타일 - create-reservation 형식 */
+				/* 여행자 모달 스타일 - create-reservation 형식 */
 				.modal-content.modal-traveler {
-					max-width: 1100px;
+					max-width: 1400px;
 					width: 95%;
 					max-height: 90vh;
 					display: flex;
@@ -890,8 +984,115 @@
 				}
 				.traveler-modal-body {
 					flex: 1;
+					overflow: hidden;
+					padding: 0;
+					display: flex;
+					gap: 0;
+				}
+				/* 왼쪽 메인 영역 */
+				.traveler-modal-main {
+					flex: 1;
 					overflow-y: auto;
 					padding: 24px 32px;
+					min-width: 0;
+				}
+				/* 오른쪽 사이드바 */
+				.traveler-modal-sidebar {
+					width: 220px;
+					flex-shrink: 0;
+					background: #F9FAFB;
+					border-left: 1px solid #E5E7EB;
+					display: flex;
+					flex-direction: column;
+					overflow: hidden;
+				}
+				.traveler-modal-sidebar .sidebar-title {
+					padding: 16px 20px;
+					font-size: 14px;
+					font-weight: 600;
+					color: #374151;
+					border-bottom: 1px solid #E5E7EB;
+					background: #fff;
+				}
+				.traveler-modal-sidebar .sidebar-nav-list {
+					flex: 1;
+					overflow-y: auto;
+					padding: 12px;
+				}
+				.traveler-modal-sidebar .sidebar-nav-item {
+					display: flex;
+					align-items: center;
+					gap: 10px;
+					padding: 12px 14px;
+					margin-bottom: 6px;
+					border-radius: 8px;
+					cursor: pointer;
+					transition: all 0.15s;
+					border: 1px solid transparent;
+				}
+				.traveler-modal-sidebar .sidebar-nav-item:hover {
+					background: #fff;
+					border-color: #E5E7EB;
+				}
+				.traveler-modal-sidebar .sidebar-nav-item.active {
+					background: #EFF6FF;
+					border-color: #0050C8;
+				}
+				.traveler-modal-sidebar .sidebar-nav-item.is-primary {
+					background: #F0F9FF;
+				}
+				.traveler-modal-sidebar .nav-item-number {
+					width: 24px;
+					height: 24px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					background: #E5E7EB;
+					border-radius: 50%;
+					font-size: 12px;
+					font-weight: 600;
+					color: #374151;
+					flex-shrink: 0;
+				}
+				.traveler-modal-sidebar .sidebar-nav-item.is-primary .nav-item-number {
+					background: #0050C8;
+					color: #fff;
+				}
+				.traveler-modal-sidebar .nav-item-info {
+					flex: 1;
+					min-width: 0;
+					overflow: hidden;
+				}
+				.traveler-modal-sidebar .nav-item-name {
+					font-size: 13px;
+					font-weight: 500;
+					color: #111827;
+					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+				.traveler-modal-sidebar .nav-item-type {
+					font-size: 11px;
+					color: #6B7280;
+					margin-top: 2px;
+				}
+				.traveler-modal-sidebar .nav-item-badge {
+					font-size: 9px;
+					padding: 2px 6px;
+					background: #0050C8;
+					color: #fff;
+					border-radius: 3px;
+					flex-shrink: 0;
+				}
+				@media (max-width: 768px) {
+					.traveler-modal-body {
+						flex-direction: column;
+					}
+					.traveler-modal-sidebar {
+						width: 100%;
+						border-left: none;
+						border-top: 1px solid #E5E7EB;
+					}
 				}
 				.traveler-cards-header {
 					display: flex;
@@ -1117,6 +1318,121 @@
 					color: #DC2626;
 					font-size: 12px;
 				}
+				/* Passport Date Warning Container */
+				.passport-date-warning-container {
+					margin-top: 4px;
+				}
+				/* Flight Options Section */
+				.flight-options-section {
+					margin-top: 20px;
+					padding-top: 16px;
+					border-top: 1px solid #E5E7EB;
+				}
+				.flight-options-header {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+					margin-bottom: 12px;
+				}
+				.flight-options-title {
+					font-size: 14px;
+					font-weight: 600;
+					color: #374151;
+				}
+				.flight-options-airline {
+					font-size: 12px;
+					color: #6B7280;
+					background: #F3F4F6;
+					padding: 2px 8px;
+					border-radius: 4px;
+				}
+				.flight-options-body {
+					display: flex;
+					flex-direction: column;
+					gap: 12px;
+				}
+				.flight-option-category {
+					background: #F9FAFB;
+					border: 1px solid #E5E7EB;
+					border-radius: 8px;
+					padding: 12px 16px;
+				}
+				.flight-option-category .category-label {
+					font-size: 13px;
+					font-weight: 600;
+					color: #374151;
+					display: block;
+					margin-bottom: 8px;
+				}
+				.flight-option-category .category-options {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 12px;
+				}
+				.flight-option-category .option-checkbox {
+					display: flex;
+					align-items: center;
+					gap: 6px;
+					cursor: pointer;
+					font-size: 13px;
+				}
+				.flight-option-category .option-checkbox input[type="checkbox"] {
+					width: 16px;
+					height: 16px;
+					cursor: pointer;
+				}
+				.flight-option-category .option-name {
+					color: #374151;
+				}
+				.flight-option-category .option-price {
+					color: #059669;
+					font-weight: 500;
+					font-size: 12px;
+				}
+				/* File Action Buttons (Preview, Download, Delete) */
+				.file-action-buttons {
+					display: flex;
+					gap: 2px;
+					align-items: center;
+					flex-shrink: 0;
+					margin-left: auto;
+				}
+				.btn-file-action {
+					padding: 4px;
+					border: none;
+					background: transparent;
+					cursor: pointer;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					border-radius: 4px;
+					transition: background 0.15s;
+				}
+				.btn-file-action:hover {
+					background: rgba(0, 0, 0, 0.08);
+				}
+				.btn-file-action img {
+					width: 16px;
+					height: 16px;
+				}
+				.btn-file-action.btn-preview img {
+					filter: brightness(0) saturate(100%) invert(31%) sepia(98%) saturate(1234%) hue-rotate(196deg) brightness(96%) contrast(101%);
+				}
+				.btn-file-action.btn-download img {
+					filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(118deg) brightness(95%) contrast(101%);
+				}
+				.btn-file-action.btn-delete img {
+					filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+				}
+				.passport-photo-info,
+				.visa-document-info {
+					flex-wrap: wrap;
+				}
+				.photo-filename,
+				.visa-filename {
+					max-width: 80px;
+					flex-shrink: 1;
+				}
 				@media (max-width: 768px) {
 					.traveler-card-body {
 						grid-template-columns: repeat(2, 1fr);
@@ -1135,10 +1451,64 @@
 				</table>
 			</div>
 
+			</div><!-- // content-main -->
+
+			<!-- Section Navigator Sidebar -->
+			<aside class="content-aside" aria-label="Section Navigation" style="top:5px">
+				<h3 class="aside-title" data-lan-eng="Sections">Sections</h3>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-item">
+						<div class="aside-list">
+							<div class="aside-row" data-nav-section="section-product">
+								<div class="aside-row__title" data-scroll-target="section-product" onclick="scrollToSection('section-product')" style="cursor:pointer;" data-lan-eng="Product Information">Product Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-reservation">
+								<div class="aside-row__title" data-scroll-target="section-reservation" onclick="scrollToSection('section-reservation')" style="cursor:pointer;" data-lan-eng="Reservation Information">Reservation Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-payment">
+								<div class="aside-row__title" data-scroll-target="section-payment" onclick="scrollToSection('section-payment')" style="cursor:pointer;" data-lan-eng="Payment Information">Payment Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-agent-notes">
+								<div class="aside-row__title" data-scroll-target="section-agent-notes" onclick="scrollToSection('section-agent-notes')" style="cursor:pointer;" data-lan-eng="Agent Notes">Agent Notes</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-flight">
+								<div class="aside-row__title" data-scroll-target="section-flight" onclick="scrollToSection('section-flight')" style="cursor:pointer;" data-lan-eng="Flight Information">Flight Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-customer">
+								<div class="aside-row__title" data-scroll-target="section-customer" onclick="scrollToSection('section-customer')" style="cursor:pointer;" data-lan-eng="Customer Information">Customer Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-traveler">
+								<div class="aside-row__title" data-scroll-target="section-traveler" onclick="scrollToSection('section-traveler')" style="cursor:pointer;" data-lan-eng="Traveler Information">Traveler Information</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</aside>
 		</section>
 
 
 	</main>
+
+	<!-- File Viewer Modal -->
+	<div id="file-viewer-modal" class="modal" style="display: none; z-index: 1200;">
+		<div class="modal-content" style="max-width: 900px; width: 90%;">
+			<div class="modal-header">
+				<h3 id="file-viewer-title">File Preview</h3>
+				<button type="button" class="modal-close" id="file-viewer-close">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body" id="file-viewer-content" style="display: flex; justify-content: center; align-items: center; min-height: 300px;">
+				<!-- Content will be dynamically inserted -->
+			</div>
+		</div>
+	</div>
 
 	<!-- 기한 설정 모달 -->
 	<div id="deadlineModal" class="modal" style="display:none;">
@@ -1230,36 +1600,29 @@
 		</div>
 	</div>
 
-	<!-- 룸 옵션 선택 모달 -->
+	<!-- Room Option Modal -->
 	<div id="room-option-modal" class="modal" style="display: none;">
 		<div class="modal-content modal-room-option">
 			<div class="modal-body room-option-modal-body">
 				<h2 class="room-option-title" data-lan-eng="Select Room Options">Select Room Options</h2>
-
 				<div id="room-combination-banner" class="room-combination-banner">
 					<div class="room-combination-text">
 						<span data-lan-eng="Current Room Combination">Current Room Combination</span>
-						<span id="room-combination-count">(0/0<span data-lan-eng="People">명</span>)</span>
+						<span id="room-combination-count">(0/0 People)</span>
 					</div>
 					<div class="room-combination-note" data-lan-eng="*Adults and Children with 'Child Room=Yes' are counted. (Infants excluded)">
 						*Adults and Children with 'Child Room=Yes' are counted. (Infants excluded)
 					</div>
 				</div>
-
 				<div class="room-option-notice" style="margin-bottom: 16px; padding: 12px 16px; background: #FFF8E6; border: 1px solid #FFE082; border-radius: 8px; color: #8B6914; font-size: 13px;">
 					* All rooms are based on double occupancy. If a customer wants a private room or is traveling alone, Single Supplement Surcharge will be applied.
 				</div>
-
 				<div class="room-option-container">
 					<div class="room-option-left">
-						<div id="room-option-list">
-							<!-- 룸 옵션 목록이 여기에 표시됩니다 -->
-						</div>
+						<div id="room-option-list"></div>
 					</div>
 					<div class="room-option-right">
-						<div id="order-summary-list" class="order-summary-list">
-							<!-- 주문 요약이 여기에 표시됩니다 -->
-						</div>
+						<div id="order-summary-list" class="order-summary-list"></div>
 						<div class="order-amount-divider"></div>
 						<div class="order-amount-row">
 							<span class="order-amount-label" data-lan-eng="Order Amount">Order Amount</span>
@@ -1267,8 +1630,82 @@
 						</div>
 					</div>
 				</div>
+				<button type="button" id="confirm-room-selection-btn" class="room-option-submit-btn" data-lan-eng="Selection complete" disabled>Selection complete</button>
+			</div>
+		</div>
+	</div>
 
-				<button type="button" id="confirm-room-selection-btn" class="room-option-submit-btn" onclick="confirmRoomSelectionEdit()" data-lan-eng="Selection complete" disabled>Selection complete</button>
+	<!-- Change Summary Modal (Step 3) -->
+	<div id="change-summary-modal" class="modal" style="display:none;">
+		<div class="modal-content" style="max-width: 800px; width: 95%;">
+			<div class="modal-header">
+				<h3 data-lan-eng="Review Changes">Review Changes</h3>
+				<span class="step-indicator" style="background: #10B981; color: #fff; padding: 4px 12px; border-radius: 16px; font-size: 12px; margin-left: 12px;">Step 3 of 3</span>
+				<button type="button" class="modal-close" onclick="closeChangeSummaryModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body" style="padding: 20px;">
+				<!-- Info Banner -->
+				<div style="background: #EFF6FF; border: 1px solid #0050C8; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+					<div style="display: flex; align-items: center; gap: 12px;">
+						<span style="font-size: 20px; color: #0050C8;">ℹ</span>
+						<div>
+							<div style="font-weight: 600; color: #0050C8;">Review Changes</div>
+							<div style="color: #374151; font-size: 13px; margin-top: 2px;">Please review the changes below before submitting.</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Change Summary -->
+				<div style="background: #F7FAFF; border: 1px solid #0050C8; border-radius: 12px; padding: 20px;">
+					<div style="display: flex; gap: 20px;">
+						<!-- Before -->
+						<div style="flex: 1; padding: 16px; background: #fff; border: 1px solid #E5E7EB; border-radius: 8px;">
+							<div style="font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; margin-bottom: 12px;">BEFORE</div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Travelers:</span>
+								<span style="font-weight: 500;" id="summary-before-travelers">-</span>
+							</div>
+							<div id="summary-before-traveler-list" style="font-size: 13px; color: #374151; margin-bottom: 12px;"></div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Rooms:</span>
+								<span style="font-weight: 500;" id="summary-before-rooms">-</span>
+							</div>
+							<div id="summary-before-room-list" style="font-size: 13px; color: #374151;"></div>
+						</div>
+						<!-- After -->
+						<div style="flex: 1; padding: 16px; background: #EFF6FF; border: 2px solid #0050C8; border-radius: 8px;">
+							<div style="font-size: 12px; font-weight: 600; color: #0050C8; text-transform: uppercase; margin-bottom: 12px;">
+								AFTER <span style="background: #FEF3C7; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #92400E; margin-left: 8px;">Changed</span>
+							</div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Travelers:</span>
+								<span style="font-weight: 500;" id="summary-after-travelers">-</span>
+							</div>
+							<div id="summary-after-traveler-list" style="font-size: 13px; color: #374151; margin-bottom: 12px;"></div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Rooms:</span>
+								<span style="font-weight: 500;" id="summary-after-rooms">-</span>
+							</div>
+							<div id="summary-after-room-list" style="font-size: 13px; color: #374151;"></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Amount Breakdown -->
+				<div style="margin-top: 20px; background: #F7FAFF; border: 1px solid #0050C8; border-radius: 12px; padding: 20px;">
+					<div style="font-weight: 600; margin-bottom: 12px;">Amount Breakdown</div>
+					<div id="summary-breakdown-list" style="font-size: 14px;"></div>
+					<div style="display: flex; justify-content: space-between; padding: 12px 16px; background: #EFF6FF; border: 1px solid #0050C8; border-radius: 8px; margin-top: 12px;">
+						<span style="font-weight: 600; color: #0050C8;">Total Amount</span>
+						<span style="font-weight: 700; color: #0050C8; font-size: 18px;" id="summary-total-amount">₱0</span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; border-top: 1px solid #e0e0e0;">
+				<button type="button" class="jw-button typeD" onclick="backToRoomOption()" data-lan-eng="Back">Back</button>
+				<button type="button" class="jw-button typeB" id="submit-changes-btn" onclick="submitChanges()" data-lan-eng="Submit Changes">Submit Changes</button>
 			</div>
 		</div>
 	</div>
@@ -1292,10 +1729,37 @@
 		</div>
 	</div>
 
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar" id="fixedBottomBar" style="display: none;">
+		<button type="button" class="jw-button" id="bottomSaveBtn" style="background: #0050C8; color: #fff; padding: 10px 24px; border-radius: 8px;" data-lan-eng="Save">Save</button>
+		<button type="button" class="jw-button" id="bottomAcknowledgeRejectBtn" style="display: none; background: #3b82f6; color: #fff; padding: 10px 24px; border-radius: 8px;" data-lan-eng="Confirm">Confirm</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 80px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			gap: 12px;
+			z-index: 100;
+		}
+	</style>
+
 	<!-- 기본 스크립트 -->
 	<script src="../js/default.js"></script>
 	<script src="../js/agent.js"></script>
-	<script src="../js/agent-reservation-detail.js?v=20260120001"></script>
+	<script src="../js/agent-reservation-detail.js?v=20260129b"></script>
 	<script>
 		init({
 			headerUrl: '../inc/header.html',
@@ -1314,6 +1778,48 @@
 				if (noti) noti.href = `../common/reservation-notices.html?bookingId=${encodeURIComponent(bookingId)}`;
 			} catch (_) {}
 		})();
+	</script>
+	<script>
+	function scrollToSection(sectionId) {
+		const target = document.getElementById(sectionId);
+		if (target) {
+			const offset = 100;
+			const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+			window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+		}
+	}
+
+	(function() {
+		const sections = [
+			'section-product', 'section-reservation', 'section-payment',
+			'section-agent-notes', 'section-flight',
+			'section-customer', 'section-traveler'
+		];
+
+		function updateActiveSection() {
+			const scrollPosition = window.scrollY + 150;
+
+			let currentSectionId = null;
+			for (let i = sections.length - 1; i >= 0; i--) {
+				const el = document.getElementById(sections[i]);
+				if (el && el.offsetTop <= scrollPosition) {
+					currentSectionId = sections[i];
+					break;
+				}
+			}
+
+			document.querySelectorAll('.aside-row[data-nav-section]').forEach(row => {
+				row.classList.remove('is-active');
+			});
+			if (currentSectionId) {
+				const activeRow = document.querySelector(`.aside-row[data-nav-section="${currentSectionId}"]`);
+				if (activeRow) activeRow.classList.add('is-active');
+			}
+		}
+
+		window.addEventListener('scroll', updateActiveSection);
+		window.addEventListener('load', updateActiveSection);
+	})();
 	</script>
 </body>
 

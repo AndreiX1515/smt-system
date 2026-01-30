@@ -33,7 +33,7 @@
 		<!-- nav slot -->
 		<nav class="layout-nav"></nav>
 
-		<section class="layout-content">
+		<section class="layout-content layout-content-aside">
 			<div class="page-toolbar">
 				<a href="b2b-booking-list.html" class="jw-button" aria-label="Return to list">
 					<img src="../image/arrow4.svg" alt="">
@@ -50,6 +50,8 @@
 					</select>
 					<select class="select" id="reservationStatusSelect">
 						<option value="pending" data-lan-eng="Pending">확인 대기</option>
+						<option value="pending_update" data-lan-eng="Pending Update" style="background:#fef3c7;">⏳ 상태 변경 승인 대기</option>
+						<option value="check_reject" data-lan-eng="Update Rejected" style="background:#fee2e2;">❌ 변경 거절됨</option>
 						<option value="waiting_down_payment" selected data-lan-eng="Waiting for Down Payment">Down Payment 대기</option>
 						<option value="checking_down_payment" data-lan-eng="Checking Down Payment">Down Payment 확인중</option>
 						<option value="waiting_second_payment" data-lan-eng="Waiting for Second Payment">Second Payment 대기</option>
@@ -64,10 +66,29 @@
 						<option value="cancelled" data-lan-eng="Reservation Cancelled">예약 취소</option>
 						<option value="refunded" data-lan-eng="Refund Completed">환불 완료</option>
 					</select>
+					<span id="requestedByBadge" style="display: none; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; color: #fff;"></span>
 				</div>
 			</div>
 
+			<div class="content-main">
 			<h1 class="page-title" data-lan-eng="B2B Reservation Details">B2B Reservation Details</h1>
+
+			<!-- Reject reason banner (shown when check_reject status) -->
+			<div id="rejectReasonBanner" style="display: none; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+				<div style="display: flex; align-items: flex-start; gap: 12px;">
+					<span style="font-size: 24px;">❌</span>
+					<div style="flex: 1;">
+						<div style="font-weight: 700; color: #b91c1c; font-size: 16px; margin-bottom: 4px;">Change Request Rejected</div>
+						<div style="color: #dc2626; font-size: 14px;" id="rejectReasonText"></div>
+						<div style="color: #991b1b; font-size: 12px; margin-top: 8px;" id="rejectReasonMeta"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Product Edit pending banner (shown when pending_update with product_edit changeType) -->
+			<div id="productEditBanner" style="display: none; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+				<!-- Content will be populated by JavaScript -->
+			</div>
 
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">Product and Reservation Information</p>
@@ -75,7 +96,7 @@
 				<a href="../common/reservation-notices.html" target="_blank" id="announcementsLink"><span data-lan-eng="Announcements">Announcements</span><img src="../image/linkout.svg" alt=""></a>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Product Information">Product Information</h2>
+			<h2 class="section-title jw-mgt32" id="section-product" data-lan-eng="Product Information">Product Information</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 					<!-- Product name: full width -->
@@ -104,7 +125,7 @@
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Information">Reservation Information</h2>
+			<h2 class="section-title jw-mgt32" id="section-reservation" data-lan-eng="Reservation Information">Reservation Information</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 					<!-- Row 1 -->
@@ -129,42 +150,7 @@
 					</div>
 					<div class="grid-item"></div>
 
-					<!-- Row 3: optional selections -->
-					<!-- SMT 수정 시작 - Add Cabin Baggage, Breakfast Request, WiFi Rental 수정 가능하게 변경 -->
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Add Cabin Baggage">Add Cabin Baggage</label>
-						<select class="select" id="cabinBaggageSelect">
-							<option value="" selected data-lan-eng="Not selected">Not selected</option>
-							<option value="15kg">15kg</option>
-							<option value="20kg">20kg</option>
-							<option value="30kg">30kg</option>
-						</select>
-					</div>
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Breakfast Request">Breakfast Request</label>
-						<select class="select" id="breakfastSelect">
-							<option value="apply" selected data-lan-eng="Apply">Apply</option>
-							<option value="no_request" data-lan-eng="No request">No request</option>
-						</select>
-					</div>
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="WiFi Rental">WiFi Rental</label>
-						<select class="select" id="wifiSelect">
-							<option value="apply" selected data-lan-eng="Apply">Apply</option>
-							<option value="no_request" data-lan-eng="No request">No request</option>
-						</select>
-					</div>
-					<!-- SMT 수정 완료 -->
-
-					<!-- Row 4: airline seat request -->
-					<div class="grid-item col-span-3">
-						<label class="label-name" data-lan-eng="Airline seat request details">Airline seat request details</label>
-						<div class="editor-box-wrap">
-							<textarea rows="6" id="seatRequest" placeholder="-" style="resize:none;" disabled readonly></textarea>
-						</div>
-					</div>
-
-					<!-- Row 5: other requests -->
+					<!-- Other requests -->
 					<div class="grid-item col-span-3">
 						<label class="label-name" data-lan-eng="Other requests">Other requests</label>
 						<div class="editor-box-wrap">
@@ -174,7 +160,51 @@
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Payment Information">Payment Information</h2>
+			<h2 class="section-title jw-mgt32" id="section-payment" data-lan-eng="Payment Information">Payment Information</h2>
+
+			<!-- Reservation Summary -->
+			<div class="card-panel jw-mgt16" style="background: #F7FAFF; border: 1px solid #0050C8;">
+				<h3 class="card-panel-title" style="color: #0050C8;" data-lan-eng="Reservation Summary">Reservation Summary</h3>
+				<div class="card-panel-divider"></div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Booking ID">Booking ID</label>
+						<div class="form-control" id="summary_booking_id" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item col-span-2">
+						<label class="label-name" data-lan-eng="Product Name">Product Name</label>
+						<div class="form-control" id="summary_package_name" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Travel Period">Travel Period</label>
+						<div class="form-control" id="summary_trip_range" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Travelers">Travelers</label>
+						<div class="form-control" id="summary_travelers" style="background: #fff; display: flex; align-items: center;">-</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Total Amount">Total Amount</label>
+						<div class="form-control" id="summary_total_amount" style="background: #fff; font-weight: 600; color: #0050C8; display: flex; align-items: center;">-</div>
+					</div>
+				</div>
+				<!-- Amount Breakdown -->
+				<div id="amount-breakdown-section" class="jw-mgt16" style="display: none;">
+					<div style="border-top: 1px dashed #0050C8; margin: 16px 0;"></div>
+					<div style="font-weight: 600; color: #0050C8; margin-bottom: 12px;" data-lan-eng="Amount Breakdown">Amount Breakdown</div>
+					<div id="amount-breakdown-list" style="display: flex; flex-direction: column; gap: 8px;">
+						<!-- Breakdown items will be populated by JS -->
+					</div>
+				</div>
+				<!-- Price Adjustment -->
+				<div id="price-adjustment-section" class="jw-mgt16" style="display: none;">
+					<div style="border-top: 1px dashed #f59e0b; margin: 16px 0;"></div>
+					<div style="font-weight: 600; color: #92400e; margin-bottom: 12px;" data-lan-eng="Price Adjustment History">Price Adjustment History</div>
+					<div id="price-adjustment-info" style="background: #fef3c7; padding: 12px 16px; border-radius: 8px; border: 1px solid #f59e0b;">
+						<!-- Adjustment info will be populated by JS -->
+					</div>
+				</div>
+			</div>
 
 			<!-- Total Amount -->
 			<div class="card-panel jw-mgt16">
@@ -207,7 +237,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="text" class="form-control" id="downPaymentDeadline" placeholder="-" disabled>
+						<input type="date" class="form-control" id="downPaymentDeadline" onchange="updateDeadline('down', this.value)">
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Proof File</label>
@@ -215,7 +245,10 @@
 							<div class="field-row jw-center">
 								<div class="jw-center jw-gap10" id="downPaymentProofInfo">-</div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="downPaymentDownloadBtn" aria-label="Download" disabled>
+									<button type="button" class="jw-button typeF" id="downPaymentViewBtn" aria-label="View" disabled title="View">
+										<img src="../image/eye.svg" alt="">
+									</button>
+									<button type="button" class="jw-button typeF" id="downPaymentDownloadBtn" aria-label="Download" disabled title="Download">
 										<img src="../image/buttun-download.svg" alt="">
 									</button>
 								</div>
@@ -251,7 +284,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="text" class="form-control" id="secondPaymentDeadline" placeholder="-" disabled>
+						<input type="date" class="form-control" id="secondPaymentDeadline" onchange="updateDeadline('second', this.value)">
 					</div>
 					<div class="grid-item" id="secondPaymentFields">
 						<label class="label-name">Proof File</label>
@@ -259,7 +292,10 @@
 							<div class="field-row jw-center">
 								<div class="jw-center jw-gap10" id="secondPaymentProofInfo">-</div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="secondPaymentDownloadBtn" aria-label="Download" disabled>
+									<button type="button" class="jw-button typeF" id="secondPaymentViewBtn" aria-label="View" disabled title="View">
+										<img src="../image/eye.svg" alt="">
+									</button>
+									<button type="button" class="jw-button typeF" id="secondPaymentDownloadBtn" aria-label="Download" disabled title="Download">
 										<img src="../image/buttun-download.svg" alt="">
 									</button>
 								</div>
@@ -279,10 +315,6 @@
 						</div>
 					</div>
 				</div>
-				<!-- 비활성화 안내 -->
-				<div id="secondPaymentDisabledNotice" class="payment-disabled-notice" style="padding: 16px; background: #F5F5F5; border-radius: 8px; margin-top: 16px; text-align: center; color: #666;">
-					<p style="margin: 0; font-size: 14px;">Second Payment will be available after Down Payment is confirmed.</p>
-				</div>
 			</div>
 
 			<!-- Balance -->
@@ -299,7 +331,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="text" class="form-control" id="balanceDeadline" placeholder="-" disabled>
+						<input type="date" class="form-control" id="balanceDeadline" onchange="updateDeadline('balance', this.value)">
 					</div>
 					<div class="grid-item" id="balanceFields">
 						<label class="label-name">Proof File</label>
@@ -307,7 +339,10 @@
 							<div class="field-row jw-center">
 								<div class="jw-center jw-gap10" id="balanceProofInfo">-</div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="balanceDownloadBtn" aria-label="Download" disabled>
+									<button type="button" class="jw-button typeF" id="balanceViewBtn" aria-label="View" disabled title="View">
+										<img src="../image/eye.svg" alt="">
+									</button>
+									<button type="button" class="jw-button typeF" id="balanceDownloadBtn" aria-label="Download" disabled title="Download">
 										<img src="../image/buttun-download.svg" alt="">
 									</button>
 								</div>
@@ -327,10 +362,6 @@
 						</div>
 					</div>
 				</div>
-				<!-- 비활성화 안내 -->
-				<div id="balanceDisabledNotice" class="payment-disabled-notice" style="padding: 16px; background: #F5F5F5; border-radius: 8px; margin-top: 16px; text-align: center; color: #666;">
-					<p style="margin: 0; font-size: 14px;">Balance will be available after Second Payment is confirmed.</p>
-				</div>
 			</div>
 			</div><!-- End Staged Payment Sections -->
 
@@ -348,7 +379,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="text" class="form-control" id="fullPaymentDeadline" placeholder="-" disabled>
+						<input type="date" class="form-control" id="fullPaymentDeadline" onchange="updateDeadline('full', this.value)">
 					</div>
 					<div class="grid-item" id="fullPaymentFields">
 						<label class="label-name">Proof File</label>
@@ -356,7 +387,10 @@
 							<div class="field-row jw-center">
 								<div class="jw-center jw-gap10" id="fullPaymentProofInfo">-</div>
 								<div class="jw-center jw-gap10">
-									<button type="button" class="jw-button typeF" id="fullPaymentDownloadBtn" aria-label="Download" disabled>
+									<button type="button" class="jw-button typeF" id="fullPaymentViewBtn" aria-label="View" disabled title="View">
+										<img src="../image/eye.svg" alt="">
+									</button>
+									<button type="button" class="jw-button typeF" id="fullPaymentDownloadBtn" aria-label="Download" disabled title="Download">
 										<img src="../image/buttun-download.svg" alt="">
 									</button>
 								</div>
@@ -378,7 +412,7 @@
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Agent Information">Agent Information</h2>
+			<h2 class="section-title jw-mgt32" id="section-agent" data-lan-eng="Agent Information">Agent Information</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 					<!-- Row 1 -->
@@ -400,15 +434,12 @@
 						<label class="label-name" data-lan-eng="Contact information">Contact information</label>
 						<input type="tel" class="form-control" id="agentManagerContact" placeholder="-" disabled>
 					</div>
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Deposit ratio (%)">Deposit ratio (%)</label>
-						<input type="number" class="form-control" id="depositRatio" placeholder="-" min="0" max="100" step="1" disabled>
-					</div>
+					<div class="grid-item"></div>
 					<div class="grid-item"></div>
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Agent Notes">Agent Notes</h2>
+			<h2 class="section-title jw-mgt32" id="section-agent-notes" data-lan-eng="Agent Notes">Agent Notes</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 					<div class="grid-item col-span-3">
@@ -420,7 +451,7 @@
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Flight Information">Flight Information</h2>
+			<h2 class="section-title jw-mgt32" id="section-flight" data-lan-eng="Flight Information">Flight Information</h2>
 			<div class="card-panel jw-mgt16">
 				<h3 class="grid-wrap-title" data-lan-eng="Departure flight">Departure flight</h3>
 				<div class="grid-wrap jw-mgt16">
@@ -481,7 +512,7 @@
 			</div>
 
 			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" data-lan-eng="Reservation Customer Information">Reservation Customer Information</h2>
+				<h2 class="section-title" id="section-customer" data-lan-eng="Reservation Customer Information">Reservation Customer Information</h2>
 				<div class="customer-edit-btns" id="customerEditBtns" style="display:none;">
 					<button type="button" id="editCustomerBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
 					<button type="button" id="saveCustomerBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
@@ -508,7 +539,7 @@
 			</div>
 
 			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" data-lan-eng="Traveler Information">Traveler Information</h2>
+				<h2 class="section-title" id="section-traveler" data-lan-eng="Traveler Information">Traveler Information</h2>
 			</div>
 			<div class="card-panel jw-mgt16">
 				<div class="traveler-summary-section">
@@ -614,15 +645,101 @@
 						</div>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="jw-button typeB" onclick="saveAllTravelers()" data-lan-eng="Save">Save</button>
+						<button type="button" class="jw-button typeB" onclick="saveAllTravelers()" data-lan-eng="Next: Room Options">Next: Room Options</button>
 						<button type="button" class="jw-button typeD" onclick="closeTravelerEditModal()" data-lan-eng="Cancel">Cancel</button>
 					</div>
 				</div>
 			</div>
 
-		</section>
+	<!-- Change Summary Modal (for pending_update review) -->
+	<div id="change-summary-modal" class="modal" style="display:none;">
+		<div class="modal-content" style="max-width: 900px; width: 95%;">
+			<div class="modal-header">
+				<h3 data-lan-eng="Review Changes">Review Changes</h3>
+				<span class="step-indicator" style="background: #f59e0b; color: #fff; padding: 4px 12px; border-radius: 16px; font-size: 12px; margin-left: 12px;">Pending Approval</span>
+				<button type="button" class="modal-close" onclick="closeChangeSummaryModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+				<!-- Info Banner -->
+				<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+					<div style="display: flex; align-items: center; gap: 12px;">
+						<span style="font-size: 20px;">⏳</span>
+						<div>
+							<div style="font-weight: 600; color: #92400e;">Pending Change Request</div>
+							<div style="color: #a16207; font-size: 13px; margin-top: 2px;">Review the requested changes below. Approve or reject this request.</div>
+						</div>
+					</div>
+				</div>
 
-	</main>
+				<!-- Change Summary -->
+				<div style="background: #F7FAFF; border: 1px solid #0050C8; border-radius: 12px; padding: 20px;">
+					<div style="display: flex; gap: 20px;">
+						<!-- Before -->
+						<div style="flex: 1; padding: 16px; background: #fff; border: 1px solid #E5E7EB; border-radius: 8px;">
+							<div style="font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; margin-bottom: 12px;">BEFORE (Current)</div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Travelers:</span>
+								<span style="font-weight: 500;" id="summary-before-travelers">-</span>
+							</div>
+							<div id="summary-before-traveler-list" style="font-size: 13px; color: #374151; margin-bottom: 12px;"></div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Rooms:</span>
+								<span style="font-weight: 500;" id="summary-before-rooms">-</span>
+							</div>
+							<div id="summary-before-room-list" style="font-size: 13px; color: #374151;"></div>
+						</div>
+						<!-- After -->
+						<div style="flex: 1; padding: 16px; background: #EFF6FF; border: 2px solid #0050C8; border-radius: 8px;">
+							<div style="font-size: 12px; font-weight: 600; color: #0050C8; text-transform: uppercase; margin-bottom: 12px;">
+								AFTER (Requested) <span style="background: #FEF3C7; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #92400E; margin-left: 8px;">Changed</span>
+							</div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Travelers:</span>
+								<span style="font-weight: 500;" id="summary-after-travelers">-</span>
+							</div>
+							<div id="summary-after-traveler-list" style="font-size: 13px; color: #374151; margin-bottom: 12px;"></div>
+							<div style="font-size: 14px; margin-bottom: 8px;">
+								<span style="color: #6B7280;">Rooms:</span>
+								<span style="font-weight: 500;" id="summary-after-rooms">-</span>
+							</div>
+							<div id="summary-after-room-list" style="font-size: 13px; color: #374151;"></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Amount Breakdown -->
+				<div style="margin-top: 20px; background: #F7FAFF; border: 1px solid #0050C8; border-radius: 12px; padding: 20px;">
+					<div style="font-weight: 600; margin-bottom: 12px;">Amount Breakdown Comparison</div>
+					<div style="display: flex; gap: 20px;">
+						<div style="flex: 1;">
+							<div style="font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; margin-bottom: 8px;">BEFORE</div>
+							<div id="summary-breakdown-before" style="font-size: 14px;"></div>
+							<div style="display: flex; justify-content: space-between; padding: 8px 12px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; margin-top: 8px;">
+								<span style="font-weight: 500;">Total</span>
+								<span style="font-weight: 600;" id="summary-total-before">₱0</span>
+							</div>
+						</div>
+						<div style="flex: 1;">
+							<div style="font-size: 12px; font-weight: 600; color: #0050C8; text-transform: uppercase; margin-bottom: 8px;">AFTER</div>
+							<div id="summary-breakdown-after" style="font-size: 14px;"></div>
+							<div style="display: flex; justify-content: space-between; padding: 8px 12px; background: #EFF6FF; border: 1px solid #0050C8; border-radius: 6px; margin-top: 8px;">
+								<span style="font-weight: 600; color: #0050C8;">Total</span>
+								<span style="font-weight: 700; color: #0050C8; font-size: 16px;" id="summary-total-after">₱0</span>
+							</div>
+						</div>
+					</div>
+					<!-- Difference -->
+					<div id="summary-difference" style="display: none; margin-top: 12px; padding: 10px 16px; border-radius: 8px; text-align: center;"></div>
+				</div>
+			</div>
+			<div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; border-top: 1px solid #e0e0e0;">
+				<button type="button" class="jw-button" onclick="backToTravelerReview()" style="background: #6B7280; color: #fff;" data-lan-eng="Back to Travelers">← Back to Travelers</button>
+				<button type="button" class="jw-button typeD" onclick="closeChangeSummaryModal()" data-lan-eng="Close">Close</button>
+			</div>
+		</div>
+	</div>
 
 	<!-- 하단 고정 액션 바 -->
 	<div class="fixed-bottom-bar">
@@ -633,6 +750,8 @@
 		</div>
 		<!-- Pending 외 상태일 때 표시 -->
 		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+		<!-- check_reject 상태일 때 표시 -->
+		<button type="button" class="jw-button" id="acknowledgeRejectBtn" style="display: none; background: #3b82f6; color: #fff; padding: 10px 24px; border-radius: 8px;" data-lan-eng="Confirm">Confirm</button>
 	</div>
 
 	<style>
@@ -1115,6 +1234,195 @@
 				align-items: flex-start;
 			}
 		}
+		/* Passport Photo Upload */
+		.passport-photo-upload,
+		.visa-document-upload {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			flex-wrap: wrap;
+		}
+		.btn-upload-photo {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 8px 14px;
+			border: 1px solid #D1D5DB;
+			border-radius: 8px;
+			background: #fff;
+			color: #374151;
+			font-size: 13px;
+			cursor: pointer;
+			transition: all 0.2s;
+			white-space: nowrap;
+			flex-shrink: 0;
+		}
+		.btn-upload-photo:hover {
+			background: #F3F4F6;
+			border-color: #9CA3AF;
+		}
+		.btn-upload-photo img {
+			width: 16px;
+			height: 16px;
+		}
+		.passport-photo-info,
+		.visa-document-info {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 6px 12px;
+			background: #F0F9FF;
+			border: 1px solid #BAE6FD;
+			border-radius: 6px;
+		}
+		.passport-photo-info.hidden,
+		.visa-document-info.hidden {
+			display: none;
+		}
+		.photo-filename,
+		.visa-filename {
+			font-size: 13px;
+			color: #0369A1;
+			max-width: 200px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		.btn-remove-photo {
+			padding: 2px;
+			border: none;
+			background: transparent;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+		}
+		.btn-remove-photo img {
+			width: 14px;
+			height: 14px;
+			opacity: 0.6;
+		}
+		.btn-remove-photo:hover img {
+			opacity: 1;
+		}
+		/* Flight Options Section */
+		.flight-options-section {
+			margin-top: 16px;
+			padding: 16px;
+			background: #F9FAFB;
+			border: 1px solid #E5E7EB;
+			border-radius: 8px;
+		}
+		.flight-options-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 12px;
+		}
+		.flight-options-title {
+			font-size: 14px;
+			font-weight: 600;
+			color: #374151;
+		}
+		.flight-options-airline {
+			font-size: 12px;
+			color: #6B7280;
+			background: #F3F4F6;
+			padding: 2px 8px;
+			border-radius: 4px;
+		}
+		.flight-options-body {
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+		.flight-option-category {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+		.category-label {
+			font-size: 12px;
+			font-weight: 500;
+			color: #6B7280;
+		}
+		.category-options {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+		}
+		.option-checkbox {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 12px;
+			background: #fff;
+			border: 1px solid #E5E7EB;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 13px;
+		}
+		.option-checkbox:hover {
+			border-color: #0050C8;
+		}
+		.option-checkbox input[type="checkbox"] {
+			width: 16px;
+			height: 16px;
+		}
+		.option-name {
+			color: #374151;
+		}
+		.option-price {
+			color: #0050C8;
+			font-weight: 500;
+		}
+		/* Payment Deadline Date Inputs - always visible */
+		#downPaymentDeadline,
+		#secondPaymentDeadline,
+		#balanceDeadline,
+		#fullPaymentDeadline {
+			min-width: 150px;
+			height: 40px;
+			padding: 8px 12px;
+			border: 1px solid #D1D5DB;
+			border-radius: 6px;
+			background: #fff;
+			font-size: 14px;
+			color: #374151;
+			cursor: pointer;
+		}
+		#downPaymentDeadline:hover,
+		#secondPaymentDeadline:hover,
+		#balanceDeadline:hover,
+		#fullPaymentDeadline:hover {
+			border-color: #0050C8;
+		}
+		#downPaymentDeadline:focus,
+		#secondPaymentDeadline:focus,
+		#balanceDeadline:focus,
+		#fullPaymentDeadline:focus {
+			outline: none;
+			border-color: #0050C8;
+			box-shadow: 0 0 0 2px rgba(0, 80, 200, 0.1);
+		}
+		/* Empty date input styling */
+		#downPaymentDeadline::-webkit-datetime-edit-text,
+		#downPaymentDeadline::-webkit-datetime-edit-month-field,
+		#downPaymentDeadline::-webkit-datetime-edit-day-field,
+		#downPaymentDeadline::-webkit-datetime-edit-year-field,
+		#secondPaymentDeadline::-webkit-datetime-edit-text,
+		#secondPaymentDeadline::-webkit-datetime-edit-month-field,
+		#secondPaymentDeadline::-webkit-datetime-edit-day-field,
+		#secondPaymentDeadline::-webkit-datetime-edit-year-field,
+		#balanceDeadline::-webkit-datetime-edit-text,
+		#balanceDeadline::-webkit-datetime-edit-month-field,
+		#balanceDeadline::-webkit-datetime-edit-day-field,
+		#balanceDeadline::-webkit-datetime-edit-year-field,
+		#fullPaymentDeadline::-webkit-datetime-edit-text,
+		#fullPaymentDeadline::-webkit-datetime-edit-month-field,
+		#fullPaymentDeadline::-webkit-datetime-edit-day-field,
+		#fullPaymentDeadline::-webkit-datetime-edit-year-field {
+			color: #9CA3AF;
+		}
 	</style>
 
 	<!-- Base scripts -->
@@ -1131,10 +1439,12 @@
 
 		let bookingId = null;
 		let allTravelers = [];
+		let currentChangeRequest = null; // pending_update 시 변경 요청 정보
 		let travelersPage = 1;
 		const travelersPageSize = 10;
 		let lastLoadedBooking = null;
 		let __isSuperAdmin = false; // 최고관리자만 Customer/Traveler 편집 가능
+		let __isAdminKr = false; // admin_kr만 예약 승인/거절 가능
 
 		document.addEventListener('DOMContentLoaded', async () => {
 			// Force English on this page (no Korean allowed).
@@ -1146,19 +1456,15 @@
 			try {
 				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
 				const sessionData = await sessionResponse.json().catch(() => ({}));
-				if (!sessionData.authenticated || (sessionData.userType !== 'admin' && sessionData.userType !== 'super')) {
+				if (!sessionData.authenticated || (!['admin_ph', 'admin_kr'].includes(sessionData.userType) && sessionData.userType !== 'super')) {
 					window.location.href = '../index.html';
 					return;
 				}
-				// 최고관리자 판정(서버 정책과 동일하게 accountId=6 또는 admin@smarttravel.com)
+				// 최고관리자 판정: admin_ph, admin_kr 모두 최고관리자로 인정
 				try {
-					const qp0 = new URLSearchParams(window.location.search);
-					const testAdmin = qp0.get('test_admin');
-					__isSuperAdmin =
-						(testAdmin === 'super_admin') ||
-						(String(sessionData.accountId || '') === '6') ||
-						(String(sessionData.emailAddress || '').toLowerCase() === 'admin@smarttravel.com');
-				} catch (_) { __isSuperAdmin = false; }
+					__isSuperAdmin = ['admin_ph', 'admin_kr'].includes(sessionData.userType);
+					__isAdminKr = sessionData.userType === 'admin_kr';
+				} catch (_) { __isSuperAdmin = false; __isAdminKr = false; }
 
 				const urlParams = new URLSearchParams(window.location.search);
 				bookingId = urlParams.get('id') || urlParams.get('bookingId');
@@ -1180,6 +1486,10 @@
 				const rejectBookingBtn = document.getElementById('rejectBookingBtn');
 				if (approveBookingBtn) approveBookingBtn.addEventListener('click', handleApproveBooking);
 				if (rejectBookingBtn) rejectBookingBtn.addEventListener('click', handleRejectBooking);
+
+				// Acknowledge Reject 버튼 이벤트
+				const acknowledgeRejectBtn = document.getElementById('acknowledgeRejectBtn');
+				if (acknowledgeRejectBtn) acknowledgeRejectBtn.addEventListener('click', handleAcknowledgeReject);
 
 				// Edit Allowed 토글 버튼 이벤트
 				const toggleEditAllowedBtn = document.getElementById('toggleEditAllowedBtn');
@@ -1325,6 +1635,88 @@
 				const booking = result.data.booking || {};
 				lastLoadedBooking = booking;
 				allTravelers = Array.isArray(booking.travelers) ? booking.travelers : [];
+				currentChangeRequest = result.data.changeRequest || null;
+
+				// check_reject 상태일 때 reject 사유 배너 표시
+				const rejectedRequest = result.data.rejectedRequest || null;
+				const rejectBanner = document.getElementById('rejectReasonBanner');
+				const rejectText = document.getElementById('rejectReasonText');
+				const rejectMeta = document.getElementById('rejectReasonMeta');
+				if (rejectBanner && (booking.bookingStatus || '').toLowerCase() === 'check_reject' && rejectedRequest) {
+					const reason = rejectedRequest.rejectReason || 'No reason provided';
+					const processedBy = rejectedRequest.processedBy || 'Admin';
+					const processedAt = rejectedRequest.processedAt ? new Date(rejectedRequest.processedAt).toLocaleString() : '';
+					rejectText.textContent = reason;
+					rejectMeta.textContent = `Rejected by ${processedBy}${processedAt ? ' on ' + processedAt : ''}`;
+					rejectBanner.style.display = 'block';
+				} else if (rejectBanner) {
+					rejectBanner.style.display = 'none';
+				}
+
+				// Product Edit pending 배너 표시
+				const productEditBanner = document.getElementById('productEditBanner');
+				if (productEditBanner) {
+					const isProductEdit = currentChangeRequest && currentChangeRequest.changeType === 'product_edit';
+					if ((booking.bookingStatus || '').toLowerCase() === 'pending_update' && isProductEdit) {
+						const previousData = currentChangeRequest.previousData || {};
+						const newData = currentChangeRequest.newData || null;
+						const requestedByType = currentChangeRequest.requestedByType || 'agent';
+						const requestedByLabel = requestedByType === 'employee' ? 'Employee' : 'Agent';
+						const requestedByColor = requestedByType === 'employee' ? '#7c3aed' : '#0891b2';
+
+						let bannerContent = `
+							<div style="display: flex; align-items: flex-start; gap: 12px;">
+								<span style="font-size: 24px;">📦</span>
+								<div style="flex: 1;">
+									<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+										<div style="font-weight: 700; color: #1e40af; font-size: 16px;">Product/Date Change Request</div>
+										<span style="background: ${requestedByColor}; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">by ${requestedByLabel}</span>
+									</div>
+						`;
+
+						if (newData) {
+							// newData가 있는 경우 변경 정보 표시
+							const prevPkgName = previousData.packageName || '-';
+							const newPkgName = newData.packageName || '-';
+							const prevDate = previousData.departureDate || '-';
+							const newDate = newData.departureDate || '-';
+							const packageChanged = prevPkgName !== newPkgName;
+							const dateChanged = prevDate !== newDate;
+
+							bannerContent += `<div style="color: #1e3a8a; font-size: 14px; margin-bottom: 8px;">`;
+							if (packageChanged || dateChanged) {
+								if (packageChanged) {
+									bannerContent += `<div><b>Package:</b> ${escapeHtml(prevPkgName)} → <span style="color: #059669; font-weight: 600;">${escapeHtml(newPkgName)}</span></div>`;
+								}
+								if (dateChanged) {
+									bannerContent += `<div><b>Date:</b> ${prevDate} → <span style="color: #059669; font-weight: 600;">${newDate}</span></div>`;
+								}
+							} else {
+								bannerContent += `<div>Review the change details below</div>`;
+							}
+							bannerContent += `</div>`;
+							bannerContent += `<div style="color: #6b7280; font-size: 12px;">If approved, the current booking will be cancelled and a new booking will be created.</div>`;
+						} else {
+							// newData가 없는 경우 (Agent가 아직 입력 중)
+							bannerContent += `
+								<div style="color: #dc2626; font-size: 14px;">
+									<b>⚠️ Edit in progress</b> - Agent has not completed the edit yet.
+								</div>
+								<div style="color: #6b7280; font-size: 12px; margin-top: 4px;">The agent needs to complete and save the new reservation data.</div>
+							`;
+						}
+
+						bannerContent += `
+								</div>
+							</div>
+						`;
+
+						productEditBanner.innerHTML = bannerContent;
+						productEditBanner.style.display = 'block';
+					} else {
+						productEditBanner.style.display = 'none';
+					}
+				}
 
 				// Edit Allowed 상태 반영
 				const isEditAllowed = parseInt(booking.edit_allowed || 0) === 1;
@@ -1348,16 +1740,83 @@
 					return type === 'adult' || type === 'child';
 				}).length;
 
-				// SMT 수정 시작 - 옵션 선택 값 세팅
-				setSelectValue('cabinBaggageSelect', booking.cabinBaggage || '');
-				setSelectValue('breakfastSelect', booking.breakfastRequest || '');
-				setSelectValue('wifiSelect', booking.wifiRental || '');
-				// SMT 수정 완료
-				setTextArea('seatRequest', booking.seatRequest || '');
 				setTextArea('otherRequest', booking.otherRequest || '');
 
-				// Payment - 3단계 결제 정보 표시
-				setValue('totalAmount', formatNumber(booking.totalAmount));
+				// Reservation Summary
+				setHtml('summary_booking_id', booking.reservationNo || booking.bookingId || bookingId || '-');
+				setHtml('summary_package_name', booking.packageName || '-');
+				setHtml('summary_trip_range', formatPeriod(booking.departureDate, booking.returnDate) || '-');
+				setHtml('summary_travelers', formatTravelersSummary(allTravelers));
+				// Amount Breakdown 계산 (Visa Fee, Flight Options 포함)
+				const breakdown = renderAmountBreakdown(booking, result?.data?.selectedOptions, allTravelers);
+				const displayTotal = breakdown.total || booking.totalAmount || 0;
+
+				// pending_update + travelers 변경일 때 변경 후 예상 금액 계산
+				let pendingTotal = null;
+				const isPendingTravelerChange = currentChangeRequest &&
+					currentChangeRequest.changeType === 'travelers' &&
+					(booking.bookingStatus || '').toLowerCase() === 'pending_update';
+
+				if (isPendingTravelerChange) {
+					const pendingTravelers = currentChangeRequest.newData?.pendingTravelers || [];
+					if (pendingTravelers.length > 0) {
+						pendingTotal = calculateTotalFromTravelers(booking, pendingTravelers);
+					}
+				}
+
+				// Reservation Summary - 계산된 총액 표시
+				if (isPendingTravelerChange && pendingTotal !== null) {
+					const diff = pendingTotal - displayTotal;
+					const diffColor = diff > 0 ? '#dc2626' : diff < 0 ? '#059669' : '#6B7280';
+					const diffSign = diff > 0 ? '+' : '';
+					setHtml('summary_total_amount', `
+						<div style="display: flex; flex-direction: column; gap: 4px;">
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<span style="text-decoration: line-through; color: #9CA3AF;">PHP ${formatNumber(displayTotal)}</span>
+								<span style="font-size: 16px;">→</span>
+								<span style="color: #0050C8; font-weight: 700;">PHP ${formatNumber(pendingTotal)}</span>
+							</div>
+							<div style="font-size: 12px; color: ${diffColor};">
+								(${diffSign}PHP ${formatNumber(diff)})
+							</div>
+						</div>
+					`);
+				} else {
+					setHtml('summary_total_amount', 'PHP ' + formatNumber(displayTotal));
+				}
+
+				// Price Adjustment 정보 표시
+				const priceAdjustment = parseFloat(booking.priceAdjustment || 0);
+				const adjustmentSection = document.getElementById('price-adjustment-section');
+				const adjustmentInfo = document.getElementById('price-adjustment-info');
+				if (adjustmentSection && adjustmentInfo) {
+					if (priceAdjustment !== 0) {
+						adjustmentSection.style.display = 'block';
+						const isIncrease = priceAdjustment > 0;
+						const adjustmentDate = booking.lastAdjustmentDate ? new Date(booking.lastAdjustmentDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+						const reason = booking.adjustmentReason || 'N/A';
+						adjustmentInfo.innerHTML = `
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+								<span style="font-weight: 600;">Adjustment Amount</span>
+								<span style="font-weight: 700; font-size: 16px; color: ${isIncrease ? '#dc2626' : '#059669'};">
+									${isIncrease ? '+' : ''}₱${formatNumber(priceAdjustment)}
+								</span>
+							</div>
+							<div style="font-size: 13px; color: #6B7280;">
+								<div><strong>Reason:</strong> ${escapeHtml(reason)}</div>
+								<div><strong>Date:</strong> ${adjustmentDate}</div>
+							</div>
+						`;
+					} else {
+						adjustmentSection.style.display = 'none';
+					}
+				}
+
+				// Payment - 3단계 결제 정보 표시 (계산된 총액 사용)
+				booking._calculatedTotal = displayTotal;
+				booking._visaFee = breakdown.visaFee || 0;
+				booking._flightOptions = breakdown.flightOptions || 0;
+				setValue('totalAmount', formatNumber(displayTotal));
 				updatePaymentSections(booking);
 
 				// Agent
@@ -1365,7 +1824,6 @@
 				setValue('agentManagerName', booking.agentManagerName || '');
 				setValue('agentManagerEmail', booking.agentManagerEmail || '');
 				setValue('agentManagerContact', booking.agentManagerContact || '');
-				setValue('depositRatio', booking.depositRatio || '');
 				setTextArea('agentMemo', booking.specialRequests || booking.agentMemo || '');
 
 				// Customer - 새로운 필드 ID 사용
@@ -1385,6 +1843,9 @@
 					const ret = flights.return || flights.RETURN || {};
 					setFlight('departure', dep);
 					setFlight('return', ret);
+
+					// Flight Options 카테고리 로드
+					await loadFlightOptionCategories(booking);
 				} catch (_) { }
 
 				// Toolbar status/guide
@@ -1392,6 +1853,21 @@
 				if (statusSel) statusSel.value = computeUiStatus(booking);
 				const guideSel = document.getElementById('guideSelect');
 				if (guideSel && booking.guideId) guideSel.value = String(booking.guideId);
+
+				// pending_update 상태일 때 requestedByType 배지 표시
+				const requestedByBadge = document.getElementById('requestedByBadge');
+				if (requestedByBadge) {
+					if ((booking.bookingStatus || '').toLowerCase() === 'pending_update' && currentChangeRequest) {
+						const requestedByType = currentChangeRequest.requestedByType || 'agent';
+						const requestedByLabel = requestedByType === 'employee' ? 'by Employee' : 'by Agent';
+						const requestedByColor = requestedByType === 'employee' ? '#7c3aed' : '#0891b2';
+						requestedByBadge.textContent = requestedByLabel;
+						requestedByBadge.style.background = requestedByColor;
+						requestedByBadge.style.display = 'inline-block';
+					} else {
+						requestedByBadge.style.display = 'none';
+					}
+				}
 
 				// 환불 완료 저장 이후에는 상태 변경 불가(전체/개별)
 				applyRefundStatusLock();
@@ -1416,29 +1892,80 @@
 			const currentStatus = computeUiStatus(lastLoadedBooking || {});
 			const isRefunded = currentStatus === 'refunded';
 			const isPending = currentStatus === 'pending';
+			const isPendingUpdate = currentStatus === 'pending_update';
+			const isCheckReject = currentStatus === 'check_reject';
 
 			const statusSel = document.getElementById('reservationStatusSelect');
 			const saveBtn = document.getElementById('saveBtn');
 			const pendingActions = document.getElementById('pendingActions');
+			const acknowledgeRejectBtn = document.getElementById('acknowledgeRejectBtn');
 
 			// Refunded 상태: 상태 변경 불가
-			if (statusSel) statusSel.disabled = isRefunded || isPending;
+			if (statusSel) statusSel.disabled = isRefunded || isPending || isPendingUpdate || isCheckReject;
 
-			// Pending 상태: Save 버튼 숨기고 Approve/Reject 버튼 표시
-			if (isPending) {
+			// Pending 또는 Pending Update 상태: Save 버튼 숨기고 Approve/Reject 버튼 표시
+			if (isPending || isPendingUpdate) {
 				if (saveBtn) saveBtn.style.display = 'none';
 				if (pendingActions) pendingActions.style.display = 'flex';
+				if (acknowledgeRejectBtn) acknowledgeRejectBtn.style.display = 'none';
+
+				// admin_kr만 Approve/Reject 가능
+				const approveBtn = document.getElementById('approveBookingBtn');
+				const rejectBtn = document.getElementById('rejectBookingBtn');
+				if (!__isAdminKr) {
+					if (approveBtn) {
+						approveBtn.disabled = true;
+						approveBtn.style.opacity = '0.5';
+						approveBtn.style.cursor = 'not-allowed';
+						approveBtn.title = 'Only admin_kr can approve bookings';
+					}
+					if (rejectBtn) {
+						rejectBtn.disabled = true;
+						rejectBtn.style.opacity = '0.5';
+						rejectBtn.style.cursor = 'not-allowed';
+						rejectBtn.title = 'Only admin_kr can reject bookings';
+					}
+				} else {
+					if (approveBtn) {
+						approveBtn.disabled = false;
+						approveBtn.style.opacity = '1';
+						approveBtn.style.cursor = 'pointer';
+						approveBtn.title = '';
+					}
+					if (rejectBtn) {
+						rejectBtn.disabled = false;
+						rejectBtn.style.opacity = '1';
+						rejectBtn.style.cursor = 'pointer';
+						rejectBtn.title = '';
+					}
+				}
+			} else if (isCheckReject) {
+				// check_reject 상태: Save 버튼 숨기고 Confirm 버튼 표시
+				if (saveBtn) saveBtn.style.display = 'none';
+				if (pendingActions) pendingActions.style.display = 'none';
+				if (acknowledgeRejectBtn) acknowledgeRejectBtn.style.display = '';
 			} else {
 				if (saveBtn) saveBtn.style.display = '';
 				if (pendingActions) pendingActions.style.display = 'none';
+				if (acknowledgeRejectBtn) acknowledgeRejectBtn.style.display = 'none';
 			}
 
 			// travelers는 render 시에 disabled 처리
 		}
 
-		// Pending 상태 예약 승인
+		// Pending/Pending Update 상태 예약 승인
 		async function handleApproveBooking() {
-			if (!confirm('이 예약을 승인하시겠습니까?\nApprove this booking?')) return;
+			const isPendingUpdate = lastLoadedBooking && lastLoadedBooking.bookingStatus === 'pending_update';
+			const isProductEdit = currentChangeRequest && currentChangeRequest.changeType === 'product_edit';
+
+			let confirmMsg = 'Approve this booking?';
+			if (isPendingUpdate && isProductEdit) {
+				confirmMsg = 'Approve this product/date change?\n\nThis will:\n- Cancel the original booking\n- Create a new booking with the updated information';
+			} else if (isPendingUpdate) {
+				confirmMsg = 'Approve this change request?';
+			}
+
+			if (!confirm(confirmMsg)) return;
 
 			try {
 				const formData = new FormData();
@@ -1454,21 +1981,34 @@
 				const result = await response.json();
 
 				if (result.success) {
-					alert('예약이 승인되었습니다.\nBooking approved.');
+					let successMsg = 'Booking approved.';
+					if (isPendingUpdate && isProductEdit) {
+						const newBookingId = result.data?.newBookingId || '';
+						successMsg = 'Product/date change approved.\n\nOld booking cancelled.\nNew booking created' + (newBookingId ? ': ' + newBookingId : '.');
+						if (newBookingId) {
+							alert(successMsg);
+							// Redirect to the new booking
+							window.location.href = `b2b-booking-detail.html?id=${newBookingId}`;
+							return;
+						}
+					} else if (isPendingUpdate) {
+						successMsg = 'Change request approved.';
+					}
+					alert(successMsg);
 					window.location.reload();
 				} else {
-					alert('승인 실패: ' + (result.message || 'Unknown error'));
+					alert('Approval failed: ' + (result.message || 'Unknown error'));
 				}
 			} catch (error) {
 				console.error('Approve error:', error);
-				alert('승인 중 오류가 발생했습니다.');
+				alert('An error occurred while approving.');
 			}
 		}
 
-		// Pending 상태 예약 거절
+		// Pending/Pending Update 상태 예약 거절
 		async function handleRejectBooking() {
-			const reason = prompt('거절 사유를 입력하세요:\nEnter rejection reason:');
-			if (reason === null) return; // 취소
+			const reason = prompt('Enter rejection reason:');
+			if (reason === null) return;
 
 			try {
 				const formData = new FormData();
@@ -1485,14 +2025,52 @@
 				const result = await response.json();
 
 				if (result.success) {
-					alert('예약이 거절되었습니다.\nBooking rejected.');
-					window.location.href = 'b2b-booking-list.html';
+					const isPendingUpdate = lastLoadedBooking && lastLoadedBooking.bookingStatus === 'pending_update';
+					const successMsg = isPendingUpdate
+						? 'Change request rejected.'
+						: 'Booking rejected.';
+					alert(successMsg);
+					window.location.reload();
 				} else {
-					alert('거절 실패: ' + (result.message || 'Unknown error'));
+					alert('Rejection failed: ' + (result.message || 'Unknown error'));
 				}
 			} catch (error) {
 				console.error('Reject error:', error);
-				alert('거절 중 오류가 발생했습니다.');
+				alert('An error occurred while rejecting.');
+			}
+		}
+
+		// Acknowledge Reject 핸들러 - check_reject 상태에서 원래 상태로 복원
+		async function handleAcknowledgeReject() {
+			if (!bookingId) {
+				alert('Booking ID is missing.');
+				return;
+			}
+
+			if (!confirm('Confirm rejection and restore to previous status?')) return;
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'acknowledgeRejection');
+				formData.append('bookingId', bookingId);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('Status restored successfully.');
+					window.location.reload();
+				} else {
+					alert('Failed to restore status: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Acknowledge reject error:', error);
+				alert('An error occurred while restoring status.');
 			}
 		}
 
@@ -1636,7 +2214,7 @@
 							nationality: t.nationality ?? null,
 							passportNumber: t.passportNumber ?? null,
 							passportIssueDate: t.passportIssueDate ?? null,
-							passportExpiry: t.passportExpiry ?? t.passportExpireDate ?? null
+							passportExpiry: t.passportExpiry ?? t.passportExpiryDate ?? t.passportExpireDate ?? null
 						};
 					});
 				}
@@ -1659,7 +2237,16 @@
 
 				if (result.success) {
 					alert('Saved.');
-					window.location.reload();
+					console.log('lastLoadedBooking:', lastLoadedBooking);
+					console.log('currentStatus:', lastLoadedBooking?.bookingStatus);
+					console.log('result.data:', result.data);
+					// pending_update로 변경되었거나, 현재 상태가 pending_update인 경우 목록으로 돌아가기
+					const currentStatus = lastLoadedBooking?.bookingStatus;
+					if ((result.data && result.data.newStatus === 'pending_update') || currentStatus === 'pending_update') {
+						window.history.back();
+					} else {
+						window.location.reload();
+					}
 					return;
 				}
 				alert(result.message ? String(result.message) : 'Save failed.');
@@ -1676,15 +2263,71 @@
 
 			if (!listEl) return;
 
-			if (!Array.isArray(allTravelers) || allTravelers.length === 0) {
+			// pending_update + travelers 변경 요청인 경우 비교 데이터 준비
+			const isPendingTravelerChange = currentChangeRequest && currentChangeRequest.changeType === 'travelers';
+			let originalTravelers = isPendingTravelerChange ? (currentChangeRequest.previousData?.originalTravelers || []) : [];
+			const pendingTravelers = isPendingTravelerChange ? (currentChangeRequest.newData?.pendingTravelers || []) : [];
+
+			// originalTravelers에 flightOptions가 없으면 lastLoadedBooking.travelers에서 보완
+			if (isPendingTravelerChange && lastLoadedBooking && lastLoadedBooking.travelers) {
+				const dbTravelers = lastLoadedBooking.travelers || [];
+				// DB travelers를 passport/이름으로 매핑
+				const dbTravelerMap = new Map();
+				dbTravelers.forEach((dt, idx) => {
+					const key = String(dt.passportNumber || '').trim() || `${dt.firstName || ''}_${dt.lastName || ''}_${idx}`;
+					dbTravelerMap.set(key, dt);
+				});
+				originalTravelers = originalTravelers.map((ot, idx) => {
+					if (!ot.flightOptions || ot.flightOptions.length === 0) {
+						const key = String(ot.passportNumber || '').trim() || `${ot.firstName || ''}_${ot.lastName || ''}_${idx}`;
+						const dbT = dbTravelerMap.get(key);
+						if (dbT && dbT.flightOptions) {
+							return { ...ot, flightOptions: dbT.flightOptions, flightOptionPrices: dbT.flightOptionPrices || {} };
+						}
+					}
+					return ot;
+				});
+			}
+
+			// 표시할 travelers 결정: pending_update면 pendingTravelers(새 데이터), 아니면 allTravelers
+			const displayTravelers = isPendingTravelerChange ? pendingTravelers : allTravelers;
+
+			if (!Array.isArray(displayTravelers) || displayTravelers.length === 0) {
 				listEl.innerHTML = '<p class="no-traveler-message">No travelers information.</p>';
 				if (countEl) countEl.textContent = '0 Travelers';
 				return;
 			}
 
-			if (countEl) countEl.textContent = `${allTravelers.length} Traveler${allTravelers.length > 1 ? 's' : ''}`;
+			// pending_update 배너 표시
+			let pendingBanner = '';
+			if (isPendingTravelerChange) {
+				const requestedByType = currentChangeRequest.requestedByType || 'agent';
+				const requestedByLabel = requestedByType === 'employee' ? 'Employee' : 'Agent';
+				const requestedByColor = requestedByType === 'employee' ? '#7c3aed' : '#0891b2';
+				pendingBanner = `
+					<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+						<span style="font-size: 20px;">⏳</span>
+						<div style="flex: 1;">
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<div style="font-weight: 600; color: #92400e;">Pending Traveler Changes</div>
+								<span style="background: ${requestedByColor}; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">by ${requestedByLabel}</span>
+							</div>
+							<div style="font-size: 12px; color: #a16207;">${originalTravelers.length} → ${pendingTravelers.length} travelers (Approval required)</div>
+						</div>
+					</div>
+				`;
+			}
 
-			listEl.innerHTML = allTravelers.map((t, idx) => {
+			if (countEl) countEl.textContent = `${displayTravelers.length} Traveler${displayTravelers.length > 1 ? 's' : ''}`;
+
+			// 원본 travelers를 passport 또는 이름으로 매핑
+			const originalMap = new Map();
+			originalTravelers.forEach((t, idx) => {
+				const key = String(t.passportNumber || '').trim() || `${t.firstName || ''}_${t.lastName || ''}_${idx}`;
+				originalMap.set(key, t);
+			});
+
+			listEl.innerHTML = pendingBanner + displayTravelers.map((t, idx) => {
 				const main = String(t.isMainTraveler || t.isMain || '0') === '1';
 				const travelerType = String(t.travelerType || '').toLowerCase();
 				const typeLabel = travelerType === 'child' ? 'Child' : travelerType === 'infant' ? 'Infant' : 'Adult';
@@ -1696,27 +2339,128 @@
 				const birth = String(t.birthDate || t.dob || '-');
 				const passportNo = String(t.passportNumber || '-');
 
+				// 변경 사항 감지 (pending_update인 경우)
+				let changeStatus = ''; // 'new', 'modified', ''
+				let changedFields = [];
+				if (isPendingTravelerChange) {
+					const key = String(t.passportNumber || '').trim() || `${firstName}_${lastName}_${idx}`;
+					const orig = originalMap.get(key);
+					if (!orig) {
+						// 원본에 없으면 새로 추가된 traveler
+						changeStatus = 'new';
+					} else {
+						// 필드값 가져오기 (대체 필드명 고려)
+						const getFieldValue = (obj, field) => {
+							if (field === 'passportExpiry') return String(obj.passportExpiry || obj.passportExpiryDate || obj.passportExpireDate || '').trim().toLowerCase();
+							if (field === 'birthDate') return String(obj.birthDate || obj.dob || '').trim().toLowerCase();
+							if (field === 'firstName') return String(obj.firstName || obj.givenName || '').trim().toLowerCase();
+							if (field === 'lastName') return String(obj.lastName || obj.familyName || '').trim().toLowerCase();
+							return String(obj[field] || '').trim().toLowerCase();
+						};
+						// 필드별 비교
+						const fields = ['firstName', 'lastName', 'birthDate', 'gender', 'nationality', 'passportNumber', 'passportExpiry', 'travelerType'];
+						fields.forEach(f => {
+							const oldVal = getFieldValue(orig, f);
+							const newVal = getFieldValue(t, f);
+							if (oldVal !== newVal) changedFields.push(f);
+						});
+						// flightOptions 비교
+						const oldFlightOpts = (orig.flightOptions || []).map(Number).sort().join(',');
+						const newFlightOpts = (t.flightOptions || []).map(Number).sort().join(',');
+						if (oldFlightOpts !== newFlightOpts) changedFields.push('flightOptions');
+						if (changedFields.length > 0) changeStatus = 'modified';
+					}
+				}
+
+				// 스타일 결정
+				let cardStyle = '';
+				let badge = '';
+				if (changeStatus === 'new') {
+					cardStyle = 'border: 2px solid #22c55e; background: #f0fdf4;';
+					badge = '<span style="background:#22c55e; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px;">NEW</span>';
+				} else if (changeStatus === 'modified') {
+					cardStyle = 'border: 2px solid #f59e0b; background: #fffbeb;';
+					badge = '<span style="background:#f59e0b; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px;">MODIFIED</span>';
+				}
+
+				// 변경된 필드 하이라이트
+				const highlightField = (field, value) => {
+					if (changedFields.includes(field)) {
+						return `<span style="background:#fef08a; padding:1px 4px; border-radius:3px;">${escapeHtml(value)}</span>`;
+					}
+					return escapeHtml(value);
+				};
+
+				// Flight options 변경 배지
+				const flightOptionsBadge = changedFields.includes('flightOptions')
+					? '<span style="background:#3b82f6; color:#fff; font-size:9px; padding:2px 5px; border-radius:3px; margin-left:4px;">✈ Flight Options</span>'
+					: '';
+
 				return `
-					<div class="traveler-summary-item ${main ? 'is-primary' : ''}" onclick="openTravelerModal(${idx})">
+					<div class="traveler-summary-item ${main ? 'is-primary' : ''}" style="${cardStyle}" onclick="openTravelerModal(${idx}, ${isPendingTravelerChange})">
 						<div class="traveler-summary-info">
 							${main ? '<span class="badge-primary">Primary</span>' : ''}
 							<span class="badge-type">${escapeHtml(typeLabel)}</span>
-							<span class="traveler-summary-name">${escapeHtml(fullName)}</span>
+							<span class="traveler-summary-name">${changedFields.includes('firstName') || changedFields.includes('lastName') ? `<span style="background:#fef08a; padding:1px 4px; border-radius:3px;">${escapeHtml(fullName)}</span>` : escapeHtml(fullName)}</span>
+							${badge}${flightOptionsBadge}
 						</div>
 						<div class="traveler-summary-details">
-							<span>${escapeHtml(genderLabel)}</span>
-							<span>DOB: ${escapeHtml(birth)}</span>
-							<span>Passport: ${escapeHtml(passportNo)}</span>
+							<span>${highlightField('gender', genderLabel)}</span>
+							<span>DOB: ${highlightField('birthDate', birth)}</span>
+							<span>Passport: ${highlightField('passportNumber', passportNo)}</span>
 						</div>
 						<span class="traveler-detail-btn">View Details →</span>
 					</div>
 				`;
 			}).join('');
+
+			// 삭제된 traveler 표시 (pending_update인 경우)
+			if (isPendingTravelerChange) {
+				// pendingTravelers의 passport/이름 키 Set 생성
+				const pendingKeys = new Set();
+				displayTravelers.forEach((t, idx) => {
+					const key = String(t.passportNumber || '').trim() || `${t.firstName || ''}_${t.lastName || ''}_${idx}`;
+					pendingKeys.add(key);
+				});
+
+				// 원본에는 있지만 새 목록에는 없는 traveler
+				const deletedTravelers = originalTravelers.filter((t, idx) => {
+					const key = String(t.passportNumber || '').trim() || `${t.firstName || ''}_${t.lastName || ''}_${idx}`;
+					return !pendingKeys.has(key);
+				});
+
+				if (deletedTravelers.length > 0) {
+					listEl.innerHTML += deletedTravelers.map(t => {
+						const firstName = String(t.firstName || '');
+						const lastName = String(t.lastName || '');
+						const fullName = `${firstName} ${lastName}`.trim() || 'Unnamed';
+						const travelerType = String(t.travelerType || '').toLowerCase();
+						const typeLabel = travelerType === 'child' ? 'Child' : travelerType === 'infant' ? 'Infant' : 'Adult';
+
+						return `
+							<div class="traveler-summary-item" style="border: 2px solid #ef4444; background: #fef2f2; opacity: 0.7; text-decoration: line-through;">
+								<div class="traveler-summary-info">
+									<span class="badge-type">${escapeHtml(typeLabel)}</span>
+									<span class="traveler-summary-name">${escapeHtml(fullName)}</span>
+									<span style="background:#ef4444; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px;">REMOVED</span>
+								</div>
+								<div class="traveler-summary-details" style="color: #9ca3af;">
+									<span>This traveler will be removed</span>
+								</div>
+							</div>
+						`;
+					}).join('');
+				}
+			}
 		}
 
 		// 여행자 상세 모달 열기
-		function openTravelerModal(index) {
-			const t = allTravelers[index];
+		function openTravelerModal(index, isPending = false) {
+			// pending_update + travelers 변경 요청인 경우 pendingTravelers에서 가져옴
+			const isPendingTravelerChange = currentChangeRequest && currentChangeRequest.changeType === 'travelers';
+			const pendingTravelers = isPendingTravelerChange ? (currentChangeRequest.newData?.pendingTravelers || []) : [];
+			const travelers = isPendingTravelerChange ? pendingTravelers : allTravelers;
+			const t = travelers[index];
 			if (!t) return;
 
 			const travelerType = String(t.travelerType || '').toLowerCase();
@@ -1729,7 +2473,7 @@
 			const birth = String(t.birthDate || t.dob || '-');
 			const nationality = String(t.nationality || '-');
 			const passportNo = String(t.passportNumber || '-');
-			const passportExpiry = String(t.passportExpiry || t.passportExpireDate || '-');
+			const passportExpiry = String(t.passportExpiry || t.passportExpiryDate || t.passportExpireDate || '-');
 			const passImg = String(t.passportImage || t.passportPhoto || '');
 
 			document.getElementById('modal_traveler_type_display').value = typeLabel;
@@ -1804,117 +2548,244 @@
 			const countEl = document.getElementById('traveler-edit-count');
 			if (!container) return;
 
-			countEl.textContent = `${allTravelers.length} Traveler${allTravelers.length !== 1 ? 's' : ''}`;
+			// pending_update + travelers 변경 요청인 경우 비교 데이터 준비
+			const isPendingTravelerChange = currentChangeRequest && currentChangeRequest.changeType === 'travelers';
+			let originalTravelers = isPendingTravelerChange ? (currentChangeRequest.previousData?.originalTravelers || []) : [];
 
-			container.innerHTML = allTravelers.map((t, idx) => {
-				const main = String(t.isMainTraveler || t.isMain || '0') === '1';
-				const travelerType = String(t.travelerType || 'adult').toLowerCase();
-				const title = String(t.title || '').toUpperCase();
-				const gender = String(t.gender || '').toLowerCase();
-				const genderNorm = (gender === 'female' || gender === 'f') ? 'female' : 'male';
-				const firstName = String(t.firstName || t.givenName || '');
-				const lastName = String(t.lastName || t.familyName || '');
-				const birth = String(t.birthDate || t.dob || '');
-				const age = calculateAge(birth);
-				const nationality = String(t.nationality || '');
-				const passportNo = String(t.passportNumber || '');
-				const passportIssue = String(t.passportIssueDate || '');
-				const passportExpiry = String(t.passportExpiry || t.passportExpireDate || '');
-				const visaRequired = t.visaRequired === true || t.visaRequired === 'true' || t.visaRequired === '1' || String(t.visaType || '').toLowerCase() === 'apply';
-				const passImg = String(t.passportImage || t.passportPhoto || '');
+			// originalTravelers에 flightOptions가 없으면 lastLoadedBooking.travelers에서 보완
+			if (isPendingTravelerChange && lastLoadedBooking && lastLoadedBooking.travelers) {
+				const dbTravelers = lastLoadedBooking.travelers || [];
+				// DB travelers를 passport/이름으로 매핑
+				const dbTravelerMap = new Map();
+				dbTravelers.forEach((dt, idx) => {
+					const key = String(dt.passportNumber || '').trim() || `${dt.firstName || ''}_${dt.lastName || ''}_${idx}`;
+					dbTravelerMap.set(key, dt);
+				});
+				originalTravelers = originalTravelers.map((ot, idx) => {
+					if (!ot.flightOptions || ot.flightOptions.length === 0) {
+						const key = String(ot.passportNumber || '').trim() || `${ot.firstName || ''}_${ot.lastName || ''}_${idx}`;
+						const dbT = dbTravelerMap.get(key);
+						if (dbT && dbT.flightOptions) {
+							return { ...ot, flightOptions: dbT.flightOptions, flightOptionPrices: dbT.flightOptionPrices || {} };
+						}
+					}
+					return ot;
+				});
+			}
 
-				return `
-					<div class="traveler-card ${main ? 'is-primary' : ''}" data-traveler-index="${idx}">
-						<div class="traveler-card-header">
-							<div class="traveler-card-title">
-								<span>Traveler ${idx + 1}</span>
-								${main ? '<span class="badge-primary">Primary</span>' : ''}
-							</div>
-							<div class="traveler-card-actions">
-								${!main ? `<button type="button" class="btn-set-primary" onclick="setPrimaryTravelerInEdit(${idx})">Set as Primary</button>` : ''}
-								${allTravelers.length > 1 ? `<button type="button" class="btn-delete-traveler" onclick="deleteTravelerCardInEdit(${idx})">Delete</button>` : ''}
-							</div>
-						</div>
-						<div class="traveler-card-body">
-							<div class="traveler-card-grid">
-								<div class="form-group">
-									<label>Title</label>
-									<select class="form-control" data-field="title">
-										<option value="">Select</option>
-										<option value="MR" ${title === 'MR' ? 'selected' : ''}>MR</option>
-										<option value="MS" ${title === 'MS' ? 'selected' : ''}>MS</option>
-									</select>
-								</div>
-								<div class="form-group">
-									<label>Gender</label>
-									<select class="form-control" data-field="gender">
-										<option value="">Select</option>
-										<option value="male" ${genderNorm === 'male' ? 'selected' : ''}>Male</option>
-										<option value="female" ${genderNorm === 'female' ? 'selected' : ''}>Female</option>
-									</select>
-								</div>
-								<div class="form-group">
-									<label>First Name</label>
-									<input type="text" class="form-control" data-field="firstName" value="${escapeHtml(firstName)}" placeholder="First Name">
-								</div>
-								<div class="form-group">
-									<label>Last Name</label>
-									<input type="text" class="form-control" data-field="lastName" value="${escapeHtml(lastName)}" placeholder="Last Name">
-								</div>
-								<div class="form-group">
-									<label>Type</label>
-									<select class="form-control" data-field="travelerType">
-										<option value="adult" ${travelerType === 'adult' ? 'selected' : ''}>Adult</option>
-										<option value="child" ${travelerType === 'child' ? 'selected' : ''}>Child</option>
-										<option value="infant" ${travelerType === 'infant' ? 'selected' : ''}>Infant</option>
-									</select>
-								</div>
-								<div class="form-group">
-									<label>Age</label>
-									<input type="text" class="form-control" data-field="age" value="${age}" readonly style="background:#f3f4f6;">
-								</div>
-								<div class="form-group">
-									<label>Date of Birth</label>
-									<input type="date" class="form-control" data-field="birthDate" value="${escapeHtml(birth)}" onchange="updateTravelerAgeInEdit(${idx})">
-								</div>
-								<div class="form-group">
-									<label>Nationality</label>
-									<input type="text" class="form-control" data-field="nationality" value="${escapeHtml(nationality)}" placeholder="Nationality">
-								</div>
-								<div class="form-group">
-									<label>Passport No.</label>
-									<input type="text" class="form-control" data-field="passportNumber" value="${escapeHtml(passportNo)}" placeholder="Passport Number">
-								</div>
-								<div class="form-group">
-									<label>Issue Date</label>
-									<input type="date" class="form-control" data-field="passportIssueDate" value="${escapeHtml(passportIssue)}">
-								</div>
-								<div class="form-group">
-									<label>Expiry</label>
-									<input type="date" class="form-control" data-field="passportExpiry" value="${escapeHtml(passportExpiry)}">
-								</div>
-								<div class="form-group">
-									<label>Visa Application</label>
-									<select class="form-control" data-field="visaRequired">
-										<option value="no" ${!visaRequired ? 'selected' : ''}>No</option>
-										<option value="apply" ${visaRequired ? 'selected' : ''}>Apply</option>
-									</select>
-								</div>
-								<div class="form-group full-width">
-									<label>Passport Photo</label>
-									<div class="passport-photo-section">
-										<img class="passport-photo-preview" id="passport-preview-${idx}" src="${passImg || '../image/no-image.svg'}" alt="Passport" onerror="this.src='../image/no-image.svg'">
-										<input type="file" id="passport-file-${idx}" accept="image/*" style="display:none;" onchange="handlePassportPhotoUploadInEdit(${idx}, this)">
-										<div class="passport-photo-btns">
-											<button type="button" class="jw-button typeA" onclick="document.getElementById('passport-file-${idx}').click()">Upload</button>
-											<button type="button" class="jw-button typeD" onclick="removePassportPhotoInEdit(${idx})">Remove</button>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				`;
+			// 원본 travelers를 passport 또는 이름으로 매핑
+			const originalMap = new Map();
+			originalTravelers.forEach((t, idx) => {
+				const key = String(t.passportNumber || '').trim() || `${t.firstName || ''}_${t.lastName || ''}_${idx}`;
+				originalMap.set(key, t);
+			});
+
+			countEl.textContent = allTravelers.length + ' Traveler' + (allTravelers.length !== 1 ? 's' : '');
+
+			container.innerHTML = allTravelers.map(function(t, idx) {
+				var main = String(t.isMainTraveler || t.isMain || '0') === '1';
+				var travelerType = String(t.travelerType || t.type || 'adult').toLowerCase();
+				var title = String(t.title || '').toUpperCase();
+				var gender = String(t.gender || '').toLowerCase();
+				var genderNorm = (gender === 'female' || gender === 'f') ? 'female' : 'male';
+				var firstName = String(t.firstName || t.givenName || '');
+				var lastName = String(t.lastName || t.familyName || '');
+				var birth = String(t.birthDate || t.dob || '');
+				var age = calculateAge(birth);
+				var nationality = String(t.nationality || '');
+				var passportNo = String(t.passportNumber || t.passportNo || '');
+				var passportIssue = String(t.passportIssueDate || '');
+				var passportExpiry = String(t.passportExpiry || t.passportExpiryDate || t.passportExpireDate || '');
+
+				// 변경 사항 감지 (pending_update인 경우)
+				var changeStatus = '';
+				var changedFields = [];
+				if (isPendingTravelerChange) {
+					const key = String(t.passportNumber || '').trim() || `${firstName}_${lastName}_${idx}`;
+					const orig = originalMap.get(key);
+					if (!orig) {
+						changeStatus = 'new';
+					} else {
+						// 필드값 가져오기 (대체 필드명 고려)
+						const getFieldValue = (obj, field) => {
+							if (field === 'passportExpiry') return String(obj.passportExpiry || obj.passportExpiryDate || obj.passportExpireDate || '').trim().toLowerCase();
+							if (field === 'birthDate') return String(obj.birthDate || obj.dob || '').trim().toLowerCase();
+							if (field === 'firstName') return String(obj.firstName || obj.givenName || '').trim().toLowerCase();
+							if (field === 'lastName') return String(obj.lastName || obj.familyName || '').trim().toLowerCase();
+							return String(obj[field] || '').trim().toLowerCase();
+						};
+						const fields = ['firstName', 'lastName', 'birthDate', 'gender', 'nationality', 'passportNumber', 'passportExpiry', 'passportIssueDate', 'travelerType', 'title'];
+						fields.forEach(f => {
+							const oldVal = getFieldValue(orig, f);
+							const newVal = getFieldValue(t, f);
+							if (oldVal !== newVal) changedFields.push(f);
+						});
+						// flightOptions 비교
+						const oldFlightOpts = (orig.flightOptions || []).map(Number).sort().join(',');
+						const newFlightOpts = (t.flightOptions || []).map(Number).sort().join(',');
+						if (oldFlightOpts !== newFlightOpts) changedFields.push('flightOptions');
+						if (changedFields.length > 0) changeStatus = 'modified';
+					}
+				}
+
+				// 하이라이트 스타일 함수
+				const highlightStyle = (field) => changedFields.includes(field) ? 'background: #fef08a !important; border-color: #f59e0b !important;' : '';
+				// pending_update일 때 필드 비활성화
+				const disabledAttr = isPendingTravelerChange ? ' disabled' : '';
+				const readonlyStyle = isPendingTravelerChange ? 'background: #f3f4f6 !important; pointer-events: none;' : '';
+
+				// Visa type
+				var visaType = String(t.visaType || '').toLowerCase();
+				if (!visaType || visaType === 'no' || visaType === 'false') {
+					var visaRequired = t.visaRequired === true || t.visaRequired === 'true' || t.visaRequired === '1' || t.visaRequired === 'apply';
+					visaType = visaRequired ? 'with_visa' : '';
+				}
+
+				// Passport photo
+				var passImg = String(t.passportImage || t.passportPhoto || t.passportPhotoUrl || '');
+				var hasPassportPhoto = !!passImg;
+				var passportFileName = passImg ? passImg.split('/').pop() : '';
+
+				// Visa document
+				var visaDoc = String(t.visaDocument || t.visaDocumentUrl || '');
+				var hasVisaDoc = !!visaDoc;
+				var visaFileName = visaDoc ? visaDoc.split('/').pop() : '';
+
+				// Flight options
+				var flightOptions = t.flightOptions || [];
+				// pending_update일 때 원본 flight options 가져오기
+				var originalFlightOptions = flightOptions; // 기본적으로 현재 값과 동일하게 설정
+				if (isPendingTravelerChange) {
+					const key = String(t.passportNumber || '').trim() || `${firstName}_${lastName}_${idx}`;
+					const orig = originalMap.get(key);
+					if (orig) {
+						originalFlightOptions = orig.flightOptions || [];
+					}
+				}
+				var flightOptionsHtml = renderFlightOptionsInEdit(idx, flightOptions, originalFlightOptions, isPendingTravelerChange);
+
+				// Build card HTML
+				var cardStyle = '';
+				var changeBadge = '';
+				if (changeStatus === 'new') {
+					cardStyle = 'border: 2px solid #22c55e !important; background: #f0fdf4 !important;';
+					changeBadge = '<span style="background:#22c55e; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px;">NEW</span>';
+				} else if (changeStatus === 'modified') {
+					cardStyle = 'border: 2px solid #f59e0b !important; background: #fffbeb !important;';
+					changeBadge = '<span style="background:#f59e0b; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px;">MODIFIED</span>';
+				}
+
+				var html = '';
+				html += '<div class="traveler-card ' + (main ? 'is-primary' : '') + '" data-traveler-index="' + idx + '" style="' + cardStyle + '">';
+				html += '<div class="traveler-card-header">';
+				html += '<div class="traveler-card-title">';
+				html += '<span>Traveler ' + (idx + 1) + '</span>';
+				if (main) html += '<span class="badge-primary">Primary</span>';
+				html += changeBadge;
+				html += '</div>';
+				html += '<div class="traveler-card-actions">';
+				if (!isPendingTravelerChange) {
+					if (!main) html += '<button type="button" class="btn-set-primary" onclick="setPrimaryTravelerInEdit(' + idx + ')">Set as Primary</button>';
+					if (allTravelers.length > 1) html += '<button type="button" class="btn-delete-traveler" onclick="deleteTravelerCardInEdit(' + idx + ')">Delete</button>';
+				}
+				html += '</div></div>';
+
+				html += '<div class="traveler-card-body"><div class="traveler-card-grid">';
+
+				// Row 1: Title, Gender, First Name, Last Name
+				html += '<div class="form-group"><label>Title</label>';
+				html += '<select class="form-control" data-field="title" style="' + highlightStyle('title') + readonlyStyle + '"' + disabledAttr + '><option value="">Select</option>';
+				html += '<option value="MR"' + (title === 'MR' ? ' selected' : '') + '>MR</option>';
+				html += '<option value="MS"' + (title === 'MS' ? ' selected' : '') + '>MS</option></select></div>';
+
+				html += '<div class="form-group"><label>Gender</label>';
+				html += '<select class="form-control" data-field="gender" style="' + highlightStyle('gender') + readonlyStyle + '"' + disabledAttr + '><option value="">Select</option>';
+				html += '<option value="male"' + (genderNorm === 'male' ? ' selected' : '') + '>Male</option>';
+				html += '<option value="female"' + (genderNorm === 'female' ? ' selected' : '') + '>Female</option></select></div>';
+
+				html += '<div class="form-group"><label>First Name</label>';
+				html += '<input type="text" class="form-control" data-field="firstName" value="' + escapeHtml(firstName) + '" placeholder="First Name" style="' + highlightStyle('firstName') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				html += '<div class="form-group"><label>Last Name</label>';
+				html += '<input type="text" class="form-control" data-field="lastName" value="' + escapeHtml(lastName) + '" placeholder="Last Name" style="' + highlightStyle('lastName') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				// Row 2: Type (readonly), Age, Date of Birth, Nationality
+				html += '<div class="form-group"><label>Type</label>';
+				html += '<input type="text" class="form-control" data-field="travelerType" value="' + (travelerType.charAt(0).toUpperCase() + travelerType.slice(1)) + '" readonly style="background:#f3f4f6;' + highlightStyle('travelerType') + '"></div>';
+
+				html += '<div class="form-group"><label>Age</label>';
+				html += '<input type="text" class="form-control" data-field="age" value="' + age + '" readonly style="background:#f3f4f6;"></div>';
+
+				html += '<div class="form-group"><label>Date of Birth</label>';
+				html += '<input type="date" class="form-control" data-field="birthDate" value="' + escapeHtml(birth) + '" onchange="updateTravelerAgeInEdit(' + idx + ')" style="' + highlightStyle('birthDate') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				html += '<div class="form-group"><label>Nationality</label>';
+				html += '<input type="text" class="form-control" data-field="nationality" value="' + escapeHtml(nationality) + '" placeholder="Nationality" style="' + highlightStyle('nationality') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				// Row 3: Passport No., Issue Date, Expiry, Visa Application
+				html += '<div class="form-group"><label>Passport No.</label>';
+				html += '<input type="text" class="form-control" data-field="passportNumber" value="' + escapeHtml(passportNo) + '" placeholder="Passport Number" style="' + highlightStyle('passportNumber') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				html += '<div class="form-group"><label>Issue Date</label>';
+				html += '<input type="date" class="form-control" data-field="passportIssueDate" value="' + escapeHtml(passportIssue) + '" style="' + highlightStyle('passportIssueDate') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				html += '<div class="form-group"><label>Expiry</label>';
+				html += '<input type="date" class="form-control" data-field="passportExpiry" value="' + escapeHtml(passportExpiry) + '" style="' + highlightStyle('passportExpiry') + readonlyStyle + '"' + disabledAttr + '></div>';
+
+				html += '<div class="form-group"><label>Visa Application</label>';
+				html += '<select class="form-control" data-field="visaType"' + disabledAttr + ' style="' + readonlyStyle + '"' + (isPendingTravelerChange ? '' : ' onchange="handleVisaTypeChangeInEdit(' + idx + ', this.value)"') + '>';
+				html += '<option value=""' + (!visaType ? ' selected' : '') + '>Select option</option>';
+				html += '<option value="with_visa"' + (visaType === 'with_visa' ? ' selected' : '') + '>With Visa</option>';
+				html += '<option value="group"' + (visaType === 'group' ? ' selected' : '') + '>Group Visa +₱1500</option>';
+				html += '<option value="individual"' + (visaType === 'individual' ? ' selected' : '') + '>Individual Visa +₱1900</option>';
+				html += '<option value="foreign"' + (visaType === 'foreign' ? ' selected' : '') + '>Foreign Passport</option>';
+				html += '</select></div>';
+
+				// Row 4: Passport Photo, Visa Document
+				html += '<div class="form-group"><label>Passport Photo</label>';
+				html += '<div class="passport-photo-upload">';
+				if (!isPendingTravelerChange) {
+					html += '<input type="file" id="passport-photo-' + idx + '" accept="image/*" onchange="handlePassportPhotoUploadInEdit(' + idx + ', this)" style="display:none;">';
+					html += '<button type="button" class="btn-upload-photo" onclick="document.getElementById(\'passport-photo-' + idx + '\').click()">';
+					html += '<img src="../image/upload.svg" alt=""> Upload Photo</button>';
+				}
+				html += '<div class="passport-photo-info ' + (hasPassportPhoto ? '' : 'hidden') + '" id="passport-photo-info-' + idx + '">';
+				html += '<span class="photo-filename">' + escapeHtml(passportFileName) + '</span>';
+				if (!isPendingTravelerChange) {
+					html += '<button type="button" class="btn-remove-photo" onclick="removePassportPhotoInEdit(' + idx + ')">';
+					html += '<img src="../image/button-close2.svg" alt=""></button>';
+				}
+				html += '</div></div></div>';
+
+				// Visa Document (shown when visaType === 'with_visa')
+				html += '<div class="form-group visa-upload-container" id="visa-upload-container-' + idx + '" style="display:' + (visaType === 'with_visa' ? 'block' : 'none') + ';">';
+				html += '<label>Visa Document</label>';
+				html += '<div class="visa-document-upload">';
+				if (!isPendingTravelerChange) {
+					html += '<input type="file" id="visa-document-' + idx + '" accept="image/*,.pdf" onchange="handleVisaDocumentUploadInEdit(' + idx + ', this)" style="display:none;">';
+					html += '<button type="button" class="btn-upload-photo" onclick="document.getElementById(\'visa-document-' + idx + '\').click()">';
+					html += '<img src="../image/upload.svg" alt=""> Upload Visa</button>';
+				}
+				html += '<div class="visa-document-info ' + (hasVisaDoc ? '' : 'hidden') + '" id="visa-document-info-' + idx + '">';
+				html += '<span class="visa-filename">' + escapeHtml(visaFileName) + '</span>';
+				if (!isPendingTravelerChange) {
+					html += '<button type="button" class="btn-remove-photo" onclick="removeVisaDocumentInEdit(' + idx + ')">';
+					html += '<img src="../image/button-close2.svg" alt=""></button>';
+				}
+				html += '</div></div></div>';
+
+				// Child Room (shown for child type)
+				html += '<div class="form-group" id="child-room-container-' + idx + '" style="display:' + (travelerType === 'child' ? 'block' : 'none') + ';">';
+				html += '<label>Child Room</label>';
+				html += '<select class="form-control" data-field="childRoom"' + disabledAttr + ' style="' + readonlyStyle + '">';
+				html += '<option value="no"' + (!t.childRoom ? ' selected' : '') + '>No</option>';
+				html += '<option value="yes"' + (t.childRoom ? ' selected' : '') + '>Yes</option></select></div>';
+
+				html += '</div>'; // traveler-card-grid
+				html += flightOptionsHtml;
+				html += '</div></div>'; // traveler-card-body, traveler-card
+
+				return html;
 			}).join('');
 
 			// 사이드바 렌더링도 함께 호출
@@ -2040,13 +2911,22 @@
 
 		// 여권 사진 업로드 처리
 		function handlePassportPhotoUploadInEdit(idx, input) {
-			const file = input.files[0];
+			var file = input.files[0];
 			if (!file) return;
 
-			const reader = new FileReader();
+			allTravelers[idx].passportPhotoFile = file;
+
+			// UI 업데이트 - 파일명 표시
+			var infoEl = document.getElementById('passport-photo-info-' + idx);
+			if (infoEl) {
+				infoEl.classList.remove('hidden');
+				var filenameEl = infoEl.querySelector('.photo-filename');
+				if (filenameEl) filenameEl.textContent = file.name;
+			}
+
+			// Base64로 읽어서 저장
+			var reader = new FileReader();
 			reader.onload = function(e) {
-				const preview = document.getElementById(`passport-preview-${idx}`);
-				if (preview) preview.src = e.target.result;
 				allTravelers[idx].passportImage = e.target.result;
 				allTravelers[idx].passportPhoto = e.target.result;
 			};
@@ -2055,23 +2935,397 @@
 
 		// 여권 사진 제거
 		function removePassportPhotoInEdit(idx) {
-			const preview = document.getElementById(`passport-preview-${idx}`);
-			if (preview) preview.src = '../image/no-image.svg';
+			allTravelers[idx].passportPhotoFile = null;
 			allTravelers[idx].passportImage = '';
 			allTravelers[idx].passportPhoto = '';
+
+			var infoEl = document.getElementById('passport-photo-info-' + idx);
+			if (infoEl) {
+				infoEl.classList.add('hidden');
+				var filenameEl = infoEl.querySelector('.photo-filename');
+				if (filenameEl) filenameEl.textContent = '';
+			}
+
+			var fileInput = document.getElementById('passport-photo-' + idx);
+			if (fileInput) fileInput.value = '';
+		}
+
+		// Visa Type 변경 처리
+		function handleVisaTypeChangeInEdit(idx, visaType) {
+			var container = document.getElementById('visa-upload-container-' + idx);
+			if (container) {
+				container.style.display = (visaType === 'with_visa') ? 'block' : 'none';
+			}
+			allTravelers[idx].visaType = visaType;
+		}
+
+		// Visa Document 업로드 처리
+		function handleVisaDocumentUploadInEdit(idx, input) {
+			var file = input.files[0];
+			if (!file) return;
+
+			allTravelers[idx].visaDocumentFile = file;
+
+			var infoEl = document.getElementById('visa-document-info-' + idx);
+			if (infoEl) {
+				infoEl.classList.remove('hidden');
+				var filenameEl = infoEl.querySelector('.visa-filename');
+				if (filenameEl) filenameEl.textContent = file.name;
+			}
+
+			var reader = new FileReader();
+			reader.onload = function(e) {
+				allTravelers[idx].visaDocument = e.target.result;
+			};
+			reader.readAsDataURL(file);
+		}
+
+		// Visa Document 제거
+		function removeVisaDocumentInEdit(idx) {
+			allTravelers[idx].visaDocumentFile = null;
+			allTravelers[idx].visaDocument = '';
+
+			var infoEl = document.getElementById('visa-document-info-' + idx);
+			if (infoEl) {
+				infoEl.classList.add('hidden');
+				var filenameEl = infoEl.querySelector('.visa-filename');
+				if (filenameEl) filenameEl.textContent = '';
+			}
+
+			var fileInput = document.getElementById('visa-document-' + idx);
+			if (fileInput) fileInput.value = '';
+		}
+
+		// Flight Option 업데이트
+		function updateTravelerFlightOptionInEdit(travelerIndex, optionId, price, isChecked) {
+			if (!allTravelers[travelerIndex]) return;
+
+			var numOptionId = Number(optionId);
+			var numPrice = Number(price) || 0;
+
+			if (!allTravelers[travelerIndex].flightOptions) {
+				allTravelers[travelerIndex].flightOptions = [];
+			}
+			if (!allTravelers[travelerIndex].flightOptionPrices) {
+				allTravelers[travelerIndex].flightOptionPrices = {};
+			}
+
+			var options = allTravelers[travelerIndex].flightOptions;
+			var prices = allTravelers[travelerIndex].flightOptionPrices;
+
+			if (isChecked) {
+				if (options.indexOf(numOptionId) === -1) {
+					options.push(numOptionId);
+					prices[numOptionId] = numPrice;
+				}
+			} else {
+				var idx = options.indexOf(numOptionId);
+				if (idx > -1) {
+					options.splice(idx, 1);
+					delete prices[numOptionId];
+				}
+			}
+		}
+
+		// Flight Options 렌더링
+		function renderFlightOptionsInEdit(travelerIndex, selectedOptions, originalFlightOptions, isReadOnly) {
+			if (!window.__flightOptionCategories || window.__flightOptionCategories.length === 0) {
+				return '';
+			}
+
+			var selectedIds = (selectedOptions || []).map(function(id) { return Number(id); });
+			var originalIds = (originalFlightOptions || []).map(function(id) { return Number(id); });
+			var airlineName = window.__currentAirlineName || '';
+			var airlineHtml = airlineName ? '<span class="flight-options-airline">' + escapeHtml(airlineName) + '</span>' : '';
+
+			var html = '<div class="flight-options-section" data-traveler-index="' + travelerIndex + '">';
+			html += '<div class="flight-options-header">';
+			html += '<span class="flight-options-title">Flight Options</span>';
+			html += airlineHtml;
+			html += '</div><div class="flight-options-body">';
+
+			window.__flightOptionCategories.forEach(function(cat) {
+				html += '<div class="flight-option-category">';
+				html += '<span class="category-label">' + escapeHtml(cat.category_name_en || cat.category_name || cat.categoryName || '') + '</span>';
+				html += '<div class="category-options">';
+
+				(cat.options || []).forEach(function(opt) {
+					var optId = Number(opt.option_id || opt.optionId);
+					var isChecked = selectedIds.indexOf(optId) !== -1;
+					var wasChecked = originalIds.indexOf(optId) !== -1;
+					var price = Number(opt.price || 0);
+					var priceText = price > 0 ? '+PHP ' + price.toLocaleString() : 'Free';
+
+					// 변경 여부 체크 (새로 추가됨 또는 제거됨)
+					var isAdded = isChecked && !wasChecked;
+					var isRemoved = !isChecked && wasChecked;
+					var changeStyle = '';
+					var changeBadge = '';
+					if (isAdded) {
+						changeStyle = 'background: #dcfce7; border: 1px solid #22c55e; border-radius: 4px; padding: 2px 6px;';
+						changeBadge = '<span style="background:#22c55e; color:#fff; font-size:9px; padding:1px 4px; border-radius:3px; margin-left:4px;">NEW</span>';
+					} else if (isRemoved) {
+						changeStyle = 'background: #fef2f2; border: 1px solid #ef4444; border-radius: 4px; padding: 2px 6px; text-decoration: line-through; opacity: 0.7;';
+						changeBadge = '<span style="background:#ef4444; color:#fff; font-size:9px; padding:1px 4px; border-radius:3px; margin-left:4px;">REMOVED</span>';
+					}
+
+					html += '<label class="option-checkbox" style="' + changeStyle + '">';
+					html += '<input type="checkbox" data-option-id="' + optId + '" data-option-price="' + price + '"';
+					if (isChecked || isRemoved) html += ' checked';
+					if (isReadOnly) html += ' disabled';
+					if (!isReadOnly) html += ' onchange="updateTravelerFlightOptionInEdit(' + travelerIndex + ', ' + optId + ', ' + price + ', this.checked)"';
+					html += '>';
+					html += '<span class="option-name">' + escapeHtml(opt.option_name_en || opt.option_name || opt.optionName || '') + '</span>';
+					html += '<span class="option-price">' + priceText + '</span>';
+					html += changeBadge;
+					html += '</label>';
+				});
+
+				html += '</div></div>';
+			});
+
+			html += '</div></div>';
+			return html;
 		}
 
 		// 여행자 편집 모달 열기
 		function openTravelerEditModal() {
+			// pending_update + travelers 변경 요청인 경우 pendingTravelers를 allTravelers에 설정
+			const isPendingTravelerChange = currentChangeRequest && currentChangeRequest.changeType === 'travelers';
+			if (isPendingTravelerChange) {
+				const pendingTravelers = currentChangeRequest.newData?.pendingTravelers || [];
+				if (pendingTravelers.length > 0) {
+					allTravelers = JSON.parse(JSON.stringify(pendingTravelers)); // deep copy
+				}
+			}
 			renderTravelerEditCards();
 			const modal = document.getElementById('travelerEditAllModal');
-			if (modal) modal.style.display = 'flex';
+			if (modal) {
+				modal.style.display = 'flex';
+				// pending_update일 때 버튼들 숨기기
+				const addTravelerBtn = modal.querySelector('.traveler-cards-actions');
+				const footerBtns = modal.querySelector('.modal-footer');
+				const headerTitle = modal.querySelector('.modal-header h3');
+				if (isPendingTravelerChange) {
+					if (addTravelerBtn) addTravelerBtn.style.display = 'none';
+					if (headerTitle) headerTitle.textContent = 'Review Traveler Changes';
+					if (footerBtns) {
+						// View Summary 버튼과 Close 버튼 표시
+						footerBtns.innerHTML = '<button type="button" class="jw-button typeB" onclick="showChangeSummaryModal()" data-lan-eng="View Summary">View Summary</button>' +
+							'<button type="button" class="jw-button typeD" onclick="closeTravelerEditModal()" data-lan-eng="Close">Close</button>';
+					}
+				} else {
+					if (addTravelerBtn) addTravelerBtn.style.display = '';
+					if (headerTitle) headerTitle.textContent = 'Edit Travelers';
+					if (footerBtns) {
+						footerBtns.innerHTML = '<button type="button" class="jw-button typeB" onclick="saveAllTravelers()" data-lan-eng="Next: Room Options">Next: Room Options</button>' +
+							'<button type="button" class="jw-button typeD" onclick="closeTravelerEditModal()" data-lan-eng="Cancel">Cancel</button>';
+					}
+				}
+			}
 		}
 
 		// 여행자 편집 모달 닫기
 		function closeTravelerEditModal() {
 			const modal = document.getElementById('travelerEditAllModal');
 			if (modal) modal.style.display = 'none';
+		}
+
+		// Change Summary Modal 표시
+		function showChangeSummaryModal() {
+			// Traveler Edit 모달 닫기
+			closeTravelerEditModal();
+
+			const modal = document.getElementById('change-summary-modal');
+			if (!modal) return;
+
+			const booking = lastLoadedBooking || {};
+			const isPendingTravelerChange = currentChangeRequest && currentChangeRequest.changeType === 'travelers';
+			if (!isPendingTravelerChange) {
+				alert('No pending changes to review.');
+				return;
+			}
+
+			const beforeTravelers = currentChangeRequest.previousData?.originalTravelers || [];
+			const afterTravelers = currentChangeRequest.newData?.pendingTravelers || [];
+			const beforeRooms = currentChangeRequest.previousData?.originalRooms || [];
+			const afterRooms = currentChangeRequest.newData?.pendingRooms || [];
+
+			// Before Travelers
+			document.getElementById('summary-before-travelers').textContent = `${beforeTravelers.length} person(s)`;
+			let beforeTravelerHtml = '';
+			beforeTravelers.forEach(t => {
+				const name = `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Unknown';
+				const type = (t.travelerType || 'adult').charAt(0).toUpperCase() + (t.travelerType || 'adult').slice(1);
+				beforeTravelerHtml += `<div style="padding: 6px 10px; background: #F9FAFB; border-radius: 4px; margin-bottom: 4px;">${escapeHtml(name)} (${type})</div>`;
+			});
+			document.getElementById('summary-before-traveler-list').innerHTML = beforeTravelerHtml || '<div style="color:#999;">-</div>';
+
+			// After Travelers
+			document.getElementById('summary-after-travelers').textContent = `${afterTravelers.length} person(s)`;
+			let afterTravelerHtml = '';
+			afterTravelers.forEach(t => {
+				const name = `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Unknown';
+				const type = (t.travelerType || t.type || 'adult').charAt(0).toUpperCase() + (t.travelerType || t.type || 'adult').slice(1);
+				afterTravelerHtml += `<div style="padding: 6px 10px; background: #ECFDF5; border-radius: 4px; margin-bottom: 4px;">${escapeHtml(name)} (${type})</div>`;
+			});
+			document.getElementById('summary-after-traveler-list').innerHTML = afterTravelerHtml || '<div style="color:#999;">-</div>';
+
+			// Before Rooms
+			const beforeRoomCount = beforeRooms.reduce((sum, r) => sum + (r.count || r.roomCount || 0), 0);
+			document.getElementById('summary-before-rooms').textContent = `${beforeRoomCount} room(s)`;
+			let beforeRoomHtml = '';
+			beforeRooms.forEach(r => {
+				const count = r.count || r.roomCount || 0;
+				if (count > 0) {
+					beforeRoomHtml += `<div style="padding: 6px 10px; background: #F9FAFB; border-radius: 4px; margin-bottom: 4px;">${escapeHtml(r.roomType || r.room_type || '')} x${count}</div>`;
+				}
+			});
+			document.getElementById('summary-before-room-list').innerHTML = beforeRoomHtml || '<div style="color:#999;">-</div>';
+
+			// After Rooms
+			const afterRoomCount = afterRooms.reduce((sum, r) => sum + (r.count || r.roomCount || 0), 0);
+			document.getElementById('summary-after-rooms').textContent = `${afterRoomCount} room(s)`;
+			let afterRoomHtml = '';
+			afterRooms.forEach(r => {
+				const count = r.count || r.roomCount || 0;
+				if (count > 0) {
+					afterRoomHtml += `<div style="padding: 6px 10px; background: #ECFDF5; border-radius: 4px; margin-bottom: 4px;">${escapeHtml(r.roomType || r.room_type || '')} x${count}</div>`;
+				}
+			});
+			document.getElementById('summary-after-room-list').innerHTML = afterRoomHtml || '<div style="color:#999;">-</div>';
+
+			// Amount Breakdown 계산
+			const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
+			const childWithRoomPrice = adultPrice;
+			const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
+			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+
+			// Before Amount
+			const beforeBreakdown = calculateBreakdown(beforeTravelers, beforeRooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice);
+			document.getElementById('summary-breakdown-before').innerHTML = beforeBreakdown.html || '<div style="color:#999;">-</div>';
+			document.getElementById('summary-total-before').textContent = `₱${beforeBreakdown.total.toLocaleString()}`;
+
+			// After Amount
+			const afterBreakdown = calculateBreakdown(afterTravelers, afterRooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice);
+			document.getElementById('summary-breakdown-after').innerHTML = afterBreakdown.html || '<div style="color:#999;">-</div>';
+			document.getElementById('summary-total-after').textContent = `₱${afterBreakdown.total.toLocaleString()}`;
+
+			// Difference
+			const diff = afterBreakdown.total - beforeBreakdown.total;
+			const diffEl = document.getElementById('summary-difference');
+			if (diff !== 0) {
+				diffEl.style.display = 'block';
+				if (diff > 0) {
+					diffEl.style.background = '#FEF3C7';
+					diffEl.style.color = '#92400E';
+					diffEl.innerHTML = `<strong>Difference:</strong> +₱${diff.toLocaleString()} (increase)`;
+				} else {
+					diffEl.style.background = '#ECFDF5';
+					diffEl.style.color = '#065F46';
+					diffEl.innerHTML = `<strong>Difference:</strong> -₱${Math.abs(diff).toLocaleString()} (decrease)`;
+				}
+			} else {
+				diffEl.style.display = 'none';
+			}
+
+			modal.style.display = 'flex';
+		}
+
+		// Amount breakdown 계산 헬퍼 함수
+		function calculateBreakdown(travelers, rooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice) {
+			let html = '';
+			let total = 0;
+
+			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+			travelers.forEach(t => {
+				const type = (t.travelerType || t.type || '').toLowerCase();
+				if (type === 'adult') adults++;
+				else if (type === 'child') {
+					const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || parseInt(t.childRoom || 0) === 1;
+					if (hasRoom) childrenWithRoom++;
+					else childrenNoRoom++;
+				}
+				else if (type === 'infant') infants++;
+			});
+
+			if (adults > 0) {
+				const amt = adults * adultPrice;
+				total += amt;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Adult x${adults}</span><span>₱${amt.toLocaleString()}</span></div>`;
+			}
+			if (childrenWithRoom > 0) {
+				const amt = childrenWithRoom * childWithRoomPrice;
+				total += amt;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Child (with room) x${childrenWithRoom}</span><span>₱${amt.toLocaleString()}</span></div>`;
+			}
+			if (childrenNoRoom > 0) {
+				const amt = childrenNoRoom * childNoRoomPrice;
+				total += amt;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Child (no room) x${childrenNoRoom}</span><span>₱${amt.toLocaleString()}</span></div>`;
+			}
+			if (infants > 0) {
+				const amt = infants * infantPrice;
+				total += amt;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Infant x${infants}</span><span>₱${amt.toLocaleString()}</span></div>`;
+			}
+
+			// Room prices
+			rooms.forEach(r => {
+				const count = r.count || r.roomCount || 0;
+				const price = r.roomPrice || r.room_price || 0;
+				if (count > 0 && price > 0) {
+					const amt = count * price;
+					total += amt;
+					html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>${escapeHtml(r.roomType || r.room_type || '')} x${count}</span><span>₱${amt.toLocaleString()}</span></div>`;
+				}
+			});
+
+			// Visa Fee
+			let groupVisaCount = 0, individualVisaCount = 0;
+			travelers.forEach(t => {
+				const visaType = String(t.visaType || '').toLowerCase();
+				if (visaType === 'group') groupVisaCount++;
+				else if (visaType === 'individual') individualVisaCount++;
+			});
+			if (groupVisaCount > 0) {
+				const groupTotal = groupVisaCount * 1500;
+				total += groupTotal;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Group Visa x${groupVisaCount}</span><span>₱${groupTotal.toLocaleString()}</span></div>`;
+			}
+			if (individualVisaCount > 0) {
+				const indTotal = individualVisaCount * 1900;
+				total += indTotal;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Individual Visa x${individualVisaCount}</span><span>₱${indTotal.toLocaleString()}</span></div>`;
+			}
+
+			// Flight Options
+			let flightOptionsTotal = 0;
+			travelers.forEach(t => {
+				if (t.flightOptionPrices && typeof t.flightOptionPrices === 'object') {
+					Object.values(t.flightOptionPrices).forEach(price => {
+						flightOptionsTotal += Number(price) || 0;
+					});
+				}
+			});
+			if (flightOptionsTotal > 0) {
+				total += flightOptionsTotal;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Flight Options</span><span>₱${flightOptionsTotal.toLocaleString()}</span></div>`;
+			}
+
+			return { html, total };
+		}
+
+		// Change Summary Modal 닫기
+		function closeChangeSummaryModal() {
+			const modal = document.getElementById('change-summary-modal');
+			if (modal) modal.style.display = 'none';
+		}
+
+		// Summary Modal에서 Traveler Review로 돌아가기
+		function backToTravelerReview() {
+			closeChangeSummaryModal();
+			openTravelerEditModal();
 		}
 
 		// 모든 여행자 저장
@@ -2092,43 +3346,24 @@
 				});
 			});
 
-			// 서버에 저장
-			try {
-				const response = await fetch('../backend/api/super-api.php', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					credentials: 'same-origin',
-					body: JSON.stringify({
-						action: 'updateB2BBooking',
-						bookingId: bookingId,
-						travelers: allTravelers
-					})
-				});
-				const result = await response.json().catch(() => ({}));
-				if (!response.ok || !result.success) {
-					throw new Error(result.message || 'Failed to save travelers');
-				}
+			// 3단계 플로우: 항상 Room Options 모달로 이동
+			// 서버 저장은 confirmRoomSelection()에서 travelers + rooms를 함께 저장
+			closeTravelerEditModal();
+			renderTravelers();
 
-				// 인원 수 변경 확인 (Adult + Child만 계산)
-				const newTravelerCount = (allTravelers || []).filter(t => {
-					const type = (t.type || t.travelerType || '').toLowerCase();
-					return type === 'adult' || type === 'child';
-				}).length;
-
-				closeTravelerEditModal();
-				renderTravelers();
-
-				// 인원 변경이 있으면 Room Options 모달 띄우기
-				if (newTravelerCount !== originalTravelerCount) {
-					alert('Travelers saved. Please select room options for the updated number of guests.');
-					openRoomOptionModal();
+			// currentPackageId 확인
+			if (!currentPackageId) {
+				console.error('currentPackageId is not set. lastLoadedBooking:', lastLoadedBooking);
+				// lastLoadedBooking에서 가져오기 시도
+				if (lastLoadedBooking && lastLoadedBooking.packageId) {
+					currentPackageId = lastLoadedBooking.packageId;
 				} else {
-					alert('Travelers saved successfully.');
+					alert('Package information not available. Please reload the page.');
+					return;
 				}
-			} catch (e) {
-				console.error('Error saving travelers:', e);
-				alert(e.message || 'An error occurred while saving.');
 			}
+
+			openRoomOptionModal();
 		}
 
 		// Traveler field helpers
@@ -2459,7 +3694,7 @@
 			// 상태값 - bookingStatus 직접 사용
 			const bs = String(b.bookingStatus || '').toLowerCase().trim();
 			const validStatuses = [
-				'pending',
+				'pending', 'pending_update', 'check_reject',
 				'waiting_down_payment', 'checking_down_payment',
 				'waiting_second_payment', 'checking_second_payment',
 				'waiting_balance', 'checking_balance',
@@ -2510,6 +3745,68 @@
 			}
 		}
 
+		// Flight number에서 항공사명 추출
+		function getAirlineNameFromFlightNumber(flightNumber) {
+			if (!flightNumber) return '';
+			var airlineCodeMap = {
+				'5J': 'Cebu Pacific',
+				'PR': 'Philippine Airlines',
+				'Z2': 'AirAsia Philippines',
+				'DG': 'AirAsia Philippines',
+				'TW': 'Tway Air',
+				'7C': 'Jeju Air',
+				'LJ': 'Jin Air',
+				'KE': 'Korean Air',
+				'OZ': 'Asiana Airlines',
+				'SQ': 'Singapore Airlines',
+				'CX': 'Cathay Pacific',
+				'JL': 'Japan Airlines',
+				'NH': 'All Nippon Airways'
+			};
+			var flightStr = String(flightNumber).toUpperCase().trim();
+			var airlineCode = flightStr.substring(0, 2);
+			return airlineCodeMap[airlineCode] || '';
+		}
+
+		// 항공 옵션 카테고리 로드
+		async function loadFlightOptionCategories(booking) {
+			window.__flightOptionCategories = [];
+			window.__currentAirlineName = '';
+
+			try {
+				var flights = booking.flights || {};
+				if (Array.isArray(flights)) flights = {};
+				var dep = flights.departure || flights.outbound || flights.DEPARTURE || flights.OUTBOUND || {};
+				var flightNumber = dep.flight_number || dep.flightNumber || '';
+
+				if (!flightNumber) {
+					console.log('No flight number found, skipping airline options load');
+					return;
+				}
+
+				var airlineName = getAirlineNameFromFlightNumber(flightNumber);
+				if (!airlineName) {
+					console.log('Could not determine airline from flight number:', flightNumber);
+					return;
+				}
+
+				console.log('Loading airline options for:', airlineName);
+
+				var response = await fetch('../backend/api/agent-api.php?action=getAirlineOptionsByName&airlineName=' + encodeURIComponent(airlineName), {
+					credentials: 'same-origin'
+				});
+				var result = await response.json();
+
+				if (result.success) {
+					window.__currentAirlineName = airlineName;
+					window.__flightOptionCategories = (result.data && result.data.categories) ? result.data.categories : [];
+					console.log('Airline options loaded:', window.__flightOptionCategories);
+				}
+			} catch (error) {
+				console.error('Error loading airline options:', error);
+			}
+		}
+
 		function setValue(id, v) {
 			const el = document.getElementById(id);
 			if (!el) return;
@@ -2532,6 +3829,229 @@
 			el.value = String(v ?? '');
 		}
 		// SMT 수정 완료
+
+		function setHtml(id, v) {
+			const el = document.getElementById(id);
+			if (!el) return;
+			el.textContent = String(v ?? '');
+		}
+
+		function formatTravelersSummary(travelers) {
+			if (!Array.isArray(travelers) || travelers.length === 0) return '-';
+			let adults = 0, children = 0, infants = 0;
+			travelers.forEach(t => {
+				const type = (t.type || t.travelerType || '').toLowerCase();
+				if (type === 'adult') adults++;
+				else if (type === 'child') children++;
+				else if (type === 'infant') infants++;
+			});
+			const parts = [];
+			if (adults > 0) parts.push('Adult ' + adults);
+			if (children > 0) parts.push('Child ' + children);
+			if (infants > 0) parts.push('Infant ' + infants);
+			return parts.length > 0 ? parts.join(', ') : '-';
+		}
+
+		function renderAmountBreakdown(booking, selectedOptions, travelers) {
+			const section = document.getElementById('amount-breakdown-section');
+			const list = document.getElementById('amount-breakdown-list');
+			if (!section || !list) return { total: 0, visaFee: 0, flightOptions: 0 };
+
+			const items = [];
+
+			// Sale 할인 정보
+			const saleDiscountAmount = parseFloat(booking.saleDiscountAmount || 0);
+			const saleName = booking.saleName || '';
+
+			// DB에 저장된 단가 사용 (이미 할인 적용된 가격)
+			const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
+			const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
+			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+
+			// 할인 전 원래 가격 계산 (인당 할인액 = 총 할인금액 / 할인대상 인원수)
+			const discountableCountFromBooking = (parseInt(booking.adults) || 0) + (parseInt(booking.children) || 0);
+			const perPersonDiscount = discountableCountFromBooking > 0 ? saleDiscountAmount / discountableCountFromBooking : 0;
+			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + perPersonDiscount) : adultPrice;
+
+			// 인원 수 계산
+			let adults = 0;
+			let childrenWithRoom = 0;
+			let childrenNoRoom = 0;
+			let infants = 0;
+
+			if (Array.isArray(travelers)) {
+				travelers.forEach(t => {
+					const type = (t.type || t.travelerType || '').toLowerCase();
+					if (type === 'adult') {
+						adults++;
+					} else if (type === 'child') {
+						const hasRoom = parseInt(t.childRoom || 0) === 1;
+						if (hasRoom) {
+							childrenWithRoom++;
+						} else {
+							childrenNoRoom++;
+						}
+					} else if (type === 'infant') {
+						infants++;
+					}
+				});
+			}
+
+			// 할인 적용 대상 인원 (Adult + Child with Room)
+			const discountableCount = adults + childrenWithRoom;
+
+			// Package Price 표시 (할인 전 가격 기준)
+			if (adults > 0 && originalAdultPrice > 0) {
+				items.push({ label: 'Adult x ' + adults, amount: adults * originalAdultPrice });
+			}
+			if (childrenWithRoom > 0 && originalAdultPrice > 0) {
+				items.push({ label: 'Child (Room) x ' + childrenWithRoom, amount: childrenWithRoom * originalAdultPrice });
+			}
+			if (childrenNoRoom > 0 && childPrice > 0) {
+				items.push({ label: 'Child x ' + childrenNoRoom, amount: childrenNoRoom * childPrice });
+			}
+			if (infants > 0) {
+				items.push({ label: 'Infant x ' + infants, amount: infants * infantPrice });
+			}
+
+			// 옵션 금액
+			if (selectedOptions) {
+				const opts = selectedOptions.selectedOptions || selectedOptions;
+				if (opts.roomOptions && Array.isArray(opts.roomOptions)) {
+					opts.roomOptions.forEach(room => {
+						const roomPrice = parseFloat(room.price || 0);
+						const roomQty = parseInt(room.quantity || room.qty || 1);
+						if (roomPrice > 0) {
+							items.push({ label: (room.roomName || room.name || 'Room') + ' x ' + roomQty, amount: roomPrice * roomQty });
+						}
+					});
+				}
+			}
+
+			// DB에 저장된 Visa Fee 사용
+			const visaFee = parseFloat(booking.visaFee || 0);
+			if (visaFee > 0) {
+				items.push({ label: 'Visa Fee', amount: visaFee });
+			}
+
+			// DB에 저장된 Flight Option Fee 사용
+			const flightOptionsTotal = parseFloat(booking.flightOptionFee || 0);
+			if (flightOptionsTotal > 0) {
+				items.push({ label: 'Flight Options', amount: flightOptionsTotal });
+			}
+
+			// 소계 (할인 전)
+			const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
+
+			// Sale 할인 금액 (DB에 총 할인금액이 저장되어 있음)
+			const totalDiscount = saleDiscountAmount;
+
+			// 총액 계산 (할인 차감)
+			const calculatedTotal = subtotal - totalDiscount;
+
+			if (items.length === 0) {
+				section.style.display = 'none';
+				return { total: 0, visaFee: 0, flightOptions: 0 };
+			}
+
+			section.style.display = 'block';
+
+			// HTML 생성
+			let html = items.map(item =>
+				'<div style="display: flex; justify-content: space-between; font-size: 14px;">' +
+					'<span style="color: #4B5563;">' + item.label + '</span>' +
+					'<span style="color: #111827; font-weight: 500;">PHP ' + formatNumber(item.amount) + '</span>' +
+				'</div>'
+			).join('');
+
+			// 할인 정보 표시
+			if (totalDiscount > 0 && saleName) {
+				html += '<div style="display: flex; justify-content: space-between; font-size: 14px; margin-top: 8px; padding: 8px 12px; background: #FEF2F2; border-radius: 6px; border: 1px solid #FECACA;">' +
+					'<span style="color: #DC2626; font-weight: 600;">' +
+						'<span style="background: #DC2626; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">SALE</span>' +
+						saleName +
+					'</span>' +
+					'<span style="color: #DC2626; font-weight: 600;">-PHP ' + formatNumber(totalDiscount) + '</span>' +
+				'</div>';
+			}
+
+			// 최종 총액
+			html += '<div style="display: flex; justify-content: space-between; font-size: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #E5E7EB;">' +
+				'<span style="color: #0050C8; font-weight: 700;">Total</span>' +
+				'<span style="color: #0050C8; font-weight: 700;">PHP ' + formatNumber(calculatedTotal) + '</span>' +
+			'</div>';
+
+			list.innerHTML = html;
+
+			// DB 값 그대로 반환
+			return { total: calculatedTotal, visaFee: visaFee, flightOptions: flightOptionsTotal };
+		}
+
+		// pendingTravelers 기준으로 총 금액 계산 (pending_update 시 예상 금액 표시용)
+		function calculateTotalFromTravelers(booking, travelers) {
+			if (!Array.isArray(travelers) || travelers.length === 0) return 0;
+
+			// Sale 할인 정보
+			const saleDiscountAmount = parseFloat(booking.saleDiscountAmount || 0);
+
+			// DB에 저장된 단가 사용
+			const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
+			const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
+			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+
+			// 할인 전 원래 가격 (인당 할인액 = 총 할인금액 / 할인대상 인원수)
+			const discountableCountFromBooking = (parseInt(booking.adults) || 0) + (parseInt(booking.children) || 0);
+			const perPersonDiscount = discountableCountFromBooking > 0 ? saleDiscountAmount / discountableCountFromBooking : 0;
+			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + perPersonDiscount) : adultPrice;
+
+			// 인원 수 계산
+			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+			let visaFeeTotal = 0;
+			let flightOptionsTotal = 0;
+
+			travelers.forEach(t => {
+				const type = (t.type || t.travelerType || '').toLowerCase();
+				if (type === 'adult') {
+					adults++;
+				} else if (type === 'child') {
+					const hasRoom = parseInt(t.childRoom || 0) === 1;
+					if (hasRoom) childrenWithRoom++;
+					else childrenNoRoom++;
+				} else if (type === 'infant') {
+					infants++;
+				}
+
+				// Visa fee 계산 (group visa만)
+				const visaType = (t.visaType || '').toLowerCase();
+				const visaRequired = t.visaRequired === true || t.visaRequired === 'true' || t.visaRequired === 1;
+				if (visaRequired && visaType === 'group') {
+					visaFeeTotal += 1500; // Group visa fee per person
+				}
+
+				// Flight options 계산
+				if (t.flightOptionPrices && typeof t.flightOptionPrices === 'object') {
+					Object.values(t.flightOptionPrices).forEach(price => {
+						flightOptionsTotal += Number(price) || 0;
+					});
+				}
+			});
+
+			// Package price 계산
+			let packageTotal = 0;
+			packageTotal += adults * originalAdultPrice;
+			packageTotal += childrenWithRoom * originalAdultPrice;
+			packageTotal += childrenNoRoom * childPrice;
+			packageTotal += infants * infantPrice;
+
+			// 할인 대상 인원
+			const discountableCount = adults + childrenWithRoom;
+			// Sale 할인 금액 (DB에 총 할인금액이 저장되어 있음)
+			const totalDiscount = saleDiscountAmount;
+
+			// 총액 계산
+			const total = packageTotal - totalDiscount + visaFeeTotal + flightOptionsTotal;
+			return total;
+		}
 
 		function formatNumber(n) {
 			const x = Number(n);
@@ -2643,6 +4163,105 @@
 			return String(s || '').replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'");
 		}
 
+		// === File Viewer Functions ===
+		let __currentViewerFile = '';
+
+		function getFileExtension(filePath) {
+			const path = String(filePath || '').trim();
+			const lastDot = path.lastIndexOf('.');
+			if (lastDot < 0) return '';
+			return path.substring(lastDot + 1).toLowerCase();
+		}
+
+		function isImageFile(filePath) {
+			const ext = getFileExtension(filePath);
+			return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
+		}
+
+		function isPdfFile(filePath) {
+			return getFileExtension(filePath) === 'pdf';
+		}
+
+		function getFileUrl(filePath, inline = false) {
+			let p = String(filePath || '').trim();
+			if (!p) return '';
+			if (p.startsWith('uploads/')) p = '/' + p;
+			const inlineParam = inline ? '&inline=1' : '';
+			return `/backend/api/download.php?file=${encodeURIComponent(p)}${inlineParam}`;
+		}
+
+		function openFileViewer(filePath, title) {
+			const path = String(filePath || '').trim();
+			if (!path) return;
+
+			__currentViewerFile = path;
+			const modal = document.getElementById('fileViewerModal');
+			const content = document.getElementById('fileViewerContent');
+			const titleEl = document.getElementById('fileViewerTitle');
+			const downloadBtn = document.getElementById('fileViewerDownload');
+
+			if (!modal || !content) return;
+
+			// Set title
+			const fileName = path.split('/').pop() || path;
+			titleEl.textContent = title || fileName;
+
+			// Set download button
+			downloadBtn.onclick = () => {
+				window.open(`/backend/api/download.php?file=${encodeURIComponent(path)}`, '_blank');
+			};
+
+			// Clear previous content
+			content.innerHTML = '';
+
+			const fileUrl = getFileUrl(path, true);
+
+			if (isImageFile(path)) {
+				// Image preview
+				const img = document.createElement('img');
+				img.src = fileUrl;
+				img.alt = fileName;
+				img.onerror = () => {
+					content.innerHTML = getUnsupportedHtml(path, 'Failed to load image. The file may not exist on the server.');
+				};
+				content.appendChild(img);
+			} else if (isPdfFile(path)) {
+				// PDF preview
+				const iframe = document.createElement('iframe');
+				iframe.src = fileUrl;
+				iframe.title = fileName;
+				content.appendChild(iframe);
+			} else {
+				// Unsupported file type
+				content.innerHTML = getUnsupportedHtml(path, 'Preview not available for this file type');
+			}
+
+			modal.style.display = 'flex';
+			document.body.style.overflow = 'hidden';
+		}
+
+		function getUnsupportedHtml(filePath, message) {
+			return `
+				<div class="file-viewer-unsupported">
+					<img src="../image/file.svg" alt="">
+					<p>${escapeHtml(message)}</p>
+					<button type="button" onclick="window.open('/backend/api/download.php?file=${encodeURIComponent(filePath)}', '_blank')">Download File</button>
+				</div>
+			`;
+		}
+
+		function closeFileViewer() {
+			const modal = document.getElementById('fileViewerModal');
+			if (modal) modal.style.display = 'none';
+			document.body.style.overflow = '';
+			__currentViewerFile = '';
+		}
+
+		// Close on Escape key
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') closeFileViewer();
+		});
+
 		// === 3단계 결제 관련 함수 ===
 
 		// Payment confirmation status
@@ -2675,8 +4294,8 @@
 			const secondConfirmed = !!(booking.advancePaymentConfirmedAt && booking.advancePaymentConfirmedAt !== '0000-00-00 00:00:00');
 			const balanceConfirmed = !!(booking.balanceConfirmedAt && booking.balanceConfirmedAt !== '0000-00-00 00:00:00');
 
-			// 금액 자동 계산용 데이터
-			const orderAmount = Number(booking.totalAmount || booking.orderAmount || 0);
+			// 금액 자동 계산용 데이터 (Visa Fee, Flight Options 포함된 계산 총액 사용)
+			const orderAmount = Number(booking._calculatedTotal || booking.totalAmount || booking.orderAmount || 0);
 			const adultCount = Number(booking.adults || 0);
 			const childCount = Number(booking.children || 0);
 			const infantCount = Number(booking.infants || 0);
@@ -2688,7 +4307,7 @@
 				downAmount = 5000 * adultChildCount;
 			}
 			setValue('downPaymentAmount', downAmount > 0 ? formatNumber(downAmount) : '-');
-			setValue('downPaymentDeadline', booking.downPaymentDueDate || '-');
+			setValue('downPaymentDeadline', booking.downPaymentDueDate || '');
 			applyPaymentProofUi('down', booking.downPaymentFile || '', booking.downPaymentFileName || '');
 
 			// Down Payment 상태 표시
@@ -2709,100 +4328,92 @@
 				downActions.style.display = (booking.downPaymentFile && !downConfirmed) ? 'flex' : 'none';
 			}
 
-			// Second Payment = 10000 × (Adult + Child)
-			let secondAmount = Number(booking.advancePaymentAmount || 0);
-			if (secondAmount <= 0 && adultChildCount > 0) {
-				secondAmount = 10000 * adultChildCount;
+			// Second Payment = 10000 × (Adult + Child) + Visa Fee
+			// Visa Fee 계산: Group Visa ₱1,500, Individual Visa ₱1,900
+			let visaFee = Number(booking._visaFee || 0);
+			if (visaFee <= 0 && Array.isArray(booking.travelers)) {
+				booking.travelers.forEach(t => {
+					const visaType = String(t.visaType || '').toLowerCase();
+					if (visaType === 'group') visaFee += 1500;
+					else if (visaType === 'individual') visaFee += 1900;
+				});
 			}
+			// Second Payment는 항상 공식으로 계산 (DB 값이 visa fee를 포함하지 않을 수 있음)
+			let secondAmount = adultChildCount > 0 ? (10000 * adultChildCount + visaFee) : 0;
 			// 금액과 데드라인은 항상 표시
 			setValue('secondPaymentAmount', secondAmount > 0 ? formatNumber(secondAmount) : '-');
-			setValue('secondPaymentDeadline', booking.advancePaymentDueDate || '-');
+			setValue('secondPaymentDeadline', booking.advancePaymentDueDate || '');
 
-			const secondNotice = document.getElementById('secondPaymentDisabledNotice');
 			const secondFields = document.getElementById('secondPaymentFields');
 			const secondActions = document.getElementById('secondPaymentActions');
 
-			if (downConfirmed) {
-				// Down Payment 확정됨 → Second Payment 파일 업로드 활성화
-				if (secondNotice) secondNotice.style.display = 'none';
-				if (secondFields) secondFields.style.display = 'flex';
-				applyPaymentProofUi('second', booking.advancePaymentFile || '', booking.advancePaymentFileName || '');
+			// 항상 필드 표시 (관리자 페이지)
+			if (secondFields) secondFields.style.display = 'flex';
+			applyPaymentProofUi('second', booking.advancePaymentFile || '', booking.advancePaymentFileName || '');
 
-				// Second Payment 상태 표시
-				const secondStatus = document.getElementById('secondPaymentStatus');
-				if (secondStatus) {
-					if (secondConfirmed) {
-						secondStatus.innerHTML = '<span style="color: #28A745; font-weight: 500;">✓ Confirmed</span>';
-					} else if (booking.advancePaymentFile) {
-						secondStatus.innerHTML = '<span style="color: #FFC107; font-weight: 500;">Pending Review</span>';
-					} else {
-						secondStatus.innerHTML = '<span style="color: #6c757d;">Awaiting Upload</span>';
-					}
+			// Second Payment 상태 표시
+			const secondStatus = document.getElementById('secondPaymentStatus');
+			if (secondStatus) {
+				if (secondConfirmed) {
+					secondStatus.innerHTML = '<span style="color: #28A745; font-weight: 500;">✓ Confirmed</span>';
+				} else if (booking.advancePaymentFile) {
+					secondStatus.innerHTML = '<span style="color: #FFC107; font-weight: 500;">Pending Review</span>';
+				} else if (!downConfirmed) {
+					secondStatus.innerHTML = '<span style="color: #6c757d;">Waiting for Down Payment</span>';
+				} else {
+					secondStatus.innerHTML = '<span style="color: #6c757d;">Awaiting Upload</span>';
 				}
-
-				// Second Payment Actions
-				if (secondActions) {
-					secondActions.style.display = (booking.advancePaymentFile && !secondConfirmed) ? 'flex' : 'none';
-				}
-			} else {
-				// Down Payment 미확정 → Second Payment 파일 업로드 비활성화
-				if (secondNotice) secondNotice.style.display = 'block';
-				if (secondFields) secondFields.style.display = 'none';
-				if (secondActions) secondActions.style.display = 'none';
 			}
 
-			// Balance = Order Amount - Down Payment - Second Payment
-			let balanceAmt = Number(booking.balanceAmount || 0);
-			if (balanceAmt <= 0 && orderAmount > 0) {
-				const calcDown = downAmount > 0 ? downAmount : (5000 * adultChildCount);
-				const calcSecond = secondAmount > 0 ? secondAmount : (10000 * adultChildCount);
-				balanceAmt = orderAmount - calcDown - calcSecond;
+			// Second Payment Actions (파일 있고 미확정인 경우만 표시)
+			if (secondActions) {
+				secondActions.style.display = (booking.advancePaymentFile && !secondConfirmed) ? 'flex' : 'none';
+			}
+
+			// Balance = Order Amount - Down Payment - Second Payment (항상 공식으로 계산)
+			let balanceAmt = 0;
+			if (orderAmount > 0) {
+				balanceAmt = orderAmount - downAmount - secondAmount;
 			}
 			// 금액과 데드라인은 항상 표시
 			setValue('balanceAmount', balanceAmt > 0 ? formatNumber(balanceAmt) : '-');
-			setValue('balanceDeadline', booking.balanceDueDate || '-');
+			setValue('balanceDeadline', booking.balanceDueDate || '');
 
-			const balanceNotice = document.getElementById('balanceDisabledNotice');
 			const balanceFields = document.getElementById('balanceFields');
 			const balanceActions = document.getElementById('balanceActions');
 
-			if (secondConfirmed) {
-				// Second Payment 확정됨 → Balance 파일 업로드 활성화
-				if (balanceNotice) balanceNotice.style.display = 'none';
-				if (balanceFields) balanceFields.style.display = 'flex';
-				applyPaymentProofUi('balance', booking.balanceFile || '', booking.balanceFileName || '');
+			// 항상 필드 표시 (관리자 페이지)
+			if (balanceFields) balanceFields.style.display = 'flex';
+			applyPaymentProofUi('balance', booking.balanceFile || '', booking.balanceFileName || '');
 
-				// Balance 상태 표시
-				const balanceStatus = document.getElementById('balanceStatus');
-				if (balanceStatus) {
-					if (balanceConfirmed) {
-						balanceStatus.innerHTML = '<span style="color: #28A745; font-weight: 500;">✓ Confirmed</span>';
-					} else if (booking.balanceFile) {
-						balanceStatus.innerHTML = '<span style="color: #FFC107; font-weight: 500;">Pending Review</span>';
-					} else {
-						balanceStatus.innerHTML = '<span style="color: #6c757d;">Awaiting Upload</span>';
-					}
+			// Balance 상태 표시
+			const balanceStatus = document.getElementById('balanceStatus');
+			if (balanceStatus) {
+				if (balanceConfirmed) {
+					balanceStatus.innerHTML = '<span style="color: #28A745; font-weight: 500;">✓ Confirmed</span>';
+				} else if (booking.balanceFile) {
+					balanceStatus.innerHTML = '<span style="color: #FFC107; font-weight: 500;">Pending Review</span>';
+				} else if (!secondConfirmed) {
+					balanceStatus.innerHTML = '<span style="color: #6c757d;">Waiting for Second Payment</span>';
+				} else {
+					balanceStatus.innerHTML = '<span style="color: #6c757d;">Awaiting Upload</span>';
 				}
+			}
 
-				// Balance Actions
-				if (balanceActions) {
-					balanceActions.style.display = (booking.balanceFile && !balanceConfirmed) ? 'flex' : 'none';
-				}
-			} else {
-				// Second Payment 미확정 → Balance 파일 업로드 비활성화
-				if (balanceNotice) balanceNotice.style.display = 'block';
-				if (balanceFields) balanceFields.style.display = 'none';
-				if (balanceActions) balanceActions.style.display = 'none';
+			// Balance Actions (파일 있고 미확정인 경우만 표시)
+			if (balanceActions) {
+				balanceActions.style.display = (booking.balanceFile && !balanceConfirmed) ? 'flex' : 'none';
 			}
 		}
 
 		// Full Payment section update
 		function updateFullPaymentSection(booking) {
 			const fullConfirmed = !!(booking.fullPaymentConfirmedAt && booking.fullPaymentConfirmedAt !== '0000-00-00 00:00:00');
-			const fullAmount = Number(booking.fullPaymentAmount || booking.totalAmount || 0);
+			// Visa Fee, Flight Options 포함된 계산 총액 사용
+			const fullAmount = Number(booking._calculatedTotal || booking.fullPaymentAmount || booking.totalAmount || 0);
 
 			setValue('fullPaymentAmount', fullAmount > 0 ? formatNumber(fullAmount) : '-');
-			setValue('fullPaymentDeadline', booking.fullPaymentDueDate || '-');
+			setValue('fullPaymentDeadline', booking.fullPaymentDueDate || '');
 			applyPaymentProofUi('full', booking.fullPaymentFile || '', booking.fullPaymentFileName || '');
 
 			// Full Payment 상태 표시
@@ -2830,20 +4441,24 @@
 				: type === 'second' ? 'secondPaymentProofInfo'
 				: type === 'full' ? 'fullPaymentProofInfo'
 				: 'balanceProofInfo';
-			const btnId = type === 'down' ? 'downPaymentDownloadBtn'
+			const downloadBtnId = type === 'down' ? 'downPaymentDownloadBtn'
 				: type === 'second' ? 'secondPaymentDownloadBtn'
 				: type === 'full' ? 'fullPaymentDownloadBtn'
 				: 'balanceDownloadBtn';
+			const viewBtnId = type === 'down' ? 'downPaymentViewBtn'
+				: type === 'second' ? 'secondPaymentViewBtn'
+				: type === 'full' ? 'fullPaymentViewBtn'
+				: 'balanceViewBtn';
 
 			const infoEl = document.getElementById(infoId);
-			const btnEl = document.getElementById(btnId);
-			if (!infoEl || !btnEl) return;
+			const downloadBtn = document.getElementById(downloadBtnId);
+			const viewBtn = document.getElementById(viewBtnId);
 
 			let path = String(filePath || '').trim();
 			if (!path) {
-				infoEl.textContent = '-';
-				btnEl.disabled = true;
-				btnEl.onclick = null;
+				if (infoEl) infoEl.textContent = '-';
+				if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.onclick = null; }
+				if (viewBtn) { viewBtn.disabled = true; viewBtn.onclick = null; }
 				return;
 			}
 
@@ -2857,13 +4472,62 @@
 			} catch (_) { }
 
 			const displayName = originalFileName ? String(originalFileName).trim() : (path.split('/').pop() || 'file');
-			infoEl.innerHTML = `<img src="../image/file.svg" alt=""> ${escapeHtml(displayName)}`;
-			btnEl.disabled = false;
-			btnEl.onclick = (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				window.open(`/backend/api/download.php?file=${encodeURIComponent(path)}`, '_blank');
-			};
+			const typeLabel = type === 'down' ? 'Down Payment' : type === 'second' ? 'Second Payment' : type === 'full' ? 'Full Payment' : 'Balance';
+
+			if (infoEl) {
+				infoEl.innerHTML = `<img src="../image/file.svg" alt=""> ${escapeHtml(displayName)}`;
+			}
+
+			// Download button
+			if (downloadBtn) {
+				downloadBtn.disabled = false;
+				downloadBtn.onclick = (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					window.open(`/backend/api/download.php?file=${encodeURIComponent(path)}`, '_blank');
+				};
+			}
+
+			// View button
+			if (viewBtn) {
+				viewBtn.disabled = false;
+				viewBtn.onclick = (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					openFileViewer(path, `${typeLabel} Proof - ${displayName}`);
+				};
+			}
+		}
+
+		// Update payment deadline
+		async function updateDeadline(type, value) {
+			if (!value) return;
+
+			try {
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'setPaymentDeadline',
+						bookingId: bookingId,
+						deadlineType: type,
+						deadline: value
+					})
+				});
+
+				const result = await response.json().catch(() => ({}));
+				if (!response.ok || !result.success) {
+					throw new Error(result.message || 'Failed to update deadline');
+				}
+
+				// 성공 시 간단한 피드백 (페이지 리로드 없이)
+				const typeLabel = type === 'down' ? 'Down Payment' : type === 'second' ? 'Second Payment' : type === 'full' ? 'Full Payment' : 'Balance';
+				console.log(`${typeLabel} deadline updated to ${value}`);
+			} catch (error) {
+				console.error('Update deadline error:', error);
+				alert(error?.message || 'An error occurred while updating deadline.');
+			}
 		}
 
 		// Confirm payment
@@ -2966,11 +4630,11 @@
 		let originalTravelerCount = 0; // 원래 인원수 저장
 
 		const defaultRoomOptions = [
-			{ roomId: 'standard', roomType: 'Standard room', capacity: 2, roomPrice: 0 },
-			{ roomId: 'double', roomType: 'Double room', capacity: 2, roomPrice: 0 },
-			{ roomId: 'triple', roomType: 'Triple room', capacity: 3, roomPrice: 0 },
-			{ roomId: 'family', roomType: 'Family room', capacity: 4, roomPrice: 0 },
-			{ roomId: 'single', roomType: 'Single Supplement Surcharge', capacity: 1, roomPrice: 10000 }
+			{ roomId: 'double', roomType: 'Double Room', capacity: 2, roomPrice: 0, description: '1 Queen/King bed for 2 guests' },
+			{ roomId: 'twin', roomType: 'Twin Room', capacity: 2, roomPrice: 0, description: '2 Single beds for 2 guests' },
+			{ roomId: 'triple', roomType: 'Triple Room', capacity: 3, roomPrice: 0, description: '3 Single beds for 3 guests' },
+			{ roomId: 'family', roomType: 'Family Room', capacity: 4, roomPrice: 0, description: 'For families up to 4 guests' },
+			{ roomId: 'single', roomType: 'Single Supplement', capacity: 1, roomPrice: 10000, description: 'Private room for 1 guest' }
 		];
 
 		function openRoomOptionModal() {
@@ -3010,21 +4674,23 @@
 				currentRoomOptions = roomOptions;
 
 				let html = '';
-				roomOptions.forEach(room => {
+				roomOptions.forEach((room, index) => {
 					const existingRoom = selectedRoomsInModal.find(r => r.roomId === room.roomId);
 					const count = existingRoom ? existingRoom.count : 0;
-					const displayPrice = room.roomPrice > 0 ? `+₱${Number(room.roomPrice).toLocaleString()}` : 'Free';
+					const displayPrice = room.roomPrice > 0 ? `+₱${Number(room.roomPrice).toLocaleString()}` : 'Included';
+					const isSelected = count > 0;
 
 					html += `
-						<div class="room-option-item">
-							<div class="room-option-info">
-								<span class="room-option-name">${room.roomType}</span>
-								<span class="room-option-price">${displayPrice}</span>
-							</div>
-							<div class="room-option-controls">
-								<button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', -1)" ${count === 0 ? 'disabled' : ''}>-</button>
-								<span class="room-qty-value" id="room-qty-${room.roomId}">${count}</span>
-								<button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', 1)">+</button>
+						<div class="room-option-card ${isSelected ? 'selected' : ''}" data-room-id="${room.roomId}">
+							<div class="room-option-card-row">
+								<span class="room-option-card-name">${room.roomType}</span>
+								<span class="room-option-card-capacity">${room.capacity} guests</span>
+								<span class="room-option-card-price ${room.roomPrice > 0 ? 'has-price' : ''}">${displayPrice}</span>
+								<div class="room-option-card-controls">
+									<button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', -1)" ${count === 0 ? 'disabled' : ''}>-</button>
+									<span class="room-qty-value ${count > 0 ? 'has-value' : ''}" id="room-qty-${room.roomId}">${count}</span>
+									<button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', 1)">+</button>
+								</div>
 							</div>
 						</div>
 					`;
@@ -3062,10 +4728,29 @@
 			}
 
 			const qtyEl = document.getElementById(`room-qty-${roomId}`);
-			if (qtyEl) qtyEl.textContent = newCount;
+			if (qtyEl) {
+				qtyEl.textContent = newCount;
+				// has-value 클래스 토글
+				if (newCount > 0) {
+					qtyEl.classList.add('has-value');
+				} else {
+					qtyEl.classList.remove('has-value');
+				}
+			}
 
+			// 마이너스 버튼 비활성화
 			const minusBtn = qtyEl?.parentElement?.querySelector('.room-qty-btn');
 			if (minusBtn) minusBtn.disabled = (newCount === 0);
+
+			// 카드 선택 상태 토글
+			const card = document.querySelector(`.room-option-card[data-room-id="${roomId}"]`);
+			if (card) {
+				if (newCount > 0) {
+					card.classList.add('selected');
+				} else {
+					card.classList.remove('selected');
+				}
+			}
 
 			updateRoomOrderSummary();
 		}
@@ -3078,22 +4763,83 @@
 
 			let totalAmount = 0;
 			let summaryHtml = '';
+			const booking = lastLoadedBooking || {};
 
-			selectedRoomsInModal.forEach(room => {
-				if (room.count > 0) {
-					const roomTotal = (room.roomPrice || 0) * room.count;
-					totalAmount += roomTotal;
-					summaryHtml += `
-						<div class="order-summary-item">
-							<span>${room.roomType} x${room.count}</span>
-							<span>₱${roomTotal.toLocaleString()}</span>
-						</div>
-					`;
+			// 1. 여행자별 가격 계산
+			const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
+			const childWithRoomPrice = adultPrice; // 성인가격 100%
+			const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8); // 80%
+			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+
+			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+			(allTravelers || []).forEach(t => {
+				const type = (t.type || t.travelerType || '').toLowerCase();
+				if (type === 'adult') adults++;
+				else if (type === 'child') {
+					const hasRoom = parseInt(t.childRoom || 0) === 1;
+					if (hasRoom) childrenWithRoom++;
+					else childrenNoRoom++;
 				}
+				else if (type === 'infant') infants++;
 			});
 
+			// 여행자 가격 섹션
+			summaryHtml += '<div class="order-summary-section-title">Travelers</div>';
+			if (adults > 0) {
+				const adultTotal = adults * adultPrice;
+				totalAmount += adultTotal;
+				summaryHtml += `<div class="order-summary-item"><span>Adult x${adults}</span><span>₱${adultTotal.toLocaleString()}</span></div>`;
+			}
+			if (childrenWithRoom > 0) {
+				const childRoomTotal = childrenWithRoom * childWithRoomPrice;
+				totalAmount += childRoomTotal;
+				summaryHtml += `<div class="order-summary-item"><span>Child (Room) x${childrenWithRoom}</span><span>₱${childRoomTotal.toLocaleString()}</span></div>`;
+			}
+			if (childrenNoRoom > 0) {
+				const childNoRoomTotal = childrenNoRoom * childNoRoomPrice;
+				totalAmount += childNoRoomTotal;
+				summaryHtml += `<div class="order-summary-item"><span>Child x${childrenNoRoom}</span><span>₱${Math.round(childNoRoomTotal).toLocaleString()}</span></div>`;
+			}
+			if (infants > 0) {
+				const infantTotal = infants * infantPrice;
+				totalAmount += infantTotal;
+				summaryHtml += `<div class="order-summary-item"><span>Infant x${infants}</span><span>₱${infantTotal.toLocaleString()}</span></div>`;
+			}
+
+			// 2. 룸 옵션 가격 섹션
+			const roomItems = selectedRoomsInModal.filter(r => r.count > 0);
+			if (roomItems.length > 0) {
+				summaryHtml += '<div class="order-summary-section-title" style="margin-top:12px;">Room Options</div>';
+				roomItems.forEach(room => {
+					const roomTotal = (room.roomPrice || 0) * room.count;
+					totalAmount += roomTotal;
+					summaryHtml += `<div class="order-summary-item"><span>${room.roomType} x${room.count}</span><span>${roomTotal > 0 ? '₱' + roomTotal.toLocaleString() : 'Free'}</span></div>`;
+				});
+			}
+
+			// 3. Visa Fee 계산
+			let groupVisaCount = 0, individualVisaCount = 0;
+			(allTravelers || []).forEach(t => {
+				const visaType = String(t.visaType || '').toLowerCase();
+				if (visaType === 'group') groupVisaCount++;
+				else if (visaType === 'individual') individualVisaCount++;
+			});
+			if (groupVisaCount > 0 || individualVisaCount > 0) {
+				summaryHtml += '<div class="order-summary-section-title" style="margin-top:12px;">Visa Fee</div>';
+				if (groupVisaCount > 0) {
+					const groupTotal = groupVisaCount * 1500;
+					totalAmount += groupTotal;
+					summaryHtml += `<div class="order-summary-item"><span>Group Visa x${groupVisaCount}</span><span>₱${groupTotal.toLocaleString()}</span></div>`;
+				}
+				if (individualVisaCount > 0) {
+					const indTotal = individualVisaCount * 1900;
+					totalAmount += indTotal;
+					summaryHtml += `<div class="order-summary-item"><span>Individual Visa x${individualVisaCount}</span><span>₱${indTotal.toLocaleString()}</span></div>`;
+				}
+			}
+
 			if (summaryContainer) {
-				summaryContainer.innerHTML = summaryHtml || '<div style="color:#999; text-align:center;">No rooms selected</div>';
+				summaryContainer.innerHTML = summaryHtml || '<div style="color:#999; text-align:center;">No items</div>';
 			}
 			if (amountEl) {
 				amountEl.textContent = `₱${totalAmount.toLocaleString()}`;
@@ -3135,31 +4881,28 @@
 				return;
 			}
 
-			try {
-				const response = await fetch('../backend/api/super-api.php', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					credentials: 'same-origin',
-					body: JSON.stringify({
-						action: 'updateB2BBooking',
-						bookingId: bookingId,
-						selectedRooms: selectedRoomsInModal
-					})
-				});
-				const result = await response.json();
-				if (!response.ok || !result.success) {
-					throw new Error(result.message || 'Failed to save room options');
+			// sessionStorage에 임시 저장 (DB 저장 안함 - Summary 페이지에서 Submit 시 저장)
+			const pendingChanges = {
+				bookingId: bookingId,
+				travelers: allTravelers,
+				selectedRooms: selectedRoomsInModal,
+				originalTravelers: lastLoadedBooking?.travelers || [],
+				originalRooms: lastLoadedBooking?.rooms || [],
+				bookingData: {
+					packageName: lastLoadedBooking?.packageName || '',
+					adultPrice: lastLoadedBooking?.adultPrice || lastLoadedBooking?.packagePrice || 0,
+					childPrice: lastLoadedBooking?.childPrice || 0,
+					infantPrice: lastLoadedBooking?.infantPrice || 0,
+					saleId: lastLoadedBooking?.saleId || null,
+					saleName: lastLoadedBooking?.saleName || '',
+					saleDiscountAmount: lastLoadedBooking?.saleDiscountAmount || 0
 				}
+			};
+			sessionStorage.setItem('pendingTravelerChanges', JSON.stringify(pendingChanges));
 
-				const roomSummary = selectedRoomsInModal.map(r => `${r.roomType} x${r.count}`).join(', ');
-				setValue('roomOption', roomSummary || '-');
-				closeRoomOptionModal();
-				alert('Room options saved successfully.');
-				window.location.reload();
-			} catch (error) {
-				console.error('Error saving room options:', error);
-				alert(error.message || 'Failed to save room options');
-			}
+			closeRoomOptionModal();
+			// Summary 페이지로 이동
+			window.location.href = `b2b-edit-summary.html?bookingId=${bookingId}`;
 		}
 
 		// Room option 모달 이벤트
@@ -3232,6 +4975,242 @@
 			</div>
 		</div>
 	</div>
+			</div><!-- // content-main -->
+
+			<!-- Section Navigator Sidebar -->
+			<aside class="content-aside" aria-label="Section Navigation" style="top:5px">
+				<h3 class="aside-title" data-lan-eng="Sections">Sections</h3>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-item">
+						<div class="aside-list">
+							<div class="aside-row" data-nav-section="section-product">
+								<div class="aside-row__title" data-scroll-target="section-product" onclick="scrollToSection('section-product')" style="cursor:pointer;" data-lan-eng="Product Information">Product Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-reservation">
+								<div class="aside-row__title" data-scroll-target="section-reservation" onclick="scrollToSection('section-reservation')" style="cursor:pointer;" data-lan-eng="Reservation Information">Reservation Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-payment">
+								<div class="aside-row__title" data-scroll-target="section-payment" onclick="scrollToSection('section-payment')" style="cursor:pointer;" data-lan-eng="Payment Information">Payment Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-agent">
+								<div class="aside-row__title" data-scroll-target="section-agent" onclick="scrollToSection('section-agent')" style="cursor:pointer;" data-lan-eng="Agent Information">Agent Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-agent-notes">
+								<div class="aside-row__title" data-scroll-target="section-agent-notes" onclick="scrollToSection('section-agent-notes')" style="cursor:pointer;" data-lan-eng="Agent Notes">Agent Notes</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-flight">
+								<div class="aside-row__title" data-scroll-target="section-flight" onclick="scrollToSection('section-flight')" style="cursor:pointer;" data-lan-eng="Flight Information">Flight Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-customer">
+								<div class="aside-row__title" data-scroll-target="section-customer" onclick="scrollToSection('section-customer')" style="cursor:pointer;" data-lan-eng="Customer Information">Customer Information</div>
+							</div>
+							<hr class="aside-row__sep">
+							<div class="aside-row" data-nav-section="section-traveler">
+								<div class="aside-row__title" data-scroll-target="section-traveler" onclick="scrollToSection('section-traveler')" style="cursor:pointer;" data-lan-eng="Traveler Information">Traveler Information</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</aside>
+		</section>
+	</main>
+
+	<!-- File Viewer Modal -->
+	<div id="fileViewerModal" class="file-viewer-modal" style="display:none;">
+		<div class="file-viewer-overlay" onclick="closeFileViewer()"></div>
+		<div class="file-viewer-container">
+			<div class="file-viewer-header">
+				<span class="file-viewer-title" id="fileViewerTitle">File Preview</span>
+				<div class="file-viewer-actions">
+					<button type="button" class="file-viewer-btn" id="fileViewerDownload" title="Download">
+						<img src="../image/button-download.svg" alt="Download">
+					</button>
+					<button type="button" class="file-viewer-btn" onclick="closeFileViewer()" title="Close">
+						<img src="../image/button-close2.svg" alt="Close">
+					</button>
+				</div>
+			</div>
+			<div class="file-viewer-content" id="fileViewerContent">
+				<!-- Content will be loaded here -->
+			</div>
+		</div>
+	</div>
+
+	<style>
+		.file-viewer-modal {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 9999;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.file-viewer-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.7);
+		}
+		.file-viewer-container {
+			position: relative;
+			background: #fff;
+			border-radius: 12px;
+			width: 90%;
+			max-width: 1200px;
+			height: 90%;
+			max-height: 90vh;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		}
+		.file-viewer-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 16px 20px;
+			border-bottom: 1px solid #e5e5e5;
+			background: #f8f9fa;
+		}
+		.file-viewer-title {
+			font-size: 16px;
+			font-weight: 600;
+			color: #121212;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			flex: 1;
+			margin-right: 16px;
+		}
+		.file-viewer-actions {
+			display: flex;
+			gap: 8px;
+		}
+		.file-viewer-btn {
+			width: 36px;
+			height: 36px;
+			border: 1px solid #d4d4d4;
+			border-radius: 8px;
+			background: #fff;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: background 0.2s;
+		}
+		.file-viewer-btn:hover {
+			background: #f0f0f0;
+		}
+		.file-viewer-btn img {
+			width: 20px;
+			height: 20px;
+		}
+		.file-viewer-content {
+			flex: 1;
+			overflow: auto;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+			background: #e9ecef;
+		}
+		.file-viewer-content img {
+			max-width: 100%;
+			max-height: 100%;
+			object-fit: contain;
+			border-radius: 4px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		}
+		.file-viewer-content iframe,
+		.file-viewer-content object {
+			width: 100%;
+			height: 100%;
+			border: none;
+			border-radius: 4px;
+			background: #fff;
+		}
+		.file-viewer-unsupported {
+			text-align: center;
+			padding: 40px;
+		}
+		.file-viewer-unsupported img {
+			width: 64px;
+			height: 64px;
+			margin-bottom: 16px;
+			opacity: 0.5;
+		}
+		.file-viewer-unsupported p {
+			font-size: 14px;
+			color: #6c757d;
+			margin-bottom: 16px;
+		}
+		.file-viewer-unsupported button {
+			padding: 10px 24px;
+			background: #0066FF;
+			color: #fff;
+			border: none;
+			border-radius: 8px;
+			font-size: 14px;
+			cursor: pointer;
+		}
+		.file-viewer-unsupported button:hover {
+			background: #0052cc;
+		}
+	</style>
+
+	<script>
+	function scrollToSection(sectionId) {
+		const target = document.getElementById(sectionId);
+		if (target) {
+			const offset = 100;
+			const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+			window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+		}
+	}
+
+	(function() {
+		const sections = [
+			'section-product', 'section-reservation', 'section-payment',
+			'section-agent', 'section-agent-notes', 'section-flight',
+			'section-customer', 'section-traveler'
+		];
+
+		function updateActiveSection() {
+			const scrollPosition = window.scrollY + 150;
+
+			let currentSectionId = null;
+			for (let i = sections.length - 1; i >= 0; i--) {
+				const el = document.getElementById(sections[i]);
+				if (el && el.offsetTop <= scrollPosition) {
+					currentSectionId = sections[i];
+					break;
+				}
+			}
+
+			document.querySelectorAll('.aside-row[data-nav-section]').forEach(row => {
+				row.classList.remove('is-active');
+			});
+			if (currentSectionId) {
+				const activeRow = document.querySelector(`.aside-row[data-nav-section="${currentSectionId}"]`);
+				if (activeRow) activeRow.classList.add('is-active');
+			}
+		}
+
+		window.addEventListener('scroll', updateActiveSection);
+		window.addEventListener('load', updateActiveSection);
+	})();
+	</script>
 </body>
 
 </html>

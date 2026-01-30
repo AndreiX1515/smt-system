@@ -6,6 +6,12 @@ ini_set('log_errors', 1);
 
 require __DIR__ . '/../../../backend/conn.php';
 
+// Email notification service (for auto-cancellation notifications)
+$email_service_file = __DIR__ . '/../../../backend/services/email_notification_service.php';
+if (file_exists($email_service_file)) {
+    require_once $email_service_file;
+}
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
@@ -204,9 +210,57 @@ function ensureInquiryRepliesTable($conn) {
 }
 
 /**
- * B2B   :
- * - /   +      cancelled 
- *   overview  /   .
+ * booking_status_history 테이블 존재 확인 및 생성
+ */
+function ensureBookingStatusHistoryTable($conn) {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+    try {
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS booking_status_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                bookingId VARCHAR(50) NOT NULL,
+                previousStatus VARCHAR(50),
+                newStatus VARCHAR(50) NOT NULL,
+                changedBy VARCHAR(100),
+                changedByType VARCHAR(20),
+                changedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_bookingId (bookingId),
+                INDEX idx_changedAt (changedAt)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    } catch (Throwable $e) { }
+}
+
+/**
+ * 자동취소 히스토리 기록
+ */
+function logAutoCancellation($conn, $bookingId, $previousStatus) {
+    ensureBookingStatusHistoryTable($conn);
+    try {
+        $phpTime = new DateTime('now', new DateTimeZone('Asia/Manila'));
+        $changedAt = $phpTime->format('Y-m-d H:i:s');
+        $changedBy = 'System (Auto-Cancel)';
+        $changedByType = 'system';
+        $newStatus = 'cancelled';
+
+        $stmt = $conn->prepare("
+            INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        if ($stmt) {
+            $stmt->bind_param('ssssss', $bookingId, $previousStatus, $newStatus, $changedBy, $changedByType, $changedAt);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) { }
+}
+
+/**
+ * B2B 자동취소:
+ * - 선금/잔금 기한 경과 + 증빙 미업로드 -> cancelled
+ *   overview 페이지 로드 시 일괄 적용.
  */
 function applyB2BAutoCancellation($conn) {
     try {
@@ -215,14 +269,20 @@ function applyB2BAutoCancellation($conn) {
         if ($bookingsColumnsCheck) {
             while ($c = $bookingsColumnsCheck->fetch_assoc()) $cols[] = strtolower($c['Field']);
         }
-        // Payment columns (통일: downPayment*, balanceFile 사용)
+        // Payment columns (통일: downPayment*, advancePayment*, balanceFile, fullPayment* 사용)
         $hasDownPaymentDueDate = in_array('downpaymentduedate', $cols, true);
         $hasDownPaymentFile = in_array('downpaymentfile', $cols, true);
+        $hasAdvancePaymentDueDate = in_array('advancepaymentduedate', $cols, true);
+        $hasAdvancePaymentFile = in_array('advancepaymentfile', $cols, true);
         $hasBalanceDueDate = in_array('balanceduedate', $cols, true);
         $hasBalanceFile = in_array('balancefile', $cols, true);
+        $hasFullPaymentDueDate = in_array('fullpaymentduedate', $cols, true);
+        $hasFullPaymentFile = in_array('fullpaymentfile', $cols, true);
 
         $hasAnyCancellationCondition = ($hasDownPaymentDueDate && $hasDownPaymentFile)
-            || ($hasBalanceDueDate && $hasBalanceFile);
+            || ($hasAdvancePaymentDueDate && $hasAdvancePaymentFile)
+            || ($hasBalanceDueDate && $hasBalanceFile)
+            || ($hasFullPaymentDueDate && $hasFullPaymentFile);
         if (!$hasAnyCancellationCondition) return;
 
         $hasPackages = false;
@@ -249,12 +309,43 @@ function applyB2BAutoCancellation($conn) {
         if ($hasDownPaymentDueDate && $hasDownPaymentFile) {
             $conds[] = "(" . $dateExpr('b.downPaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.downPaymentDueDate') . " < CURDATE() AND COALESCE(b.downPaymentFile,'') = '')";
         }
+        // advancePaymentDueDate + advancePaymentFile (secondPayment)
+        if ($hasAdvancePaymentDueDate && $hasAdvancePaymentFile) {
+            $conds[] = "(" . $dateExpr('b.advancePaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.advancePaymentDueDate') . " < CURDATE() AND COALESCE(b.advancePaymentFile,'') = '')";
+        }
         // balanceDueDate + balanceFile
         if ($hasBalanceDueDate && $hasBalanceFile) {
             $conds[] = "(" . $dateExpr('b.balanceDueDate') . " IS NOT NULL AND " . $dateExpr('b.balanceDueDate') . " < CURDATE() AND COALESCE(b.balanceFile,'') = '')";
         }
+        // fullPaymentDueDate + fullPaymentFile
+        if ($hasFullPaymentDueDate && $hasFullPaymentFile) {
+            $conds[] = "(" . $dateExpr('b.fullPaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.fullPaymentDueDate') . " < CURDATE() AND COALESCE(b.fullPaymentFile,'') = '')";
+        }
         if (empty($conds)) return;
 
+        // 먼저 취소될 예약들을 SELECT하여 히스토리 기록
+        $selectSql = "SELECT b.bookingId, b.bookingStatus
+                FROM bookings b
+                $join
+                WHERE COALESCE(b.paymentStatus,'') = 'pending'
+                  AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
+                  $b2bCond
+                  AND (" . implode(' OR ', $conds) . ")";
+        $result = $conn->query($selectSql);
+        if ($result && $result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                // 각 예약에 대해 히스토리 기록
+                logAutoCancellation($conn, $row['bookingId'], $row['bookingStatus'] ?? '');
+
+                // Send auto-cancellation notification email
+                if (function_exists('send_rejection_notification_email')) {
+                    $reason = 'Payment deadline has passed without payment proof submission.';
+                    send_rejection_notification_email($conn, $row['bookingId'], 'auto_cancellation', $reason);
+                }
+            }
+        }
+
+        // UPDATE 실행
         $sql = "UPDATE bookings b
                 $join
                 SET b.bookingStatus='cancelled', b.paymentStatus='failed'
@@ -271,7 +362,7 @@ function applyB2BAutoCancellation($conn) {
 try {
     $data = [];
     ensurePackageViewsTable($conn);
-    applyB2BAutoCancellation($conn);
+    // applyB2BAutoCancellation($conn); // 자동취소 임시 비활성화
 
     // 1. 예약 현황: bookingStatus 컬럼 값 기준 카운트 (단순화)
     // - 빈 bookingStatus는 제외
@@ -395,7 +486,7 @@ try {
         $customerTypeColumn = "CASE WHEN UPPER(COALESCE(b.customerType,'')) = 'B2C' THEN 'B2C' ELSE 'B2B' END";
     } elseif ($hasAccountsTable) {
         $customerTypeColumn = "CASE
-            WHEN a.accountType IN ('agent','employee','admin') THEN 'B2B'
+            WHEN a.accountType IN ('agent','employee','admin_ph','admin_kr') THEN 'B2B'
             WHEN COALESCE(a.affiliateCode, '') <> '' THEN 'B2B'
             ELSE 'B2C'
         END";

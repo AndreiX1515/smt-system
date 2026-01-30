@@ -8,14 +8,6 @@ $(function () {
   if ($contractInput.length) {
     $contractInput.daterangepicker({
       autoUpdateInput: false,
-      // :    100  
-      // daterangepicker   dateLimit  maxSpan        
-      // NOTE:
-      // - daterangepicker days  "end-start"   ( )  
-      //   days:100   101()  ,  (<=100)  .
-      // -   99  " 100" .
-      dateLimit: { days: 99 },
-      maxSpan: { days: 99 },
       locale: {
         format: 'YYYY-MM-DD',
         separator: ' ~ ',
@@ -83,23 +75,36 @@ $(function () {
 
 
   /** --------------------------------------------------
-   *   (Single Date Picker)
+   * Date Filter (Range Picker - 하루 또는 기간 선택 가능)
    --------------------------------------------------**/
   const $travelInput = $('#travelStartDate');
 
   if ($travelInput.length) {
     $travelInput.daterangepicker({
-      singleDatePicker: true,
       autoUpdateInput: false,
       locale: {
         format: 'YYYY-MM-DD',
+        separator: ' ~ ',
         applyLabel: 'Apply',
-        cancelLabel: 'Cancel'
+        cancelLabel: 'Clear',
+        daysOfWeek: ['Su','Mo','Tu','We','Th','Fr','Sa'],
+        monthNames: [
+          'January','February','March','April','May','June',
+          'July','August','September','October','November','December'
+        ],
+        firstDay: 0
       }
     });
 
     $travelInput.on('apply.daterangepicker', function (ev, picker) {
-      $(this).val(picker.startDate.format('YYYY-MM-DD'));
+      const startDate = picker.startDate.format('YYYY-MM-DD');
+      const endDate = picker.endDate.format('YYYY-MM-DD');
+      // 같은 날이면 하루만 표시, 다르면 기간으로 표시
+      if (startDate === endDate) {
+        $(this).val(startDate);
+      } else {
+        $(this).val(startDate + ' ~ ' + endDate);
+      }
     });
 
     $travelInput.on('cancel.daterangepicker', function () {

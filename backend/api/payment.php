@@ -560,26 +560,7 @@ function saveBookingRooms($bookingId, $selectedRooms) {
     }
 }
 
-//   
-function saveBookingOptions($bookingId, $selectedOptions) {
-    global $conn;
-    
-    foreach ($selectedOptions as $optionType => $option) {
-        $stmt = $conn->prepare("
-            INSERT INTO booking_options (
-                bookingId, optionType, optionName, optionPrice
-            ) VALUES (?, ?, ?, ?)
-        ");
-        
-        $stmt->bind_param('sssd', 
-            $bookingId, $optionType, $option['name'] ?? $optionType, $option['price'] ?? 0
-        );
-        
-        $stmt->execute();
-    }
-}
-
-//   
+// 
 function updateCustomerInfo($userId, $customerInfo) {
     global $conn;
     

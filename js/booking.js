@@ -1,11 +1,11 @@
 //   API
 
-// B2B 사용자 여부 확인 (agent/admin = B2B, 나머지 = B2C)
+// B2B 사용자 여부 확인 (agent/admin_ph/admin_kr = B2B, 나머지 = B2C)
 function isB2BUser() {
     const accountType = String(localStorage.getItem('accountType') || '').toLowerCase();
     const clientType = String(localStorage.getItem('clientType') || '').toLowerCase();
-    // agent, admin 또는 wholeseller 타입은 B2B
-    return accountType === 'agent' || accountType === 'admin' || clientType === 'wholeseller';
+    // agent, admin_ph, admin_kr 또는 wholeseller 타입은 B2B
+    return accountType === 'agent' || accountType === 'admin_ph' || accountType === 'admin_kr' || clientType === 'wholeseller';
 }
 
 //

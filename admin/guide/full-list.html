@@ -219,7 +219,8 @@
 								return `
 									<tr onclick="window.location.href='assigned-schedule-detail.html?id=${escapeHtml(booking.bookingId)}${__testGuideQs}'" style="cursor: pointer;">
 										<td class="is-center">${rowNumber}</td>
-										<td>${escapeHtml(booking.packageName || '')}</td>
+										<!-- (HTML 태그 수정) 디코딩 적용 -->
+										<td>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</td>
 										<td class="is-center">${escapeHtml(booking.travelStartDate || '')}</td>
 										<td class="is-center">${escapeHtml(booking.reserverName || '-')}</td>
 										<td class="is-center">${booking.numberOfPeople || 0}</td>
@@ -316,6 +317,14 @@
 			const div = document.createElement('div');
 			div.textContent = text;
 			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
 		}
 	</script>
 </body>

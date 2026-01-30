@@ -247,8 +247,8 @@ try {
     $stmt->bind_param("i", $user['accountId']);
     $stmt->execute();
     
-    // 기존 만료된 세션 정리 (2시간 이상 비활성)
-    $cleanupStmt = $conn->prepare("DELETE FROM user_sessions WHERE last_activity < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
+    // 기존 만료된 세션 정리 (세션 유효시간 초과 비활성)
+    $cleanupStmt = $conn->prepare("DELETE FROM user_sessions WHERE last_activity < DATE_SUB(NOW(), " . SESSION_LIFETIME_INTERVAL . ")");
     $cleanupStmt->execute();
     
     // 새 세션 저장
@@ -262,7 +262,34 @@ try {
     $_SESSION['email'] = $user['emailAddress'];
     $_SESSION['account_type'] = $user['accountType'];
     $_SESSION['session_id'] = $session_id;
-    
+
+    // Remember Token 처리 (자동 로그인)
+    if (!empty($input['rememberMe'])) {
+        $rememberToken = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $rememberToken);
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+
+        // 기존 토큰 삭제
+        $deleteStmt = $conn->prepare("DELETE FROM remember_tokens WHERE accountId = ?");
+        $deleteStmt->bind_param("i", $user['accountId']);
+        $deleteStmt->execute();
+
+        // 새 토큰 저장
+        $tokenStmt = $conn->prepare("INSERT INTO remember_tokens (accountId, token_hash, expires_at) VALUES (?, ?, ?)");
+        $tokenStmt->bind_param("iss", $user['accountId'], $tokenHash, $expiresAt);
+        $tokenStmt->execute();
+
+        // 쿠키에 평문 토큰 저장 (30일, HttpOnly, Secure)
+        $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        setcookie('remember_token', $rememberToken, [
+            'expires' => strtotime('+30 days'),
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+    }
+
     // 로그 기록
     log_activity($user['accountId'], "user_login", "User login: {$user['emailAddress']} (ID: {$user['accountId']})");
     

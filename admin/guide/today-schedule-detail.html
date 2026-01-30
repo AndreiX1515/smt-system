@@ -290,7 +290,8 @@
 			container.innerHTML = `
 				<div class="card-panel jw-mgt32">
 					<p><strong> </strong> ${today ? `(${escapeHtml(today)})` : ''}</p>
-					<p style="margin-top: 8px;">${escapeHtml(String(b.packageName || ''))}</p>
+					<!-- (HTML 태그 수정) 디코딩 적용 -->
+					<p style="margin-top: 8px;">${escapeHtml(decodeHtmlEntities(b.packageName) || '')}</p>
 					<p style="margin-top: 6px; color:#666;">${escapeHtml(String(b.travelStartDate || ''))} - ${escapeHtml(String(b.travelEndDate || ''))}</p>
 				</div>
 			`;
@@ -549,6 +550,14 @@
 			const div = document.createElement('div');
 			div.textContent = text;
 			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
 		}
 	</script>
 </body>

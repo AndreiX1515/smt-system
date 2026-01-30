@@ -171,7 +171,7 @@ function getUserReviews($user_id) {
         $user_id = intval($user_id);
         
         // Check permission
-        if ($_SESSION['accountId'] != $user_id && $_SESSION['accountType'] !== 'admin') {
+        if ($_SESSION['accountId'] != $user_id && !in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
             send_json_response(['success' => false, 'message' => 'Access denied'], 403);
             return;
         }
@@ -216,7 +216,7 @@ function getAllReviews() {
     global $conn;
     
     try {
-        if (!isAuthenticated() || $_SESSION['accountType'] !== 'admin') {
+        if (!isAuthenticated() || !in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
             send_json_response(['success' => false, 'message' => 'Admin access required'], 403);
             return;
         }
@@ -417,7 +417,7 @@ function handlePutRequest() {
         $review = $result->fetch_assoc();
         
         // Check permission
-        if ($_SESSION['accountId'] != $review['userId'] && $_SESSION['accountType'] !== 'admin') {
+        if ($_SESSION['accountId'] != $review['userId'] && !in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
             send_json_response(['success' => false, 'message' => 'Access denied'], 403);
             return;
         }
@@ -443,7 +443,7 @@ function handlePutRequest() {
             $types .= "s";
         }
         
-        if (isset($input['isActive']) && $_SESSION['accountType'] === 'admin') {
+        if (isset($input['isActive']) && in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
             $update_fields[] = "isActive = ?";
             $params[] = intval($input['isActive']);
             $types .= "i";
@@ -506,7 +506,7 @@ function handleDeleteRequest() {
         $review = $result->fetch_assoc();
         
         // Check permission
-        if ($_SESSION['accountId'] != $review['userId'] && $_SESSION['accountType'] !== 'admin') {
+        if ($_SESSION['accountId'] != $review['userId'] && !in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
             send_json_response(['success' => false, 'message' => 'Access denied'], 403);
             return;
         }

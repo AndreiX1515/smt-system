@@ -64,8 +64,9 @@ if (defined('DEBUG_MODE') && DEBUG_MODE) {
 ini_set('log_errors', 0); // 로그 파일 사용 안 함
 
 // 세션 설정
-ini_set('session.gc_maxlifetime', 7200); // 2시간
-ini_set('session.cookie_lifetime', 7200); // 2시간
+require_once __DIR__ . '/config/session.php';
+ini_set('session.gc_maxlifetime', SESSION_LIFETIME_SECONDS);
+ini_set('session.cookie_lifetime', SESSION_LIFETIME_SECONDS);
 ini_set('session.cookie_path', '/'); // 모든 경로에서 세션 공유
 
 // 세션 시작

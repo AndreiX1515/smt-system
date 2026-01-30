@@ -432,7 +432,7 @@
                 });
                 const sessionData = await sessionResponse.json();
                 const isAdmin = sessionData && sessionData.authenticated &&
-                               (sessionData.userType === 'admin' || sessionData.userType === 'super');
+                               (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
                 if (!isAdmin) {
                     window.location.href = '../index.html';
                     return;
@@ -521,7 +521,8 @@
                             <div class="product-item" data-package-id="${pkg.packageId}" onclick="selectProductInModal(${pkg.packageId})">
                                 <div class="product-item-content">
                                     <div class="product-info">
-                                        <div class="product-name">${escapeHtml(pkg.packageName || '')}</div>
+                                        <!-- (HTML 태그 수정) 디코딩 적용 -->
+                                        <div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}</div>
                                         <div class="product-meta">
                                             Max: ${pkg.maxParticipants || '-'} seats |
                                             <span class="product-price">${formatPrice(pkg.packagePrice)}</span>
@@ -603,6 +604,14 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // (HTML 태그 수정) HTML 엔티티 디코딩 함수
+        function decodeHtmlEntities(str) {
+            if (!str) return str;
+            const txt = document.createElement('textarea');
+            txt.innerHTML = str;
+            return txt.value;
         }
 
         // 모달 열기

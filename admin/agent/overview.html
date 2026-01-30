@@ -28,8 +28,88 @@
 			<time class="page-date" id="current-date" datetime=""></time>
 
 			<h1 class="page-title" data-lan-eng="Operating Status">Operating Status</h1>
-			
-						
+
+			<!-- Sale Products -->
+			<div class="card-panel jw-mgt32">
+				<div style="margin-bottom: 16px;">
+					<h2 class="card-title" data-lan-eng="Sale Products">Sale Products</h2>
+					<p class="card-subtitle" style="color: #666; font-size: 13px;" data-lan-eng="Special discounted packages on sale now">Special discounted packages on sale now</p>
+				</div>
+
+				<div class="tableA-scroll" style="max-height: 400px; overflow-y: auto;">
+					<div class="jw-tableA typeB">
+						<table>
+							<colgroup>
+								<col style="width:50px;"><!-- No -->
+								<col><!-- Package Name -->
+								<col style="width:120px;"><!-- Date -->
+								<col style="width:120px;"><!-- Original Price -->
+								<col style="width:120px;"><!-- Sale Price -->
+								<col style="width:80px;"><!-- Seats -->
+								<col style="width:80px;"><!-- Action -->
+							</colgroup>
+							<thead style="position: sticky; top: 0; background: #fff; z-index: 1;">
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Package Name">Package Name</th>
+									<th data-lan-eng="Date">Date</th>
+									<th data-lan-eng="Original">Original</th>
+									<th data-lan-eng="Sale Price">Sale Price</th>
+									<th data-lan-eng="Seats">Seats</th>
+									<th data-lan-eng="Book">Book</th>
+								</tr>
+							</thead>
+							<tbody id="saleProductsTableBody">
+								<tr>
+									<td colspan="7" class="is-center" data-lan-eng="Loading...">Loading...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+			<!-- Sale Products Modal -->
+			<div id="saleProductsModal" class="modal" style="display: none;" onclick="closeSaleProductsModal()">
+				<div class="modal-content" style="width: 95vw; max-width: 1400px; height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+					<div class="modal-header">
+						<h3 class="modal-title" data-lan-eng="All Sale Products">All Sale Products</h3>
+						<button type="button" class="modal-close" onclick="closeSaleProductsModal()">&times;</button>
+					</div>
+					<div class="modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+						<div class="jw-tableA typeB">
+							<table>
+								<colgroup>
+									<col style="width:50px;"><!-- No -->
+									<col><!-- Package Name -->
+									<col style="width:120px;"><!-- Date -->
+									<col style="width:120px;"><!-- Original Price -->
+									<col style="width:120px;"><!-- Sale Price -->
+									<col style="width:80px;"><!-- Seats -->
+									<col style="width:80px;"><!-- Action -->
+								</colgroup>
+								<thead>
+									<tr>
+										<th>No</th>
+										<th data-lan-eng="Package Name">Package Name</th>
+										<th data-lan-eng="Date">Date</th>
+										<th data-lan-eng="Original">Original</th>
+										<th data-lan-eng="Sale Price">Sale Price</th>
+										<th data-lan-eng="Seats">Seats</th>
+										<th data-lan-eng="Book">Book</th>
+									</tr>
+								</thead>
+								<tbody id="allSaleProductsTableBody">
+								</tbody>
+							</table>
+						</div>
+					</div>
+					<div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid #e5e7eb; text-align: right;">
+						<button type="button" class="jw-btn" onclick="closeSaleProductsModal()" data-lan-eng="Close">Close</button>
+					</div>
+				</div>
+			</div>
+
 			<div class="overview-card-grid jw-mgt32">
 				<!--   -->
 				<article class="card">
@@ -91,45 +171,7 @@
 				</article>
 			</div>
 
-			<!-- Best Price Packages -->
 			<div class="card-panel jw-mgt32">
-				<div style="margin-bottom: 16px;">
-					<h2 class="card-title" data-lan-eng="Best Price Packages">Best Price Packages</h2>
-					<p class="card-subtitle" style="color: #666; font-size: 13px;" data-lan-eng="Packages available at the lowest price">Packages available at the lowest price</p>
-				</div>
-
-				<div class="tableA-scroll">
-					<div class="jw-tableA typeB">
-						<table>
-							<colgroup>
-								<col style="width:50px;"><!-- No -->
-								<col><!-- Package Name -->
-								<col style="width:120px;"><!-- Best Date -->
-								<col style="width:100px;"><!-- Price -->
-								<col style="width:80px;"><!-- Capacity -->
-								<col style="width:80px;"><!-- Action -->
-							</colgroup>
-							<thead>
-								<tr>
-									<th>No</th>
-									<th data-lan-eng="Package Name">Package Name</th>
-									<th data-lan-eng="Best Date">Best Date</th>
-									<th data-lan-eng="Price">Price</th>
-									<th data-lan-eng="Seats">Seats</th>
-									<th data-lan-eng="Book">Book</th>
-								</tr>
-							</thead>
-							<tbody id="bestPricePackagesTableBody">
-								<tr>
-									<td colspan="6" class="is-center" data-lan-eng="Loading...">Loading...</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</div>
-			</div>
-
-			<div class="card-panel jw-mgt68">
 				<h2 class="card-title" data-lan-eng="Today's Travel Itinerary">Today's Travel Itinerary</h2>
 				<p class="card-subtitle"><strong id="todayBookingsCount">0<span data-lan-eng="cases">cases</span></strong></p>
 
@@ -204,7 +246,7 @@
 
 				//
 				await loadOverviewData();
-				await loadBestPricePackages();
+				await loadSaleProducts();
 				await loadTodayItineraries();
 			} catch (error) {
 				console.error('Session check error:', error);
@@ -276,44 +318,71 @@
 			}
 		}
 
-		async function loadBestPricePackages() {
-			const tbody = document.getElementById('bestPricePackagesTableBody');
+		// 전체 세일 상품 데이터 저장
+		let allSaleProducts = [];
+
+		async function loadSaleProducts() {
+			const tbody = document.getElementById('saleProductsTableBody');
 			try {
-				const response = await fetch('../backend/api/agent-api.php?action=getBestPricePackages', {
+				const response = await fetch('../backend/api/agent-api.php?action=getSaleProducts', {
 					credentials: 'same-origin'
 				});
 				const result = await response.json();
 
 				if (result.success && result.data) {
-					const packages = result.data;
+					allSaleProducts = result.data;
 
-					if (packages.length === 0) {
+					if (allSaleProducts.length === 0) {
 						const lang = getCookie('lang') || 'eng';
-						const noDataMsg = lang === 'eng' ? 'No packages available.' : '이용 가능한 패키지가 없습니다.';
-						tbody.innerHTML = `<tr><td colspan="6" class="is-center">${noDataMsg}</td></tr>`;
+						const noDataMsg = lang === 'eng' ? 'No sale products available.' : '세일 상품이 없습니다.';
+						tbody.innerHTML = `<tr><td colspan="7" class="is-center">${noDataMsg}</td></tr>`;
 					} else {
-						tbody.innerHTML = packages.map((item, index) => {
-							return `
-								<tr>
-									<td class="is-center">${index + 1}</td>
-									<td class="ellipsis" title="${escapeHtml(item.packageName || '')}">${escapeHtml(item.packageName || '')}</td>
-									<td class="is-center">${escapeHtml(item.bestDate || '')}</td>
-									<td class="is-center" style="font-weight: 600; color: #2563eb;">${escapeHtml(item.formattedPrice || '')}</td>
-									<td class="is-center">${item.remainingSeats || '-'}</td>
-									<td class="is-center">
-										<a href="create-reservation.html?packageId=${item.packageId}&date=${item.bestDate}" class="btn-link" style="color: #2563eb; text-decoration: underline; font-weight: 600;">Book</a>
-									</td>
-								</tr>
-							`;
+						// 전체 목록 표시 (스크롤로 확인)
+						tbody.innerHTML = allSaleProducts.map((item, index) => {
+							return renderSaleProductRow(item, index);
 						}).join('');
 					}
 				} else {
-					tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load packages.</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">Failed to load sale products.</td></tr>';
 				}
 			} catch (error) {
-				console.error('Error loading best price packages:', error);
-				tbody.innerHTML = '<tr><td colspan="6" class="is-center">Error loading packages.</td></tr>';
+				console.error('Error loading sale products:', error);
+				tbody.innerHTML = '<tr><td colspan="7" class="is-center">Error loading sale products.</td></tr>';
 			}
+		}
+
+		function renderSaleProductRow(item, index) {
+			return `
+				<tr>
+					<td class="is-center">${index + 1}</td>
+					<td class="ellipsis" title="${escapeHtml(decodeHtmlEntities(item.packageName) || '')}">${escapeHtml(decodeHtmlEntities(item.packageName) || '')}</td>
+					<td class="is-center">${escapeHtml(item.availableDate || '')}</td>
+					<td class="is-center" style="text-decoration: line-through; color: #9ca3af;">${escapeHtml(item.formattedOriginalPrice || '')}</td>
+					<td class="is-center" style="font-weight: 600; color: #dc2626;">${escapeHtml(item.formattedSalePrice || '')} <span style="font-size: 11px; color: #16a34a;">${escapeHtml(item.formattedDiscount || '')}</span></td>
+					<td class="is-center">${item.remainingSeats || '-'}</td>
+					<td class="is-center">
+						<a href="create-reservation.html?packageId=${item.packageId}&date=${item.availableDate}" class="btn-link" style="color: #2563eb; text-decoration: underline; font-weight: 600;">Book</a>
+					</td>
+				</tr>
+			`;
+		}
+
+		function openSaleProductsModal() {
+			const modal = document.getElementById('saleProductsModal');
+			const tbody = document.getElementById('allSaleProductsTableBody');
+
+			tbody.innerHTML = allSaleProducts.map((item, index) => {
+				return renderSaleProductRow(item, index);
+			}).join('');
+
+			modal.style.display = 'flex';
+			document.body.style.overflow = 'hidden';
+		}
+
+		function closeSaleProductsModal() {
+			const modal = document.getElementById('saleProductsModal');
+			modal.style.display = 'none';
+			document.body.style.overflow = '';
 		}
 
 		async function loadTodayItineraries() {
@@ -342,10 +411,11 @@
 							tbody.innerHTML = '<tr><td colspan="6" class="is-center">   .</td></tr>';
 						} else {
 							tbody.innerHTML = itineraries.map((item, index) => {
+								// (HTML 태그 수정) 디코딩 적용
 								return `
 									<tr style="cursor: pointer;">
 										<td class="is-center">${index + 1}</td>
-										<td class="ellipsis" onclick="goToReservationDetail('${escapeHtml(item.bookingId)}')">${escapeHtml(item.packageName || '')}</td>
+										<td class="ellipsis" onclick="goToReservationDetail('${escapeHtml(item.bookingId)}')">${escapeHtml(decodeHtmlEntities(item.packageName) || '')}</td>
 										<td class="is-center">${escapeHtml(item.travelPeriod || '')}</td>
 										<td class="is-center">${escapeHtml(item.customerType || '')}</td>
 										<td class="is-center">${item.numPeople || 0}</td>
@@ -375,7 +445,15 @@
 			div.textContent = text;
 			return div.innerHTML;
 		}
-		
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+
 		function getCookie(name) {
 			const nameEQ = name + "=";
 			const ca = document.cookie.split(';');

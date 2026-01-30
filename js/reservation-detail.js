@@ -247,10 +247,10 @@ function updateReservationStatus(status) {
         const ps = String(booking.paymentStatus || '').toLowerCase();
 
         // B2B/B2C 판별: accountType 기반
-        // - accountType IN ('agent', 'admin') → B2B
+        // - accountType IN ('agent', 'admin_ph', 'admin_kr') → B2B
         // - accountType IN ('guest', 'guide', 'cs', '') → B2C
         const accountType = String(localStorage.getItem('accountType') || '').toLowerCase();
-        const isB2B = accountType === 'agent' || accountType === 'admin';
+        const isB2B = accountType === 'agent' || accountType === 'admin_ph' || accountType === 'admin_kr';
 
         // 상태키 결정(요구사항)
         let key = '';

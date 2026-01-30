@@ -165,7 +165,7 @@ function getGuideLocationByBooking($booking_id) {
         // Check if user can access this booking
         $sessionAccountId = $_SESSION['accountId'] ?? $_SESSION['user_id'] ?? null;
         $sessionUserType = $_SESSION['userType'] ?? $_SESSION['accountType'] ?? '';
-        if ($sessionAccountId != $booking['accountId'] && $sessionUserType !== 'admin' && $sessionUserType !== 'super') {
+        if ($sessionAccountId != $booking['accountId'] && !in_array($sessionUserType, ['admin_ph', 'admin_kr', 'super'], true)) {
             send_json_response(['success' => false, 'message' => 'Access denied'], 403);
             return;
         }
@@ -233,7 +233,7 @@ function handlePostRequest() {
 function handlePutRequest() {
     global $conn;
     
-    if (!isAuthenticated() || $_SESSION['accountType'] !== 'admin') {
+    if (!isAuthenticated() || !in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
         send_json_response(['success' => false, 'message' => 'Admin access required'], 403);
         return;
     }
@@ -291,7 +291,7 @@ function handlePutRequest() {
 function handleDeleteRequest() {
     global $conn;
     
-    if (!isAuthenticated() || $_SESSION['accountType'] !== 'admin') {
+    if (!isAuthenticated() || !in_array($_SESSION['accountType'] ?? '', ['admin_ph', 'admin_kr'], true)) {
         send_json_response(['success' => false, 'message' => 'Admin access required'], 403);
         return;
     }

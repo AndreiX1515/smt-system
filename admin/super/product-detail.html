@@ -219,12 +219,9 @@
 						</div>
 
 						<div class="grid-item">
-							<label class="label-name"><span data-lan-eng="Airline">Airline</span></label>
-							<select class="select airline-select">
-								<option value="">Select Airline</option>
-								<option value="Cebu Pacific">Cebu Pacific</option>
-								<option value="Air Asia">Air Asia</option>
-								<option value="Jeju Air">Jeju Air</option>
+							<label class="label-name"><span data-lan-eng="Option Category">Option Category</span></label>
+							<select class="select airline-select option-category-select">
+								<option value="">Select Option</option>
 							</select>
 						</div>
 
@@ -327,12 +324,9 @@
 						</div>
 
 						<div class="grid-item">
-							<label class="label-name"><span data-lan-eng="Airline">Airline</span></label>
-							<select class="select airline-select">
-								<option value="">Select Airline</option>
-								<option value="Cebu Pacific">Cebu Pacific</option>
-								<option value="Air Asia">Air Asia</option>
-								<option value="Jeju Air">Jeju Air</option>
+							<label class="label-name"><span data-lan-eng="Option Category">Option Category</span></label>
+							<select class="select airline-select option-category-select">
+								<option value="">Select Option</option>
 							</select>
 						</div>
 
@@ -433,9 +427,8 @@
 								<input id="contract-period" type="text" class="jw-w form-control" placeholder="Please select a date" readonly>
 								<button type="button" class="btn-icon calendar" aria-label=" " data-target="#contract-period"></button>
 							</div>
-							<p class="form-desc is-warning" data-lan-eng="The period can only be set up to a maximum of 100 days.">  <b>100</b>  .</p>
 						</div>
-				
+
 						<!-- // -->
 						<div class="grid-item">
 							<label class="label-name"><span data-lan-eng="Minimum departure headcount">Minimum departure headcount</span> <span class="req">*</span></label>
@@ -1638,6 +1631,14 @@
 				return label ? label.closest('.grid-item') : null;
 			}
 
+			// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+			function __decodeHtmlEntities(str) {
+				if (!str) return str;
+				const txt = document.createElement('textarea');
+				txt.innerHTML = str;
+				return txt.value;
+			}
+
 			function __ensureIdFromLanEng(lanEngValue, id, selector = 'input, select, textarea') {
 				const item = __findLabelByLanEng(lanEngValue);
 				const el = item ? item.querySelector(selector) : null;
@@ -2777,7 +2778,8 @@
 						__ensureIdFromLanEng('Product Name', 'productName') ||
 						__ensureId('', 'productName');
 					if (nameEl) {
-						nameEl.value = pkg.packageName || '';
+						// (HTML 태그 수정) 디코딩 적용
+						nameEl.value = __decodeHtmlEntities(pkg.packageName) || '';
 						try { nameEl.setAttribute('value', nameEl.value); } catch (_) {}
 					}
 					const descEl =
@@ -3859,7 +3861,8 @@
 					//  
 					__ensureProductIds();
 					const nameEl = document.getElementById('productName');
-					if (nameEl) nameEl.value = String(product.productName || t.templateName || '').trim();
+					// (HTML 태그 수정) 디코딩 적용
+					if (nameEl) nameEl.value = __decodeHtmlEntities(String(product.productName || t.templateName || '').trim()) || '';
 
 					const salesSel = document.getElementById('salesTarget');
 					if (salesSel) {
@@ -4128,8 +4131,27 @@
 					const sessionData = await sessionRes.json().catch(() => ({}));
 					if (!sessionData?.authenticated) { window.location.href = '../index.html'; return; }
 
-					//      "  " 
+					//      "  "
 					__clearPublishingDefaults();
+
+					// 옵션 대분류 로드 (Option Category Select)
+					try {
+						const optRes = await fetch('../backend/api/super-api.php?action=getMainOptionCategories', { credentials: 'same-origin' });
+						const optData = await optRes.json().catch(() => ({}));
+						if (optData?.success && Array.isArray(optData?.data?.mainCategories)) {
+							const optionSelects = document.querySelectorAll('.option-category-select');
+							optionSelects.forEach(sel => {
+								sel.innerHTML = '<option value="">Select Option</option>';
+								optData.data.mainCategories.forEach(cat => {
+									const opt = document.createElement('option');
+									opt.value = cat;
+									opt.textContent = cat;
+									sel.appendChild(opt);
+								});
+								try { if (typeof updateJwSelect === 'function') updateJwSelect(sel); } catch (_) {}
+							});
+						}
+					} catch (e) { console.warn('Failed to load option categories:', e); }
 
 					//    (/)
 					try {
@@ -4407,12 +4429,14 @@
 			// Clear values
 			newBlock.querySelectorAll('input.form-control').forEach(input => input.value = '');
 
-			// Clear editor content
+			// Clear editor content and reset Quill classes
 			const editorDiv = newBlock.querySelector('.jweditor');
 			if (editorDiv) {
 				editorDiv.innerHTML = '';
 				// Remove existing Quill instance reference
 				delete editorDiv.__quill;
+				// Remove Quill-added classes so it can be re-initialized
+				editorDiv.classList.remove('ql-container', 'ql-snow', 'ql-bubble');
 			}
 
 			// Clear images

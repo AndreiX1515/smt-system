@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>주문 관리 - Shop Admin</title>
+    <link rel="shortcut icon" href="../image/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/a_reset.css">
+    <link rel="stylesheet" href="../css/a_variables.css">
+    <link rel="stylesheet" href="../css/a_components.css">
+    <link rel="stylesheet" href="../css/a_contents.css">
+    <style>
+        .shop-admin { padding: 30px; }
+        .page-header { margin-bottom: 24px; }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+        .filter-bar select, .filter-bar input { display: block !important; height: 40px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-preparing { background: #cce5ff; color: #004085; }
+        .status-shipped { background: #d1ecf1; color: #0c5460; }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-refunded { background: #e2e3e5; color: #383d41; }
+        .btn-detail { padding: 8px 16px; background: #0065F8; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .order-amount { font-weight: 600; color: #0065F8; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; background: #f5f5f5; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .tab.active { background: #0065F8; color: #fff; }
+        .stats-row { display: flex; gap: 16px; margin-bottom: 24px; }
+        .stat-card { flex: 1; padding: 20px; background: #fff; border: 1px solid #eee; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #0065F8; }
+        .stat-label { font-size: 14px; color: #666; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <header class="layout-header"></header>
+
+    <main class="layout-main">
+        <aside class="layout-side"></aside>
+
+        <section class="layout-content">
+            <div class="shop-admin">
+                <div class="page-header">
+                    <h1 class="page-title">주문 관리</h1>
+                </div>
+
+                <div class="stats-row" id="statsRow">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">전체 주문</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statPending">0</div>
+                        <div class="stat-label">결제대기</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statPreparing">0</div>
+                        <div class="stat-label">준비중</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statShipped">0</div>
+                        <div class="stat-label">배송중</div>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" data-status="">전체</button>
+                    <button class="tab" data-status="pending">결제대기</button>
+                    <button class="tab" data-status="paid">결제완료</button>
+                    <button class="tab" data-status="preparing">준비중</button>
+                    <button class="tab" data-status="shipped">배송중</button>
+                    <button class="tab" data-status="delivered">배송완료</button>
+                    <button class="tab" data-status="cancelled">취소</button>
+                </div>
+
+                <div class="filter-bar">
+                    <input type="text" id="searchKeyword" placeholder="주문번호 또는 수령인 검색">
+                    <button class="jw-button typeB" onclick="loadOrders()">검색</button>
+                </div>
+
+                <table class="jw-tableA">
+                    <thead>
+                        <tr>
+                            <th class="col-150">주문번호</th>
+                            <th class="col-150">주문일시</th>
+                            <th class="col-100">수령인</th>
+                            <th class="col-120">연락처</th>
+                            <th class="col-120">결제금액</th>
+                            <th class="col-100">상태</th>
+                            <th class="col-100">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderList">
+                        <tr><td colspan="7" class="is-center">로딩중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="../js/default.js"></script>
+    <script src="../js/super.js"></script>
+    <script>
+        init({
+            headerUrl: '../inc/header.html',
+            sideUrl: '../inc/side-shop.html'
+        });
+
+        const API_BASE = '/backend/api/shop';
+        let currentStatus = '';
+
+        const statusLabels = {
+            'pending': '결제대기',
+            'paid': '결제완료',
+            'preparing': '준비중',
+            'shipped': '배송중',
+            'delivered': '배송완료',
+            'cancelled': '취소',
+            'refunded': '환불'
+        };
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentStatus = tab.dataset.status;
+                loadOrders();
+            };
+        });
+
+        async function loadOrders() {
+            try {
+                const keyword = document.getElementById('searchKeyword').value.trim();
+                let url = `${API_BASE}/admin-orders.php?status=${currentStatus}`;
+                if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                const tbody = document.getElementById('orderList');
+
+                // 통계 업데이트
+                if (data.stats) {
+                    document.getElementById('statTotal').textContent = data.stats.total || 0;
+                    document.getElementById('statPending').textContent = data.stats.pending || 0;
+                    document.getElementById('statPreparing').textContent = data.stats.preparing || 0;
+                    document.getElementById('statShipped').textContent = data.stats.shipped || 0;
+                }
+
+                if (data.success && data.orders.length > 0) {
+                    tbody.innerHTML = data.orders.map(o => {
+                        const date = new Date(o.created_at);
+                        const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+
+                        return `
+                        <tr>
+                            <td>${o.order_no}</td>
+                            <td class="is-center">${dateStr}</td>
+                            <td class="is-center">${o.receiver_name}</td>
+                            <td class="is-center">${o.receiver_phone}</td>
+                            <td class="is-center order-amount">₱${Number(o.total_amount).toLocaleString()}</td>
+                            <td class="is-center">
+                                <span class="status-badge status-${o.status}">${statusLabels[o.status] || o.status}</span>
+                            </td>
+                            <td class="is-center">
+                                <button class="btn-detail" onclick="viewOrder(${o.id})">상세</button>
+                            </td>
+                        </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="is-center">주문이 없습니다.</td></tr>';
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('orderList').innerHTML = '<tr><td colspan="7" class="is-center">데이터를 불러올 수 없습니다.</td></tr>';
+            }
+        }
+
+        function viewOrder(id) {
+            location.href = `order-detail.html?id=${id}`;
+        }
+
+        // 엔터키로 검색
+        document.getElementById('searchKeyword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loadOrders();
+        });
+
+        loadOrders();
+    </script>
+</body>
+</html>

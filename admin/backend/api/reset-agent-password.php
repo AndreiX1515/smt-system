@@ -54,7 +54,7 @@ try {
     // - accountType으로 업무 구분(agent/guide/admin/employee)
     $acc = null;
 
-    $accStmt = $conn->prepare("SELECT accountId, username, emailAddress, accountType FROM accounts WHERE username = ? AND accountType IN ('agent','guide','admin','employee') LIMIT 1");
+    $accStmt = $conn->prepare("SELECT accountId, username, emailAddress, accountType FROM accounts WHERE username = ? AND accountType IN ('agent','guide','admin_ph','admin_kr','employee') LIMIT 1");
     if (!$accStmt) throw new Exception("쿼리 준비 실패: " . $conn->error);
     $accStmt->bind_param('s', $loginId);
     $accStmt->execute();
@@ -80,8 +80,8 @@ try {
 
     // 이름 조회/검증
     $fullName = '';
-    if ($accountType === 'admin' || $accountType === 'employee') {
-        // admin/employee: 환경에 따라 employee 테이블이 있을 수 있으므로 가능한 경우 이름을 조인/조회하여 검증 강화
+    if (in_array($accountType, ['admin_ph', 'admin_kr', 'employee'], true)) {
+        // admin_ph/admin_kr/employee: 환경에 따라 employee 테이블이 있을 수 있으므로 가능한 경우 이름을 조인/조회하여 검증 강화
         // - 우선순위: employee(accountId) -> employee(email) -> accounts.username fallback
         $employeeFullName = '';
         $hasEmployeeTable = $table_exists('employee');
@@ -218,7 +218,7 @@ try {
     $sendRes = mailer_send($to, $subject, $html, $text);
     $sent = (bool)($sendRes['ok'] ?? false);
     $via = (string)($sendRes['via'] ?? 'none');
-    $smtpConfigured = (trim((string)getenv('SMTP_HOST')) !== '' && trim((string)getenv('SMTP_USER')) !== '' && (string)getenv('SMTP_PASS') !== '');
+    $postmarkConfigured = (trim((string)getenv('POSTMARK_API_TOKEN')) !== '');
     $debugReturn = (string)getenv('MAIL_DEBUG_RETURN_PASSWORD') === '1';
 
     if (!$sent) {
@@ -233,9 +233,9 @@ try {
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => $smtpConfigured
-                ? '메일 발송에 실패했습니다. 서버 메일(SMTP) 설정을 확인해주세요.'
-                : '메일 발송에 실패했습니다. SMTP 설정이 필요합니다.',
+            'message' => $postmarkConfigured
+                ? '메일 발송에 실패했습니다. Postmark 설정을 확인해주세요.'
+                : '메일 발송에 실패했습니다. Postmark API 토큰 설정이 필요합니다.',
             'data' => [
                 'mailSent' => false,
                 'mailVia' => $via,

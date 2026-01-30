@@ -102,16 +102,8 @@
               <select id="company-filter" name="company-filter" class="form-control">
                 <option disabled selected>Select Travel Agency</option>
                 <?php
-                $companyQuery = "SELECT companyId, companyName FROM company WHERE branchId = $branchId";
-                $companyResult = $conn->query($companyQuery);
-
-                if ($companyResult->num_rows > 0) {
-                  while ($row = $companyResult->fetch_assoc()) {
-                    echo "<option value=\"{$row['companyId']}\">{$row['companyName']}</option>";
-                  }
-                } else {
-                  echo "<option disabled>No Travel Agency available</option>";
-                }
+                // company 테이블 제거됨
+                echo "<option disabled>No Travel Agency available</option>";
                 ?>
               </select>
             </div>

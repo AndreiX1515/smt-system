@@ -606,7 +606,7 @@ function isAuthenticated() {
 }
 
 function isAdmin() {
-    return isset($_SESSION['accountType']) && $_SESSION['accountType'] === 'admin';
+    return isset($_SESSION['accountType']) && in_array($_SESSION['accountType'], ['admin_ph', 'admin_kr'], true);
 }
 
 ?>

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20251231">
+
+	<!--   ( ) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+	<style>
+		/* 승인/거절 버튼 스타일 */
+		.btn-approve {
+			background: #22c55e;
+			color: #fff;
+			border: none;
+			padding: 6px 12px;
+			border-radius: 6px;
+			font-size: 12px;
+			cursor: pointer;
+			margin-right: 4px;
+		}
+		.btn-approve:hover {
+			background: #16a34a;
+		}
+		.btn-reject {
+			background: #ef4444;
+			color: #fff;
+			border: none;
+			padding: 6px 12px;
+			border-radius: 6px;
+			font-size: 12px;
+			cursor: pointer;
+		}
+		.btn-reject:hover {
+			background: #dc2626;
+		}
+
+		/* 페이지네이션 스타일 */
+		.pagination-wrap {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 4px;
+			margin-top: 16px;
+			padding: 12px 0;
+		}
+		.pagination-wrap:empty {
+			display: none;
+		}
+		.pagination-wrap .page-btn {
+			min-width: 32px;
+			height: 32px;
+			padding: 0 8px;
+			border: 1px solid #d4d4d4;
+			background: #fff;
+			border-radius: 6px;
+			font-size: 14px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.pagination-wrap .page-btn:hover {
+			background: #f5f5f5;
+		}
+		.pagination-wrap .page-btn.active {
+			background: #3b82f6;
+			color: #fff;
+			border-color: #3b82f6;
+		}
+		.pagination-wrap .page-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+		.pagination-wrap .page-info {
+			margin: 0 8px;
+			font-size: 14px;
+			color: #666;
+		}
+
+		/* 탭 스타일 */
+		.tab-wrap {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 16px;
+			border-bottom: 2px solid #e5e5e5;
+			padding-bottom: 0;
+		}
+		.tab-btn {
+			padding: 12px 24px;
+			border: none;
+			background: transparent;
+			font-size: 14px;
+			font-weight: 500;
+			color: #737373;
+			cursor: pointer;
+			border-bottom: 2px solid transparent;
+			margin-bottom: -2px;
+			transition: all 0.2s ease;
+		}
+		.tab-btn:hover {
+			color: #3b82f6;
+		}
+		.tab-btn.active {
+			color: #3b82f6;
+			border-bottom-color: #3b82f6;
+		}
+		.tab-btn .badge {
+			display: inline-flex !important;
+			align-items: center;
+			justify-content: center;
+			min-width: 20px;
+			height: 20px;
+			padding: 0 6px !important;
+			background: #e5e5e5 !important;
+			color: #737373 !important;
+			border-radius: 10px;
+			font-size: 12px;
+			line-height: 1 !important;
+			margin-left: 6px;
+			position: relative;
+		}
+		.tab-btn .badge::before,
+		.tab-btn .badge::after {
+			display: none !important;
+			content: none !important;
+		}
+		.tab-btn.active .badge {
+			background: #3b82f6 !important;
+			color: #fff !important;
+		}
+
+		/* 변경 하이라이트 스타일 */
+		.changed-field {
+			background: #fef3c7;
+			padding: 2px 6px;
+			border-radius: 4px;
+			position: relative;
+		}
+		.changed-field::after {
+			content: attr(data-original);
+			display: none;
+			position: absolute;
+			bottom: 100%;
+			left: 0;
+			background: #1f2937;
+			color: #fff;
+			padding: 4px 8px;
+			border-radius: 4px;
+			font-size: 11px;
+			white-space: nowrap;
+			z-index: 10;
+		}
+		.changed-field:hover::after {
+			display: block;
+		}
+		.change-arrow {
+			color: #f59e0b;
+			font-weight: bold;
+			margin: 0 4px;
+		}
+		.original-value {
+			color: #9ca3af;
+			text-decoration: line-through;
+			font-size: 12px;
+		}
+		.current-value {
+			color: #059669;
+			font-weight: 500;
+		}
+		.change-indicator {
+			display: inline-block;
+			width: 8px;
+			height: 8px;
+			background: #f59e0b;
+			border-radius: 50%;
+			margin-right: 4px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+			<h1 class="page-title" data-lan-eng="B2B Pending List">B2B Pending List</h1>
+
+			<!-- 검색 필터 영역 -->
+			<div class="card-panel jw-mgt32">
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Total">Total</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+						<div class="grid-item">
+							<input id="travelStartDate" type="text" placeholder="Travel start date" readonly data-lan-eng-placeholder="Travel start date" style="width:200px !important; height:46px !important; border:1px solid #D4D4D4 !important; border-radius:12px !important; padding:0 40px 0 16px !important; background:#fff url('../image/calendar.svg') no-repeat right 12px center !important; background-size:24px 24px !important; font-size:16px !important; color:#121212 !important; cursor:pointer !important;">
+						</div>
+						<div class="search-field">
+							<select class="select" name="searchType" id="searchType" onchange="applyFilters()">
+								<option value="all" data-lan-eng="All">All</option>
+								<option value="product" data-lan-eng="Product Name">Product Name</option>
+								<option value="agent" data-lan-eng="Agent Name">Agent Name</option>
+							</select>
+							<input type="text" class="search-input" id="searchInput" placeholder=" " data-lan-eng="Search" onkeyup="if(event.key==='Enter') applyFilters()">
+							<button type="submit" class="jw-button search-btn" aria-label="" onclick="applyFilters(); return false;">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<!-- 탭 영역 -->
+			<div class="card-panel jw-mgt24">
+				<div class="tab-wrap">
+					<button class="tab-btn active" data-tab="pending" onclick="switchTab('pending')">
+						<span data-lan-eng="New Bookings">New Bookings</span>
+						<span class="badge" id="pendingBadge">0</span>
+					</button>
+					<button class="tab-btn" data-tab="pending_update" onclick="switchTab('pending_update')">
+						<span data-lan-eng="Update Requests">Update Requests</span>
+						<span class="badge" id="updateBadge">0</span>
+					</button>
+				</div>
+
+				<!-- Pending (신규 예약) Section -->
+				<div class="tab-content" id="tab-pending">
+					<div class="section-body" id="body-pending">
+						<table class="jw-tableA">
+							<colgroup>
+								<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:80px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+							</colgroup>
+							<thead>
+								<tr>
+									<th class="no is-center">No</th>
+									<th data-lan-eng="Product Name">Product Name</th>
+									<th data-lan-eng="Travel start date" class="is-center">Travel start date</th>
+									<th data-lan-eng="Date Booked" class="is-center">Date Booked</th>
+									<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+									<th data-lan-eng="Requested By" class="is-center">Requested By</th>
+									<th data-lan-eng="PAX" class="is-center">PAX</th>
+									<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+									<th data-lan-eng="Action" class="is-center">Action</th>
+								</tr>
+							</thead>
+							<tbody id="tbody-pending"><tr><td colspan="9" class="is-center">Loading...</td></tr></tbody>
+						</table>
+						<div class="pagination-wrap" id="pagination-pending"></div>
+					</div>
+				</div>
+
+				<!-- Pending Update (수정 요청) Section -->
+				<div class="tab-content" id="tab-pending_update" style="display:none;">
+					<div class="section-body" id="body-pending-update">
+						<table class="jw-tableA">
+							<colgroup>
+								<col style="width:50px;"><col style="width:160px;"><col style="width:100px;"><col style="width:100px;"><col style="width:100px;"><col style="width:80px;"><col style="width:140px;"><col style="width:200px;">
+							</colgroup>
+							<thead>
+								<tr>
+									<th class="no is-center">No</th>
+									<th data-lan-eng="Product Name">Product Name</th>
+									<th data-lan-eng="Travel start date" class="is-center">Travel start date</th>
+									<th data-lan-eng="Date Booked" class="is-center">Date Booked</th>
+									<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+									<th data-lan-eng="Requested By" class="is-center">Requested By</th>
+									<th data-lan-eng="Status Change" class="is-center">상태 변경</th>
+									<th data-lan-eng="Action" class="is-center">Action</th>
+								</tr>
+							</thead>
+							<tbody id="tbody-pending-update"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+						</table>
+						<div class="pagination-wrap" id="pagination-pending-update"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadCsvBtn" data-lan-eng="Download">Download</button>
+			</div>
+
+
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20251226_b2bbookingfix1"></script>
+	<script src="../js/super.js?v=20251226_b2bbookingfix1"></script>
+	<script src="../js/datepicker.js?v=20251231"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentFilters = { search: '', travelStartDate: '', searchType: 'all' };
+		let currentTab = 'pending';
+
+		// 페이지네이션 설정
+		const PAGE_SIZE = 10;
+		let pendingData = [];
+		let pendingUpdateData = [];
+		let currentPendingPage = 1;
+		let currentUpdatePage = 1;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				try {
+					if (window.jQuery) {
+						jQuery('#travelStartDate')
+							.on('apply.daterangepicker', function () { applyFilters(); })
+							.on('cancel.daterangepicker', function () { applyFilters(); });
+					}
+				} catch (_) { }
+
+				await loadAllBookings();
+				setupDownload();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function switchTab(tab) {
+			currentTab = tab;
+
+			// 탭 버튼 활성화 상태 변경
+			document.querySelectorAll('.tab-btn').forEach(btn => {
+				btn.classList.remove('active');
+				if (btn.dataset.tab === tab) {
+					btn.classList.add('active');
+				}
+			});
+
+			// 탭 컨텐츠 표시/숨김
+			document.querySelectorAll('.tab-content').forEach(content => {
+				content.style.display = 'none';
+			});
+			document.getElementById('tab-' + tab).style.display = 'block';
+
+			// 다국어 재적용
+			try {
+				const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+				if (typeof language_apply === 'function') language_apply(lang);
+			} catch (_) { }
+		}
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			currentFilters.travelStartDate = document.getElementById('travelStartDate').value;
+			currentFilters.searchType = document.getElementById('searchType')?.value || 'all';
+			loadAllBookings();
+		}
+
+		async function loadAllBookings() {
+			const tbodyPending = document.getElementById('tbody-pending');
+			const tbodyUpdate = document.getElementById('tbody-pending-update');
+			if (tbodyPending) tbodyPending.innerHTML = '<tr><td colspan="9" class="is-center">Loading...</td></tr>';
+			if (tbodyUpdate) tbodyUpdate.innerHTML = '<tr><td colspan="8" class="is-center">Loading...</td></tr>';
+
+			try {
+				// 전체 데이터를 가져오기 위해 limit을 크게 설정
+				const params = new URLSearchParams({
+					action: 'getB2BBookings',
+					page: 1,
+					limit: 1000
+				});
+
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.searchType) params.append('searchType', currentFilters.searchType);
+				if (currentFilters.travelStartDate) params.append('travelStartDate', currentFilters.travelStartDate);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { bookings } = result.data;
+
+					// Pending 상태 필터링
+					pendingData = bookings.filter(booking => {
+						const statusKey = String(booking.statusKey || booking.bookingStatus || '').toLowerCase().trim();
+						return statusKey === 'pending';
+					});
+
+					// Pending Update 상태 필터링
+					pendingUpdateData = bookings.filter(booking => {
+						const statusKey = String(booking.statusKey || booking.bookingStatus || '').toLowerCase().trim();
+						return statusKey === 'pending_update';
+					});
+
+					// 전체 카운트 표시
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = (pendingData.length + pendingUpdateData.length) || 0;
+
+					// 탭 배지 업데이트
+					const pendingBadgeEl = document.getElementById('pendingBadge');
+					const updateBadgeEl = document.getElementById('updateBadge');
+					if (pendingBadgeEl) pendingBadgeEl.textContent = pendingData.length;
+					if (updateBadgeEl) updateBadgeEl.textContent = pendingUpdateData.length;
+
+					// 페이지 초기화 및 렌더링
+					currentPendingPage = 1;
+					currentUpdatePage = 1;
+					renderPendingTable();
+					renderPendingUpdateTable();
+
+					// 다국어 적용
+					try {
+						const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+						if (typeof language_apply === 'function') language_apply(lang);
+					} catch (_) { }
+				} else {
+					if (tbodyPending) tbodyPending.innerHTML = '<tr><td colspan="9" class="is-center">Failed to load data.</td></tr>';
+					if (tbodyUpdate) tbodyUpdate.innerHTML = '<tr><td colspan="8" class="is-center">Failed to load data.</td></tr>';
+				}
+			} catch (error) {
+				console.error('Error loading bookings:', error);
+				if (tbodyPending) tbodyPending.innerHTML = '<tr><td colspan="9" class="is-center">Error loading data.</td></tr>';
+				if (tbodyUpdate) tbodyUpdate.innerHTML = '<tr><td colspan="8" class="is-center">Error loading data.</td></tr>';
+			}
+		}
+
+		function renderPendingTable() {
+			const tbody = document.getElementById('tbody-pending');
+			const paginationEl = document.getElementById('pagination-pending');
+			const totalPages = Math.ceil(pendingData.length / PAGE_SIZE);
+
+			if (!tbody) return;
+
+			if (pendingData.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="9" class="is-center" data-lan-eng="No data">No data</td></tr>';
+				if (paginationEl) paginationEl.innerHTML = '';
+				return;
+			}
+
+			// 현재 페이지 데이터만 추출
+			const startIdx = (currentPendingPage - 1) * PAGE_SIZE;
+			const endIdx = startIdx + PAGE_SIZE;
+			const pageBookings = pendingData.slice(startIdx, endIdx);
+
+			tbody.innerHTML = pageBookings.map((booking, index) => {
+				let dateBooked = '';
+				if (booking.createdAt) {
+					const d = new Date(booking.createdAt);
+					if (!isNaN(d.getTime())) {
+						dateBooked = d.toISOString().split('T')[0];
+					}
+				}
+				const globalIndex = startIdx + index;
+
+				// Requested By 표시
+				const reqType = (booking.requestedByType || '').toLowerCase();
+				let requestedByLabel = '';
+				let requestedByStyle = '';
+				if (reqType === 'agent') {
+					requestedByLabel = 'Agent';
+					requestedByStyle = 'background:#dbeafe; color:#1d4ed8; padding:2px 8px; border-radius:4px; font-size:11px;';
+				} else if (reqType === 'employee') {
+					requestedByLabel = 'Employee';
+					requestedByStyle = 'background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:4px; font-size:11px;';
+				} else if (reqType) {
+					requestedByLabel = reqType;
+					requestedByStyle = 'background:#f3f4f6; color:#374151; padding:2px 8px; border-radius:4px; font-size:11px;';
+				}
+
+				return `
+					<tr>
+						<td class="no is-center">${globalIndex + 1}</td>
+						<!-- (HTML 태그 수정) 디코딩 적용 -->
+						<td class="td-ellipsis" onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor:pointer;"><span>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</span></td>
+						<td class="is-center">${escapeHtml(booking.departureDate || booking.travelStartDate || '')}</td>
+						<td class="is-center">${escapeHtml(dateBooked)}</td>
+						<td class="is-center">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
+						<td class="is-center">${requestedByLabel ? `<span style="${requestedByStyle}">${requestedByLabel}</span>` : '-'}</td>
+						<td class="is-center">${Number(booking.numberOfPeople || 0)}</td>
+						<td class="is-center">${
+							booking.guideName
+								? escapeHtml(booking.guideName)
+								: '<span data-lan-eng="Unassigned">Unassigned</span>'
+						}</td>
+						<td class="is-center">
+							<button class="jw-button btn-approve" onclick="event.stopPropagation(); approveBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Approve">Approve</button>
+							<button class="jw-button btn-reject" onclick="event.stopPropagation(); rejectBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Reject">Reject</button>
+						</td>
+					</tr>
+				`;
+			}).join('');
+
+			// 페이지네이션 렌더링
+			renderPagination('pending', currentPendingPage, totalPages);
+		}
+
+		function renderPendingUpdateTable() {
+			const tbody = document.getElementById('tbody-pending-update');
+			const paginationEl = document.getElementById('pagination-pending-update');
+			const totalPages = Math.ceil(pendingUpdateData.length / PAGE_SIZE);
+
+			if (!tbody) return;
+
+			if (pendingUpdateData.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="8" class="is-center" data-lan-eng="No data">No data</td></tr>';
+				if (paginationEl) paginationEl.innerHTML = '';
+				return;
+			}
+
+			// 현재 페이지 데이터만 추출
+			const startIdx = (currentUpdatePage - 1) * PAGE_SIZE;
+			const endIdx = startIdx + PAGE_SIZE;
+			const pageBookings = pendingUpdateData.slice(startIdx, endIdx);
+
+			tbody.innerHTML = pageBookings.map((booking, index) => {
+				let dateBooked = '';
+				if (booking.createdAt) {
+					const d = new Date(booking.createdAt);
+					if (!isNaN(d.getTime())) {
+						dateBooked = d.toISOString().split('T')[0];
+					}
+				}
+				const globalIndex = startIdx + index;
+
+				// 변경 내역 분석
+				const changes = getChangeSummary(booking);
+				const statusChangeHtml = getStatusChangeHtml(booking);
+
+				// Requested By 표시
+				const reqType = (booking.requestedByType || '').toLowerCase();
+				let requestedByLabel = '';
+				let requestedByStyle = '';
+				if (reqType === 'agent') {
+					requestedByLabel = 'Agent';
+					requestedByStyle = 'background:#dbeafe; color:#1d4ed8; padding:2px 8px; border-radius:4px; font-size:11px;';
+				} else if (reqType === 'employee') {
+					requestedByLabel = 'Employee';
+					requestedByStyle = 'background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:4px; font-size:11px;';
+				} else if (reqType) {
+					requestedByLabel = reqType;
+					requestedByStyle = 'background:#f3f4f6; color:#374151; padding:2px 8px; border-radius:4px; font-size:11px;';
+				}
+
+				return `
+					<tr>
+						<td class="no is-center">${globalIndex + 1}</td>
+						<td class="td-ellipsis" onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor:pointer;">
+							<span class="change-indicator"></span>
+							<span>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</span>
+						</td>
+						<td class="is-center">${renderChangeField(booking, 'departureDate', booking.departureDate || booking.travelStartDate || '')}</td>
+						<td class="is-center">${escapeHtml(dateBooked)}</td>
+						<td class="is-center">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
+						<td class="is-center">${requestedByLabel ? `<span style="${requestedByStyle}">${requestedByLabel}</span>` : '-'}</td>
+						<td class="is-center">
+							${statusChangeHtml}
+						</td>
+						<td class="is-center">
+							<button class="jw-button btn-approve" onclick="event.stopPropagation(); approveUpdateBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Approve Update">Approve Update</button>
+							<button class="jw-button btn-reject" onclick="event.stopPropagation(); rejectUpdateBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Reject Update">Reject Update</button>
+						</td>
+					</tr>
+				`;
+			}).join('');
+
+			// 페이지네이션 렌더링
+			renderPagination('pending_update', currentUpdatePage, totalPages);
+		}
+
+		// 상태 라벨 맵핑
+		const statusLabels = {
+			'pending': '확인 대기',
+			'waiting_down_payment': 'Down Payment 대기',
+			'checking_down_payment': 'Down Payment 확인중',
+			'waiting_second_payment': 'Second Payment 대기',
+			'checking_second_payment': 'Second Payment 확인중',
+			'waiting_balance': 'Balance 대기',
+			'checking_balance': 'Balance 확인중',
+			'waiting_full_payment': 'Full Payment 대기',
+			'checking_full_payment': 'Full Payment 확인중',
+			'rejected': '증빙 거절',
+			'confirmed': '예약 확정',
+			'completed': '여행 완료',
+			'cancelled': '예약 취소',
+			'refunded': '환불 완료'
+		};
+
+		function getStatusLabel(status) {
+			return statusLabels[status] || status || 'Unknown';
+		}
+
+		function getChangeSummary(booking) {
+			// changeRequest 우선 사용 (새 테이블), previousData는 fallback
+			const cr = booking.changeRequest;
+			if (cr) {
+				const changes = [];
+				if (cr.changeType === 'status') {
+					changes.push(`Status: ${getStatusLabel(cr.originalStatus)} → ${getStatusLabel(cr.targetStatus)}`);
+				} else if (cr.changeType === 'travelers') {
+					const originalCount = (cr.previousData?.originalTravelers || []).length;
+					const pendingCount = (cr.newData?.pendingTravelers || []).length;
+					changes.push(`Travelers: ${originalCount}명 → ${pendingCount}명`);
+				} else {
+					changes.push('Other changes');
+				}
+				return changes.join(', ');
+			}
+
+			// Fallback to previousData (하위 호환)
+			if (!booking.previousData) return 'No changes recorded';
+
+			try {
+				const prev = typeof booking.previousData === 'string'
+					? JSON.parse(booking.previousData)
+					: booking.previousData;
+
+				const changes = [];
+
+				// 상태 변경 확인 (targetStatus가 있으면 상태 변경 요청)
+				if (prev.targetStatus) {
+					const fromStatus = prev.bookingStatus || booking.preStatus || 'unknown';
+					const toStatus = prev.targetStatus;
+					changes.push(`Status: ${getStatusLabel(fromStatus)} → ${getStatusLabel(toStatus)}`);
+				}
+
+				// Traveler 변경 확인 (pendingTravelers가 있으면 여행자 변경 요청)
+				if (prev.pendingTravelers) {
+					const originalCount = (prev.originalTravelers || []).length;
+					const pendingCount = (prev.pendingTravelers || []).length;
+					changes.push(`Travelers: ${originalCount}명 → ${pendingCount}명`);
+				}
+
+				const fieldLabels = {
+					departureDate: 'Travel Date',
+					adults: 'Adults',
+					children: 'Children',
+					infants: 'Infants',
+					totalAmount: 'Amount',
+					contactName: 'Contact Name',
+					contactEmail: 'Email',
+					contactPhone: 'Phone'
+				};
+
+				for (const [field, label] of Object.entries(fieldLabels)) {
+					if (prev[field] !== undefined && prev[field] != booking[field]) {
+						changes.push(`${label}: ${prev[field]} -> ${booking[field] || 'N/A'}`);
+					}
+				}
+
+				// PAX 변경 확인 (adults + children + infants)
+				const prevPax = (parseInt(prev.adults) || 0) + (parseInt(prev.children) || 0) + (parseInt(prev.infants) || 0);
+				const currentPax = (parseInt(booking.adults) || 0) + (parseInt(booking.children) || 0) + (parseInt(booking.infants) || 0);
+				if (prevPax !== currentPax && !changes.some(c => c.includes('Adults') || c.includes('Children') || c.includes('Infants'))) {
+					changes.push(`PAX: ${prevPax} -> ${currentPax}`);
+				}
+
+				return changes.length > 0 ? changes.join(', ') : 'Details changed';
+			} catch (e) {
+				return 'Changes recorded';
+			}
+		}
+
+		function getStatusChangeHtml(booking) {
+			// changeRequest 우선 사용 (새 테이블)
+			const cr = booking.changeRequest;
+			if (cr) {
+				if (cr.changeType === 'status') {
+					return `
+						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+							<span style="font-size:11px; color:#6b7280; padding:2px 6px; background:#f3f4f6; border-radius:4px;">${escapeHtml(getStatusLabel(cr.originalStatus))}</span>
+							<span style="color:#f59e0b; font-weight:bold;">↓</span>
+							<span style="font-size:11px; color:#fff; padding:2px 6px; background:#3b82f6; border-radius:4px;">${escapeHtml(getStatusLabel(cr.targetStatus))}</span>
+						</div>
+					`;
+				}
+
+				if (cr.changeType === 'travelers') {
+					const originalCount = (cr.previousData?.originalTravelers || []).length;
+					const pendingCount = (cr.newData?.pendingTravelers || []).length;
+					return `
+						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#8b5cf6; border-radius:4px;">👤 Traveler 변경</span>
+							<span style="font-size:10px; color:#6b7280;">${originalCount}명 → ${pendingCount}명</span>
+						</div>
+					`;
+				}
+
+				// 기타 변경 요청
+				return `<span class="changed-field" style="cursor:help;">Other changes</span>`;
+			}
+
+			// Fallback to previousData (하위 호환)
+			if (!booking.previousData) {
+				return '<span class="changed-field" style="cursor:help;">변경 내역 없음</span>';
+			}
+
+			try {
+				const prev = typeof booking.previousData === 'string'
+					? JSON.parse(booking.previousData)
+					: booking.previousData;
+
+				// 상태 변경 요청인 경우 (targetStatus가 있음)
+				if (prev.targetStatus) {
+					const fromStatus = prev.bookingStatus || booking.preStatus || 'unknown';
+					const toStatus = prev.targetStatus;
+					return `
+						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+							<span style="font-size:11px; color:#6b7280; padding:2px 6px; background:#f3f4f6; border-radius:4px;">${escapeHtml(getStatusLabel(fromStatus))}</span>
+							<span style="color:#f59e0b; font-weight:bold;">↓</span>
+							<span style="font-size:11px; color:#fff; padding:2px 6px; background:#3b82f6; border-radius:4px;">${escapeHtml(getStatusLabel(toStatus))}</span>
+						</div>
+					`;
+				}
+
+				// Traveler 변경 요청인 경우 (pendingTravelers가 있음)
+				if (prev.pendingTravelers) {
+					const originalCount = (prev.originalTravelers || []).length;
+					const pendingCount = (prev.pendingTravelers || []).length;
+					return `
+						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#8b5cf6; border-radius:4px;">👤 Traveler 변경</span>
+							<span style="font-size:10px; color:#6b7280;">${originalCount}명 → ${pendingCount}명</span>
+						</div>
+					`;
+				}
+
+				// 기타 데이터 변경 요청인 경우
+				const changes = getChangeSummary(booking);
+				return `<span class="changed-field" title="${escapeHtml(changes)}" style="cursor:help;">${changes.split(',').length} field(s)</span>`;
+			} catch (e) {
+				return '<span class="changed-field">변경 내역</span>';
+			}
+		}
+
+		function renderChangeField(booking, field, currentValue) {
+			if (!booking.previousData) return escapeHtml(currentValue);
+
+			try {
+				const prev = typeof booking.previousData === 'string'
+					? JSON.parse(booking.previousData)
+					: booking.previousData;
+
+				if (prev[field] !== undefined && prev[field] != currentValue) {
+					return `
+						<span class="changed-field" data-original="Previous: ${escapeHtml(prev[field])}">
+							<span class="original-value">${escapeHtml(prev[field])}</span>
+							<span class="change-arrow">-></span>
+							<span class="current-value">${escapeHtml(currentValue)}</span>
+						</span>
+					`;
+				}
+			} catch (e) {}
+
+			return escapeHtml(currentValue);
+		}
+
+		function renderPagination(type, page, totalPages) {
+			const paginationEl = document.getElementById('pagination-' + type);
+			if (!paginationEl) return;
+
+			if (totalPages <= 1) {
+				paginationEl.innerHTML = '';
+				return;
+			}
+
+			let html = '';
+
+			// 이전 버튼
+			html += `<button class="page-btn" onclick="goToPage('${type}', ${page - 1})" ${page === 1 ? 'disabled' : ''}>&lt;</button>`;
+
+			// 페이지 번호들
+			const maxVisiblePages = 5;
+			let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+			let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+			if (endPage - startPage + 1 < maxVisiblePages) {
+				startPage = Math.max(1, endPage - maxVisiblePages + 1);
+			}
+
+			if (startPage > 1) {
+				html += `<button class="page-btn" onclick="goToPage('${type}', 1)">1</button>`;
+				if (startPage > 2) {
+					html += `<span class="page-info">...</span>`;
+				}
+			}
+
+			for (let i = startPage; i <= endPage; i++) {
+				html += `<button class="page-btn ${i === page ? 'active' : ''}" onclick="goToPage('${type}', ${i})">${i}</button>`;
+			}
+
+			if (endPage < totalPages) {
+				if (endPage < totalPages - 1) {
+					html += `<span class="page-info">...</span>`;
+				}
+				html += `<button class="page-btn" onclick="goToPage('${type}', ${totalPages})">${totalPages}</button>`;
+			}
+
+			// 다음 버튼
+			html += `<button class="page-btn" onclick="goToPage('${type}', ${page + 1})" ${page === totalPages ? 'disabled' : ''}>&gt;</button>`;
+
+			paginationEl.innerHTML = html;
+		}
+
+		function goToPage(type, page) {
+			if (type === 'pending') {
+				const totalPages = Math.ceil(pendingData.length / PAGE_SIZE);
+				if (page < 1 || page > totalPages) return;
+				currentPendingPage = page;
+				renderPendingTable();
+			} else if (type === 'pending_update') {
+				const totalPages = Math.ceil(pendingUpdateData.length / PAGE_SIZE);
+				if (page < 1 || page > totalPages) return;
+				currentUpdatePage = page;
+				renderPendingUpdateTable();
+			}
+
+			// 다국어 재적용
+			try {
+				const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+				if (typeof language_apply === 'function') language_apply(lang);
+			} catch (_) { }
+		}
+
+		function setupDownload() {
+			const btn = document.getElementById('downloadCsvBtn');
+			if (!btn || btn._bound) return;
+			btn.addEventListener('click', () => {
+				const params = new URLSearchParams({ action: 'exportB2BBookingsCsv', status: currentTab });
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.searchType) params.append('searchType', currentFilters.searchType);
+				if (currentFilters.travelStartDate) params.append('travelStartDate', currentFilters.travelStartDate);
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			});
+			btn._bound = true;
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+
+		// 예약 승인 (pending -> waiting_down_payment)
+		async function approveBooking(bookingId) {
+			if (!confirm('이 예약을 승인하시겠습니까?\nApprove this booking?')) return;
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'approveB2BBooking');
+				formData.append('bookingId', bookingId);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('예약이 승인되었습니다.\nBooking approved.');
+					await loadAllBookings();
+				} else {
+					alert('승인 실패: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Approve error:', error);
+				alert('승인 중 오류가 발생했습니다.');
+			}
+		}
+
+		// 예약 거절 (pending -> rejected)
+		async function rejectBooking(bookingId) {
+			const reason = prompt('거절 사유를 입력하세요:\nEnter rejection reason:');
+			if (reason === null) return; // 취소
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'rejectB2BBooking');
+				formData.append('bookingId', bookingId);
+				formData.append('reason', reason);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('예약이 거절되었습니다.\nBooking rejected.');
+					await loadAllBookings();
+				} else {
+					alert('거절 실패: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Reject error:', error);
+				alert('거절 중 오류가 발생했습니다.');
+			}
+		}
+
+		// 수정 요청 승인 (pending_update -> preStatus로 복원)
+		async function approveUpdateBooking(bookingId) {
+			if (!confirm('이 수정 요청을 승인하시겠습니까?\nApprove this update request?')) return;
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'approveB2BBooking');
+				formData.append('bookingId', bookingId);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('수정 요청이 승인되었습니다.\nUpdate request approved.');
+					await loadAllBookings();
+				} else {
+					alert('승인 실패: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Approve update error:', error);
+				alert('승인 중 오류가 발생했습니다.');
+			}
+		}
+
+		// 수정 요청 거절 (pending_update -> check_reject)
+		async function rejectUpdateBooking(bookingId) {
+			const reason = prompt('수정 거절 사유를 입력하세요:\nEnter rejection reason for update:');
+			if (reason === null) return; // 취소
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'rejectB2BBooking');
+				formData.append('bookingId', bookingId);
+				formData.append('reason', reason);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('수정 요청이 거절되었습니다.\nUpdate request rejected.');
+					await loadAllBookings();
+				} else {
+					alert('거절 실패: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Reject update error:', error);
+				alert('거절 중 오류가 발생했습니다.');
+			}
+		}
+	</script>
+</body>
+
+</html>

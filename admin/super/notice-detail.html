@@ -242,7 +242,7 @@
 				});
 				const sessionData = await sessionResponse.json();
 				
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;

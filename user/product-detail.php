@@ -24,8 +24,8 @@ try {
     // account_type으로 B2B 판별 (일반 로그인으로 agent가 로그인한 경우)
     $sessionAccountType = strtolower(trim((string)($_SESSION['account_type'] ?? '')));
 
-    // agent 세션이 있거나, account_type이 agent/admin이면 B2B
-    if ($agentSessionId > 0 || in_array($sessionAccountType, ['agent', 'admin'], true)) {
+    // agent 세션이 있거나, account_type이 agent/admin_ph/admin_kr이면 B2B
+    if ($agentSessionId > 0 || in_array($sessionAccountType, ['agent', 'admin_ph', 'admin_kr'], true)) {
         $isB2B = true;
     } elseif ($sessionAccountId > 0) {
         // agent 세션이 없을 때만 일반 사용자의 clientType 확인
@@ -485,6 +485,23 @@ function formatFlightTime($time, $lang = null, $fallbackDate = null) {
     return formatDate($t, 'm.d(D) H:i', $lang);
 }
 
+// HTML 태그 제거 및 줄바꿈 유지 (WYSIWYG 에디터에서 저장된 콘텐츠 정리용)
+function cleanHtmlToText($html) {
+    if (empty($html)) return '';
+    $text = (string)$html;
+    // <br> 태그를 줄바꿈으로 변환
+    $text = preg_replace('/<br\s*\/?>/i', "\n", $text);
+    // </p> 태그를 줄바꿈으로 변환
+    $text = preg_replace('/<\/p>/i', "\n", $text);
+    // 나머지 HTML 태그 제거
+    $text = strip_tags($text);
+    // HTML 엔티티 디코드
+    $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
+    // 연속 줄바꿈 정리 (3개 이상 -> 2개)
+    $text = preg_replace('/\n{3,}/', "\n\n", $text);
+    return trim($text);
+}
+
 // 소요시간(종료-시작) 포맷: 요구사항 "Duration"은 시간 범위가 아니라 소요시간이어야 함
 function formatDuration($startTime, $endTime, $lang = null) {
     $s = trim((string)$startTime);
@@ -756,7 +773,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
         <!-- 상품 소개 펼치기 영역 -->
         <div id="product-description" class="px20 pb20 border-bottomea" style="display: none;">
             <?php if (!empty($product['packageDescription'])): ?>
-            <div class="text fz14 fw400 lh22 black12 mt16"><?php echo nl2br($product['packageDescription']); ?></div>
+            <div class="text fz14 fw400 lh22 black12 mt16"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($product['packageDescription']))); ?></div>
             <?php else: ?>
             <div class="text fz14 fw400 lh22 black12 mt16"><?php echoI18nText('no_intro', $currentLang); ?></div>
             <?php endif; ?>
@@ -791,7 +808,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                 <li>
                     <a href="#none" class="align both vm btn-folding">
                         <span class="text fz14 fw600 lh22 reded"><?php echo $schedule['day_number']; ?><?php echoI18nText('day', $currentLang); ?></span>
-                        <div class="text fz14 fw600 lh22 black12"><?php echo $schedule['description']; ?></div>
+                        <div class="text fz14 fw600 lh22 black12"><?php echo htmlspecialchars(cleanHtmlToText($schedule['description'])); ?></div>
                         <img src="../images/ico_arrow_down_black.svg" alt="">
                     </a>
                     <div class="card-wrap mt16">
@@ -817,7 +834,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                                         <img style="width: 100%; height: auto; border-radius: 8px;" src="../uploads/products/<?php echo htmlspecialchars($att['attraction_image']); ?>" alt="<?php echoI18nText('product_images', $currentLang); ?>">
                                         <?php endif; ?>
                                         <?php if (!empty($att['attraction_description'])): ?>
-                                        <div class="text fz12 fw500 lh16 black12" style="letter-spacing: 0.2px;"><?php echo nl2br(htmlspecialchars($att['attraction_description'])); ?></div>
+                                        <div class="text fz12 fw500 lh16 black12" style="letter-spacing: 0.2px;"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($att['attraction_description']))); ?></div>
                                         <?php endif; ?>
                                         <?php if (!empty($att['start_time']) && !empty($att['end_time'])): ?>
                                         <div style="display: flex; align-items: center; gap: 2px;">
@@ -849,7 +866,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                                     <img style="width: 100%; height: 193px; object-fit: cover; border-radius: 8px;" src="../uploads/products/<?php echo htmlspecialchars($schedule['airport_image']); ?>" alt="<?php echoI18nText('airport', $currentLang); ?>">
                                     <?php endif; ?>
                                     <?php if (!empty($schedule['airport_description'])): ?>
-                                    <div class="text fz12 fw500 lh16 black12" style="letter-spacing: 0.2px;"><?php echo nl2br(htmlspecialchars($schedule['airport_description'])); ?></div>
+                                    <div class="text fz12 fw500 lh16 black12" style="letter-spacing: 0.2px;"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($schedule['airport_description']))); ?></div>
                                     <?php endif; ?>
                                     <?php if (!empty($schedule['start_time']) && !empty($schedule['end_time'])): ?>
                                     <div style="display: flex; align-items: center; gap: 2px;">
@@ -868,19 +885,19 @@ function formatDuration($startTime, $endTime, $lang = null) {
                                     <?php if (!empty($schedule['breakfast'])): ?>
                                     <div class="text fz14 fw500 lh22 black12 align gap8">
                                         <span class="text fz14 fw500 lh22 gray6b"><?php echoI18nText('breakfast', $currentLang); ?></span>
-                                        <?php echo nl2br($schedule['breakfast']); ?>
+                                        <?php echo nl2br(htmlspecialchars(cleanHtmlToText($schedule['breakfast']))); ?>
                                     </div>
                                     <?php endif; ?>
                                     <?php if (!empty($schedule['lunch'])): ?>
                                     <div class="text fz14 fw500 lh22 black12 mt8 align gap8">
                                         <span class="text fz14 fw500 lh22 gray6b"><?php echoI18nText('lunch', $currentLang); ?></span>
-                                        <?php echo nl2br($schedule['lunch']); ?>
+                                        <?php echo nl2br(htmlspecialchars(cleanHtmlToText($schedule['lunch']))); ?>
                                     </div>
                                     <?php endif; ?>
                                     <?php if (!empty($schedule['dinner'])): ?>
                                     <div class="text fz14 fw500 lh22 black12 mt8 align gap8">
                                         <span class="text fz14 fw500 lh22 gray6b"><?php echoI18nText('dinner', $currentLang); ?></span>
-                                        <?php echo nl2br($schedule['dinner']); ?>
+                                        <?php echo nl2br(htmlspecialchars(cleanHtmlToText($schedule['dinner']))); ?>
                                     </div>
                                     <?php endif; ?>
                                 </div>
@@ -911,7 +928,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                         <div class="text fz12 fw500 lh16 grayb0"><?php echo htmlspecialchars($accom['address']); ?></div>
                         <?php endif; ?>
                         <?php if (!empty($accom['description'])): ?>
-                        <div class="text fz12 fw500 lh16 black12 mt8"><?php echo nl2br(htmlspecialchars($accom['description'])); ?></div>
+                        <div class="text fz12 fw500 lh16 black12 mt8"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($accom['description']))); ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -923,7 +940,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                 <div class="text fz14 fw600 lh22 black12"><?php echoI18nText('transportation', $currentLang); ?></div>
                 <div class="card-type7 mt8">
                     <div class="pt10">
-                        <div class="text fz14 fw500 lh22 black12"><?php echo $commonTransportation; ?></div>
+                        <div class="text fz14 fw500 lh22 black12"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($commonTransportation))); ?></div>
                     </div>
                 </div>
             </div>
@@ -964,7 +981,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
         <div class="px20 pb20 border-bottomea" id="use_guide">
             <div class="text fz14 fw600 lh24 black12 mt36"><?php echoI18nText('usage_guide', $currentLang); ?></div>
             <?php if (!empty($guides['usage'])): ?>
-            <div class="text fz14 fw400 lh22 black12 mt20"><?php echo $guides['usage']; ?></div>
+            <div class="text fz14 fw400 lh22 black12 mt20"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($guides['usage']))); ?></div>
             <?php else: ?>
             <div class="text fz14 fw400 lh22 black12 mt20"><?php echoI18nText('default_usage_guide', $currentLang); ?></div>
             <?php endif; ?>
@@ -977,7 +994,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
         <div class="px20 pb20 border-bottomea" id="cancellation_refund">
             <div class="text fz14 fw600 lh24 black12 mt36"><?php echoI18nText('cancellation_refund', $currentLang); ?></div>
             <?php if (!empty($guides['cancellation'])): ?>
-            <div class="text fz14 fw400 lh22 black12 mt12"><?php echo $guides['cancellation']; ?></div>
+            <div class="text fz14 fw400 lh22 black12 mt12"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($guides['cancellation']))); ?></div>
             <?php else: ?>
             <ul>
                 <li class="text fz14 fw400 lh22 black12">• Before 15 days of departure: 100% tour fare refund(No cancellation charge)</li>
@@ -990,7 +1007,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
         <div class="px20 pb20" id="visa_application">
             <div class="text fz14 fw600 lh24 black12 mt36"><?php echoI18nText('visa_application', $currentLang); ?></div>
             <?php if (!empty($guides['visa'])): ?>
-            <div class="text fz14 fw400 lh22 black12 mt20"><?php echo $guides['visa']; ?></div>
+            <div class="text fz14 fw400 lh22 black12 mt20"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($guides['visa']))); ?></div>
             <?php else: ?>
             <div class="text fz14 fw400 lh22 black12 mt20"><?php echoI18nText('default_visa_guide', $currentLang); ?></div>
             <?php endif; ?>

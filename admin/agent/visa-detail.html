@@ -42,6 +42,31 @@
 			</div>
 			<h1 class="page-title" data-lan-eng="Visa Application Details">Visa Application Details</h1>
 
+			<!-- Document Guide Section (for Group Visa) -->
+			<div id="documentGuideSection" class="jw-mgt32" style="display: none;">
+				<div class="card-panel" style="background: #f8f9fa;">
+					<div id="documentGuideHeader" style="padding: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<div style="font-size: 14px; font-weight: 600; color: #121212;">
+							<span id="visaTypeLabel">Group Visa</span> - Required Documents
+						</div>
+						<span id="documentGuideArrow" style="font-size: 12px; transition: transform 0.3s; transform: rotate(180deg);">▼</span>
+					</div>
+					<div id="documentGuideContent" style="padding: 0 16px 16px 16px;">
+						<div id="documentGuideList"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Document Download Section -->
+			<div id="visaFormDownloadSection" style="display: none;">
+				<h2 class="section-title jw-mgt32" data-lan-eng="Document Download">Document Download</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap" id="downloadGridWrap">
+						<!-- Downloads will be rendered dynamically -->
+					</div>
+				</div>
+			</div>
+
 			<h2 class="section-title jw-mgt32" data-lan-eng="Document Details">Document Details</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap" id="documentGridWrap">
@@ -184,15 +209,20 @@
 
 		let visaApplicationId = null;
 		let __visaApplication = null;
+		let __currentVisaType = 'group'; // default to group
+		let __initialLoadComplete = false; // flag to skip status recalculation on initial load
 
-		// Document configuration for Group visa
-		const DOCUMENT_CONFIG = [
-			{ key: 'passport', title: 'Passport bio page', required: true },
-			{ key: 'visaApplicationForm', title: 'Visa Application Form', required: true, download: true, downloadPath: '/uploads/visa/doc/Korea-visa-application.pdf' },
-			{ key: 'bankCertificate', title: 'Bank Certificate', required: true },
-			{ key: 'bankStatement', title: 'Bank Statement', required: true },
-			{ key: 'additionalDocuments', title: 'Additional requirements', required: false }
-		];
+		// Document configuration by visa type
+		const DOCUMENT_CONFIG = {
+			group: [
+				{ key: 'passport', title: 'Passport bio page', required: true },
+				{ key: 'visaApplicationForm', title: 'Visa Application Form', required: true },
+				{ key: 'bankCertificate', title: 'Bank Certificate', required: true },
+				{ key: 'bankStatement', title: 'Bank Statement', required: true },
+				{ key: 'additionalDocuments', title: 'Additional requirements', required: false }
+			],
+			individual: []
+		};
 
 		// Pending changes
 		const __pending = {
@@ -201,6 +231,7 @@
 			newVisaFilePath: '',
 			newVisaFileSize: 0,
 			deleteVisaFile: false,
+			visaSend: null,        // for individual visa: null means no change
 		};
 
 		function formatFileSize(bytes) {
@@ -220,7 +251,8 @@
 			return Object.keys(__pending.uploadedDocs).length > 0 ||
 				__pending.deleteDocs.size > 0 ||
 				Boolean(__pending.newVisaFilePath) ||
-				Boolean(__pending.deleteVisaFile);
+				Boolean(__pending.deleteVisaFile) ||
+				__pending.visaSend !== null;
 		}
 
 		document.addEventListener('DOMContentLoaded', async () => {
@@ -282,6 +314,15 @@
 			const v = String(val || '');
 			const opt = Array.from(el.options || []).find(o => o.value === v);
 			el.value = opt ? v : (el.options?.[0]?.value || '');
+
+			// Update custom jw-select UI if exists
+			const wrap = el.closest('.jw-select');
+			if (wrap) {
+				const box = wrap.querySelector('.jw-selected');
+				if (box && opt) {
+					box.textContent = opt.textContent;
+				}
+			}
 		}
 
 		function statusLabel(status) {
@@ -343,12 +384,358 @@
 			return __docPathFor(docKey, __visaApplication);
 		}
 
+		function renderDocumentGuide() {
+			const section = document.getElementById('documentGuideSection');
+			const downloadSection = document.getElementById('visaFormDownloadSection');
+			const label = document.getElementById('visaTypeLabel');
+			const list = document.getElementById('documentGuideList');
+			const downloadGrid = document.getElementById('downloadGridWrap');
+
+			if (!section || !list) return;
+
+			// Show for both group and individual
+			section.style.display = 'block';
+			if (downloadSection) downloadSection.style.display = 'block';
+
+			if (__currentVisaType === 'group') {
+				if (label) label.textContent = 'Group Visa';
+				list.innerHTML = getGroupGuideHtml();
+				if (downloadGrid) downloadGrid.innerHTML = getGroupDownloadHtml();
+			} else {
+				if (label) label.textContent = 'Individual Visa';
+				list.innerHTML = getIndividualGuideHtml();
+				if (downloadGrid) downloadGrid.innerHTML = getIndividualDownloadHtml();
+			}
+
+			// Setup toggle
+			setupDocumentGuideToggle();
+		}
+
+		function getGroupDownloadHtml() {
+			return `
+				<div class="grid-item">
+					<label class="label-name">Visa Application Form</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span>Korea-visa-application.pdf</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" onclick="downloadStaticDoc('/uploads/visa/doc/Korea-visa-application.pdf')" title="Download">
+									<img src="../image/button-download.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function getIndividualDownloadHtml() {
+			return `
+				<div class="grid-item">
+					<label class="label-name">Visa Application Form</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span>Korea-visa-application.pdf</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" onclick="downloadStaticDoc('/uploads/visa/doc/Korea-visa-application.pdf')" title="Download">
+									<img src="../image/button-download.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-item">
+					<label class="label-name">Signed Data Privacy Consent Form</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span>Data-Privacy-Consent-Form_KVAC.pdf</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" onclick="downloadStaticDoc('/uploads/visa/doc/Data-Privacy-Consent-Form_KVAC.pdf')" title="Download">
+									<img src="../image/button-download.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function getGroupGuideHtml() {
+			return `
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #121212; margin-bottom: 8px;">GENERAL REQUIREMENTS:</div>
+					<ol style="padding-left: 20px; margin: 0;">
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Passport bio page <span style="color: #6c757d;">(Make sure it is signed & still valid.)</span> <span style="color: #6c757d;">(Kindly submit old passport for checking of previous Korean Visa application)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Application form <span style="color: #6c757d;">(computerized/handwritten, print in A4, original/e-signature)</span> with attach passport size photo <span style="color: #6c757d;">(formal, NO HEAD ACCESSORIES, no teeth shown, or better studio taken)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Certificate with Average Daily Balance for 6 months, date opened, account type & balance <span style="color: #6c757d;">(should be addressed to Korean Embassy)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Statement – 3 months
+						</li>
+					</ol>
+				</div>
+
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #dc3545; margin-bottom: 8px;">PLEASE NOTE ADDITIONAL REQUIREMENTS BELOW:</div>
+					<div style="background: #e7f3ff; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; color: #0056b3;">
+						<strong>NOTE:</strong> If applying as family, PSA documents only, no need for Affidavit of Support for student child and spouse.
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR BUSINESS OWNER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ BUSINESS DOCUMENTS<br>
+							&nbsp;&nbsp;- SEC or DTI (whichever is applicable)<br>
+							&nbsp;&nbsp;- Business Permit<br>
+							&nbsp;&nbsp;- BIR Certificate of Registration<br>
+							&nbsp;&nbsp;- BIR Income Tax Return
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR EMPLOYED</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Certificate of employment with compensation, date hired & position, also include that the applicant is applying for Korean Visa<br>
+							○ Company ID (PRC ID IF ANY)<br>
+							○ Approval of Leave<br>
+							○ Income Tax Return (2316)
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR HOUSEWIFE</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ HUSBAND'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ PSA MARRIAGE CERTIFICATE<br>
+							○ Affidavit of Support (Notarized)
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR SENIORS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Senior Citizen ID<br>
+							○ Retirement certificate if any
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR STUDENTS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ PARENT'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ Affidavit of Support (Notarized)<br>
+							○ School ID<br>
+							○ PSA Birth Certificate
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">IF APPLICANT IS SUPPORTED BY AN OVERSEAS FILIPINO WORKERS/SEAFARER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Clear scan copy of contract or certificate of employment abroad<br>
+							○ Copy of OWWA Verified Contract<br>
+							○ Copy of POEA Contract<br>
+							○ Working Visa<br>
+							○ Copy of ID if applicable / Marina ID & Seamans Book – for seafarer
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function getIndividualGuideHtml() {
+			return `
+				<div style="background: #fff3cd; padding: 10px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 13px; color: #856404;">
+					<strong>※ All documents must be sent to office via MAIL or FAX</strong>
+				</div>
+
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #121212; margin-bottom: 8px;">GENERAL REQUIREMENTS:</div>
+					<ol style="padding-left: 20px; margin: 0;">
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Passport bio page <span style="color: #6c757d;">(Make sure it is signed & still valid. Broken passport is not accepted.)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Copy of valid visa/s and arrival stamps to OECD countries for the past 5 years. <span style="color: #6c757d;">(if applicable)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Application form <span style="color: #6c757d;">(computerized/handwritten, print in A4, original/e-signature)</span> with attach passport size photo <span style="color: #6c757d;">(formal, NO HEAD ACCESSORIES, no teeth shown, photo taken within 6 months or better studio taken)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Certificate with Average Daily Balance for 6 months, date opened, account type & balance <span style="color: #6c757d;">(should be addressed to Korean Embassy)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Statement – 3 months
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Signed Data Privacy Consent Form
+						</li>
+					</ol>
+				</div>
+
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #dc3545; margin-bottom: 8px;">PLEASE NOTE ADDITIONAL REQUIREMENTS BELOW:</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR BUSINESS OWNER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ BUSINESS DOCUMENTS<br>
+							&nbsp;&nbsp;- SEC or DTI (whichever is applicable)<br>
+							&nbsp;&nbsp;- Business Permit<br>
+							&nbsp;&nbsp;- BIR Certificate of Registration<br>
+							&nbsp;&nbsp;- BIR Income Tax Return
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR EMPLOYED</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Certificate of employment with compensation, date hired & position, also include that the applicant is applying for Korean Visa<br>
+							○ Company ID (PRC ID IF ANY)<br>
+							○ Approval of Leave<br>
+							○ Income Tax Return (2316)
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR HOUSEWIFE</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ HUSBAND'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ PSA MARRIAGE CERTIFICATE<br>
+							○ Notarized Affidavit of Support. If not married Notarized Affidavit of common law partner.<br>
+							<span style="color: #6c757d;">** If the housewife has bank documents, it's better to provide it.</span>
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR SENIORS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Sponsor's Documents<br>
+							○ Senior Citizen ID<br>
+							○ PSA Birth Certificate<br>
+							○ Retirement certificate if applicable<br>
+							○ Proof of pension if applicable<br>
+							○ Notarized Affidavit of Support<br>
+							<span style="color: #6c757d;">** If the senior has bank documents, it's better to provide it.</span>
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR STUDENTS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ PARENT'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ Notarized Affidavit of Support<br>
+							○ School ID<br>
+							○ PSA Birth Certificate
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">IF APPLICANT IS SUPPORTED BY AN OVERSEAS FILIPINO WORKERS/SEAFARER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Clear scan copy of contract or certificate of employment abroad<br>
+							○ Copy of OWWA Verified Contract<br>
+							○ Copy of POEA Contract<br>
+							○ Working Visa<br>
+							○ Copy of ID if applicable / Marina ID & Seamans Book – for seafarer
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function setupDocumentGuideToggle() {
+			const header = document.getElementById('documentGuideHeader');
+			const content = document.getElementById('documentGuideContent');
+			const arrow = document.getElementById('documentGuideArrow');
+
+			if (!header || !content || !arrow) return;
+
+			// Remove existing listener by cloning
+			const newHeader = header.cloneNode(true);
+			header.parentNode.replaceChild(newHeader, header);
+
+			newHeader.addEventListener('click', function() {
+				const isExpanded = content.style.display !== 'none';
+				if (isExpanded) {
+					content.style.display = 'none';
+					document.getElementById('documentGuideArrow').style.transform = 'rotate(0deg)';
+				} else {
+					content.style.display = 'block';
+					document.getElementById('documentGuideArrow').style.transform = 'rotate(180deg)';
+				}
+			});
+		}
+
 		function renderDocumentSection() {
 			const container = document.getElementById('documentGridWrap');
 			if (!container) return;
 			container.innerHTML = '';
 
-			DOCUMENT_CONFIG.forEach(doc => {
+			// Render document guide for group visa
+			renderDocumentGuide();
+
+			// For individual visa, show only "Documents Send" status (editable)
+			if (__currentVisaType === 'individual') {
+				// visaSend can be integer (1/0) or string ('yes'/'no')
+				const visaSendRaw = __pending.visaSend !== null ? __pending.visaSend : __visaApplication?.visaSend;
+				const isYes = (visaSendRaw === 1 || visaSendRaw === '1' || String(visaSendRaw).toLowerCase() === 'yes');
+
+				const div = document.createElement('div');
+				div.className = 'grid-item';
+				div.innerHTML = `
+					<label class="label-name">Documents Send</label>
+					<select class="select" id="docSendStatus">
+						<option value="0" ${!isYes ? 'selected' : ''}>No</option>
+						<option value="1" ${isYes ? 'selected' : ''}>Yes</option>
+					</select>
+				`;
+				container.appendChild(div);
+
+				// Apply custom select styling
+				if (typeof jw_select === 'function') {
+					setTimeout(() => jw_select(), 0);
+				}
+
+				// Add change listener (use event delegation since jw_select recreates elements)
+				setTimeout(() => {
+					const select = document.getElementById('docSendStatus');
+					if (select) {
+						select.addEventListener('change', function() {
+							const newVal = parseInt(this.value, 10);
+							const originalVal = __visaApplication?.visaSend;
+							const originalIsYes = (originalVal === 1 || originalVal === '1' || String(originalVal).toLowerCase() === 'yes');
+							const originalNum = originalIsYes ? 1 : 0;
+
+							if (newVal === originalNum) {
+								__pending.visaSend = null; // no change
+							} else {
+								__pending.visaSend = newVal;
+							}
+							__setSaveEnabled(__hasPendingChanges());
+						});
+					}
+				}, 50);
+				return;
+			}
+
+			// For group visa, show upload documents
+			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
+			config.forEach(doc => {
 				const div = document.createElement('div');
 				div.className = 'grid-item';
 
@@ -441,12 +828,8 @@
 		}
 
 		function __updateStatus() {
-			// Auto-calculate status based on documents
-			const requiredDocs = DOCUMENT_CONFIG.filter(d => d.required).map(d => d.key);
-			let presentCount = 0;
-			requiredDocs.forEach(k => {
-				if (__effectivePath(k)) presentCount++;
-			});
+			// Skip recalculation on initial load - use DB value
+			if (!__initialLoadComplete) return;
 
 			let visaFile = '';
 			if (!__pending.deleteVisaFile) {
@@ -463,12 +846,33 @@
 			}
 
 			let status = 'pending';
-			if (visaFile) {
-				status = 'approved';
-			} else if (presentCount === requiredDocs.length) {
-				status = 'reviewing';
-			} else if (presentCount > 0) {
-				status = 'rejected';
+
+			// For individual visa, check visaSend status
+			if (__currentVisaType === 'individual') {
+				if (visaFile) {
+					status = 'approved';
+				} else {
+					// Check pending change first, then original value
+					const visaSendRaw = __pending.visaSend !== null ? __pending.visaSend : __visaApplication?.visaSend;
+					const isVisaSendYes = (visaSendRaw === 1 || visaSendRaw === '1' || String(visaSendRaw).toLowerCase() === 'yes');
+					status = isVisaSendYes ? 'reviewing' : 'pending';
+				}
+			} else {
+				// For group visa, check uploaded documents
+				const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
+				const requiredDocs = config.filter(d => d.required).map(d => d.key);
+				let presentCount = 0;
+				requiredDocs.forEach(k => {
+					if (__effectivePath(k)) presentCount++;
+				});
+
+				if (visaFile) {
+					status = 'approved';
+				} else if (requiredDocs.length > 0 && presentCount === requiredDocs.length) {
+					status = 'reviewing';
+				} else if (presentCount > 0) {
+					status = 'rejected';
+				}
 			}
 
 			setSelect('statusSelect', status);
@@ -494,9 +898,13 @@
 				}
 				__visaApplication = application;
 
+				// Get visaType from application (default to 'group' if not set)
+				const visaType = (application.visaType || 'group').toLowerCase();
+				__currentVisaType = visaType;
+
 				// Populate form
 				setValue('bookingIdDisplay', pickFirst(application, ['bookingId', 'transactNo']) || '-');
-				setValue('visaTypeDisplay', 'Group');
+				setValue('visaTypeDisplay', visaType === 'individual' ? 'Individual' : 'Group');
 				setValue('productName', pickFirst(application, ['packageName', 'productName', 'destinationCountry']) || '-');
 
 				const createdAt = pickFirst(application, ['createdAt', 'submittedAt', 'applicationDate']);
@@ -546,11 +954,21 @@
 					}
 				}
 
-				// Status
-				setSelect('statusSelect', application.status || 'pending');
+				// Status - map DB values to UI values
+				const dbStatus = application.status || 'pending';
+				const dbToUiStatusMap = {
+					'under_review': 'reviewing',
+					'completed': 'approved',
+					'document_required': 'pending'
+				};
+				const uiStatus = dbToUiStatusMap[dbStatus] || dbStatus;
+				setSelect('statusSelect', uiStatus);
 
 				// Render documents and visa file
 				__updateUI();
+
+				// Mark initial load complete - now __updateStatus() will recalculate on changes
+				__initialLoadComplete = true;
 
 			} catch (error) {
 				console.error('Error loading visa application detail:', error);
@@ -741,6 +1159,26 @@
 					const j = await res.json().catch(() => ({}));
 					if (!res.ok || !j?.success) {
 						alert('Failed to save visa file: ' + (j?.message || ('HTTP ' + res.status)));
+						__setSaveEnabled(true);
+						return;
+					}
+				}
+
+				// 5) Update visaSend (for individual visa)
+				if (__pending.visaSend !== null) {
+					const res = await fetch('../backend/api/agent-api.php', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							action: 'updateAgentVisaSend',
+							visaApplicationId,
+							visaSend: __pending.visaSend
+						}),
+						credentials: 'same-origin'
+					});
+					const j = await res.json().catch(() => ({}));
+					if (!res.ok || !j?.success) {
+						alert('Failed to update Documents Send status: ' + (j?.message || ('HTTP ' + res.status)));
 						__setSaveEnabled(true);
 						return;
 					}

@@ -160,10 +160,7 @@ try {
             $affiliate_code = strtoupper($affiliate_code);
         }
 
-        // 제휴코드 검증 + companyId 해석
-        // - 유효하지 않으면 가입 실패
-        // - 유효하면 agent.companyId를 얻어 client.companyId를 정확히 저장한다(Seoul Branch로 잘못 들어가는 문제 방지)
-        $affiliate_agent_companyId = null;
+        // 제휴코드 검증 (agent 테이블에 존재하는지 확인)
         if ($affiliate_code !== null && $affiliate_code !== '') {
             $agentTable = $conn->query("SHOW TABLES LIKE 'agent'");
             if ($agentTable && $agentTable->num_rows > 0) {
@@ -174,8 +171,8 @@ try {
                 } catch (Throwable $e) { $hasAgentCode = false; }
 
                 $chk = $conn->prepare($hasAgentCode
-                    ? "SELECT companyId FROM agent WHERE agentId = ? OR agentCode = ? LIMIT 1"
-                    : "SELECT companyId FROM agent WHERE agentId = ? LIMIT 1"
+                    ? "SELECT agentId FROM agent WHERE agentId = ? OR agentCode = ? LIMIT 1"
+                    : "SELECT agentId FROM agent WHERE agentId = ? LIMIT 1"
                 );
                 if ($chk) {
                     if ($hasAgentCode) $chk->bind_param("ss", $affiliate_code, $affiliate_code);
@@ -187,15 +184,10 @@ try {
                     if (!$row) {
                         send_json_response(['success' => false, 'message' => '유효하지 않은 제휴 코드입니다.'], 400);
                     }
-                    $affiliate_agent_companyId = isset($row['companyId']) && $row['companyId'] !== null && $row['companyId'] !== ''
-                        ? (int)$row['companyId']
-                        : null;
                 } else {
-                    // prepare 실패 시에도 운영 요구사항 우선: 실패 처리
                     send_json_response(['success' => false, 'message' => '유효하지 않은 제휴 코드입니다.'], 400);
                 }
             } else {
-                // agent 테이블이 없으면 검증 불가 → 실패 처리(운영 요구사항 우선)
                 send_json_response(['success' => false, 'message' => '유효하지 않은 제휴 코드입니다.'], 400);
             }
         }
@@ -226,29 +218,18 @@ try {
             }
         }
 
-        // SMT 수정(요구사항 id 71/78):
-        // - 제휴코드(Partnership code)가 있으면 해당 agent 소속의 "B2B 고객"으로 분류하여,
-        //   super(B2B 고객 목록) 및 agent(고객 목록)에서 정상적으로 소속/지점이 매칭되도록 한다.
-        // - 제휴코드가 없으면 기존대로 B2C(Retailer)로 가입한다.
-        $clientType = 'Retailer';
-        $clientCompanyId = 1;
-        if ($affiliate_code !== null && $affiliate_code !== '') {
-            $clientType = 'Wholeseller';
-            // 위에서 검증 단계에서 companyId를 해석함
-            if (is_numeric($affiliate_agent_companyId) && (int)$affiliate_agent_companyId > 0) {
-                $clientCompanyId = (int)$affiliate_agent_companyId;
-            }
-        }
+        // 제휴코드가 있으면 Wholeseller(B2B), 없으면 Retailer(B2C)
+        $clientType = ($affiliate_code !== null && $affiliate_code !== '') ? 'Wholeseller' : 'Retailer';
 
         // 먼저 임시 clientId로 INSERT 후 client.id를 가져와서 clientId 생성
         $temp_client_id = 'CLI_TEMP_' . time();
-        $stmt = $conn->prepare("INSERT INTO client (clientId, accountId, companyId, fName, lName, contactNo, clientType, clientRole) VALUES (?, ?, ?, ?, ?, ?, ?, 'Sub-Agent')");
+        $stmt = $conn->prepare("INSERT INTO client (clientId, accountId, fName, lName, contactNo, clientType, clientRole) VALUES (?, ?, ?, ?, ?, ?, 'Sub-Agent')");
         if (!$stmt) {
             error_log("Client insert prepare failed: " . $conn->error);
             throw new Exception("클라이언트 데이터베이스 준비 오류");
         }
 
-        $stmt->bind_param("siissss", $temp_client_id, $account_id, $clientCompanyId, $fname, $lname, $phone, $clientType);
+        $stmt->bind_param("sissss", $temp_client_id, $account_id, $fname, $lname, $phone, $clientType);
         $stmt->execute();
 
         // client.id를 기반으로 clientId 생성

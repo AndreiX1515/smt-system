@@ -57,41 +57,44 @@ function __applyPackagePricingOptions(pkg) {
     }
 
     // fallback: pricingOptions가 없으면 기존 adult/child/infant 키를 최소 제공
+    // Agent 예약은 B2B 가격 우선 사용
     if (!__allowedTravelerTypes.length) {
         const adultKey = 'adult';
         __allowedTravelerTypes = ['adult', 'child', 'infant'];
         __labelByTravelerType['adult'] = getText('adult');
         __labelByTravelerType['child'] = getText('child');
         __labelByTravelerType['infant'] = getText('infant');
-        const adultFallback = Number(pkg?.packagePrice);
+        // B2B 가격 우선, 없으면 일반 가격 사용
+        const adultFallback = Number(pkg?.b2bPrice ?? pkg?.b2b_price ?? pkg?.packagePrice);
         if (Number.isFinite(adultFallback)) __pricingByTravelerType['adult'] = adultFallback;
-        const childFallback = (pkg?.childPrice === null || pkg?.childPrice === undefined) ? NaN : Number(pkg?.childPrice);
-        if (Number.isFinite(childFallback)) __pricingByTravelerType['child'] = childFallback;
-        const infantFallback = (pkg?.infantPrice === null || pkg?.infantPrice === undefined) ? NaN : Number(pkg?.infantPrice);
-        if (Number.isFinite(infantFallback)) __pricingByTravelerType['infant'] = infantFallback;
+        const childFallback = Number(pkg?.b2bChildPrice ?? pkg?.b2b_child_price ?? pkg?.childPrice);
+        if (Number.isFinite(childFallback) && childFallback > 0) __pricingByTravelerType['child'] = childFallback;
+        const infantFallback = Number(pkg?.b2bInfantPrice ?? pkg?.b2b_infant_price ?? pkg?.infantPrice);
+        if (Number.isFinite(infantFallback) && infantFallback > 0) __pricingByTravelerType['infant'] = infantFallback;
     }
 }
 
 // 날짜별 가격 적용 (package_availability의 childPrice, infantPrice, singlePrice 사용)
+// Agent 예약은 B2B 가격 우선 (API가 agent 세션 감지 시 price 필드에 b2b_price를 반환)
 function __applyDateSpecificPricing(dateInfo) {
     if (!dateInfo) return;
 
-    // adult 가격: price (성인 기본가)
-    if (dateInfo.price !== null && dateInfo.price !== undefined) {
-        const adultPrice = Number(dateInfo.price);
-        if (Number.isFinite(adultPrice)) __pricingByTravelerType['adult'] = adultPrice;
+    // adult 가격: b2bPrice 우선, 없으면 price 사용 (API가 agent일 때 이미 b2b price를 price에 설정)
+    const adultPrice = Number(dateInfo.b2bPrice ?? dateInfo.price);
+    if (Number.isFinite(adultPrice) && adultPrice > 0) {
+        __pricingByTravelerType['adult'] = adultPrice;
     }
 
-    // child 가격
-    if (dateInfo.childPrice !== null && dateInfo.childPrice !== undefined) {
-        const childPrice = Number(dateInfo.childPrice);
-        if (Number.isFinite(childPrice)) __pricingByTravelerType['child'] = childPrice;
+    // child 가격: b2bChildPrice 우선
+    const childPrice = Number(dateInfo.b2bChildPrice ?? dateInfo.childPrice);
+    if (Number.isFinite(childPrice) && childPrice > 0) {
+        __pricingByTravelerType['child'] = childPrice;
     }
 
-    // infant 가격
-    if (dateInfo.infantPrice !== null && dateInfo.infantPrice !== undefined) {
-        const infantPrice = Number(dateInfo.infantPrice);
-        if (Number.isFinite(infantPrice)) __pricingByTravelerType['infant'] = infantPrice;
+    // infant 가격: b2bInfantPrice 우선
+    const infantPrice = Number(dateInfo.b2bInfantPrice ?? dateInfo.infantPrice);
+    if (Number.isFinite(infantPrice) && infantPrice > 0) {
+        __pricingByTravelerType['infant'] = infantPrice;
     }
 
     // single 가격 (singlePrice는 싱글룸 추가요금으로 사용)
@@ -107,6 +110,34 @@ function __getUnitPrice(type) {
     const key = String(type || '').toLowerCase();
     const v = __pricingByTravelerType[key];
     return Number.isFinite(v) ? v : 0;
+}
+
+// 여행자별 가격 계산 (Infant/Child 특별 로직 적용)
+// - Infant: DB 가격 있으면 사용, 없으면 기본 10,000페소
+// - Child (Room Yes): 항상 성인 가격
+// - Child (Room No): DB 가격 있으면 DB 가격, 없으면 성인가격×70%
+function __getTravelerPrice(traveler) {
+    if (!traveler) return 0;
+    const type = __classifyTypeKey(traveler.type);
+    const adultPrice = __getUnitPrice('adult');
+
+    if (type === 'infant') {
+        const dbPrice = __pricingByTravelerType['infant'];
+        return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : 10000;
+    }
+
+    if (type === 'child') {
+        // Child Room = Yes → 항상 성인 가격
+        if (traveler.childRoom === true) {
+            return adultPrice;
+        }
+        // Child Room = No → DB 가격 있으면 DB 가격, 없으면 성인가격×80%
+        const dbPrice = __pricingByTravelerType['child'];
+        return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : Math.round(adultPrice * 0.8);
+    }
+
+    // Adult (및 기타 타입)
+    return __getUnitPrice(traveler.type);
 }
 
 function __renderTravelerTypeOptionsHtml(selectedValue) {
@@ -406,6 +437,7 @@ const i18nTexts = {
         visaNo: 'With Visa',
         visaGroup: 'Group Visa +₱1500',
         visaIndividual: 'Individual Visa +₱1900',
+        visaForeign: 'Foreign Passport',
         male: 'Male',
         female: 'Female',
         other: 'Other',
@@ -591,9 +623,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     const preselectedPackageId = urlParams.get('packageId');
     const preselectedDate = urlParams.get('date');
     const existingBookingId = urlParams.get('bookingId');
+    const editMode = urlParams.get('mode');
 
+    // Product Edit 모드 (reservation-detail에서 Edit 클릭 시 - 승인 필요 플로우)
+    if (editMode === 'edit' && existingBookingId) {
+        // 전역 변수로 edit 모드 상태 저장
+        window.isProductEditMode = true;
+        window.productEditBookingId = existingBookingId;
+        setTimeout(async () => {
+            await loadEditReservationDataFromAPI(existingBookingId);
+            setupProductEditMode();
+        }, 500);
+    }
+    // 레거시 edit 모드 (sessionStorage 사용 - 하위 호환성)
+    else if (editMode === 'edit') {
+        setTimeout(async () => {
+            await loadEditReservationData();
+        }, 500);
+    }
     // 기존 예약 편집 모드 (결제 페이지에서 Back 클릭 시)
-    if (existingBookingId) {
+    else if (existingBookingId) {
         setTimeout(async () => {
             await loadExistingReservation(existingBookingId);
         }, 500);
@@ -632,6 +681,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const dateInfo = monthDates.find(d => d.date === preselectedDate || d.availableDate === preselectedDate);
                         if (dateInfo) {
                             selectedDateInfo = dateInfo;
+                            // 날짜별 가격 적용 (할인 가격 포함)
+                            __applyDateSpecificPricing(selectedDateInfo);
                         }
 
                         // 날짜 상세 정보 로드 (여행 기간, 미팅 시간/장소, 항공편 정보)
@@ -700,7 +751,17 @@ async function loadExistingReservation(bookingId) {
                 if (departureDateEl) departureDateEl.value = displayDate;
                 if (departureDateValueEl) departureDateValueEl.value = booking.departureDate;
 
-                // 날짜 상세 정보 로드
+                // 날짜 상세 정보 로드 및 가격 적용
+                const dateYear = dateObj.getFullYear();
+                const dateMonth = dateObj.getMonth() + 1;
+                await loadAvailableDates(booking.packageId, dateYear, dateMonth);
+                const cacheKey = `${dateYear}-${dateMonth}`;
+                const monthDates = availableDatesByMonth[cacheKey] || [];
+                const dateInfo = monthDates.find(d => d.date === booking.departureDate || d.availableDate === booking.departureDate);
+                if (dateInfo) {
+                    selectedDateInfo = dateInfo;
+                    __applyDateSpecificPricing(selectedDateInfo);
+                }
                 await loadDateDetailInfo(booking.packageId, booking.departureDate);
             }
         }
@@ -771,6 +832,487 @@ async function loadExistingReservation(bookingId) {
     }
 }
 
+/**
+ * 예약 수정 데이터 로드 (reservation-detail에서 Edit 클릭 시)
+ * sessionStorage에 저장된 데이터를 불러와서 폼에 채움
+ */
+async function loadEditReservationData() {
+    try {
+        const savedData = sessionStorage.getItem('editReservationData');
+        if (!savedData) {
+            console.warn('No edit reservation data found in sessionStorage');
+            return;
+        }
+
+        const data = JSON.parse(savedData);
+        const booking = data.booking || {};
+        const travelersData = data.travelers || [];
+        const selectedOptionsData = data.selectedOptions || {};
+
+        // sessionStorage 데이터 사용 후 삭제
+        sessionStorage.removeItem('editReservationData');
+
+        console.log('Loading edit reservation data:', data);
+
+        // 1. 상품 정보 로드
+        if (booking.packageId) {
+            await loadProductDetail(booking.packageId);
+        }
+
+        // 2. 날짜 설정
+        const departureDate = booking.departureDate || booking.departure_date;
+        if (departureDate) {
+            const dateObj = new Date(departureDate);
+            if (!isNaN(dateObj.getTime())) {
+                selectedDateInCalendar = departureDate;
+                const displayDate = dateObj.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const departureDateEl = document.getElementById('departure_date');
+                const departureDateValueEl = document.getElementById('departure_date_value');
+                if (departureDateEl) departureDateEl.value = displayDate;
+                if (departureDateValueEl) departureDateValueEl.value = departureDate;
+
+                // 날짜 상세 정보 로드 및 가격 적용
+                if (booking.packageId) {
+                    const dateYear = dateObj.getFullYear();
+                    const dateMonth = dateObj.getMonth() + 1;
+                    await loadAvailableDates(booking.packageId, dateYear, dateMonth);
+                    const cacheKey = `${dateYear}-${dateMonth}`;
+                    const monthDates = availableDatesByMonth[cacheKey] || [];
+                    const dateInfo = monthDates.find(d => d.date === departureDate || d.availableDate === departureDate);
+                    if (dateInfo) {
+                        selectedDateInfo = dateInfo;
+                        __applyDateSpecificPricing(selectedDateInfo);
+                    }
+                    await loadDateDetailInfo(booking.packageId, departureDate);
+                }
+            }
+        }
+
+        // 3. 고객 정보 설정
+        const customerInfo = selectedOptionsData.customerInfo || {};
+        const customerName = customerInfo.firstName && customerInfo.lastName
+            ? `${customerInfo.firstName} ${customerInfo.lastName}`.trim()
+            : (booking.customerName || booking.customer_name || '');
+        const userNameEl = document.getElementById('user_name');
+        const userEmailEl = document.getElementById('user_email');
+        const userPhoneEl = document.getElementById('user_phone');
+        const countryCodeEl = document.getElementById('country_code');
+        const customerAccountIdEl = document.getElementById('customer_account_id');
+
+        if (userNameEl) userNameEl.value = customerName;
+        if (userEmailEl) userEmailEl.value = customerInfo.email || booking.contactEmail || booking.contact_email || '';
+        if (userPhoneEl) userPhoneEl.value = customerInfo.phone || booking.contactPhone || booking.contact_phone || '';
+        if (countryCodeEl && customerInfo.countryCode) countryCodeEl.value = customerInfo.countryCode;
+        if (customerAccountIdEl && (booking.customerAccountId || booking.customer_account_id)) {
+            customerAccountIdEl.value = booking.customerAccountId || booking.customer_account_id;
+        }
+
+        // 4. 여행자 정보 설정
+        if (travelersData.length > 0) {
+            travelerModalData = travelersData.map((t, idx) => ({
+                isPrimary: t.isMainTraveler === 1 || t.is_main_traveler === 1 || idx === 0,
+                type: t.travelerType || t.traveler_type || 'adult',
+                title: t.title || 'MR',
+                firstName: t.firstName || t.first_name || '',
+                lastName: t.lastName || t.last_name || '',
+                gender: t.gender || 'male',
+                birthDate: t.dateOfBirth || t.date_of_birth || t.birthDate || '',
+                nationality: t.nationality || '',
+                passportNo: t.passportNumber || t.passport_number || '',
+                passportIssueDate: t.passportIssueDate || t.passport_issue_date || '',
+                passportExpiry: t.passportExpiryDate || t.passport_expiry_date || t.passportExpiry || '',
+                passportPhotoUrl: t.passportImage || t.passport_image || '',
+                visaRequired: t.visaRequired || t.visa_required || false,
+                visaType: t.visaType || t.visa_type || 'with_visa',
+                visaDocumentUrl: t.visaDocument || t.visa_document || '',
+                childRoom: t.childRoom || t.child_room || false,
+                remarks: t.specialRequests || t.special_requests || '',
+                flightOptions: t.flightOptions || t.flight_options || [],
+                flightOptionPrices: t.flightOptionPrices || t.flight_option_prices || {}
+            }));
+            travelers = travelerModalData.map(t => convertToTravelersFormat(t));
+        }
+
+        // 5. 객실 옵션 설정
+        const roomOptionsData = selectedOptionsData.selectedRooms || data.roomOptions || [];
+        if (roomOptionsData.length > 0) {
+            selectedRooms = roomOptionsData.map(r => ({
+                roomId: r.roomId || r.room_id,
+                roomType: r.roomType || r.room_type,
+                roomPrice: r.roomPrice || r.room_price || 0,
+                capacity: r.capacity || 1,
+                count: r.count || r.quantity || 1
+            }));
+            selectedRoomsInModal = [...selectedRooms];
+            updateRoomOptionDisplay();
+        }
+
+        // 6. 기타 요청사항 설정
+        const otherRequest = selectedOptionsData.otherRequest || booking.otherRequest || booking.other_request || '';
+        if (otherRequest) {
+            // Quill 에디터가 있으면 에디터에 설정
+            const etcReqEditorEl = document.getElementById('etc_req_editor');
+            if (etcReqEditorEl && etcReqEditorEl.__quill) {
+                etcReqEditorEl.__quill.root.innerHTML = otherRequest;
+            }
+        }
+
+        // 7. 메모 설정
+        const agentNote = booking.agentNote || booking.agent_note || booking.memo || '';
+        if (agentNote) {
+            const memoEditorEl = document.getElementById('memo_editor');
+            if (memoEditorEl && memoEditorEl.__quill) {
+                memoEditorEl.__quill.root.innerHTML = agentNote;
+            }
+        }
+
+        // 8. UI 업데이트
+        updateTravelerSummary();
+        calculateTotalAmount();
+        updateOrderSummary();
+
+        console.log('Edit reservation data loaded successfully');
+
+    } catch (error) {
+        console.error('Error loading edit reservation data:', error);
+        alert('Failed to load reservation data: ' + error.message);
+    }
+}
+
+/**
+ * Product Edit 모드에서 API로 기존 예약 데이터 로드
+ * (승인 필요 플로우 - URL에서 bookingId를 받아서 처리)
+ */
+async function loadEditReservationDataFromAPI(bookingId) {
+    try {
+        const response = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                action: 'getReservationDetail',
+                bookingId: bookingId
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to load reservation');
+        }
+
+        const data = result.data;
+        const booking = data.booking || {};
+        const travelersData = data.travelers || [];
+        const selectedOptionsData = data.selectedOptions || {};
+
+        console.log('Loading edit reservation data from API:', data);
+
+        // 1. 상품 정보 로드
+        if (booking.packageId) {
+            await loadProductDetail(booking.packageId);
+        }
+
+        // 2. 날짜 설정
+        const departureDate = booking.departureDate || booking.departure_date;
+        if (departureDate) {
+            const dateObj = new Date(departureDate);
+            if (!isNaN(dateObj.getTime())) {
+                selectedDateInCalendar = departureDate;
+                const displayDate = dateObj.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const departureDateEl = document.getElementById('departure_date');
+                const departureDateValueEl = document.getElementById('departure_date_value');
+                if (departureDateEl) departureDateEl.value = displayDate;
+                if (departureDateValueEl) departureDateValueEl.value = departureDate;
+
+                // 날짜 상세 정보 로드 및 가격 적용
+                if (booking.packageId) {
+                    const dateYear = dateObj.getFullYear();
+                    const dateMonth = dateObj.getMonth() + 1;
+                    await loadAvailableDates(booking.packageId, dateYear, dateMonth);
+                    const cacheKey = `${dateYear}-${dateMonth}`;
+                    const monthDates = availableDatesByMonth[cacheKey] || [];
+                    const dateInfo = monthDates.find(d => d.date === departureDate || d.availableDate === departureDate);
+                    if (dateInfo) {
+                        selectedDateInfo = dateInfo;
+                        __applyDateSpecificPricing(selectedDateInfo);
+                    }
+                    await loadDateDetailInfo(booking.packageId, departureDate);
+                }
+            }
+        }
+
+        // 3. 고객 정보 설정
+        const customerInfo = selectedOptionsData.customerInfo || {};
+        const customerName = customerInfo.firstName && customerInfo.lastName
+            ? `${customerInfo.firstName} ${customerInfo.lastName}`.trim()
+            : (booking.customerName || booking.customer_name || booking.contactName || '');
+        const userNameEl = document.getElementById('user_name');
+        const userEmailEl = document.getElementById('user_email');
+        const userPhoneEl = document.getElementById('user_phone');
+        const countryCodeEl = document.getElementById('country_code');
+        const customerAccountIdEl = document.getElementById('customer_account_id');
+
+        if (userNameEl) userNameEl.value = customerName;
+        if (userEmailEl) userEmailEl.value = customerInfo.email || booking.contactEmail || booking.contact_email || '';
+        if (userPhoneEl) userPhoneEl.value = customerInfo.phone || booking.contactPhone || booking.contact_phone || '';
+        if (countryCodeEl && customerInfo.countryCode) countryCodeEl.value = customerInfo.countryCode;
+        if (customerAccountIdEl && (booking.customerAccountId || booking.customer_account_id)) {
+            customerAccountIdEl.value = booking.customerAccountId || booking.customer_account_id;
+        }
+
+        // 4. 여행자 정보 설정
+        if (travelersData.length > 0) {
+            travelerModalData = travelersData.map((t, idx) => ({
+                isPrimary: t.isMainTraveler === 1 || t.is_main_traveler === 1 || idx === 0,
+                type: t.travelerType || t.traveler_type || 'adult',
+                title: t.title || 'MR',
+                firstName: t.firstName || t.first_name || '',
+                lastName: t.lastName || t.last_name || '',
+                gender: t.gender || 'male',
+                birthDate: t.dateOfBirth || t.date_of_birth || t.birthDate || '',
+                nationality: t.nationality || '',
+                passportNo: t.passportNumber || t.passport_number || '',
+                passportIssueDate: t.passportIssueDate || t.passport_issue_date || '',
+                passportExpiry: t.passportExpiryDate || t.passport_expiry_date || t.passportExpiry || '',
+                passportPhotoUrl: t.passportImage || t.passport_image || '',
+                visaRequired: t.visaRequired || t.visa_required || false,
+                visaType: t.visaType || t.visa_type || 'with_visa',
+                visaDocumentUrl: t.visaDocument || t.visa_document || '',
+                childRoom: t.childRoom || t.child_room || false,
+                remarks: t.specialRequests || t.special_requests || '',
+                flightOptions: t.flightOptions || t.flight_options || [],
+                flightOptionPrices: t.flightOptionPrices || t.flight_option_prices || {}
+            }));
+            travelers = travelerModalData.map(t => convertToTravelersFormat(t));
+        }
+
+        // 5. 객실 옵션 설정
+        const roomOptionsData = selectedOptionsData.selectedRooms || data.roomOptions || [];
+        if (roomOptionsData.length > 0) {
+            selectedRooms = roomOptionsData.map(r => ({
+                roomId: r.roomId || r.room_id,
+                roomType: r.roomType || r.room_type,
+                roomPrice: r.roomPrice || r.room_price || 0,
+                capacity: r.capacity || 1,
+                count: r.count || r.quantity || 1
+            }));
+            selectedRoomsInModal = [...selectedRooms];
+            updateRoomOptionDisplay();
+        }
+
+        // 6. 기타 요청사항 설정
+        const otherRequest = selectedOptionsData.otherRequest || booking.otherRequest || booking.other_request || '';
+        if (otherRequest) {
+            const etcReqEditorEl = document.getElementById('etc_req_editor');
+            if (etcReqEditorEl && etcReqEditorEl.__quill) {
+                etcReqEditorEl.__quill.root.innerHTML = otherRequest;
+            }
+        }
+
+        // 7. 메모 설정
+        const agentNote = booking.agentNote || booking.agent_note || booking.memo || '';
+        if (agentNote) {
+            const memoEditorEl = document.getElementById('memo_editor');
+            if (memoEditorEl && memoEditorEl.__quill) {
+                memoEditorEl.__quill.root.innerHTML = agentNote;
+            }
+        }
+
+        // 8. UI 업데이트
+        updateTravelerSummary();
+        calculateTotalAmount();
+        updateOrderSummary();
+
+        console.log('Edit reservation data loaded from API successfully');
+
+    } catch (error) {
+        console.error('Error loading edit reservation data from API:', error);
+        alert('Failed to load reservation data: ' + error.message);
+    }
+}
+
+/**
+ * Product Edit 모드 설정
+ * - 저장 버튼 텍스트 변경
+ * - 취소 버튼 추가
+ * - beforeunload 이벤트 추가
+ */
+function setupProductEditMode() {
+    // 저장 버튼 텍스트 변경
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) {
+        saveBtn.textContent = 'Submit Change Request';
+        saveBtn.setAttribute('data-lan-eng', 'Submit Change Request');
+        saveBtn.setAttribute('data-lan-kor', '변경 요청 제출');
+    }
+
+    // Edit 모드 안내 배너 추가
+    const pageTitle = document.querySelector('.page-title');
+    if (pageTitle) {
+        const banner = document.createElement('div');
+        banner.id = 'editModeBanner';
+        banner.style.cssText = 'background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 1px solid #3b82f6; border-radius: 8px; padding: 12px 16px; margin-top: 16px; margin-bottom: 16px;';
+        banner.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">📝</span>
+                    <div>
+                        <div style="font-weight: 600; color: #1e40af;">Product Edit Mode</div>
+                        <div style="font-size: 12px; color: #1e3a8a;">Changes will require admin approval. Original booking: ${window.productEditBookingId}</div>
+                    </div>
+                </div>
+                <button type="button" id="cancelEditBtn" class="jw-button typeC" style="background: #dc2626; color: white; padding: 8px 16px; border-radius: 6px;">
+                    Cancel Edit
+                </button>
+            </div>
+        `;
+        pageTitle.parentNode.insertBefore(banner, pageTitle.nextSibling);
+
+        // 취소 버튼 이벤트
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener('click', handleCancelProductEdit);
+        }
+    }
+
+    // beforeunload 이벤트 (저장하지 않고 나가는 경우 경고)
+    window.addEventListener('beforeunload', handleBeforeUnload);
+}
+
+/**
+ * Product Edit 취소 핸들러
+ */
+async function handleCancelProductEdit() {
+    if (!confirm('Cancel the edit and return to reservation detail?\n\n변경을 취소하고 예약 상세로 돌아가시겠습니까?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                action: 'cancelProductEdit',
+                bookingId: window.productEditBookingId
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // beforeunload 이벤트 제거 (의도적 이동이므로)
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.location.href = `reservation-detail.html?id=${window.productEditBookingId}`;
+        } else {
+            alert('Failed to cancel edit: ' + (result.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Cancel product edit error:', error);
+        alert('An error occurred while cancelling the edit.');
+    }
+}
+
+/**
+ * beforeunload 이벤트 핸들러 (저장하지 않고 나가는 경우 경고)
+ */
+function handleBeforeUnload(e) {
+    if (window.isProductEditMode && !window.productEditSaved) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+}
+
+/**
+ * Product Edit 모드에서 저장 처리
+ * - saveEditReservationData API 호출
+ * - 실제 예약 생성 없이 newData에만 저장
+ */
+async function handleProductEditSave(reservationData) {
+    try {
+        const bookingId = window.productEditBookingId;
+
+        // 총 금액 계산
+        let totalAmount = 0;
+        const totalAmountDisplay = document.getElementById('sum_total')?.textContent || '0';
+        totalAmount = parseFloat(totalAmountDisplay.replace(/[^0-9.-]/g, '')) || 0;
+
+        // 패키지 이름 가져오기
+        const packageName = selectedPackage?.packageName || document.getElementById('product_name')?.value || '';
+
+        // 출발일에서 여행 기간 계산
+        const departureDate = reservationData.departureDate;
+        const durationDays = selectedPackage?.durationDays || selectedPackage?.duration_days || 5;
+
+        // 도착일 계산
+        let returnDate = '';
+        if (departureDate && durationDays) {
+            const depDate = new Date(departureDate);
+            depDate.setDate(depDate.getDate() + durationDays - 1);
+            returnDate = depDate.toISOString().split('T')[0];
+        }
+
+        // saveEditReservationData API 호출
+        const response = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                action: 'saveEditReservationData',
+                bookingId: bookingId,
+                packageId: reservationData.packageId,
+                packageName: packageName,
+                departureDate: departureDate,
+                returnDate: returnDate,
+                durationDays: durationDays,
+                meetingTime: selectedPackage?.meetingTime || '',
+                meetingLocation: selectedPackage?.meetingLocation || '',
+                totalAmount: totalAmount,
+                adults: reservationData.adults,
+                children: reservationData.children,
+                infants: reservationData.infants,
+                travelers: reservationData.travelers,
+                selectedRooms: reservationData.selectedRooms,
+                contactEmail: reservationData.customerInfo?.email || '',
+                contactPhone: reservationData.customerInfo?.phone || '',
+                otherRequest: reservationData.otherRequest,
+                seatRequest: reservationData.seatRequest,
+                memo: reservationData.memo,
+                customerAccountId: reservationData.customerInfo?.accountId || null,
+                customerInfo: reservationData.customerInfo,
+                paymentType: reservationData.paymentType
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // 저장 완료 플래그 설정 (beforeunload 경고 해제)
+            window.productEditSaved = true;
+
+            // beforeunload 이벤트 제거
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+
+            alert('Change request submitted successfully.\nAdmin approval is required before the changes take effect.\n\n변경 요청이 제출되었습니다.\n변경 사항이 적용되려면 관리자 승인이 필요합니다.');
+            window.location.href = 'reservation-list.html';
+        } else {
+            alert('Failed to submit change request: ' + (result.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error submitting product edit:', error);
+        alert('An error occurred while submitting the change request.');
+    }
+}
+
 // 동적 콘텐츠 언어 업데이트
 let isUpdatingLanguage = false; // 무한 루프 방지 플래그
 
@@ -813,7 +1355,7 @@ function updateDynamicContentLanguage() {
         });
         
         document.querySelectorAll('.traveler-visa option').forEach(option => {
-            const keyMap = { 'with_visa': 'visaNo', 'group': 'visaGroup', 'individual': 'visaIndividual' };
+            const keyMap = { 'with_visa': 'visaNo', 'group': 'visaGroup', 'individual': 'visaIndividual', 'foreign': 'visaForeign' };
             const key = keyMap[option.value] || 'visaNo';
             option.textContent = getText(key);
         });
@@ -1168,6 +1710,9 @@ window.saveTravelersFromModal = saveTravelersFromModal;
 let travelerModalData = [];
 let travelerCardIdCounter = 0;
 
+// 삭제 대기 파일 목록 (Save 시 서버에서 삭제)
+let pendingDeleteFiles = [];
+
 // travelers → 모달 형식 변환
 function convertToModalFormat(t) {
     return {
@@ -1224,6 +1769,9 @@ function convertToTravelersFormat(t) {
 
 // 여행자 모달 열기
 async function openTravelerModal() {
+    // 삭제 대기 목록 초기화 (모달 취소 시 이전 삭제 요청 무효화)
+    pendingDeleteFiles = [];
+
     // 항공 옵션이 로드되어 있지 않으면 재로드 시도
     if (currentAirlineName && airlineOptionCategories.length === 0) {
         console.log('Reloading airline options for:', currentAirlineName);
@@ -1491,6 +2039,7 @@ function renderTravelerCards() {
                             <option value="with_visa" ${traveler.visaType === 'with_visa' ? 'selected' : ''}>With Visa</option>
                             <option value="group" ${traveler.visaType === 'group' ? 'selected' : ''}>Group Visa +₱1500</option>
                             <option value="individual" ${traveler.visaType === 'individual' ? 'selected' : ''}>Individual Visa +₱1900</option>
+                            <option value="foreign" ${traveler.visaType === 'foreign' ? 'selected' : ''}>Foreign Passport</option>
                         </select>
                     </div>
 
@@ -1509,13 +2058,21 @@ function renderTravelerCards() {
                             </button>
                             <div class="passport-photo-info ${hasPassportPhoto ? '' : 'hidden'}" id="passport-photo-info-${index}">
                                 <span class="photo-filename">${escapeHtml(photoFileName)}</span>
-                                <button type="button" class="btn-remove-photo" onclick="removePassportPhoto(${index})">
-                                    <img src="../image/button-close2.svg" alt="">
-                                </button>
+                                <div class="file-action-buttons">
+                                    <button type="button" class="btn-file-action btn-preview" onclick="previewPassportPhoto(${index})" title="Preview">
+                                        <img src="../image/search2.svg" alt="Preview">
+                                    </button>
+                                    <button type="button" class="btn-file-action btn-download" onclick="downloadPassportPhoto(${index})" title="Download">
+                                        <img src="../image/buttun-download.svg" alt="Download">
+                                    </button>
+                                    <button type="button" class="btn-file-action btn-delete" onclick="removePassportPhoto(${index})" title="Delete">
+                                        <img src="../image/button-close2.svg" alt="Delete">
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group visa-upload-container" id="visa-upload-container-${index}" style="display: ${traveler.visaType === 'with_visa' ? 'block' : 'none'};">
+                    <div class="form-group visa-upload-container" id="visa-upload-container-${index}" style="display: ${traveler.visaType === 'with_visa' || traveler.visaType === 'foreign' ? 'block' : 'none'};">
                         <label>Visa Document</label>
                         <div class="visa-document-upload">
                             <input type="file" id="visa-document-${index}" accept="image/*,.pdf" onchange="handleVisaDocumentUpload(${index}, this)" style="display:none;">
@@ -1524,9 +2081,17 @@ function renderTravelerCards() {
                             </button>
                             <div class="visa-document-info ${traveler.visaDocumentFile || traveler.visaDocumentUrl ? '' : 'hidden'}" id="visa-document-info-${index}">
                                 <span class="visa-filename">${escapeHtml(traveler.visaDocumentFile?.name || traveler.visaDocumentUrl?.split('/').pop() || '')}</span>
-                                <button type="button" class="btn-remove-photo" onclick="removeVisaDocument(${index})">
-                                    <img src="../image/button-close2.svg" alt="">
-                                </button>
+                                <div class="file-action-buttons">
+                                    <button type="button" class="btn-file-action btn-preview" onclick="previewVisaDocument(${index})" title="Preview">
+                                        <img src="../image/search2.svg" alt="Preview">
+                                    </button>
+                                    <button type="button" class="btn-file-action btn-download" onclick="downloadVisaDocument(${index})" title="Download">
+                                        <img src="../image/buttun-download.svg" alt="Download">
+                                    </button>
+                                    <button type="button" class="btn-file-action btn-delete" onclick="removeVisaDocument(${index})" title="Delete">
+                                        <img src="../image/button-close2.svg" alt="Delete">
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1749,6 +2314,15 @@ window.handlePassportPhotoUpload = function(index, input) {
 // 여권 사진 제거
 window.removePassportPhoto = function(index) {
     if (travelerModalData[index]) {
+        // 기존 서버 URL이 있으면 삭제 대기 목록에 추가
+        const existingUrl = travelerModalData[index].passportPhotoUrl;
+        if (existingUrl && typeof existingUrl === 'string' && existingUrl.trim()) {
+            pendingDeleteFiles.push({
+                fileUrl: existingUrl,
+                fileType: 'passport'
+            });
+        }
+
         travelerModalData[index].passportPhotoFile = null;
         travelerModalData[index].passportPhotoUrl = null;
 
@@ -1762,19 +2336,96 @@ window.removePassportPhoto = function(index) {
     }
 };
 
+// 여권 사진 미리보기
+window.previewPassportPhoto = function(index) {
+    const traveler = travelerModalData[index];
+    if (!traveler) return;
+
+    let imageUrl = null;
+    let fileName = 'Passport Photo';
+
+    // 새로 업로드한 파일인 경우
+    if (traveler.passportPhotoFile) {
+        imageUrl = URL.createObjectURL(traveler.passportPhotoFile);
+        fileName = traveler.passportPhotoFile.name;
+    }
+    // 기존 서버에 저장된 이미지인 경우
+    else if (traveler.passportPhotoUrl) {
+        imageUrl = normalizePassportImageUrl(traveler.passportPhotoUrl);
+        fileName = traveler.passportPhotoUrl.split('/').pop() || 'Passport Photo';
+    }
+
+    if (!imageUrl) {
+        alert('No passport photo available');
+        return;
+    }
+
+    // 파일 뷰어 모달 사용
+    const modal = document.getElementById('file-viewer-modal');
+    const title = document.getElementById('file-viewer-title');
+    const content = document.getElementById('file-viewer-content');
+
+    if (modal && title && content) {
+        title.textContent = `Passport Photo - ${fileName}`;
+        content.innerHTML = `<img src="${imageUrl}" alt="Passport Photo" style="max-width: 100%; max-height: 70vh; object-fit: contain;">`;
+        modal.style.display = 'flex';
+    }
+};
+
+// 여권 사진 다운로드
+window.downloadPassportPhoto = function(index) {
+    const traveler = travelerModalData[index];
+    if (!traveler) return;
+
+    let downloadUrl = null;
+    let fileName = 'passport_photo';
+
+    // 새로 업로드한 파일인 경우
+    if (traveler.passportPhotoFile) {
+        downloadUrl = URL.createObjectURL(traveler.passportPhotoFile);
+        fileName = traveler.passportPhotoFile.name;
+    }
+    // 기존 서버에 저장된 이미지인 경우
+    else if (traveler.passportPhotoUrl) {
+        downloadUrl = normalizePassportImageUrl(traveler.passportPhotoUrl);
+        fileName = traveler.passportPhotoUrl.split('/').pop() || 'passport_photo';
+    }
+
+    if (!downloadUrl) {
+        alert('No passport photo available');
+        return;
+    }
+
+    // 다운로드 링크 생성 및 클릭
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Blob URL인 경우 정리 (새 파일이 아닌 경우 - 서버 URL)
+    if (!traveler.passportPhotoFile && downloadUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(downloadUrl);
+    }
+};
+
 // Visa Type 변경 핸들러
 window.handleVisaTypeChange = function(index, value) {
     updateTravelerField(index, 'visaType', value);
-    updateTravelerField(index, 'visaRequired', value !== 'with_visa' && value !== '');
+    // with_visa, foreign은 이미 비자가 있으므로 visaRequired = false
+    const hasVisa = value === 'with_visa' || value === 'foreign';
+    updateTravelerField(index, 'visaRequired', !hasVisa && value !== '');
 
-    // Visa Upload 컨테이너 표시/숨김
+    // Visa Upload 컨테이너 표시/숨김 (with_visa, foreign일 때 표시)
     const container = document.getElementById(`visa-upload-container-${index}`);
     if (container) {
-        container.style.display = value === 'with_visa' ? 'block' : 'none';
+        container.style.display = hasVisa ? 'block' : 'none';
     }
 
-    // with_visa가 아닌 경우 기존 visa document 초기화
-    if (value !== 'with_visa') {
+    // with_visa, foreign이 아닌 경우 기존 visa document 초기화
+    if (!hasVisa) {
         removeVisaDocument(index);
     }
 };
@@ -1814,6 +2465,15 @@ window.handleVisaDocumentUpload = function(index, input) {
 // Visa Document 제거
 window.removeVisaDocument = function(index) {
     if (travelerModalData[index]) {
+        // 기존 서버 URL이 있으면 삭제 대기 목록에 추가
+        const existingUrl = travelerModalData[index].visaDocumentUrl;
+        if (existingUrl && typeof existingUrl === 'string' && existingUrl.trim()) {
+            pendingDeleteFiles.push({
+                fileUrl: existingUrl,
+                fileType: 'visa'
+            });
+        }
+
         travelerModalData[index].visaDocumentFile = null;
         travelerModalData[index].visaDocumentUrl = null;
 
@@ -1824,6 +2484,97 @@ window.removeVisaDocument = function(index) {
         // 파일 입력 초기화
         const fileInput = document.getElementById(`visa-document-${index}`);
         if (fileInput) fileInput.value = '';
+    }
+};
+
+// Visa Document 미리보기
+window.previewVisaDocument = function(index) {
+    const traveler = travelerModalData[index];
+    if (!traveler) return;
+
+    let fileUrl = null;
+    let fileName = 'Visa Document';
+    let fileType = '';
+
+    // 새로 업로드한 파일인 경우
+    if (traveler.visaDocumentFile) {
+        fileUrl = URL.createObjectURL(traveler.visaDocumentFile);
+        fileName = traveler.visaDocumentFile.name;
+        fileType = traveler.visaDocumentFile.type;
+    }
+    // 기존 서버에 저장된 파일인 경우
+    else if (traveler.visaDocumentUrl) {
+        fileUrl = normalizePassportImageUrl(traveler.visaDocumentUrl);
+        fileName = traveler.visaDocumentUrl.split('/').pop() || 'Visa Document';
+        // 확장자로 파일 타입 추정
+        const ext = fileName.split('.').pop().toLowerCase();
+        if (ext === 'pdf') {
+            fileType = 'application/pdf';
+        } else {
+            fileType = 'image/' + ext;
+        }
+    }
+
+    if (!fileUrl) {
+        alert('No visa document available');
+        return;
+    }
+
+    // 파일 뷰어 모달 사용
+    const modal = document.getElementById('file-viewer-modal');
+    const title = document.getElementById('file-viewer-title');
+    const content = document.getElementById('file-viewer-content');
+
+    if (modal && title && content) {
+        title.textContent = `Visa Document - ${fileName}`;
+
+        // PDF인 경우 iframe 사용, 이미지인 경우 img 태그 사용
+        if (fileType === 'application/pdf') {
+            content.innerHTML = `<iframe src="${fileUrl}" style="width: 100%; height: 70vh; border: none;"></iframe>`;
+        } else {
+            content.innerHTML = `<img src="${fileUrl}" alt="Visa Document" style="max-width: 100%; max-height: 70vh; object-fit: contain;">`;
+        }
+
+        modal.style.display = 'flex';
+    }
+};
+
+// Visa Document 다운로드
+window.downloadVisaDocument = function(index) {
+    const traveler = travelerModalData[index];
+    if (!traveler) return;
+
+    let downloadUrl = null;
+    let fileName = 'visa_document';
+
+    // 새로 업로드한 파일인 경우
+    if (traveler.visaDocumentFile) {
+        downloadUrl = URL.createObjectURL(traveler.visaDocumentFile);
+        fileName = traveler.visaDocumentFile.name;
+    }
+    // 기존 서버에 저장된 파일인 경우
+    else if (traveler.visaDocumentUrl) {
+        downloadUrl = normalizePassportImageUrl(traveler.visaDocumentUrl);
+        fileName = traveler.visaDocumentUrl.split('/').pop() || 'visa_document';
+    }
+
+    if (!downloadUrl) {
+        alert('No visa document available');
+        return;
+    }
+
+    // 다운로드 링크 생성 및 클릭
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Blob URL인 경우 정리 (새 파일이 아닌 경우 - 서버 URL)
+    if (!traveler.visaDocumentFile && downloadUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(downloadUrl);
     }
 };
 
@@ -1930,6 +2681,11 @@ function saveTravelersFromModal() {
         }
     }
 
+    // 삭제 대기 파일들을 서버에서 삭제
+    if (pendingDeleteFiles.length > 0) {
+        deletePendingFiles();
+    }
+
     // travelers 배열에 저장 (모달 형식 → travelers 형식 변환)
     travelers.length = 0; // 기존 배열 비우기
     travelerModalData.forEach(t => {
@@ -1941,6 +2697,36 @@ function saveTravelersFromModal() {
 
     // 모달 닫기
     closeTravelerModal();
+}
+
+// 삭제 대기 파일들을 서버에서 삭제
+async function deletePendingFiles() {
+    const filesToDelete = [...pendingDeleteFiles];
+    pendingDeleteFiles = []; // 목록 초기화
+
+    for (const fileInfo of filesToDelete) {
+        try {
+            const response = await fetch('/admin/backend/api/delete_traveler_file.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    fileUrl: fileInfo.fileUrl,
+                    fileType: fileInfo.fileType
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                console.log(`[DELETE] Successfully deleted ${fileInfo.fileType} file:`, fileInfo.fileUrl);
+            } else {
+                console.warn(`[DELETE] Failed to delete ${fileInfo.fileType} file:`, result.message);
+            }
+        } catch (error) {
+            console.error(`[DELETE] Error deleting ${fileInfo.fileType} file:`, error);
+        }
+    }
 }
 
 // 메인 페이지 여행자 요약 업데이트
@@ -2131,11 +2917,12 @@ async function searchProducts() {
                 const hasFlyer = pkg.flyer_file ? 'has-file' : 'no-file';
                 const hasDetail = pkg.detail_file ? 'has-file' : 'no-file';
                 const hasItinerary = pkg.itinerary_file ? 'has-file' : 'no-file';
+                // (HTML 태그 수정) 디코딩 적용
                 html += `
                     <div class="product-item" data-package-id="${pkg.packageId}" onclick="selectProductInModal(${pkg.packageId})">
                         <div class="product-item-content">
                             <div class="product-info">
-                                <div class="product-name">${escapeHtml(pkg.packageName || '')}</div>
+                                <div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}</div>
                                 <div class="product-price">₱${formatCurrency(pkg.packagePrice || 0)}</div>
                                 <div class="product-description">${escapeHtml(descText.substring(0, 100))}...</div>
                             </div>
@@ -2474,9 +3261,22 @@ async function renderCalendar() {
                 } else if (availabilityInfo && availabilityInfo.remainingSeats > 0) {
                     cellClass = 'available';
                     const price = Math.floor(availabilityInfo.price / 1000);
+                    const isOnSale = availabilityInfo.isOnSale || availabilityInfo.discountAmount > 0;
+                    const discountAmount = availabilityInfo.discountAmount || 0;
+
+                    let priceHtml = `<p class="text fz12 fw400 lh16">₱${price}K</p>`;
+                    if (isOnSale && discountAmount > 0) {
+                        cellClass += ' on-sale';
+                        const discountK = Math.floor(discountAmount / 1000);
+                        priceHtml = `
+                            <p class="text fz12 fw600 lh16" style="color: #DC2626;">₱${price}K</p>
+                            <span class="sale-badge">-${discountK > 0 ? discountK + 'K' : discountAmount}</span>
+                        `;
+                    }
+
                     cellContent = `
                         ${date}
-                        <p class="text fz12 fw400 lh16">₱${price}K</p>
+                        ${priceHtml}
                     `;
                     clickEvent = `onclick="selectDateInCalendar('${dateStr}', ${availabilityInfo.availabilityId})"`;
                 } else {
@@ -2542,20 +3342,46 @@ function updateCalendarInfo() {
         if (calendarInfo) calendarInfo.innerHTML = '';
         return;
     }
-    
+
     const date = new Date(selectedDateInfo.availableDate);
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     const price = formatCurrency(selectedDateInfo.price);
     const remainingSeats = selectedDateInfo.remainingSeats;
 
+    // Sale 할인 정보 표시
+    const isOnSale = selectedDateInfo.isOnSale || selectedDateInfo.discountAmount > 0;
+    const discountAmount = selectedDateInfo.discountAmount || 0;
+    const originalPrice = selectedDateInfo.originalB2bPrice || selectedDateInfo.originalPrice;
+    const saleName = selectedDateInfo.saleName || '';
+
+    let priceHtml = `<strong>Price:</strong> ₱${price}`;
+    if (isOnSale && discountAmount > 0 && originalPrice) {
+        priceHtml = `
+            <strong>Price:</strong>
+            <span style="text-decoration: line-through; color: #9CA3AF;">₱${formatCurrency(originalPrice)}</span>
+            <span style="color: #DC2626; font-weight: 600;"> ₱${price}</span>
+            <span style="background: #DC2626; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">-₱${formatCurrency(discountAmount)}</span>
+        `;
+    }
+
+    let saleNameHtml = '';
+    if (isOnSale && saleName) {
+        saleNameHtml = `
+            <div class="calendar-info-item" style="color: #DC2626;">
+                <strong>Sale:</strong> ${escapeHtml(saleName)}
+            </div>
+        `;
+    }
+
     calendarInfo.innerHTML = `
         <div class="calendar-info-item">
             <strong>Selected Date:</strong> ${formattedDate}
         </div>
         <div class="calendar-info-item">
-            <strong>Price:</strong> ₱${price}
+            ${priceHtml}
         </div>
+        ${saleNameHtml}
         <div class="calendar-info-item">
             <strong>Remaining Seats:</strong> ${remainingSeats}
         </div>
@@ -3486,10 +4312,19 @@ async function confirmTravelCustomerSelection() {
                 };
                 
                 travelers.push(newTraveler);
+
+                // travelerModalData에도 추가 (모달이 열려있을 때 실시간 반영)
+                travelerModalData.push(convertToModalFormat(newTraveler));
             }
         }
         __rerenderTravelersTable();
         updateTravelerSummary();
+
+        // Manage Travelers 모달이 열려있으면 카드 다시 렌더링
+        const travelerModal = document.getElementById('traveler-modal');
+        if (travelerModal && travelerModal.style.display === 'flex') {
+            renderTravelerCards();
+        }
 
         // 모달 닫기
         closeModal('travel-customer-search-modal');
@@ -3567,6 +4402,7 @@ function renderTravelerRow(traveler) {
                     <option value="with_visa" ${!traveler.visaType || traveler.visaType === 'with_visa' ? 'selected' : ''}>${getText('visaNo')}</option>
                     <option value="group" ${traveler.visaType === 'group' ? 'selected' : ''}>${getText('visaGroup')}</option>
                     <option value="individual" ${traveler.visaType === 'individual' ? 'selected' : ''}>${getText('visaIndividual')}</option>
+                    <option value="foreign" ${traveler.visaType === 'foreign' ? 'selected' : ''}>${getText('visaForeign')}</option>
                 </select>
             </div>
         </td>
@@ -3860,7 +4696,8 @@ function attachTravelerEventListeners(row, index) {
     
     visaSelect?.addEventListener('change', () => {
         travelers[index].visaType = visaSelect.value;
-        travelers[index].visaRequired = visaSelect.value !== 'with_visa';
+        const hasVisa = visaSelect.value === 'with_visa' || visaSelect.value === 'foreign';
+        travelers[index].visaRequired = !hasVisa;
     });
     
     titleSelect?.addEventListener('change', () => {
@@ -4037,28 +4874,26 @@ async function loadRoomOptions() {
             currentRoomOptions = defaultRoomOptions;
         }
         
-        // 룸 옵션 목록 렌더링
+        // 룸 옵션 목록 렌더링 (b2b-booking-detail 스타일)
         let html = '';
         roomOptions.forEach(room => {
             const existingRoom = selectedRoomsInModal.find(r => r.roomId === room.roomId);
             const count = existingRoom ? existingRoom.count : 0;
+            const isSelected = count > 0;
 
             const displayPrice = __getRoomDisplayPrice(room);
+            const priceText = displayPrice > 0 ? `+₱${formatCurrency(displayPrice)}` : 'Included';
             html += `
-                <div class="room-option-item">
-                    <div class="room-option-info">
-                        <div class="room-option-name">${escapeHtml(room.roomType || '')}</div>
-                        <div class="room-option-capacity">${room.capacity || 1} <span data-lan-eng="people">people</span></div>
-                        ${displayPrice > 0 ? `<div class="room-option-price">₱${formatCurrency(displayPrice)}</div>` : ''}
-                    </div>
-                    <div class="quantity-selector">
-                        <button type="button" class="quantity-btn minus" onclick="changeRoomQuantity('${room.roomId}', -1)" ${count <= 0 ? 'disabled' : ''}>
-                            <img src="../image/ic_minus.svg" alt="-">
-                        </button>
-                        <span class="quantity-value${count > 0 ? ' has-value' : ''}">${count}</span>
-                        <button type="button" class="quantity-btn plus" onclick="changeRoomQuantity('${room.roomId}', 1)">
-                            <img src="../image/ic_plus.svg" alt="+">
-                        </button>
+                <div class="room-option-card ${isSelected ? 'selected' : ''}" data-room-id="${room.roomId}">
+                    <div class="room-option-card-row">
+                        <span class="room-option-card-name">${escapeHtml(room.roomType || '')}</span>
+                        <span class="room-option-card-capacity">${room.capacity || 1} guests</span>
+                        <span class="room-option-card-price ${displayPrice > 0 ? 'has-price' : ''}">${priceText}</span>
+                        <div class="room-option-card-controls">
+                            <button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', -1)" ${count === 0 ? 'disabled' : ''}>-</button>
+                            <span class="room-qty-value ${count > 0 ? 'has-value' : ''}" id="room-qty-${room.roomId}">${count}</span>
+                            <button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', 1)">+</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -4078,23 +4913,21 @@ async function loadRoomOptions() {
         defaultRoomOptions.forEach(room => {
             const existingRoom = selectedRoomsInModal.find(r => r.roomId === room.roomId);
             const count = existingRoom ? existingRoom.count : 0;
+            const isSelected = count > 0;
 
             const displayPrice = __getRoomDisplayPrice(room);
+            const priceText = displayPrice > 0 ? `+₱${formatCurrency(displayPrice)}` : 'Included';
             html += `
-                <div class="room-option-item">
-                    <div class="room-option-info">
-                        <div class="room-option-name">${escapeHtml(room.roomType || '')}</div>
-                        <div class="room-option-capacity">${room.capacity || 1} <span data-lan-eng="people">people</span></div>
-                        ${displayPrice > 0 ? `<div class="room-option-price">₱${formatCurrency(displayPrice)}</div>` : ''}
-                    </div>
-                    <div class="quantity-selector">
-                        <button type="button" class="quantity-btn minus" onclick="changeRoomQuantity('${room.roomId}', -1)" ${count <= 0 ? 'disabled' : ''}>
-                            <img src="../image/ic_minus.svg" alt="-">
-                        </button>
-                        <span class="quantity-value${count > 0 ? ' has-value' : ''}">${count}</span>
-                        <button type="button" class="quantity-btn plus" onclick="changeRoomQuantity('${room.roomId}', 1)">
-                            <img src="../image/ic_plus.svg" alt="+">
-                        </button>
+                <div class="room-option-card ${isSelected ? 'selected' : ''}" data-room-id="${room.roomId}">
+                    <div class="room-option-card-row">
+                        <span class="room-option-card-name">${escapeHtml(room.roomType || '')}</span>
+                        <span class="room-option-card-capacity">${room.capacity || 1} guests</span>
+                        <span class="room-option-card-price ${displayPrice > 0 ? 'has-price' : ''}">${priceText}</span>
+                        <div class="room-option-card-controls">
+                            <button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', -1)" ${count === 0 ? 'disabled' : ''}>-</button>
+                            <span class="room-qty-value ${count > 0 ? 'has-value' : ''}" id="room-qty-${room.roomId}">${count}</span>
+                            <button type="button" class="room-qty-btn" onclick="changeRoomQuantity('${room.roomId}', 1)">+</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -4138,11 +4971,36 @@ window.changeRoomQuantity = function(roomId, change) {
             });
         }
     }
-    
-    // UI 업데이트
-    loadRoomOptions();
-    // 주문 요약 업데이트 (룸 수량 변경 시 즉시 반영)
+
+    // UI 직접 업데이트 (b2b-booking-detail 스타일)
+    const qtyEl = document.getElementById(`room-qty-${roomId}`);
+    if (qtyEl) {
+        qtyEl.textContent = newCount;
+        // has-value 클래스 토글
+        if (newCount > 0) {
+            qtyEl.classList.add('has-value');
+        } else {
+            qtyEl.classList.remove('has-value');
+        }
+    }
+
+    // 마이너스 버튼 비활성화
+    const minusBtn = qtyEl?.parentElement?.querySelector('.room-qty-btn');
+    if (minusBtn) minusBtn.disabled = (newCount === 0);
+
+    // 카드 선택 상태 토글
+    const card = document.querySelector(`.room-option-card[data-room-id="${roomId}"]`);
+    if (card) {
+        if (newCount > 0) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    }
+
+    // 주문 요약 업데이트
     updateOrderSummary();
+    updateRoomCombinationBanner();
 };
 
 // 주문 요약 업데이트 (calculateTotalAmount와 동일한 계산 로직 사용)
@@ -4150,28 +5008,51 @@ function updateOrderSummary() {
     const summaryContainer = document.getElementById('order-summary-list');
     const amountContainer = document.getElementById('order-amount-value');
     if (!summaryContainer || !amountContainer) return;
-    
+
     // calculateTotalAmount와 동일한 계산 로직 사용
     let totalAmount = 0;
     let summaryHtml = '';
-    
-    // 상품 기본 가격: pricingOptions(option_name) 단위로 집계
+
+    // 상품 기본 가격: 여행자별 가격 계산 (Infant/Child 특별 로직 적용)
     if (selectedPackage) {
-        const countByKey = new Map(); // typeKey(lower) -> count
+        // Adult, Child(Room Yes), Child(Room No), Infant 별로 집계
+        const priceGroups = new Map(); // key -> { label, count, total }
         travelers.forEach(t => {
-            const k = String(t?.type || '').toLowerCase();
-            if (!k) return;
-            countByKey.set(k, (countByKey.get(k) || 0) + 1);
+            if (!t) return;
+            const type = __classifyTypeKey(t.type);
+            const price = __getTravelerPrice(t);
+
+            let key, label;
+            if (type === 'infant') {
+                key = 'infant';
+                label = 'Infant';
+            } else if (type === 'child') {
+                if (t.childRoom === true) {
+                    key = 'child_room_yes';
+                    label = 'Child (Room)';
+                } else {
+                    key = 'child_room_no';
+                    label = 'Child (No Room)';
+                }
+            } else {
+                key = 'adult';
+                label = __labelByTravelerType?.['adult'] || 'Adult';
+            }
+
+            if (!priceGroups.has(key)) {
+                priceGroups.set(key, { label, count: 0, total: 0, unitPrice: price });
+            }
+            const group = priceGroups.get(key);
+            group.count++;
+            group.total += price;
         });
-        for (const [k, cnt] of countByKey.entries()) {
-            const label = __labelByTravelerType?.[k] ? __labelByTravelerType[k] : k;
-            const unit = __getUnitPrice(k);
-            const line = unit * cnt;
-            totalAmount += line;
+
+        for (const [, group] of priceGroups.entries()) {
+            totalAmount += group.total;
             summaryHtml += `
                 <div class="order-summary-item">
-                    <span>${escapeHtml(label)} x${cnt}</span>
-                    <span class="price">${formatCurrency(line)}(₱)</span>
+                    <span>${escapeHtml(group.label)} x${group.count}</span>
+                    <span class="price">${formatCurrency(group.total)}(₱)</span>
                 </div>
             `;
         }
@@ -4435,12 +5316,11 @@ function calculateBalanceAmount(orderAmount, advancePayment) {
 function calculateTotalAmount() {
     let total = 0;
 
-    // 상품 기본 가격: pricingOptions(option_name) 단위로 합산
+    // 상품 기본 가격: 여행자별 가격 계산 (Infant/Child 특별 로직 적용)
     if (selectedPackage) {
         travelers.forEach(t => {
-            const k = String(t?.type || '').toLowerCase();
-            if (!k) return;
-            total += __getUnitPrice(k);
+            if (!t) return;
+            total += __getTravelerPrice(t);
         });
     }
 
@@ -4497,70 +5377,70 @@ function formatDateLocal(date) {
     return `${year}-${month}-${day}`;
 }
 
-// 3단계 Payment 데드라인 계산
-function calculatePaymentDeadlines() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const departureDateVal = document.getElementById('departure_date_value')?.value || '';
-    const departureDate = departureDateVal ? new Date(departureDateVal) : null;
-
-    if (departureDate) {
-        departureDate.setHours(0, 0, 0, 0);
-        const daysUntilDeparture = Math.ceil((departureDate - today) / (1000 * 60 * 60 * 24));
-
-        // 특수 케이스: 출발일 3일 이내 → 모두 당일
-        if (daysUntilDeparture <= 3) {
-            const todayStr = formatDateLocal(today);
-            return {
-                down: todayStr,
-                second: todayStr,
-                balance: todayStr
-            };
-        }
-
-        // Down Payment: 예약일 + 3일
-        const downDeadline = new Date(today);
-        downDeadline.setDate(downDeadline.getDate() + 3);
-
-        // Second Payment: 출발 30일 이내면 예약일+3일, 아니면 예약일+30일
-        const secondDeadline = new Date(today);
-        if (daysUntilDeparture <= 30) {
-            secondDeadline.setDate(secondDeadline.getDate() + 3);
-        } else {
-            secondDeadline.setDate(secondDeadline.getDate() + 30);
-        }
-
-        // Balance: 출발 30일 이내면 예약일+3일, 아니면 출발일-30일
-        let balanceDeadline;
-        if (daysUntilDeparture <= 30) {
-            balanceDeadline = new Date(today);
-            balanceDeadline.setDate(balanceDeadline.getDate() + 3);
-        } else {
-            balanceDeadline = new Date(departureDate);
-            balanceDeadline.setDate(balanceDeadline.getDate() - 30);
-        }
-
-        // Balance가 Second보다 짧으면 Second와 동일하게
-        if (balanceDeadline < secondDeadline) {
-            balanceDeadline = new Date(secondDeadline);
-        }
-
-        return {
-            down: formatDateLocal(downDeadline),
-            second: formatDateLocal(secondDeadline),
-            balance: formatDateLocal(balanceDeadline)
-        };
-    }
-
-    // 출발일 없으면 기본값
-    const downDeadline = new Date(today);
-    downDeadline.setDate(downDeadline.getDate() + 3);
-    return {
-        down: formatDateLocal(downDeadline),
-        second: '',
-        balance: ''
-    };
-}
+// [UNUSED] 3단계 Payment 데드라인 계산 - 실제로는 calculateDownPaymentDeadline() 등 개별 함수 사용
+// function calculatePaymentDeadlines() {
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+//     const departureDateVal = document.getElementById('departure_date_value')?.value || '';
+//     const departureDate = departureDateVal ? new Date(departureDateVal) : null;
+//
+//     if (departureDate) {
+//         departureDate.setHours(0, 0, 0, 0);
+//         const daysUntilDeparture = Math.ceil((departureDate - today) / (1000 * 60 * 60 * 24));
+//
+//         // 특수 케이스: 출발일 3일 이내 → 모두 당일
+//         if (daysUntilDeparture <= 3) {
+//             const todayStr = formatDateLocal(today);
+//             return {
+//                 down: todayStr,
+//                 second: todayStr,
+//                 balance: todayStr
+//             };
+//         }
+//
+//         // Down Payment: 예약일 + 3일
+//         const downDeadline = new Date(today);
+//         downDeadline.setDate(downDeadline.getDate() + 3);
+//
+//         // Second Payment: 출발 30일 이내면 예약일+3일, 아니면 예약일+30일
+//         const secondDeadline = new Date(today);
+//         if (daysUntilDeparture <= 30) {
+//             secondDeadline.setDate(secondDeadline.getDate() + 3);
+//         } else {
+//             secondDeadline.setDate(secondDeadline.getDate() + 30);
+//         }
+//
+//         // Balance: 출발 30일 이내면 예약일+3일, 아니면 출발일-30일
+//         let balanceDeadline;
+//         if (daysUntilDeparture <= 30) {
+//             balanceDeadline = new Date(today);
+//             balanceDeadline.setDate(balanceDeadline.getDate() + 3);
+//         } else {
+//             balanceDeadline = new Date(departureDate);
+//             balanceDeadline.setDate(balanceDeadline.getDate() - 30);
+//         }
+//
+//         // Balance가 Second보다 짧으면 Second와 동일하게
+//         if (balanceDeadline < secondDeadline) {
+//             balanceDeadline = new Date(secondDeadline);
+//         }
+//
+//         return {
+//             down: formatDateLocal(downDeadline),
+//             second: formatDateLocal(secondDeadline),
+//             balance: formatDateLocal(balanceDeadline)
+//         };
+//     }
+//
+//     // 출발일 없으면 기본값
+//     const downDeadline = new Date(today);
+//     downDeadline.setDate(downDeadline.getDate() + 3);
+//     return {
+//         down: formatDateLocal(downDeadline),
+//         second: '',
+//         balance: ''
+//     };
+// }
 
 // 3단계 Payment 금액 계산 및 표시
 function updateThreeStepPayments(total) {
@@ -4654,87 +5534,125 @@ function formatDateForInput(date) {
     return `${year}-${month}-${day}`;
 }
 
-// Down Payment 기한 계산
-// 예약일 + 7일, 출발일 7일 이내면 당일
-function calculateDownPaymentDeadline(reservationDate, departureDate) {
-    const today = new Date(reservationDate);
-    today.setHours(0, 0, 0, 0);
+// ========== 결제 Deadline 규칙 ==========
+// 규칙 1: 출발일까지 30일 이내 → Full Payment만, deadline +1일
+// 규칙 2: 출발일까지 44일 이내 → 모든 deadline +3일
+// 규칙 3: 출발일까지 44일 초과 → 일반 규칙
+//         - Down Payment: 예약일 + 3일
+//         - Second Payment: Down Payment deadline + 30일
+//         - Balance: 출발일 - 30일
 
+// 출발일까지 남은 일수 계산
+function getDaysUntilDeparture(departureDate) {
+    if (!departureDate) return null;
     const departure = new Date(departureDate);
     departure.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
+}
 
-    // 출발일까지 남은 일수
-    const daysUntilDeparture = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
+// Full Payment 강제 여부 (30일 이내)
+function isFullPaymentRequired(departureDate) {
+    const days = getDaysUntilDeparture(departureDate);
+    return days !== null && days <= 30;
+}
 
-    // 출발일 7일 이내면 당일
-    if (daysUntilDeparture <= 7) {
-        return today;
+// Down Payment 기한 계산
+function calculateDownPaymentDeadline(reservationDate, departureDate) {
+    const today = new Date(reservationDate || new Date());
+    today.setHours(0, 0, 0, 0);
+
+    const daysUntilDeparture = getDaysUntilDeparture(departureDate);
+
+    // 30일 이내: Full Payment 강제 (Down Payment 없음)
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
+        return null;
     }
 
-    // 예약일 + 7일
+    // 44일 이내 또는 초과: 예약일 + 3일
     const deadline = new Date(today);
-    deadline.setDate(deadline.getDate() + 7);
+    deadline.setDate(deadline.getDate() + 3);
     return deadline;
 }
 
 // Second Payment 기한 계산
-// Down Payment Confirm + 30일, 출발 30일 이내면 3일
-function calculateSecondPaymentDeadline(downPaymentConfirmDate, departureDate) {
-    if (!downPaymentConfirmDate || !departureDate) return null;
+function calculateSecondPaymentDeadline(downPaymentDeadline, departureDate) {
+    if (!departureDate) return null;
 
-    const confirmDate = new Date(downPaymentConfirmDate);
-    confirmDate.setHours(0, 0, 0, 0);
+    const daysUntilDeparture = getDaysUntilDeparture(departureDate);
 
-    const departure = new Date(departureDate);
-    departure.setHours(0, 0, 0, 0);
-
-    // 출발일까지 남은 일수
-    const daysUntilDeparture = Math.ceil((departure - confirmDate) / (1000 * 60 * 60 * 24));
-
-    // 출발 30일 이내면 3일
-    if (daysUntilDeparture <= 30) {
-        const deadline = new Date(confirmDate);
-        deadline.setDate(deadline.getDate() + 3);
-        // 출발일을 넘지 않도록
-        return deadline > departure ? departure : deadline;
+    // 30일 이내: Full Payment 강제 (Second Payment 없음)
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
+        return null;
     }
 
-    // Down Payment Confirm + 30일
-    const deadline = new Date(confirmDate);
+    // 44일 이내: 예약일 + 3일
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(today);
+        deadline.setDate(deadline.getDate() + 3);
+        return deadline;
+    }
+
+    // 44일 초과: Down Payment deadline + 30일
+    if (!downPaymentDeadline) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        downPaymentDeadline = new Date(today);
+        downPaymentDeadline.setDate(downPaymentDeadline.getDate() + 3);
+    }
+    const deadline = new Date(downPaymentDeadline);
     deadline.setDate(deadline.getDate() + 30);
     return deadline;
 }
 
 // Balance 기한 계산
-// 출발일 30일 전, Second Payment 날짜 이내면 Second Payment와 동일, 출발 30일 이내면 3일
 function calculateBalanceDeadline(secondPaymentDeadline, departureDate) {
     if (!departureDate) return null;
 
     const departure = new Date(departureDate);
     departure.setHours(0, 0, 0, 0);
 
+    const daysUntilDeparture = getDaysUntilDeparture(departureDate);
+
+    // 30일 이내: Full Payment 강제 (Balance 없음)
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
+        return null;
+    }
+
+    // 44일 이내: 예약일 + 3일
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(today);
+        deadline.setDate(deadline.getDate() + 3);
+        return deadline;
+    }
+
+    // 44일 초과: 출발일 - 30일
+    const deadline = new Date(departure);
+    deadline.setDate(deadline.getDate() - 30);
+    return deadline;
+}
+
+// Full Payment 기한 계산
+function calculateFullPaymentDeadline(departureDate) {
+    const daysUntilDeparture = getDaysUntilDeparture(departureDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 출발일까지 남은 일수
-    const daysUntilDeparture = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
-
-    // 출발 30일 이내면 3일
-    if (daysUntilDeparture <= 30) {
+    // 30일 이내: +1일
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
         const deadline = new Date(today);
-        deadline.setDate(deadline.getDate() + 3);
-        return deadline > departure ? departure : deadline;
+        deadline.setDate(deadline.getDate() + 1);
+        return deadline;
     }
 
-    // 출발일 30일 전
-    const deadline = new Date(departure);
-    deadline.setDate(deadline.getDate() - 30);
-
-    // Second Payment 기한 이내면 Second Payment와 동일
-    if (secondPaymentDeadline && deadline <= secondPaymentDeadline) {
-        return new Date(secondPaymentDeadline);
-    }
-
+    // 그 외: +3일
+    const deadline = new Date(today);
+    deadline.setDate(deadline.getDate() + 3);
     return deadline;
 }
 
@@ -5019,11 +5937,25 @@ async function handleSave() {
         
         // 인원 수 계산 (travelers 기반 → adult/child/infant 분류)
         let adults = 0, children = 0, infants = 0;
+        let visaFeeTotal = 0;
+        let flightOptionFeeTotal = 0;
         travelers.forEach(t => {
             const cls = __classifyTypeKey(t?.type);
             if (cls === 'infant') infants += 1;
             else if (cls === 'child') children += 1;
             else adults += 1;
+
+            // Visa Fee 계산
+            const visaType = String(t.visaType || '').toLowerCase();
+            if (visaType === 'group') visaFeeTotal += 1500;
+            else if (visaType === 'individual') visaFeeTotal += 1900;
+
+            // Flight Option Fee 계산
+            if (t.flightOptionPrices && typeof t.flightOptionPrices === 'object') {
+                Object.values(t.flightOptionPrices).forEach(price => {
+                    flightOptionFeeTotal += parseFloat(price) || 0;
+                });
+            }
         });
 
         const seatRequestValue = getEditorPlainText('seat_req_editor');
@@ -5073,10 +6005,23 @@ async function handleSave() {
             otherRequest: otherRequestValue,
             memo: memoValue,
             // Payment Type - 기본값 staged (Step 2에서 설정)
-            paymentType: 'staged'
+            paymentType: 'staged',
+            // 예약 시점 단가 및 비용 정보
+            adultPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('adult') : 0) || 0,
+            childPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('child') : 0) || 0,
+            infantPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('infant') : 0) || 10000,
+            visaFee: visaFeeTotal || 0,
+            flightOptionFee: flightOptionFeeTotal || 0
         };
 
         const formData = new FormData();
+
+        // Product Edit 모드인지 확인 (승인 필요 플로우)
+        if (window.isProductEditMode && window.productEditBookingId) {
+            // saveEditReservationData API 호출
+            await handleProductEditSave(reservationData);
+            return;
+        }
 
         // 기존 예약 편집 모드인지 확인
         const isEditMode = !!currentEditingBookingId;
@@ -5211,6 +6156,14 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+function decodeHtmlEntities(str) {
+    if (!str) return str;
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
 }
 
 // 테스트 데이터 채우기

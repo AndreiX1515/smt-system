@@ -192,18 +192,7 @@ try {
         }
 
         if ($start !== '' && $end !== '') {
-            //  ( 100) - UI   
-            try {
-                $ds = new DateTime($start);
-                $de = new DateTime($end);
-                $diffDays = (int)$ds->diff($de)->format('%r%a');
-                $len = abs($diffDays) + 1;
-                if ($len > 100) {
-                    send_json_response(['success' => false, 'message' => '   100  .'], 400);
-                }
-            } catch (Throwable $e) { /* ignore */ }
-
-            // packages.sales_period    
+            // packages.sales_period
             $spType = get_column_type($conn, 'packages', 'sales_period');
             $spTypeLower = strtolower((string)$spType);
             if (str_starts_with($spTypeLower, 'date') || str_starts_with($spTypeLower, 'datetime') || str_starts_with($spTypeLower, 'timestamp')) {

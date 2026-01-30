@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Complete | Shop</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .complete-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 60px);
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .complete-icon {
+            width: 100px;
+            height: 100px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            color: #fff;
+            margin-bottom: 24px;
+            animation: scaleIn 0.5s ease;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .complete-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .complete-message {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .order-info {
+            width: 100%;
+            max-width: 320px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 32px;
+        }
+
+        .order-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .order-info-row .label { color: #888; }
+        .order-info-row .value { font-weight: 500; }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .btn-primary {
+            padding: 16px;
+            border: none;
+            background: #000;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-secondary {
+            padding: 16px;
+            border: 2px solid #000;
+            background: #fff;
+            color: #000;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <header class="header-type1">
+            <div style="width: 24px;"></div>
+            <div class="title">Order Complete</div>
+            <div style="width: 24px;"></div>
+        </header>
+
+        <div class="complete-container">
+            <div class="complete-icon">✓</div>
+            <h1 class="complete-title">Order Confirmed!</h1>
+            <p class="complete-message">
+                Thank you for your order.<br>
+                Your items will be shipped soon.
+            </p>
+
+            <div class="order-info">
+                <div class="order-info-row">
+                    <span class="label">Order No.</span>
+                    <span class="value" id="orderNo">-</span>
+                </div>
+                <div class="order-info-row">
+                    <span class="label">Order Date</span>
+                    <span class="value" id="orderDate">-</span>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <a href="orders.html" class="btn-primary">View Orders</a>
+                <a href="index.html" class="btn-secondary">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderNo = urlParams.get('order_no');
+
+        if (orderNo) {
+            document.getElementById('orderNo').textContent = orderNo;
+        }
+
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        document.getElementById('orderDate').textContent = dateStr;
+    </script>
+</body>
+</html>

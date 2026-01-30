@@ -66,7 +66,7 @@
 					<thead>
 						<tr>
 							<th class="no is-center">No</th>
-							<th class="is-center" data-lan-eng="Agent Name">Agent Name</th>
+							<th class="is-center" data-lan-eng="Agency Name">Agency Name</th>
 							<th class="is-center" data-lan-eng="Person in charge">Person in charge</th>
 							<th class="is-center" data-lan-eng="Contract period">Contract period</th>
 							<th class="is-center" data-lan-eng="Activity status">Activity status</th>
@@ -134,7 +134,7 @@
 				const sessionData = await sessionResponse.json();
 				
 				// Super  admin   (agent/guide   )
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;

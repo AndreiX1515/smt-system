@@ -102,6 +102,12 @@ if (!isset($conn) || !$conn) {
     exit;
 }
 
+// Email notification service (for rejection notifications)
+$email_service_file = __DIR__ . '/../../../backend/services/email_notification_service.php';
+if (file_exists($email_service_file)) {
+    require_once $email_service_file;
+}
+
 if (!function_exists('send_json_response')) {
     function send_json_response($data, $status_code = 200) {
         while (ob_get_level() > 0) {
@@ -173,26 +179,72 @@ if (!function_exists('__is_super_admin')) {
             if (session_status() === PHP_SESSION_NONE) @session_start();
         } catch (Throwable $e) { /* ignore */ }
 
-        $aid = (int)($_SESSION['admin_accountId'] ?? 0);
-        $email = strtolower(trim((string)($_SESSION['admin_emailAddress'] ?? '')));
-        if ($aid === 6) return true;
-        if ($email === 'admin@smarttravel.com') return true;
+        // admin_ph, admin_kr 모두 최고관리자로 인정
+        $userType = $_SESSION['admin_userType'] ?? '';
+        if (in_array($userType, ['admin_ph', 'admin_kr'], true)) {
+            return true;
+        }
 
-        // fallback: DB 확인(환경에 따라 admin 계정이 6이 아닐 수 있음)
-        try {
-            if ($aid > 0) {
-                $st = $conn->prepare("SELECT LOWER(COALESCE(emailAddress,'')) AS email FROM accounts WHERE accountId = ? LIMIT 1");
-                if ($st) {
-                    $st->bind_param('i', $aid);
-                    $st->execute();
-                    $row = $st->get_result()->fetch_assoc();
-                    $st->close();
-                    if (strtolower(trim((string)($row['email'] ?? ''))) === 'admin@smarttravel.com') return true;
-                }
-            }
-        } catch (Throwable $e) { /* ignore */ }
+        // fallback: 세션에 admin_accountId가 있으면 최고관리자로 인정
+        $aid = (int)($_SESSION['admin_accountId'] ?? 0);
+        if ($aid > 0) {
+            return true;
+        }
 
         return false;
+    }
+}
+
+// 예약 이력 추가 헬퍼 함수
+if (!function_exists('__addBookingHistory')) {
+    function __addBookingHistory(mysqli $conn, string $bookingId, string $description): void {
+        try {
+            // booking_history 테이블 존재 확인
+            $tableCheck = $conn->query("SHOW TABLES LIKE 'booking_history'");
+            if (!$tableCheck || $tableCheck->num_rows === 0) {
+                $conn->query("CREATE TABLE IF NOT EXISTS booking_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    bookingId VARCHAR(50) NOT NULL,
+                    description TEXT,
+                    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_bookingId (bookingId)
+                )");
+            }
+
+            $sql = "INSERT INTO booking_history (bookingId, description) VALUES (?, ?)";
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $bookingId, $description);
+                $stmt->execute();
+                $stmt->close();
+            }
+        } catch (Throwable $e) {
+            error_log('Failed to add booking history: ' . $e->getMessage());
+        }
+    }
+}
+
+// 예약 ID 생성 헬퍼 함수
+if (!function_exists('generateBookingId')) {
+    function generateBookingId(mysqli $conn): string {
+        $prefix = 'BK';
+        $date = date('Ymd');
+
+        // 오늘 날짜로 시작하는 예약 번호 개수 확인
+        $sql = "SELECT COUNT(*) as count FROM bookings WHERE bookingId LIKE ?";
+        $likePattern = $prefix . $date . '%';
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $likePattern);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $count = (int)$row['count'] + 1;
+        $stmt->close();
+
+        // 3자리 숫자로 포맷
+        $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+
+        return $prefix . $date . $sequence;
     }
 }
 
@@ -427,21 +479,6 @@ try {
         @session_start();
     }
 
-    // 테스트용: GET/POST 파라미터로 임시 권한 부여 (개발/테스트 전용 - 운영 환경에서는 제거 필요)
-    // - 기존 packages.php의 test_admin 패턴과 동일하게 사용
-    // - super-api는 대부분의 기능이 admin_accountId 세션이 필요하므로, 자동 E2E 테스트를 위해 제공
-    if (
-        (isset($_GET['test_admin']) && $_GET['test_admin'] === 'super_admin') ||
-        (isset($input['test_admin']) && (string)$input['test_admin'] === 'super_admin')
-    ) {
-        // admin@smarttravel.com (accounts.accountId=6) 기준으로 테스트 세션 구성
-        $_SESSION['admin_accountId'] = $_SESSION['admin_accountId'] ?? 6;
-        // 일부 공용 API(upload 등)가 accountId를 보기도 해서 함께 세팅
-        $_SESSION['accountId'] = $_SESSION['accountId'] ?? 6;
-        $_SESSION['userType'] = $_SESSION['userType'] ?? 'admin';
-        if ($superApiDebug) error_log("Super API: TEST MODE enabled (test_admin=super_admin)");
-    }
-
     $adminAccountId = $_SESSION['admin_accountId'] ?? null;
     if (empty($adminAccountId)) {
         if ($superApiDebug) error_log("Super API: Admin not logged in");
@@ -579,6 +616,9 @@ try {
         case 'updateB2BBooking':
             updateB2BBooking($conn, $input);
             break;
+        case 'updateB2BBookingTravelersAndRooms':
+            updateB2BBookingTravelersAndRooms($conn, $input);
+            break;
         // SMT 수정 시작 - 선금 증빙 파일 업로드
         case 'uploadDepositProof':
             uploadDepositProof($conn, $input);
@@ -600,6 +640,12 @@ try {
             break;
         case 'rejectB2BBooking':
             rejectB2BBooking($conn, $input);
+            break;
+        case 'updateBookingWithApproval':
+            updateBookingWithApproval($conn, $input);
+            break;
+        case 'acknowledgeRejection':
+            acknowledgeRejection($conn, $input);
             break;
         case 'setPaymentDeadline':
             setPaymentDeadline($conn, $input);
@@ -720,6 +766,9 @@ try {
         // 비자 신청 관리
         case 'getVisaApplications':
             getVisaApplications($conn, $input);
+            break;
+        case 'getVisaApplicationsGrouped':
+            getVisaApplicationsGrouped($conn, $input);
             break;
         case 'getVisaApplicationDetail':
             getVisaApplicationDetail($conn, $input);
@@ -875,7 +924,30 @@ try {
             exportAdminLoginHistoryCsv($conn, $input);
             break;
 
-        // 항공사 옵션 관리
+        // 예약 상태 변경 히스토리
+        case 'getBookingStatusHistory':
+            getBookingStatusHistory($conn, $input);
+            break;
+        case 'exportBookingStatusHistoryCsv':
+            exportBookingStatusHistoryCsv($conn, $input);
+            break;
+
+        // 옵션 관리 (대분류/중분류/소분류)
+        case 'getMainOptionCategories':
+            getMainOptionCategories($conn);
+            break;
+        case 'createMainOptionCategory':
+            createMainOptionCategory($conn, $input);
+            break;
+        case 'updateMainOptionCategory':
+            updateMainOptionCategory($conn, $input);
+            break;
+        case 'deleteMainOptionCategory':
+            deleteMainOptionCategory($conn, $input);
+            break;
+        case 'copyMainOptionCategory':
+            copyMainOptionCategory($conn, $input);
+            break;
         case 'getAirlineList':
             getAirlineList($conn);
             break;
@@ -899,6 +971,29 @@ try {
             break;
         case 'deleteAirlineOption':
             deleteAirlineOption($conn, $input);
+            break;
+
+        // 세일 관리
+        case 'getSales':
+            getSales($conn, $input);
+            break;
+        case 'getSaleDetail':
+            getSaleDetail($conn, $input);
+            break;
+        case 'createSale':
+            createSale($conn, $input);
+            break;
+        case 'updateSale':
+            updateSale($conn, $input);
+            break;
+        case 'deleteSale':
+            deleteSale($conn, $input);
+            break;
+        case 'toggleSaleActive':
+            toggleSaleActive($conn, $input);
+            break;
+        case 'getPackagesForSale':
+            getPackagesForSale($conn, $input);
             break;
 
         default:
@@ -2658,15 +2753,15 @@ function getAgents($conn, $input) {
         $params = [];
         $types = '';
 
-        // 고객/기타 계정이 agent 테이블에 잘못 매핑되는 케이스 방지:
-        // - agentId는 AGTxxx 형식만 허용
-        // - accounts.accountType 이 있으면 'agent'만 허용
-        $whereConditions[] = "a.agentId LIKE 'AGT%'";
+        // accountType = 'agent'인 계정만 조회
         if ($hasAccountType) $whereConditions[] = "ac.accountType = 'agent'";
-        
+
+        // personInChargeEmail이 없는 에이전트는 제외 (아직 로그인 안한 에이전트)
+        $whereConditions[] = "(a.personInChargeEmail IS NOT NULL AND a.personInChargeEmail <> '')";
+
         // 요구사항: 지점명(Agent Name/Branch Name) 기준 검색
         if (!empty($input['search'])) {
-            $whereConditions[] = "(b.branchName LIKE ? OR c.companyName LIKE ?)";
+            $whereConditions[] = "(a.agencyName LIKE ? OR CONCAT(a.fName, ' ', a.lName) LIKE ?)";
             $searchTerm = '%' . $input['search'] . '%';
             $params[] = $searchTerm;
             $params[] = $searchTerm;
@@ -2690,10 +2785,8 @@ function getAgents($conn, $input) {
         
         $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
         
-        $countSql = "SELECT COUNT(*) as total FROM agent a 
-                     LEFT JOIN accounts ac ON a.accountId = ac.accountId 
-                     LEFT JOIN company c ON a.companyId = c.companyId
-                     LEFT JOIN branch b ON c.branchId = b.branchId
+        $countSql = "SELECT COUNT(*) as total FROM agent a
+                     LEFT JOIN accounts ac ON a.accountId = ac.accountId
                      $whereClause";
         
         $countStmt = null;
@@ -2708,12 +2801,12 @@ function getAgents($conn, $input) {
         $totalCount = $countResult->fetch_assoc()['total'];
         if ($countStmt) $countStmt->close();
         
-        $dataSql = "SELECT 
+        $dataSql = "SELECT
             a.agentId,
             a.accountId,
-            a.companyId,
-            c.companyName,
-            b.branchName,
+            NULL as companyId,
+            '' as companyName,
+            a.agencyName as branchName,
             CONCAT(a.fName, ' ', a.lName) as managerName,
             ac.username,
             ac.emailAddress,
@@ -2726,8 +2819,6 @@ function getAgents($conn, $input) {
             ac.createdAt
         FROM agent a
         LEFT JOIN accounts ac ON a.accountId = ac.accountId
-        LEFT JOIN company c ON a.companyId = c.companyId
-        LEFT JOIN branch b ON c.branchId = b.branchId
         $whereClause
         ORDER BY ac.createdAt DESC
         LIMIT ? OFFSET ?";
@@ -2806,9 +2897,12 @@ function exportAgentsCsv($conn, $input) {
         $whereConditions[] = "a.agentId LIKE 'AGT%'";
         if ($hasAccountType) $whereConditions[] = "ac.accountType = 'agent'";
 
+        // personInChargeEmail이 없는 에이전트는 제외 (아직 로그인 안한 에이전트)
+        $whereConditions[] = "(a.personInChargeEmail IS NOT NULL AND a.personInChargeEmail <> '')";
+
         // 요구사항: 지점명(Agent Name/Branch Name) 기준 검색
         if ($search !== '') {
-            $whereConditions[] = "(b.branchName LIKE ? OR c.companyName LIKE ?)";
+            $whereConditions[] = "(a.agencyName LIKE ? OR CONCAT(a.fName, ' ', a.lName) LIKE ?)";
             $term = '%' . $search . '%';
             $params[] = $term;
             $params[] = $term;
@@ -2823,10 +2917,10 @@ function exportAgentsCsv($conn, $input) {
 
         $whereClause = !empty($whereConditions) ? ('WHERE ' . implode(' AND ', $whereConditions)) : '';
 
-        $sql = "SELECT 
+        $sql = "SELECT
                     a.agentId,
-                    COALESCE(NULLIF(c.companyName,''), '') as companyName,
-                    COALESCE(NULLIF(b.branchName,''), '') as branchName,
+                    '' as companyName,
+                    a.agencyName as branchName,
                     CONCAT(a.fName, ' ', a.lName) as managerName,
                     ac.emailAddress,
                     a.contactNo,
@@ -2834,8 +2928,8 @@ function exportAgentsCsv($conn, $input) {
                     a.contractEndDate
                 FROM agent a
                 LEFT JOIN accounts ac ON a.accountId = ac.accountId
-                LEFT JOIN company c ON a.companyId = c.companyId
-                LEFT JOIN branch b ON c.branchId = b.branchId
+                
+                
                 $whereClause
                 ORDER BY ac.createdAt DESC";
 
@@ -2894,19 +2988,17 @@ function getAgentDetail($conn, $input) {
         }
         
         // agentId는 'AGT001' 형식의 문자열
-        $sql = "SELECT 
+        $sql = "SELECT
             a.*,
             ac.username,
             ac.emailAddress,
             ac.accountStatus,
             ac.createdAt,
-            c.companyName,
-            c.businessUnit,
-            b.branchName
+            a.agencyName as companyName,
+            '' as businessUnit,
+            '' as branchName
         FROM agent a
         LEFT JOIN accounts ac ON a.accountId = ac.accountId
-        LEFT JOIN company c ON a.companyId = c.companyId
-        LEFT JOIN branch b ON c.branchId = b.branchId
         WHERE a.agentId = ?";
         
         $stmt = $conn->prepare($sql);
@@ -2952,26 +3044,19 @@ function getAgentDetail($conn, $input) {
             $agent['managerName'] = trim($agent['fName'] . ' ' . $agent['lName']);
         }
 
-        // 소속 고객 수(동적):
-        // - 에이전트가 직접 등록한 고객(동일 companyId로 연결된 고객)
-        // - 해당 제휴코드(affiliateCode)로 가입한 고객
+        // 소속 고객 수(동적): 제휴코드(affiliateCode)로 가입한 고객
         $customerCount = 0;
-        $agentAccountId = intval($agent['accountId'] ?? 0);
         $agentIdStr = (string)($agent['agentId'] ?? '');
-        $agentAccountIdStr = (string)$agentAccountId;
-        $companyId = intval($agent['companyId'] ?? 0);
-        // guest 고객만 카운트 (B2B/B2C 여부는 별도)
+        $agentAccountIdStr = (string)intval($agent['accountId'] ?? 0);
+        // guest 고객만 카운트
         $ccSql = "SELECT COUNT(DISTINCT ac2.accountId) as c
                   FROM accounts ac2
-                  LEFT JOIN client c2 ON ac2.accountId = c2.accountId
                   WHERE ac2.accountType = 'guest'
-                    AND (
-                        (? > 0 AND c2.companyId = ?)
-                        OR (COALESCE(ac2.affiliateCode,'') <> '' AND (ac2.affiliateCode = ? OR ac2.affiliateCode = ?))
-                    )";
+                    AND COALESCE(ac2.affiliateCode,'') <> ''
+                    AND (ac2.affiliateCode = ? OR ac2.affiliateCode = ?)";
         $cc = $conn->prepare($ccSql);
         if ($cc) {
-            $cc->bind_param('iiss', $companyId, $companyId, $agentIdStr, $agentAccountIdStr);
+            $cc->bind_param('ss', $agentIdStr, $agentAccountIdStr);
             $cc->execute();
             $customerCount = intval($cc->get_result()->fetch_assoc()['c'] ?? 0);
             $cc->close();
@@ -3016,36 +3101,7 @@ function createAgent($conn, $input) {
         $fName = trim($input['fName'] ?? '');
         $lName = trim($input['lName'] ?? '');
         
-        // companyId 가져오기 또는 생성
-        $companyName = trim($input['companyName'] ?? $input['branchName'] ?? '');
-        $companyId = null;
-        
-        if (!empty($companyName)) {
-            // 기존 company 확인
-            $companyStmt = $conn->prepare("SELECT companyId FROM company WHERE companyName = ?");
-            $companyStmt->bind_param('s', $companyName);
-            $companyStmt->execute();
-            $companyResult = $companyStmt->get_result();
-            
-            if ($companyResult->num_rows > 0) {
-                $companyId = $companyResult->fetch_assoc()['companyId'];
-            } else {
-                // 새 company 생성 (Area/Region은 businessUnit에 저장)
-                $region = trim((string)($input['region'] ?? ''));
-                $businessUnit = ($region !== '') ? $region : $companyName;
-                $insertCompany = $conn->prepare("INSERT INTO company (companyName, businessUnit) VALUES (?, ?)");
-                $insertCompany->bind_param('ss', $companyName, $businessUnit);
-                $insertCompany->execute();
-                $companyId = $conn->insert_id;
-                $insertCompany->close();
-            }
-            $companyStmt->close();
-        }
-        
-        if (!$companyId) {
-            // companyId가 없으면 기본값 1 사용
-            $companyId = 1;
-        }
+        // company 테이블 제거됨 - companyId 사용 안함
         
         // username 생성
         $username = $input['username'] ?? '';
@@ -3093,13 +3149,11 @@ function createAgent($conn, $input) {
         $contactNo = $input['contactNo'] ?? '';
         $agentType = $input['agentType'] ?? 'Retailer';
         $agentRole = $input['agentRole'] ?? 'Sub-Agent';
-        $depositRatio = $input['depositRatio'] ?? null;
         $contractStartDate = $input['contractStartDate'] ?? null;
         $contractEndDate = $input['contractEndDate'] ?? null;
         $memo = $input['memo'] ?? null;
 
         // empty string -> NULL
-        if (is_string($depositRatio) && trim($depositRatio) === '') $depositRatio = null;
         if (is_string($contractStartDate) && trim($contractStartDate) === '') $contractStartDate = null;
         if (is_string($contractEndDate) && trim($contractEndDate) === '') $contractEndDate = null;
         if ($memo !== null) $memo = trim((string)$memo);
@@ -3119,31 +3173,28 @@ function createAgent($conn, $input) {
         
         // agent 테이블 INSERT (계약/메모 포함)
         $agentSql = "INSERT INTO agent (
-            agentId, accountId, companyId, fName, lName, contactNo, agentType, agentRole,
-            depositRatio, contractStartDate, contractEndDate, memo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            agentId, accountId, fName, lName, contactNo, agentType, agentRole,
+            contractStartDate, contractEndDate, memo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $agentStmt = $conn->prepare($agentSql);
         if (!$agentStmt) {
             send_error_response('Failed to prepare agent statement: ' . $conn->error);
         }
-        
-        // depositRatio는 nullable int, contractStart/End는 nullable date(string), memo는 nullable text
-        $depositRatioInt = ($depositRatio === null || $depositRatio === '') ? null : intval($depositRatio);
+
+        // contractStart/End는 nullable date(string), memo는 nullable text
         $contractStart = ($contractStartDate === null || $contractStartDate === '') ? null : (string)$contractStartDate;
         $contractEnd = ($contractEndDate === null || $contractEndDate === '') ? null : (string)$contractEndDate;
         $memoText = ($memo === null || $memo === '') ? null : (string)$memo;
 
         $agentStmt->bind_param(
-            'siisssssisss',
+            'sissssssss',
             $newAgentId,
             $accountId,
-            $companyId,
             $fName,
             $lName,
             $contactNo,
             $agentType,
             $agentRole,
-            $depositRatioInt,
             $contractStart,
             $contractEnd,
             $memoText
@@ -3193,51 +3244,14 @@ function updateAgent($conn, $input) {
             $conn->query("ALTER TABLE agent ADD COLUMN memo TEXT NULL");
         }
 
-        // companyName이 넘어오면 companyId로 변환(없으면 생성)해서 업데이트에 포함
-        if (isset($input['companyName'])) {
-            $companyName = trim((string)$input['companyName']);
-            if ($companyName !== '') {
-                $companyId = null;
-                $companyStmt = $conn->prepare("SELECT companyId FROM company WHERE companyName = ?");
-                if (!$companyStmt) {
-                    send_error_response('Failed to prepare company lookup: ' . $conn->error);
-                }
-                $companyStmt->bind_param('s', $companyName);
-                $companyStmt->execute();
-                $companyResult = $companyStmt->get_result();
-                if ($companyResult && $companyResult->num_rows > 0) {
-                    $companyId = $companyResult->fetch_assoc()['companyId'];
-                }
-                $companyStmt->close();
+        // company 테이블 제거됨 - companyId 관련 로직 삭제
 
-                if (!$companyId) {
-                    // Area/Region은 businessUnit에 저장
-                    $region = trim((string)($input['region'] ?? ''));
-                    $businessUnit = ($region !== '') ? $region : $companyName;
-                    $insertCompany = $conn->prepare("INSERT INTO company (companyName, businessUnit) VALUES (?, ?)");
-                    if (!$insertCompany) {
-                        send_error_response('Failed to prepare company insert: ' . $conn->error);
-                    }
-                    $insertCompany->bind_param('ss', $companyName, $businessUnit);
-                    $insertCompany->execute();
-                    $companyId = $conn->insert_id;
-                    $insertCompany->close();
-                }
-
-                if ($companyId) {
-                    $input['companyId'] = (int)$companyId;
-                }
-            }
-        }
-        
         // agent 정보 업데이트
         $updates = [];
         $values = [];
         $types = '';
-        
+
         // NOTE:
-        // - comissionRate (DB 컬럼명 오타 유지) : int
-        // - depositRatio : int (nullable)
         // - contractStartDate/contractEndDate : date (nullable)
         $updatableFields = [
             'fName',
@@ -3245,25 +3259,22 @@ function updateAgent($conn, $input) {
             'contactNo',
             'agentType',
             'agentRole',
-            'companyId',
-            'comissionRate',
-            'depositRatio',
             'contractStartDate',
             'contractEndDate',
             'memo'
         ];
-        
+
         foreach ($updatableFields as $field) {
             if (isset($input[$field])) {
                 // empty string -> NULL (nullable fields)
-                if (in_array($field, ['depositRatio', 'contractStartDate', 'contractEndDate'], true)) {
+                if (in_array($field, ['contractStartDate', 'contractEndDate'], true)) {
                     if (is_string($input[$field]) && trim($input[$field]) === '') {
                         $input[$field] = null;
                     }
                 }
                 $updates[] = "$field = ?";
                 $values[] = $input[$field];
-                $types .= (in_array($field, ['companyId', 'comissionRate', 'depositRatio'], true)) ? 'i' : 's';
+                $types .= 's';
             }
         }
         
@@ -3336,29 +3347,7 @@ function updateAgent($conn, $input) {
             
             $accountValues[] = $accountId;
             $accountTypes .= 'i';
-            // Area/Region 수정: businessUnit 업데이트 (companyName으로 companyId를 다시 매핑했을 수 있음)
-            if (isset($input['region'])) {
-                $region = trim((string)$input['region']);
-                if ($region !== '') {
-                    // agentId -> companyId -> company.businessUnit
-                    $cidStmt = $conn->prepare("SELECT companyId FROM agent WHERE agentId = ? LIMIT 1");
-                    if ($cidStmt) {
-                        $cidStmt->bind_param('s', $agentId);
-                        $cidStmt->execute();
-                        $cidRow = $cidStmt->get_result()->fetch_assoc();
-                        $cidStmt->close();
-                        $cid = intval($cidRow['companyId'] ?? 0);
-                        if ($cid > 0) {
-                            $cu = $conn->prepare("UPDATE company SET businessUnit = ? WHERE companyId = ?");
-                            if ($cu) {
-                                $cu->bind_param('si', $region, $cid);
-                                $cu->execute();
-                                $cu->close();
-                            }
-                        }
-                    }
-                }
-            }
+            // company 테이블 제거됨 - region/businessUnit 업데이트 로직 삭제
 
             if (empty($accountUpdates)) {
                 send_success_response([], 'Agent updated successfully');
@@ -4021,7 +4010,7 @@ function getB2BBookings($conn, $input) {
                             $join
                             SET b.bookingStatus='cancelled', b.paymentStatus='failed'
                             WHERE COALESCE(b.paymentStatus,'') = 'pending'
-                              AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
+                              AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed','pending_update','check_reject')
                               $b2bCond
                               AND (" . implode(' OR ', $conds) . ")";
                     $conn->query($sql);
@@ -4139,16 +4128,12 @@ function getB2BBookings($conn, $input) {
                 $types .= 'sss';
             } else if ($searchType === 'agent') {
                 $whereConditions[] = "(
-                    COALESCE(co.companyName, co2.companyName, '') LIKE ?
-                    OR COALESCE(br.branchName, br2.branchName, '') LIKE ?
-                    OR b.bookingId LIKE ?
+                    b.bookingId LIKE ?
                     OR COALESCE(NULLIF(b.transactNo,''), b.bookingId) LIKE ?
                 )";
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $types .= 'ssss';
+                $types .= 'ss';
             } else if ($searchType === 'reserver') {
                 $whereConditions[] = "(
                     TRIM(COALESCE(
@@ -4172,9 +4157,7 @@ function getB2BBookings($conn, $input) {
                 $types .= 'sssss';
             } else {
                 $whereConditions[] = "(
-                    COALESCE(co.companyName, co2.companyName, '') LIKE ?
-                    OR COALESCE(br.branchName, br2.branchName, '') LIKE ?
-                    OR TRIM(COALESCE(
+                    TRIM(COALESCE(
                         NULLIF(CONCAT(c.fName, ' ', c.lName), ' '),
                         NULLIF(a.username, ''),
                         NULLIF(a.emailAddress, ''),
@@ -4188,24 +4171,33 @@ function getB2BBookings($conn, $input) {
                     OR COALESCE(NULLIF(b.transactNo,''), b.bookingId) LIKE ?
                 )";
                 $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
                 if ($hasSelectedOptions) { $params[] = $customerInfoTerm; $types .= 's'; }
                 $params[] = $searchTerm; // contactEmail
                 $params[] = $searchTerm; // contactPhone
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
-                $types .= 'ssssssss';
+                $types .= 'ssssss';
             }
         }
-        
+
+        // Travel start date 필터 (날짜 범위 지원)
         if (!empty($input['travelStartDate'])) {
-            $whereConditions[] = "DATE(b.departureDate) = ?";
-            $params[] = $input['travelStartDate'];
-            $types .= 's';
+            $dateRange = explode(',', (string)$input['travelStartDate']);
+            if (count($dateRange) === 2) {
+                // 날짜 범위 (시작일, 종료일)
+                $whereConditions[] = "DATE(b.departureDate) >= ? AND DATE(b.departureDate) <= ?";
+                $params[] = trim($dateRange[0]);
+                $params[] = trim($dateRange[1]);
+                $types .= 'ss';
+            } else {
+                // 단일 날짜
+                $whereConditions[] = "DATE(b.departureDate) = ?";
+                $params[] = (string)$input['travelStartDate'];
+                $types .= 's';
+            }
         }
-        
+
         // SMT 수정 - 새로운 11단계 상태값 필터
         if (!empty($input['status'])) {
             $status = strtolower(trim((string)$input['status']));
@@ -4214,7 +4206,8 @@ function getB2BBookings($conn, $input) {
                 'waiting_down_payment', 'checking_down_payment',
                 'waiting_second_payment', 'checking_second_payment',
                 'waiting_balance', 'checking_balance',
-                'rejected', 'confirmed', 'completed', 'cancelled', 'refunded'
+                'rejected', 'confirmed', 'completed', 'cancelled', 'refunded',
+                'pending', 'pending_update', 'check_reject'
             ];
 
             if (in_array($status, $validStatuses, true)) {
@@ -4236,16 +4229,13 @@ function getB2BBookings($conn, $input) {
         $countSql = "SELECT COUNT(*) as total FROM bookings b
                      LEFT JOIN accounts a ON b.accountId = a.accountId
                      LEFT JOIN client c ON b.accountId = c.accountId
-                     LEFT JOIN company co ON c.companyId = co.companyId
-                     LEFT JOIN branch br ON co.branchId = br.branchId
+                     
                      -- ag: agentId로 조인 (에이전트가 고객을 위해 예약한 경우)
                      LEFT JOIN agent ag ON ag.id = b.agentId
-                     LEFT JOIN company co2 ON ag.companyId = co2.companyId
-                     LEFT JOIN branch br2 ON co2.branchId = br2.branchId
+                     
                      -- ag2: accountId로 조인 (에이전트가 자기 계정으로 직접 예약한 경우)
                      LEFT JOIN agent ag2 ON ag2.accountId = b.accountId AND b.agentId IS NULL
-                     LEFT JOIN company co3 ON ag2.companyId = co3.companyId
-                     LEFT JOIN branch br3 ON co3.branchId = br3.branchId
+                     
                      LEFT JOIN guides g ON b.guideId = g.guideId
                      LEFT JOIN packages p ON b.packageId = p.packageId
                      $whereClause";
@@ -4287,8 +4277,8 @@ function getB2BBookings($conn, $input) {
                 DATE(b.departureDate),
                 INTERVAL GREATEST(COALESCE(p.durationDays, p.duration_days, 1) - 1, 0) DAY
             ) as returnDate,
-            COALESCE(br.branchName, br2.branchName, br3.branchName) as branchName,
-            COALESCE(co.companyName, co2.companyName, co3.companyName) as companyName,
+            '' as branchName,
+            '' as companyName,
             " . ($hasContactName ? "COALESCE(b.contactName,'') as contactName," : "'' as contactName,") . "
             COALESCE(b.contactEmail,'') as contactEmail,
             COALESCE(b.contactPhone,'') as contactPhone,
@@ -4300,30 +4290,24 @@ function getB2BBookings($conn, $input) {
             b.paymentStatus,
             b.totalAmount,
             TRIM(COALESCE(
-                NULLIF(br2.branchName, ''),
-                NULLIF(br3.branchName, ''),
-                NULLIF(co2.companyName, ''),
-                NULLIF(co3.companyName, ''),
                 NULLIF(ag.agencyName, ''),
                 NULLIF(ag2.agencyName, ''),
                 NULLIF(CONCAT(ag.fName,' ',ag.lName), ' '),
                 NULLIF(CONCAT(ag2.fName,' ',ag2.lName), ' '),
                 ''
             )) as agentName,
-            b.createdAt
+            b.createdAt,
+            COALESCE(a.accountType, '') as requestedByType
             " . ($hasDownPaymentFile ? ", COALESCE(b.downPaymentFile,'') as downPaymentFile" : ", '' as downPaymentFile") . "
         FROM bookings b
         LEFT JOIN accounts a ON b.accountId = a.accountId
         {$customerJoinSql}
         LEFT JOIN client c ON b.accountId = c.accountId
-        LEFT JOIN company co ON c.companyId = co.companyId
-        LEFT JOIN branch br ON co.branchId = br.branchId
+        
         LEFT JOIN agent ag ON ag.id = b.agentId
-        LEFT JOIN company co2 ON ag.companyId = co2.companyId
-        LEFT JOIN branch br2 ON co2.branchId = br2.branchId
+        
         LEFT JOIN agent ag2 ON ag2.accountId = b.accountId AND b.agentId IS NULL
-        LEFT JOIN company co3 ON ag2.companyId = co3.companyId
-        LEFT JOIN branch br3 ON co3.branchId = br3.branchId
+        
         LEFT JOIN guides g ON b.guideId = g.guideId
         LEFT JOIN packages p ON b.packageId = p.packageId
         $whereClause
@@ -4394,6 +4378,36 @@ function getB2BBookings($conn, $input) {
             // B2B 예약 상태키 - bookingStatus 직접 사용 (새로운 11단계 상태값)
             $statusKey = strtolower((string)($row['bookingStatus'] ?? 'waiting_down_payment'));
 
+            // pending_update 예약인 경우 booking_change_requests에서 변경 요청 정보 조회
+            $changeRequest = null;
+            if ($statusKey === 'pending_update') {
+                try {
+                    $crStmt = $conn->prepare("SELECT * FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' ORDER BY requestedAt DESC LIMIT 1");
+                    if ($crStmt) {
+                        $crStmt->bind_param('s', $row['bookingId']);
+                        $crStmt->execute();
+                        $crResult = $crStmt->get_result();
+                        $cr = $crResult->fetch_assoc();
+                        $crStmt->close();
+                        if ($cr) {
+                            $changeRequest = [
+                                'id' => $cr['id'],
+                                'changeType' => $cr['changeType'],
+                                'originalStatus' => $cr['originalStatus'],
+                                'originalPaymentStatus' => $cr['originalPaymentStatus'],
+                                'targetStatus' => $cr['targetStatus'],
+                                'targetPaymentStatus' => $cr['targetPaymentStatus'],
+                                'previousData' => $cr['previousData'] ? json_decode($cr['previousData'], true) : null,
+                                'newData' => $cr['newData'] ? json_decode($cr['newData'], true) : null,
+                                'requestedBy' => $cr['requestedBy'],
+                                'requestedByType' => $cr['requestedByType'] ?? 'employee',
+                                'requestedAt' => $cr['requestedAt']
+                            ];
+                        }
+                    }
+                } catch (Throwable $e) { /* ignore */ }
+            }
+
             $bookings[] = [
                 'bookingId' => $row['bookingId'],
                 'reservationNo' => $row['reservationNo'] ?? $row['bookingId'],
@@ -4416,6 +4430,8 @@ function getB2BBookings($conn, $input) {
                 'downPaymentFile' => $row['downPaymentFile'] ?? '',
                 'depositProofFile' => $row['downPaymentFile'] ?? '', // 레거시 호환
                 'createdAt' => $row['createdAt'] ?? '',
+                'requestedByType' => $row['requestedByType'] ?? '',
+                'changeRequest' => $changeRequest,
                 'rowNum' => $rowNum--
             ];
         }
@@ -4469,7 +4485,7 @@ function exportB2BBookingsCsv($conn, $input) {
                             $join
                             SET b.bookingStatus='cancelled', b.paymentStatus='failed'
                             WHERE COALESCE(b.paymentStatus,'') = 'pending'
-                              AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
+                              AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed','pending_update','check_reject')
                               $b2bCond
                               AND (" . implode(' OR ', $conds) . ")";
                     $conn->query($sql);
@@ -4513,13 +4529,11 @@ function exportB2BBookingsCsv($conn, $input) {
                 $types .= 'sss';
             } else if ($searchType === 'agent') {
                 $whereConditions[] = "(
-                    COALESCE(co.companyName, co2.companyName, '') LIKE ?
-                    OR COALESCE(br.branchName, br2.branchName, '') LIKE ?
-                    OR b.bookingId LIKE ?
+                    b.bookingId LIKE ?
                     OR COALESCE(NULLIF(b.transactNo,''), b.bookingId) LIKE ?
                 )";
-                $params[] = $searchTerm; $params[] = $searchTerm; $params[] = $searchTerm; $params[] = $searchTerm;
-                $types .= 'ssss';
+                $params[] = $searchTerm; $params[] = $searchTerm;
+                $types .= 'ss';
             } else if ($searchType === 'reserver') {
                 $whereConditions[] = "(
                     TRIM(COALESCE(
@@ -4543,9 +4557,7 @@ function exportB2BBookingsCsv($conn, $input) {
                 $types .= 'sssss';
             } else {
                 $whereConditions[] = "(
-                    COALESCE(co.companyName, co2.companyName, '') LIKE ?
-                    OR COALESCE(br.branchName, br2.branchName, '') LIKE ?
-                    OR TRIM(COALESCE(
+                    TRIM(COALESCE(
                         NULLIF(CONCAT(c.fName, ' ', c.lName), ' '),
                         NULLIF(a.username, ''),
                         NULLIF(a.emailAddress, ''),
@@ -4558,19 +4570,28 @@ function exportB2BBookingsCsv($conn, $input) {
                     OR b.bookingId LIKE ?
                     OR COALESCE(NULLIF(b.transactNo,''), b.bookingId) LIKE ?
                 )";
-                $params[] = $searchTerm; $params[] = $searchTerm; $params[] = $searchTerm;
+                $params[] = $searchTerm;
                 if ($hasSelectedOptions) { $params[] = $customerInfoTerm; $types .= 's'; }
                 $params[] = $searchTerm; // contactEmail
                 $params[] = $searchTerm; // contactPhone
                 $params[] = $searchTerm; $params[] = $searchTerm; $params[] = $searchTerm;
-                $types .= 'sssssss';
+                $types .= 'ssssss';
             }
         }
 
+        // Travel start date 필터 (날짜 범위 지원)
         if (!empty($input['travelStartDate'])) {
-            $whereConditions[] = "DATE(b.departureDate) = ?";
-            $params[] = $input['travelStartDate'];
-            $types .= 's';
+            $dateRange = explode(',', (string)$input['travelStartDate']);
+            if (count($dateRange) === 2) {
+                $whereConditions[] = "DATE(b.departureDate) >= ? AND DATE(b.departureDate) <= ?";
+                $params[] = trim($dateRange[0]);
+                $params[] = trim($dateRange[1]);
+                $types .= 'ss';
+            } else {
+                $whereConditions[] = "DATE(b.departureDate) = ?";
+                $params[] = (string)$input['travelStartDate'];
+                $types .= 's';
+            }
         }
 
         if (!empty($input['status'])) {
@@ -4610,8 +4631,8 @@ function exportB2BBookingsCsv($conn, $input) {
                         DATE(b.departureDate),
                         INTERVAL GREATEST(COALESCE(p.durationDays, p.duration_days, 1) - 1, 0) DAY
                     ) as returnDate,
-                    COALESCE(br.branchName, br2.branchName, '') as branchName,
-                    COALESCE(co.companyName, co2.companyName, '') as companyName,
+                    '' as branchName,
+                    '' as companyName,
                     TRIM(COALESCE(
                         NULLIF(CONCAT(c.fName, ' ', c.lName), ' '),
                         NULLIF(CONCAT(ag.fName, ' ', ag.lName), ' '),
@@ -4625,11 +4646,9 @@ function exportB2BBookingsCsv($conn, $input) {
                 FROM bookings b
                 LEFT JOIN accounts a ON b.accountId = a.accountId
                 LEFT JOIN client c ON b.accountId = c.accountId
-                LEFT JOIN company co ON c.companyId = co.companyId
-                LEFT JOIN branch br ON co.branchId = br.branchId
+                
                 LEFT JOIN agent ag ON a.accountId = ag.accountId
-                LEFT JOIN company co2 ON ag.companyId = co2.companyId
-                LEFT JOIN branch br2 ON co2.branchId = br2.branchId
+                
                 LEFT JOIN packages p ON b.packageId = p.packageId
                 $whereClause
                 ORDER BY $orderBy";
@@ -4788,13 +4807,22 @@ function getB2CBookings($conn, $input) {
                 $whereConditions[] = $where;
             }
         }
-        
+
+        // Travel start date 필터 (날짜 범위 지원)
         if (!empty($input['travelStartDate'])) {
-            $whereConditions[] = "DATE(b.departureDate) = ?";
-            $params[] = $input['travelStartDate'];
-            $types .= 's';
+            $dateRange = explode(',', (string)$input['travelStartDate']);
+            if (count($dateRange) === 2) {
+                $whereConditions[] = "DATE(b.departureDate) >= ? AND DATE(b.departureDate) <= ?";
+                $params[] = trim($dateRange[0]);
+                $params[] = trim($dateRange[1]);
+                $types .= 'ss';
+            } else {
+                $whereConditions[] = "DATE(b.departureDate) = ?";
+                $params[] = (string)$input['travelStartDate'];
+                $types .= 's';
+            }
         }
-        
+
         // SMT 수정 시작 - status 필터 로직 수정 (B2B와 동일하게)
         if (!empty($input['status'])) {
             // UI 요구:
@@ -5069,10 +5097,19 @@ function exportB2CBookingsCsv($conn, $input) {
             }
         }
 
+        // Travel start date 필터 (날짜 범위 지원)
         if (!empty($input['travelStartDate'])) {
-            $whereConditions[] = "DATE(b.departureDate) = ?";
-            $params[] = $input['travelStartDate'];
-            $types .= 's';
+            $dateRange = explode(',', (string)$input['travelStartDate']);
+            if (count($dateRange) === 2) {
+                $whereConditions[] = "DATE(b.departureDate) >= ? AND DATE(b.departureDate) <= ?";
+                $params[] = trim($dateRange[0]);
+                $params[] = trim($dateRange[1]);
+                $types .= 'ss';
+            } else {
+                $whereConditions[] = "DATE(b.departureDate) = ?";
+                $params[] = (string)$input['travelStartDate'];
+                $types .= 's';
+            }
         }
 
         if (!empty($input['status'])) {
@@ -5201,13 +5238,12 @@ function getBookingDetail($conn, $input) {
             p.meetingPoint,
             p.meetingTime,
             -- Agent info: agentId로 조인하거나, accountId가 에이전트 계정인 경우 처리
-            COALESCE(ag1.agencyName, ag2.agencyName, co1.companyName, co2.companyName) as agentName,
-            COALESCE(ag1.agencyName, ag2.agencyName, co1.companyName, co2.companyName) as branchName,
-            COALESCE(co1.companyName, co2.companyName) as companyName,
+            COALESCE(ag1.agencyName, ag2.agencyName, '' as co1_companyName, '' as co2_companyName) as agentName,
+            COALESCE(ag1.agencyName, ag2.agencyName, '' as co1_companyName, '' as co2_companyName) as branchName,
+            COALESCE('' as co1_companyName, '' as co2_companyName) as companyName,
             COALESCE(CONCAT(ag1.fName, ' ', ag1.lName), CONCAT(ag2.fName, ' ', ag2.lName)) as agentManagerName,
             COALESCE(ag1.personInChargeEmail, ag2.personInChargeEmail) as agentManagerEmail,
-            COALESCE(CONCAT(ag1.countryCode, ag1.contactNo), CONCAT(ag2.countryCode, ag2.contactNo)) as agentManagerContact,
-            COALESCE(ag1.depositRatio, ag2.depositRatio) as depositRatio
+            COALESCE(CONCAT(ag1.countryCode, ag1.contactNo), CONCAT(ag2.countryCode, ag2.contactNo)) as agentManagerContact
         FROM bookings b
         LEFT JOIN client c ON b.accountId = c.accountId
         LEFT JOIN guides g ON b.guideId = g.guideId
@@ -5223,10 +5259,8 @@ function getBookingDetail($conn, $input) {
         LEFT JOIN packages p ON b.packageId = p.packageId
         -- Agent via agentId (에이전트가 고객을 위해 예약한 경우)
         LEFT JOIN agent ag1 ON b.agentId = ag1.id
-        LEFT JOIN company co1 ON ag1.companyId = co1.companyId
         -- Agent via accountId (에이전트가 자기 계정으로 직접 예약한 경우)
         LEFT JOIN agent ag2 ON b.accountId = ag2.accountId AND b.agentId IS NULL
-        LEFT JOIN company co2 ON ag2.companyId = co2.companyId
         WHERE b.bookingId = ?";
         
         $stmt = $conn->prepare($sql);
@@ -5390,6 +5424,7 @@ function getBookingDetail($conn, $input) {
                 passportIssueDate,
                 passportExpiry,
                 visaStatus,
+                visaType,
                 isMainTraveler,
                 passportImage,
                 reservationStatus,
@@ -5474,11 +5509,10 @@ function getBookingsByDateAndPackage($conn, $input) {
                     b.infants,
                     b.totalAmount,
                     b.createdAt,
-                    COALESCE(a.agencyName, co.companyName, CONCAT(a.fName, ' ', a.lName), CONCAT(c.fName, ' ', c.lName), '') as agencyName
+                    COALESCE(a.agencyName, CONCAT(a.fName, ' ', a.lName), CONCAT(c.fName, ' ', c.lName), '') as agencyName
                 FROM bookings b
                 LEFT JOIN client c ON b.accountId = c.accountId
                 LEFT JOIN agent a ON b.accountId = a.accountId
-                LEFT JOIN company co ON a.companyId = co.companyId
                 WHERE b.packageId = ?
                   AND b.departureDate = ?
                   AND b.bookingStatus NOT IN ('cancelled', 'rejected', 'refunded')
@@ -6112,7 +6146,7 @@ function getB2BCustomers($conn, $input) {
                 $types .= 's';
             } elseif ($searchType === 'branch') {
                 // "소속 지점명"은 branchName 기준 + fallback으로 companyName도 포함
-                $whereConditions[] = "(COALESCE(b_ag.branchName, b_cl.branchName, '') LIKE ? OR COALESCE(co_ag.companyName, co_cl.companyName, '') LIKE ?)";
+                $whereConditions[] = "(COALESCE('', '', '') LIKE ? OR COALESCE('' as co_ag_companyName, '' as co_cl_companyName, '') LIKE ?)";
                 $params[] = $term;
                 $params[] = $term;
                 $types .= 'ss';
@@ -6120,8 +6154,8 @@ function getB2BCustomers($conn, $input) {
                 // 전체: 고객명 + 지점/회사명
                 $whereConditions[] = "(
                     CONCAT(c.fName, ' ', c.lName) LIKE ?
-                    OR COALESCE(b_ag.branchName, b_cl.branchName, '') LIKE ?
-                    OR COALESCE(co_ag.companyName, co_cl.companyName, '') LIKE ?
+                    OR COALESCE('', '', '') LIKE ?
+                    OR COALESCE('' as co_ag_companyName, '' as co_cl_companyName, '') LIKE ?
                 )";
                 $params[] = $term;
                 $params[] = $term;
@@ -6139,10 +6173,8 @@ function getB2BCustomers($conn, $input) {
                      LEFT JOIN accounts ac ON c.accountId = ac.accountId
                      -- 제휴코드(affiliateCode)=agent.agentId/agentCode (또는 agent.accountId 문자열) 로 매핑 (공백/문자형 편차 흡수)
                      LEFT JOIN agent ag ON {$agentJoinCond}
-                     LEFT JOIN company co_ag ON ag.companyId = co_ag.companyId
-                     LEFT JOIN branch b_ag ON co_ag.branchId = b_ag.branchId
-                     LEFT JOIN company co_cl ON c.companyId = co_cl.companyId
-                     LEFT JOIN branch b_cl ON co_cl.branchId = b_cl.branchId
+                     
+                     
                      $whereClause";
         
         $countStmt = null;
@@ -6157,15 +6189,15 @@ function getB2BCustomers($conn, $input) {
         $totalCount = $countResult->fetch_assoc()['total'];
         if ($countStmt) $countStmt->close();
         
-        $dataSql = "SELECT 
+        $dataSql = "SELECT
             c.accountId,
-            c.companyId,
+            NULL as companyId,
             CONCAT(c.fName, ' ', c.lName) as customerName,
             ac.emailAddress,
             c.contactNo,
-            COALESCE(co_ag.companyName, co_cl.companyName, '') as companyName,
-            COALESCE(b_ag.branchName, b_cl.branchName, '') as branchName,
-            COALESCE(co_ag.businessUnit, co_cl.businessUnit, '') as businessUnit,
+            '' as companyName,
+            '' as branchName,
+            '' as businessUnit,
             TRIM(COALESCE(ac.affiliateCode,'')) as affiliateCode,
             ac.accountStatus,
             COALESCE(ac.createdAt, c.updatedAt) as createdAt
@@ -6173,10 +6205,8 @@ function getB2BCustomers($conn, $input) {
         LEFT JOIN accounts ac ON c.accountId = ac.accountId
         -- 제휴코드(affiliateCode)=agent.agentId/agentCode (또는 agent.accountId 문자열) 로 매핑 (공백/문자형 편차 흡수)
         LEFT JOIN agent ag ON {$agentJoinCond}
-        LEFT JOIN company co_ag ON ag.companyId = co_ag.companyId
-        LEFT JOIN branch b_ag ON co_ag.branchId = b_ag.branchId
-        LEFT JOIN company co_cl ON c.companyId = co_cl.companyId
-        LEFT JOIN branch b_cl ON co_cl.branchId = b_cl.branchId
+        
+        
         $whereClause
         ORDER BY COALESCE(ac.createdAt, c.updatedAt) DESC
         LIMIT ? OFFSET ?";
@@ -6345,35 +6375,22 @@ function getCustomerDetail($conn, $input) {
         if (empty($accountId)) {
             send_error_response('Account ID is required');
         }
-        
-        // agentCode 컬럼 존재 여부(환경별 스키마 편차 대응)
-        $hasAgentCodeCol = false;
-        try {
-            $c = $conn->query("SHOW COLUMNS FROM agent LIKE 'agentCode'");
-            $hasAgentCodeCol = ($c && $c->num_rows > 0);
-        } catch (Throwable $e) { $hasAgentCodeCol = false; }
-        $agentJoinCond = $hasAgentCodeCol
-            ? "(ag.agentId = TRIM(COALESCE(ac.affiliateCode,'')) OR ag.agentCode = TRIM(COALESCE(ac.affiliateCode,'')) OR CAST(ag.accountId AS CHAR) = TRIM(COALESCE(ac.affiliateCode,'')))"
-            : "(ag.agentId = TRIM(COALESCE(ac.affiliateCode,'')) OR CAST(ag.accountId AS CHAR) = TRIM(COALESCE(ac.affiliateCode,'')))";
 
-        $sql = "SELECT 
+        $sql = "SELECT
             c.*,
             ac.emailAddress,
             ac.affiliateCode,
             ac.accountStatus,
             ac.createdAt as accountCreatedAt,
             ag.agentId as matchedAgentId,
-            COALESCE(co_ag.companyName, co_cl.companyName, '') as companyName,
-            COALESCE(co_ag.businessUnit, co_cl.businessUnit, '') as businessUnit,
-            COALESCE(b_ag.branchName, b_cl.branchName, '') as branchName
+            '' as companyName,
+            '' as businessUnit,
+            COALESCE(ag.agencyName, '') as branchName
         FROM client c
         LEFT JOIN accounts ac ON c.accountId = ac.accountId
-        -- 제휴코드(affiliateCode)=agent.agentId/agentCode 로 매핑
-        LEFT JOIN agent ag ON {$agentJoinCond}
-        LEFT JOIN company co_ag ON ag.companyId = co_ag.companyId
-        LEFT JOIN branch b_ag ON co_ag.branchId = b_ag.branchId
-        LEFT JOIN company co_cl ON c.companyId = co_cl.companyId
-        LEFT JOIN branch b_cl ON co_cl.branchId = b_cl.branchId
+        LEFT JOIN agent ag ON ag.id = ac.agentId
+        
+        
         WHERE c.accountId = ?";
         
         $stmt = $conn->prepare($sql);
@@ -7507,16 +7524,8 @@ function getUserInquiryDetail($conn, $input) {
 
         // NOTE:
         // - 문의 작성자의 유형(client/agent)에 따라 프로필 정보가 없을 수 있으므로 accounts/client/agent를 모두 조인합니다.
-        // - 에이전트 문의 상세 요구사항: 지점명/지역/담당자명/담당자 이메일/담당자 연락처를 제공해야 함
-        $branchCols = $conn->query("SHOW TABLES LIKE 'branch'")->num_rows > 0 ? (function() use ($conn) {
-            $cols = [];
-            $r = $conn->query("SHOW COLUMNS FROM branch");
-            while ($r && ($c = $r->fetch_assoc())) $cols[strtolower($c['Field'])] = $c['Field'];
-            return $cols;
-        })() : [];
-        $regionCol = $branchCols['region'] ?? ($branchCols['area'] ?? ($branchCols['location'] ?? ($branchCols['branchregion'] ?? null)));
-        // branch에 region 계열 컬럼이 없는 환경이 많아서 company.businessUnit을 fallback으로 사용
-        $regionExpr = $regionCol ? "COALESCE(br2.`{$regionCol}`,'')" : "COALESCE(co2.businessUnit,'')";
+        // - 에이전트 문의 상세 요구사항: 담당자명/담당자 이메일/담당자 연락처를 제공해야 함
+        $regionExpr = "COALESCE('' as co2_businessUnit,'')";
 
         $sql = "SELECT 
             i.*,
@@ -7527,12 +7536,12 @@ function getUserInquiryDetail($conn, $input) {
             COALESCE(NULLIF(c.contactNo, ''), NULLIF(a.contactNo, ''), '') as contactNo,
             COALESCE(c.clientType, '') as clientType,
             -- 고객(B2B) 소속
-            CASE WHEN LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler','wholesale') THEN COALESCE(co.companyName, '') ELSE '' END as companyName,
-            CASE WHEN LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler','wholesale') THEN COALESCE(br.branchName, '') ELSE '' END as branchName,
+            CASE WHEN LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler','wholesale') THEN COALESCE('' as co_companyName, '') ELSE '' END as companyName,
+            CASE WHEN LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler','wholesale') THEN COALESCE('', '') ELSE '' END as branchName,
             -- 에이전트 소속/담당자 (agent 문의 상세)
-            COALESCE(br2.branchName, '') as agentBranchName,
-            COALESCE(co2.companyName, '') as agentCompanyName,
-            COALESCE(co2.businessUnit, '') as agentBusinessUnit,
+            COALESCE('', '') as agentBranchName,
+            COALESCE('' as co2_companyName, '') as agentCompanyName,
+            COALESCE('' as co2_businessUnit, '') as agentBusinessUnit,
             {$regionExpr} as agentRegion,
             TRIM(CONCAT_WS(' ', NULLIF(a.fName,''), NULLIF(a.mName,''), NULLIF(a.lName,''))) as agentManagerName,
             COALESCE(NULLIF(ac.emailAddress,''), '') as agentManagerEmail,
@@ -7540,11 +7549,9 @@ function getUserInquiryDetail($conn, $input) {
         FROM inquiries i
         LEFT JOIN accounts ac ON i.accountId = ac.accountId
         LEFT JOIN client c ON i.accountId = c.accountId
-        LEFT JOIN company co ON c.companyId = co.companyId
-        LEFT JOIN branch br ON co.branchId = br.branchId
+        
         LEFT JOIN agent a ON i.accountId = a.accountId
-        LEFT JOIN company co2 ON a.companyId = co2.companyId
-        LEFT JOIN branch br2 ON co2.branchId = br2.branchId
+        
         WHERE i.inquiryId = ?";
         
         $stmt = $conn->prepare($sql);
@@ -7948,19 +7955,18 @@ function downloadAgentInquiries($conn, $input) {
 
         // agent 테이블이 없는 환경에서는 JOIN을 제거하고 지점명을 빈 값으로 반환
         $branchSelect = $agentTableExists
-            ? "COALESCE(NULLIF(b.branchName,''), NULLIF(co.companyName,''), '') AS branchName"
+            ? "COALESCE(NULLIF('',''), NULLIF('' as co_companyName,''), '') AS branchName"
             : "'' AS branchName";
         $agentJoins = "";
         if ($agentTableExists) {
             $agentJoins = "
-                LEFT JOIN company co ON co.companyId = (
                     SELECT a.companyId
                     FROM agent a
                     WHERE a.accountId = i.accountId
                     ORDER BY (a.agentType = 'Wholeseller') DESC, a.id ASC
                     LIMIT 1
                 )
-                LEFT JOIN branch b ON co.branchId = b.branchId";
+                ";
         }
 
         $sql = "SELECT
@@ -8257,15 +8263,15 @@ function exportB2BCustomersCsv($conn, $input) {
                 $params[] = $term;
                 $types .= 's';
             } elseif ($searchType === 'branch') {
-                $where[] = "(COALESCE(b_ag.branchName, b_cl.branchName, '') LIKE ? OR COALESCE(co_ag.companyName, co_cl.companyName, '') LIKE ?)";
+                $where[] = "(COALESCE('', '', '') LIKE ? OR COALESCE('' as co_ag_companyName, '' as co_cl_companyName, '') LIKE ?)";
                 $params[] = $term;
                 $params[] = $term;
                 $types .= 'ss';
             } else {
                 $where[] = "(
                     CONCAT(c.fName, ' ', c.lName) LIKE ?
-                    OR COALESCE(b_ag.branchName, b_cl.branchName, '') LIKE ?
-                    OR COALESCE(co_ag.companyName, co_cl.companyName, '') LIKE ?
+                    OR COALESCE('', '', '') LIKE ?
+                    OR COALESCE('' as co_ag_companyName, '' as co_cl_companyName, '') LIKE ?
                 )";
                 $params[] = $term;
                 $params[] = $term;
@@ -8280,18 +8286,16 @@ function exportB2BCustomersCsv($conn, $input) {
                     CONCAT(c.fName, ' ', c.lName) as customerName,
                     ac.emailAddress,
                     c.contactNo,
-                    COALESCE(co_ag.companyName, co_cl.companyName, '') as companyName,
-                    COALESCE(b_ag.branchName, b_cl.branchName, '') as branchName,
+                    COALESCE('' as co_ag_companyName, '' as co_cl_companyName, '') as companyName,
+                    COALESCE('', '', '') as branchName,
                     COALESCE(co_ag.businessUnit, co_cl.businessUnit, '') as businessUnit,
                     ac.accountStatus,
                     COALESCE(ac.createdAt, c.updatedAt) as createdAt
                 FROM client c
                 LEFT JOIN accounts ac ON c.accountId = ac.accountId
                 LEFT JOIN agent ag ON (ag.agentId = ac.affiliateCode OR CAST(ag.accountId AS CHAR) = ac.affiliateCode)
-                LEFT JOIN company co_ag ON ag.companyId = co_ag.companyId
-                LEFT JOIN branch b_ag ON co_ag.branchId = b_ag.branchId
-                LEFT JOIN company co_cl ON c.companyId = co_cl.companyId
-                LEFT JOIN branch b_cl ON co_cl.branchId = b_cl.branchId
+                
+                
                 $whereClause
                 ORDER BY COALESCE(ac.createdAt, c.updatedAt) DESC";
 
@@ -9018,25 +9022,25 @@ function getSalesByDate($conn, $input) {
                 $timePeriodSelect = "CONCAT(HOUR(b.createdAt), ' AM') as timePeriod, HOUR(b.createdAt) as legend";
         }
         
-        $countSql = "SELECT COUNT(DISTINCT $groupByClause) as total 
+        $countSql = "SELECT COUNT(DISTINCT $groupByClause) as total
                      FROM bookings b
                      WHERE DATE(b.createdAt) BETWEEN ? AND ?
-                     AND b.bookingStatus = 'confirmed'";
-        
+                     AND b.bookingStatus != 'cancelled'";
+
         $countStmt = $conn->prepare($countSql);
         $countStmt->bind_param('ss', $startDate, $endDate);
         $countStmt->execute();
         $countResult = $countStmt->get_result();
         $totalCount = $countResult->fetch_assoc()['total'];
         $countStmt->close();
-        
-        $sql = "SELECT 
+
+        $sql = "SELECT
             $timePeriodSelect,
             COUNT(*) as bookingCount,
             SUM(b.totalAmount) as totalAmount
         FROM bookings b
         WHERE DATE(b.createdAt) BETWEEN ? AND ?
-        AND b.bookingStatus = 'confirmed'
+        AND b.bookingStatus != 'cancelled'
         GROUP BY $groupByClause
         ORDER BY legend DESC
         LIMIT ? OFFSET ?";
@@ -9081,10 +9085,10 @@ function getSalesByProduct($conn, $input) {
         $offset = ($page - 1) * $limit;
         
         // 날짜 범위 계산
-        $whereConditions = ["b.bookingStatus = 'confirmed'"];
+        $whereConditions = ["b.bookingStatus != 'cancelled'"];
         $params = [];
         $types = '';
-        
+
         if ($period !== 'all' && $startDate && $endDate) {
             $whereConditions[] = "DATE(b.createdAt) BETWEEN ? AND ?";
             $params[] = $startDate;
@@ -9099,7 +9103,7 @@ function getSalesByProduct($conn, $input) {
             $params[] = $today;
             $types .= 's';
         }
-        
+
         $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
 
         // 집계된 데이터 기간(전체기간일 때도 표시용)
@@ -9244,16 +9248,16 @@ function downloadSalesByDate($conn, $input) {
                 $timePeriodSelect = "CONCAT(HOUR(b.createdAt), ' AM') as timePeriod";
         }
         
-        $sql = "SELECT 
+        $sql = "SELECT
             $timePeriodSelect,
             COUNT(*) as bookingCount,
             SUM(b.totalAmount) as totalAmount
         FROM bookings b
         WHERE DATE(b.createdAt) BETWEEN ? AND ?
-        AND b.bookingStatus = 'confirmed'
+        AND b.bookingStatus != 'cancelled'
         GROUP BY $groupByClause
         ORDER BY $groupByClause DESC";
-        
+
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ss', $startDate, $endDate);
         $stmt->execute();
@@ -9289,11 +9293,11 @@ function downloadSalesByProduct($conn, $input) {
         $period = $input['period'] ?? 'daily';
         $startDate = $input['startDate'] ?? null;
         $endDate = $input['endDate'] ?? null;
-        
-        $whereConditions = ["b.bookingStatus = 'confirmed'"];
+
+        $whereConditions = ["b.bookingStatus != 'cancelled'"];
         $params = [];
         $types = '';
-        
+
         if ($period !== 'all' && $startDate && $endDate) {
             $whereConditions[] = "DATE(b.createdAt) BETWEEN ? AND ?";
             $params[] = $startDate;
@@ -9307,7 +9311,7 @@ function downloadSalesByProduct($conn, $input) {
             $params[] = $today;
             $types .= 's';
         }
-        
+
         $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
         
         // packages 테이블에 viewCount 컬럼이 없으므로 views는 0으로 반환
@@ -9617,6 +9621,187 @@ function getVisaApplications($conn, $input) {
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to get visa applications: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Visa applications grouped by bookingId (same format as agent API)
+ */
+function getVisaApplicationsGrouped($conn, $input) {
+    try {
+        __ensure_visa_applications_updated_at($conn);
+
+        $page = isset($input['page']) ? max(1, intval($input['page'])) : 1;
+        $limit = isset($input['limit']) ? max(1, min(100, intval($input['limit']))) : 10;
+        $offset = ($page - 1) * $limit;
+
+        $whereConditions = ["v.visaType IN ('group', 'individual')"];
+        $params = [];
+        $types = '';
+
+        if (!empty($input['status'])) {
+            $ui = strtolower((string)$input['status']);
+            if ($ui === 'pending') {
+                $whereConditions[] = "(v.status IN ('pending','document_required'))";
+            } elseif ($ui === 'reviewing') {
+                $whereConditions[] = "v.status = 'under_review'";
+            } elseif ($ui === 'approved') {
+                $whereConditions[] = "(v.status IN ('approved','completed'))";
+            } elseif ($ui === 'rejected') {
+                $whereConditions[] = "v.status = 'rejected'";
+            }
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
+        // bookingId 기준 고유 건수 카운트
+        $countSql = "SELECT COUNT(DISTINCT v.transactNo) as total
+                     FROM visa_applications v
+                     LEFT JOIN bookings b ON v.transactNo = b.bookingId
+                     $whereClause";
+
+        if (!empty($params)) {
+            $countStmt = $conn->prepare($countSql);
+            $countStmt->bind_param($types, ...$params);
+            $countStmt->execute();
+            $totalCount = $countStmt->get_result()->fetch_assoc()['total'];
+            $countStmt->close();
+        } else {
+            $countResult = $conn->query($countSql);
+            $totalCount = $countResult->fetch_assoc()['total'];
+        }
+
+        $sortOrder = $input['sortOrder'] ?? 'latest';
+        $bookingOrderBy = $sortOrder === 'oldest'
+            ? 'MIN(COALESCE(v.updatedAt, v.applicationDate)) ASC'
+            : 'MAX(COALESCE(v.updatedAt, v.applicationDate)) DESC';
+
+        // 페이지네이션용 bookingId 목록 조회
+        $bookingIdsSql = "SELECT v.transactNo as bookingId
+                          FROM visa_applications v
+                          LEFT JOIN bookings b ON v.transactNo = b.bookingId
+                          $whereClause
+                          GROUP BY v.transactNo
+                          ORDER BY $bookingOrderBy
+                          LIMIT ? OFFSET ?";
+
+        $bookingIdsParams = array_merge($params, [$limit, $offset]);
+        $bookingIdsTypes = $types . 'ii';
+
+        $bookingIdsStmt = $conn->prepare($bookingIdsSql);
+        if (!empty($bookingIdsTypes) && $bookingIdsTypes !== 'ii') {
+            $bookingIdsStmt->bind_param($bookingIdsTypes, ...$bookingIdsParams);
+        } else {
+            $bookingIdsStmt->bind_param('ii', $limit, $offset);
+        }
+        $bookingIdsStmt->execute();
+        $bookingIdsResult = $bookingIdsStmt->get_result();
+
+        $bookingIds = [];
+        while ($row = $bookingIdsResult->fetch_assoc()) {
+            $bookingIds[] = $row['bookingId'];
+        }
+        $bookingIdsStmt->close();
+
+        if (empty($bookingIds)) {
+            send_success_response([
+                'applications' => [],
+                'pagination' => [
+                    'currentPage' => $page,
+                    'totalPages' => ceil($totalCount / $limit),
+                    'totalCount' => (int)$totalCount,
+                    'limit' => $limit
+                ]
+            ]);
+            return;
+        }
+
+        // 해당 bookingId들의 모든 신청자 정보 조회
+        $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));
+        $dataSql = "SELECT
+            v.applicationId as visaApplicationId,
+            v.applicationNo,
+            v.applicantName,
+            v.visaType,
+            v.status,
+            COALESCE(v.updatedAt, v.applicationDate) as createdAt,
+            v.transactNo as bookingId,
+            b.departureDate as travelStartDate,
+            b.createdAt as dateBooked,
+            a.agencyName
+        FROM visa_applications v
+        LEFT JOIN bookings b ON v.transactNo = b.bookingId
+        LEFT JOIN agent a ON b.agentId = a.accountId
+        WHERE v.transactNo IN ($placeholders) AND v.visaType IN ('group', 'individual')
+        ORDER BY v.transactNo, v.applicationId ASC";
+
+        $dataStmt = $conn->prepare($dataSql);
+        $dataTypes = str_repeat('s', count($bookingIds));
+        $dataStmt->bind_param($dataTypes, ...$bookingIds);
+        $dataStmt->execute();
+        $dataResult = $dataStmt->get_result();
+
+        // bookingId 기준으로 그룹핑
+        $grouped = [];
+        while ($row = $dataResult->fetch_assoc()) {
+            $bookingId = $row['bookingId'];
+            $uiStatus = mapVisaDbToAdminUiStatus((string)($row['status'] ?? 'pending'));
+            $createdAt = $row['createdAt'] ?? '';
+            if ($createdAt) {
+                $createdAt = str_replace('T', ' ', $createdAt);
+                if (strlen($createdAt) >= 16) $createdAt = substr($createdAt, 0, 16);
+            }
+
+            $traveler = [
+                'visaApplicationId' => $row['visaApplicationId'] ?? '',
+                'applicationNo' => $row['applicationNo'] ?? '',
+                'applicantName' => $row['applicantName'] ?? '',
+                'visaType' => $row['visaType'] ?? '',
+                'status' => $uiStatus,
+                'createdAt' => $createdAt
+            ];
+
+            if (!isset($grouped[$bookingId])) {
+                $grouped[$bookingId] = [
+                    'bookingId' => $bookingId,
+                    'travelStartDate' => $row['travelStartDate'] ?? '',
+                    'dateBooked' => $row['dateBooked'] ?? '',
+                    'agencyName' => $row['agencyName'] ?? '',
+                    'representativeName' => $traveler['applicantName'],
+                    'representativeId' => $traveler['visaApplicationId'],
+                    'representativeStatus' => $traveler['status'],
+                    'representativeCreatedAt' => $traveler['createdAt'],
+                    'representativeVisaType' => $traveler['visaType'],
+                    'travelers' => [],
+                    'travelerCount' => 0
+                ];
+            }
+            $grouped[$bookingId]['travelers'][] = $traveler;
+            $grouped[$bookingId]['travelerCount']++;
+        }
+        $dataStmt->close();
+
+        // bookingIds 순서대로 정렬
+        $applications = [];
+        $rowNum = $totalCount - $offset;
+        foreach ($bookingIds as $bid) {
+            if (isset($grouped[$bid])) {
+                $grouped[$bid]['rowNum'] = $rowNum--;
+                $applications[] = $grouped[$bid];
+            }
+        }
+
+        send_success_response([
+            'applications' => $applications,
+            'pagination' => [
+                'currentPage' => $page,
+                'totalPages' => ceil($totalCount / $limit),
+                'totalCount' => (int)$totalCount,
+                'limit' => $limit
+            ]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get visa applications grouped: ' . $e->getMessage());
     }
 }
 
@@ -11802,7 +11987,7 @@ function getAgentInquiries($conn, $input) {
         // agent 테이블이 없는 환경(레거시/분리된 스키마 등)에서는 JOIN을 제거하고 지점명을 빈 값으로 반환
         // 지점명 표시는 branchName 우선, 없으면 companyName으로 fallback
         $branchSelect = $agentTableExists
-            ? "COALESCE(NULLIF(b.branchName,''), NULLIF(co.companyName,''), '') AS branchName"
+            ? "COALESCE(NULLIF('',''), NULLIF('' as co_companyName,''), '') AS branchName"
             : "'' AS branchName";
         $agentJoins = "";
         if ($agentTableExists) {
@@ -11812,14 +11997,13 @@ function getAgentInquiries($conn, $input) {
          * agent를 직접 JOIN하면 inquiry가 중복됩니다.
          * → accountId당 1개의 companyId를 결정(Wholeseller 우선, 그 외 id ASC)해서 조인합니다.
          */
-        LEFT JOIN company co ON co.companyId = (
             SELECT a.companyId
             FROM agent a
             WHERE a.accountId = i.accountId
             ORDER BY (a.agentType = 'Wholeseller') DESC, a.id ASC
             LIMIT 1
         )
-        LEFT JOIN branch b ON co.branchId = b.branchId";
+        ";
         }
 
         $dataSql = "SELECT 
@@ -11924,19 +12108,6 @@ function getB2BBookingDetail($conn, $input) {
             $customerContactExpr = "COALESCE(NULLIF(b.contactPhone,''), '')";
         }
 
-        // company.depositRatio 컬럼이 없는 환경 대응
-        $hasCompanyDepositRatio = false;
-        try {
-            $c0 = $conn->query("SHOW COLUMNS FROM company LIKE 'depositRatio'");
-            if ($c0 && $c0->num_rows > 0) $hasCompanyDepositRatio = true;
-        } catch (Throwable $e) { $hasCompanyDepositRatio = false; }
-
-        // agent.depositRatio 컬럼(대부분 존재) 대응: company에 없으면 agent 값을 사용
-        $hasAgentDepositRatio = false;
-        try {
-            $c0b = $conn->query("SHOW COLUMNS FROM agent LIKE 'depositRatio'");
-            if ($c0b && $c0b->num_rows > 0) $hasAgentDepositRatio = true;
-        } catch (Throwable $e) { $hasAgentDepositRatio = false; }
 
         // balanceDueDate / balanceFile 컬럼 확인 (통일: balanceFile 사용)
         $hasBalanceDueDate = false;
@@ -11975,25 +12146,16 @@ function getB2BBookingDetail($conn, $input) {
             COALESCE(ba.username, '') as accountUsername,
             COALESCE(ba.emailAddress, '') as accountEmail,
             -- B2B: bookings.accountId가 agent 계정일 때만 agent/company/branch 정보를 내려줌
-            COALESCE(br.branchName, br2.branchName, '') as branchName,
-            COALESCE(co.companyName, co2.companyName, '') as companyName,
+            '' as branchName,
+            '' as companyName,
             -- Agent Name: branch/company가 없으면 agent 자체 정보로 fallback (ag2는 accountId로 조인된 에이전트)
             TRIM(COALESCE(
-                NULLIF(br.branchName, ''),
-                NULLIF(br2.branchName, ''),
-                NULLIF(co.companyName, ''),
-                NULLIF(co2.companyName, ''),
                 NULLIF(ag.agencyName, ''),
                 NULLIF(ag2.agencyName, ''),
                 NULLIF(CONCAT(ag.fName,' ',ag.lName), ' '),
                 NULLIF(CONCAT(ag2.fName,' ',ag2.lName), ' '),
                 ''
             )) as agentName,
-            " . (
-                $hasCompanyDepositRatio
-                    ? "COALESCE(co.depositRatio, co2.depositRatio, '')"
-                    : ($hasAgentDepositRatio ? "COALESCE(CAST(ag.depositRatio AS CHAR), CAST(ag2.depositRatio AS CHAR), '')" : "''")
-            ) . " as depositRatio,
             -- Person in charge: agent.personInCharge 우선 (ag2는 accountId로 조인된 에이전트)
             TRIM(COALESCE(
                 NULLIF(ag.personInCharge, ''),
@@ -12017,13 +12179,11 @@ function getB2BBookingDetail($conn, $input) {
         {$customerJoinSql}
         -- ag: agentId로 조인 (에이전트가 고객을 위해 예약한 경우)
         LEFT JOIN agent ag ON ag.id = b.agentId
-        LEFT JOIN company co ON ag.companyId = co.companyId
-        LEFT JOIN branch br ON co.branchId = br.branchId
+        
         LEFT JOIN accounts aa ON ag.accountId = aa.accountId
         -- ag2: accountId로 조인 (에이전트가 자기 계정으로 직접 예약한 경우)
         LEFT JOIN agent ag2 ON ag2.accountId = b.accountId AND b.agentId IS NULL
-        LEFT JOIN company co2 ON ag2.companyId = co2.companyId
-        LEFT JOIN branch br2 ON co2.branchId = br2.branchId
+        
         LEFT JOIN accounts aa2 ON ag2.accountId = aa2.accountId
         LEFT JOIN guides g ON b.guideId = g.guideId
         LEFT JOIN packages p ON b.packageId = p.packageId
@@ -12158,6 +12318,7 @@ function getB2BBookingDetail($conn, $input) {
                 && $balanceProof === '';
 
             if ($shouldCancelDeposit || $shouldCancelBalance) {
+                $previousStatus = $bStatus; // 변경 전 상태 저장
                 $u = $conn->prepare("UPDATE bookings SET bookingStatus='cancelled', paymentStatus='failed' WHERE bookingId = ?");
                 if ($u) {
                     $u->bind_param('s', $bookingId);
@@ -12166,6 +12327,9 @@ function getB2BBookingDetail($conn, $input) {
                     $booking['bookingStatus'] = 'cancelled';
                     $booking['paymentStatus'] = 'failed';
                     $autoCancelled = true;
+
+                    // 자동취소 히스토리 기록
+                    __log_booking_status_change($conn, $bookingId, $previousStatus, 'cancelled', 'System (Auto-Cancel)', 'system');
                 }
             }
         } catch (Throwable $e) {
@@ -12206,6 +12370,9 @@ function getB2BBookingDetail($conn, $input) {
                 if (__table_has_column($conn, 'booking_travelers', 'reservationStatus')) $cols .= ", reservationStatus";
                 if (__table_has_column($conn, 'booking_travelers', 'statusSyncDisabled')) $cols .= ", statusSyncDisabled";
                 if (__table_has_column($conn, 'booking_travelers', 'age')) $cols .= ", age";
+                if (__table_has_column($conn, 'booking_travelers', 'visaType')) $cols .= ", visaType";
+                if (__table_has_column($conn, 'booking_travelers', 'visaDocument')) $cols .= ", visaDocument";
+                if (__table_has_column($conn, 'booking_travelers', 'childRoom')) $cols .= ", childRoom";
 
                 $ts = $conn->prepare("SELECT {$cols}
                                       FROM booking_travelers
@@ -12248,6 +12415,40 @@ function getB2BBookingDetail($conn, $input) {
             }
             unset($t);
         } catch (Throwable $e) { /* ignore */ }
+
+        // (4.5) Fetch flight options for each traveler from booking_traveler_options
+        try {
+            $foptStmt = $conn->prepare("SELECT traveler_index, option_id, price FROM booking_traveler_options WHERE booking_id = ?");
+            if ($foptStmt) {
+                $foptStmt->bind_param('s', $bookingId);
+                $foptStmt->execute();
+                $foptResult = $foptStmt->get_result();
+                $travelerFlightOpts = [];
+                while ($frow = $foptResult->fetch_assoc()) {
+                    $tidx = (int)$frow['traveler_index'];
+                    if (!isset($travelerFlightOpts[$tidx])) {
+                        $travelerFlightOpts[$tidx] = ['flightOptions' => [], 'flightOptionPrices' => []];
+                    }
+                    $optId = (int)$frow['option_id'];
+                    $optPrice = (float)$frow['price'];
+                    $travelerFlightOpts[$tidx]['flightOptions'][] = $optId;
+                    $travelerFlightOpts[$tidx]['flightOptionPrices'][$optId] = $optPrice;
+                }
+                $foptStmt->close();
+                // Assign to each traveler
+                foreach ($travelers as $idx => &$t) {
+                    if (isset($travelerFlightOpts[$idx])) {
+                        $t['flightOptions'] = $travelerFlightOpts[$idx]['flightOptions'];
+                        $t['flightOptionPrices'] = $travelerFlightOpts[$idx]['flightOptionPrices'];
+                    } else {
+                        $t['flightOptions'] = [];
+                        $t['flightOptionPrices'] = [];
+                    }
+                }
+                unset($t);
+            }
+        } catch (Throwable $e) { /* ignore */ }
+
         $booking['travelers'] = $travelers;
 
         // (5) 금액 파생값
@@ -12287,7 +12488,92 @@ function getB2BBookingDetail($conn, $input) {
             }
         } catch (Throwable $e) { /* ignore */ }
 
-        send_success_response(['booking' => $booking, 'roomSummary' => $roomSummary]);
+        // pending_update 상태인 경우 booking_change_requests에서 변경 요청 정보 조회
+        $changeRequest = null;
+        if (strtolower($booking['bookingStatus'] ?? '') === 'pending_update') {
+            try {
+                $crStmt = $conn->prepare("SELECT * FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' ORDER BY requestedAt DESC LIMIT 1");
+                if ($crStmt) {
+                    $crStmt->bind_param('s', $bookingId);
+                    $crStmt->execute();
+                    $crResult = $crStmt->get_result();
+                    $cr = $crResult->fetch_assoc();
+                    $crStmt->close();
+                    if ($cr) {
+                        $changeRequest = [
+                            'id' => $cr['id'],
+                            'changeType' => $cr['changeType'],
+                            'originalStatus' => $cr['originalStatus'],
+                            'originalPaymentStatus' => $cr['originalPaymentStatus'],
+                            'targetStatus' => $cr['targetStatus'],
+                            'targetPaymentStatus' => $cr['targetPaymentStatus'],
+                            'previousData' => $cr['previousData'] ? json_decode($cr['previousData'], true) : null,
+                            'newData' => $cr['newData'] ? json_decode($cr['newData'], true) : null,
+                            'requestedBy' => $cr['requestedBy'],
+                            'requestedByType' => $cr['requestedByType'] ?? 'employee',
+                            'requestedAt' => $cr['requestedAt']
+                        ];
+                    }
+                }
+            } catch (Throwable $e) { /* ignore */ }
+        }
+
+        // check_reject 상태인 경우 booking_change_requests에서 거절 정보 조회
+        $rejectedRequest = null;
+        if (strtolower($booking['bookingStatus'] ?? '') === 'check_reject') {
+            try {
+                $crStmt = $conn->prepare("SELECT * FROM booking_change_requests WHERE bookingId = ? AND status = 'rejected' ORDER BY processedAt DESC LIMIT 1");
+                if ($crStmt) {
+                    $crStmt->bind_param('s', $bookingId);
+                    $crStmt->execute();
+                    $crResult = $crStmt->get_result();
+                    $cr = $crResult->fetch_assoc();
+                    $crStmt->close();
+                    if ($cr) {
+                        $rejectedRequest = [
+                            'id' => $cr['id'],
+                            'changeType' => $cr['changeType'],
+                            'originalStatus' => $cr['originalStatus'],
+                            'originalPaymentStatus' => $cr['originalPaymentStatus'],
+                            'targetStatus' => $cr['targetStatus'],
+                            'targetPaymentStatus' => $cr['targetPaymentStatus'],
+                            'rejectReason' => $cr['rejectReason'] ?? '',
+                            'processedBy' => $cr['processedBy'] ?? '',
+                            'processedAt' => $cr['processedAt'] ?? ''
+                        ];
+                    }
+                }
+            } catch (Throwable $e) { /* ignore */ }
+        }
+
+        // 세일 정보 조회 (saleName)
+        try {
+            $saleStmt = $conn->prepare("
+                SELECT s.sale_name, s.discount_amount
+                FROM sales s
+                JOIN sale_items si ON si.sale_id = s.id
+                JOIN package_available_dates pad ON pad.id = si.package_available_date_id
+                WHERE pad.package_id = ?
+                  AND pad.available_date = DATE(?)
+                  AND s.is_active = 1
+                  AND CURDATE() BETWEEN s.sale_start_date AND s.sale_end_date
+                LIMIT 1
+            ");
+            if ($saleStmt) {
+                $pkgId = intval($booking['packageId'] ?? 0);
+                $depDate = $booking['departureDate'] ?? '';
+                $saleStmt->bind_param('is', $pkgId, $depDate);
+                $saleStmt->execute();
+                $saleResult = $saleStmt->get_result();
+                if ($saleRow = $saleResult->fetch_assoc()) {
+                    $booking['saleName'] = $saleRow['sale_name'];
+                    $booking['saleDiscountPerPerson'] = floatval($saleRow['discount_amount']);
+                }
+                $saleStmt->close();
+            }
+        } catch (Throwable $e) { /* ignore */ }
+
+        send_success_response(['booking' => $booking, 'roomSummary' => $roomSummary, 'changeRequest' => $changeRequest, 'rejectedRequest' => $rejectedRequest]);
     } catch (Exception $e) {
         send_error_response('Failed to get B2B booking detail: ' . $e->getMessage());
     }
@@ -12349,6 +12635,7 @@ function updateB2BBooking($conn, $input) {
         $updates = [];
         $values = [];
         $types = '';
+        $changedToPendingUpdate = false; // pending_update로 변경되었는지 추적
 
         // UI 상태 키를 DB bookingStatus/paymentStatus로 매핑
         // - pending: 선금 대기
@@ -12368,49 +12655,86 @@ function updateB2BBooking($conn, $input) {
                 'waiting_balance', 'checking_balance', 'rejected'
             ];
 
-            if (in_array($k, $elevenStepStatuses, true)) {
-                // 11단계 상태는 bookingStatus에 직접 저장
-                $updates[] = "bookingStatus = ?";
-                $values[] = $k;
-                $types .= 's';
-                $updates[] = "paymentStatus = ?";
-                $values[] = 'pending';
-                $types .= 's';
-            } elseif ($k === 'pending' || $k === 'partial') {
-                $updates[] = "bookingStatus = ?";
-                $values[] = 'pending';
-                $types .= 's';
-                $updates[] = "paymentStatus = ?";
-                $values[] = 'pending';
-                $types .= 's';
+            // 상태 변경 시 pending_update 플로우 적용: cancelled → 다른 상태로 변경 시에만 적용
+            $shouldUsePendingUpdate = ($currentBook === 'cancelled') && ($k !== 'cancelled');
 
-                // partial은 downPaymentFile이 있어야 UI에서 의미가 있으므로,
-                // 파일이 없으면 저장은 허용하되(환경별), 실제 표시 상태는 getB2BBookings/getB2BBookingDetail 로직에서 결정됨.
-            } elseif ($k === 'confirmed') {
-                $updates[] = "bookingStatus = ?";
-                $values[] = 'confirmed';
-                $types .= 's';
-                $updates[] = "paymentStatus = ?";
-                $values[] = 'paid';
-                $types .= 's';
-            } elseif ($k === 'completed') {
-                $updates[] = "bookingStatus = ?";
-                $values[] = 'completed';
-                $types .= 's';
-                $updates[] = "paymentStatus = ?";
-                $values[] = 'paid';
-                $types .= 's';
-            } elseif ($k === 'cancelled') {
-                $updates[] = "bookingStatus = ?";
-                $values[] = 'cancelled';
-                $types .= 's';
-            } elseif ($k === 'refunded') {
-                $updates[] = "bookingStatus = ?";
-                $values[] = 'refunded';
-                $types .= 's';
-                $updates[] = "paymentStatus = ?";
-                $values[] = 'refunded';
-                $types .= 's';
+            if ($shouldUsePendingUpdate) {
+                $changedToPendingUpdate = true; // 응답에서 사용
+                // 상태가 실제로 변경되는 경우 - pending_update 플로우 적용
+                // targetStatus와 targetPaymentStatus 결정
+                $targetStatus = $k;
+                $targetPaymentStatus = null;
+
+                if (in_array($k, $elevenStepStatuses, true)) {
+                    $targetPaymentStatus = 'pending';
+                } elseif ($k === 'pending' || $k === 'partial') {
+                    $targetStatus = 'pending';
+                    $targetPaymentStatus = 'pending';
+                } elseif ($k === 'confirmed' || $k === 'completed') {
+                    $targetPaymentStatus = 'paid';
+                } elseif ($k === 'refunded') {
+                    $targetPaymentStatus = 'refunded';
+                }
+
+                // booking_change_requests 테이블에 변경 요청 저장
+                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, targetStatus, targetPaymentStatus, requestedBy, requestedByType, status) VALUES (?, 'status', ?, ?, ?, ?, ?, 'employee', 'pending')";
+                $changeRequestStmt = $conn->prepare($changeRequestSql);
+                if ($changeRequestStmt) {
+                    $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+                    $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $targetStatus, $targetPaymentStatus, $requestedBy);
+                    $changeRequestStmt->execute();
+                    $changeRequestStmt->close();
+                }
+
+                // bookingStatus를 pending_update로 설정
+                $updates[] = "bookingStatus = 'pending_update'";
+
+            } else {
+                // pending_update 플로우를 건너뛰는 경우 - 기존 직접 저장 로직
+                if (in_array($k, $elevenStepStatuses, true)) {
+                    // 11단계 상태는 bookingStatus에 직접 저장
+                    $updates[] = "bookingStatus = ?";
+                    $values[] = $k;
+                    $types .= 's';
+                    $updates[] = "paymentStatus = ?";
+                    $values[] = 'pending';
+                    $types .= 's';
+                } elseif ($k === 'pending' || $k === 'partial') {
+                    $updates[] = "bookingStatus = ?";
+                    $values[] = 'pending';
+                    $types .= 's';
+                    $updates[] = "paymentStatus = ?";
+                    $values[] = 'pending';
+                    $types .= 's';
+
+                    // partial은 downPaymentFile이 있어야 UI에서 의미가 있으므로,
+                    // 파일이 없으면 저장은 허용하되(환경별), 실제 표시 상태는 getB2BBookings/getB2BBookingDetail 로직에서 결정됨.
+                } elseif ($k === 'confirmed') {
+                    $updates[] = "bookingStatus = ?";
+                    $values[] = 'confirmed';
+                    $types .= 's';
+                    $updates[] = "paymentStatus = ?";
+                    $values[] = 'paid';
+                    $types .= 's';
+                } elseif ($k === 'completed') {
+                    $updates[] = "bookingStatus = ?";
+                    $values[] = 'completed';
+                    $types .= 's';
+                    $updates[] = "paymentStatus = ?";
+                    $values[] = 'paid';
+                    $types .= 's';
+                } elseif ($k === 'cancelled') {
+                    $updates[] = "bookingStatus = ?";
+                    $values[] = 'cancelled';
+                    $types .= 's';
+                } elseif ($k === 'refunded') {
+                    $updates[] = "bookingStatus = ?";
+                    $values[] = 'refunded';
+                    $types .= 's';
+                    $updates[] = "paymentStatus = ?";
+                    $values[] = 'refunded';
+                    $types .= 's';
+                }
             }
         }
 
@@ -12442,6 +12766,15 @@ function updateB2BBooking($conn, $input) {
             mysqli_bind_params_by_ref($stmt, $types, $values);
             $stmt->execute();
             $stmt->close();
+        }
+
+        // 상태 변경 히스토리 저장
+        if ($statusKey !== null && !$lockStatusChanges) {
+            $newStatus = strtolower(trim((string)$statusKey));
+            $oldStatus = $currentBook;
+            if ($newStatus !== $oldStatus) {
+                __log_booking_status_change($conn, $bookingId, $oldStatus, $newStatus);
+            }
         }
 
         // SMT 수정 시작 - 옵션 값 저장 (cabinBaggage, breakfastRequest, wifiRental, selectedRooms)
@@ -12593,11 +12926,58 @@ function updateB2BBooking($conn, $input) {
         }
 
         // Travelers 저장(인원옵션 travelerType은 read-only)
+        // pending_update 플로우: 변경 사항을 바로 저장하지 않고 승인 대기
         if ($hasTravelers) {
             __ensure_booking_travelers_status_columns($conn);
 
             // 허용 상태
-            $allowedStatus = ['pending','partial','confirmed','completed','cancelled','refunded','rejected','waiting_down_payment','checking_down_payment','waiting_second_payment','waiting_balance','waiting_full_payment'];
+            $allowedStatus = ['pending','partial','confirmed','completed','cancelled','refunded','rejected','waiting_down_payment','checking_down_payment','waiting_second_payment','checking_second_payment','waiting_balance','checking_balance','waiting_full_payment','checking_full_payment'];
+
+            // 관리자는 항상 직접 저장 (pending_update 없음)
+            $skipPendingUpdateForTravelers = true;
+
+            if (!$skipPendingUpdateForTravelers) {
+                // 현재 travelers 데이터 조회
+                $currentTravelers = [];
+                try {
+                    $travStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
+                    if ($travStmt) {
+                        $travStmt->bind_param('s', $travelerKey);
+                        $travStmt->execute();
+                        $travResult = $travStmt->get_result();
+                        while ($travRow = $travResult->fetch_assoc()) {
+                            $currentTravelers[] = $travRow;
+                        }
+                        $travStmt->close();
+                    }
+                } catch (Throwable $e) { /* ignore */ }
+
+                // booking_change_requests 테이블에 traveler 변경 요청 저장
+                $previousDataJson = json_encode(['originalTravelers' => $currentTravelers], JSON_UNESCAPED_UNICODE);
+                $newDataJson = json_encode(['pendingTravelers' => $input['travelers']], JSON_UNESCAPED_UNICODE);
+
+                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
+                $changeRequestStmt = $conn->prepare($changeRequestSql);
+                if ($changeRequestStmt) {
+                    $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+                    $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
+                    $changeRequestStmt->execute();
+                    $changeRequestStmt->close();
+                }
+
+                // bookingStatus를 pending_update로 변경
+                $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
+                if ($pendingStmt) {
+                    $pendingStmt->bind_param('s', $bookingId);
+                    $pendingStmt->execute();
+                    $pendingStmt->close();
+                }
+
+                // 여기서 바로 성공 응답 반환 (실제 traveler 수정은 승인 시 실행)
+                send_success_response(['pendingUpdate' => true, 'newStatus' => 'pending_update'], 'Traveler changes saved for approval');
+            }
+
+            // 아래 코드는 pending/pending_update/check_reject 상태일 때만 실행됨 (직접 저장)
 
             // 먼저 기존 여행자 ID 목록 수집 및 삭제 처리
             $sentTravelerIds = [];
@@ -12804,9 +13184,277 @@ function updateB2BBooking($conn, $input) {
             } catch (Throwable $e) { /* ignore */ }
         }
 
-        send_success_response([], 'Booking updated successfully');
+        // pending_update로 변경된 경우 응답에 포함
+        $responseData = [];
+        if ($changedToPendingUpdate) {
+            $responseData['newStatus'] = 'pending_update';
+        }
+        send_success_response($responseData, 'Booking updated successfully');
     } catch (Exception $e) {
         send_error_response('Failed to update B2B booking: ' . $e->getMessage());
+    }
+}
+
+// Edit Travelers 3단계 플로우: travelers + rooms 동시 저장
+function updateB2BBookingTravelersAndRooms($conn, $input) {
+    try {
+        $bookingId = $input['bookingId'] ?? $input['id'] ?? null;
+        if (empty($bookingId)) {
+            send_error_response('Booking ID is required');
+        }
+
+        $isSuperAdmin = __is_super_admin($conn);
+        if (!$isSuperAdmin) {
+            send_error_response('최고관리자만 여행자 정보를 수정할 수 있습니다.', 403);
+        }
+
+        $travelers = $input['travelers'] ?? [];
+        $selectedRooms = $input['selectedRooms'] ?? [];
+
+        if (!is_array($travelers) || empty($travelers)) {
+            send_error_response('Travelers data is required');
+        }
+
+        // 현재 예약 정보 조회
+        $stmt = $conn->prepare("SELECT bookingId, bookingStatus, paymentStatus, COALESCE(NULLIF(transactNo,''), bookingId) as transactKey, selectedOptions, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
+        if (!$stmt) {
+            send_error_response('Database error');
+        }
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$booking) {
+            send_error_response('Booking not found', 404);
+        }
+
+        $currentBook = strtolower((string)($booking['bookingStatus'] ?? ''));
+        $currentPay = strtolower((string)($booking['paymentStatus'] ?? ''));
+        $travelerKey = (string)($booking['transactKey'] ?? $bookingId);
+
+        // 관리자는 항상 직접 저장 (pending_update 없음)
+        $skipPendingUpdate = true;
+
+        if (!$skipPendingUpdate) {
+            // 현재 travelers 데이터 조회
+            $currentTravelers = [];
+            try {
+                $travStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
+                if ($travStmt) {
+                    $travStmt->bind_param('s', $travelerKey);
+                    $travStmt->execute();
+                    $travResult = $travStmt->get_result();
+                    while ($travRow = $travResult->fetch_assoc()) {
+                        $currentTravelers[] = $travRow;
+                    }
+                    $travStmt->close();
+                }
+            } catch (Throwable $e) { /* ignore */ }
+
+            // 현재 selectedOptions에서 기존 룸 정보 조회
+            $currentSelectedOptions = [];
+            $soRaw = (string)($booking['selectedOptions'] ?? '');
+            if ($soRaw !== '') {
+                $tmp = json_decode($soRaw, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
+                    $currentSelectedOptions = $tmp;
+                }
+            }
+            $currentRooms = $currentSelectedOptions['selectedRooms'] ?? [];
+
+            // booking_change_requests 테이블에 travelers + rooms 변경 요청 저장
+            $previousDataJson = json_encode([
+                'originalTravelers' => $currentTravelers,
+                'originalRooms' => $currentRooms
+            ], JSON_UNESCAPED_UNICODE);
+            $newDataJson = json_encode([
+                'pendingTravelers' => $travelers,
+                'pendingRooms' => $selectedRooms
+            ], JSON_UNESCAPED_UNICODE);
+
+            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
+            $changeRequestStmt = $conn->prepare($changeRequestSql);
+            if ($changeRequestStmt) {
+                $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+                $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
+                $changeRequestStmt->execute();
+                $changeRequestStmt->close();
+            }
+
+            // bookingStatus를 pending_update로 변경
+            $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
+            if ($pendingStmt) {
+                $pendingStmt->bind_param('s', $bookingId);
+                $pendingStmt->execute();
+                $pendingStmt->close();
+            }
+
+            // 성공 응답 반환 (실제 traveler/room 수정은 승인 시 실행)
+            send_success_response([
+                'pendingUpdate' => true,
+                'newStatus' => 'pending_update',
+                'bookingId' => $bookingId
+            ], 'Changes saved for approval');
+        } else {
+            // pending/pending_update/check_reject 상태: 직접 저장 (기존 로직 사용)
+            // travelers 저장
+            __ensure_booking_travelers_status_columns($conn);
+
+            // 기존 여행자 중 프론트에서 보내지 않은 여행자 삭제
+            $sentTravelerIds = [];
+            foreach ($travelers as $tr) {
+                if (!is_array($tr)) continue;
+                $tid = intval($tr['bookingTravelerId'] ?? 0);
+                if ($tid > 0) $sentTravelerIds[] = $tid;
+            }
+
+            try {
+                if (!empty($sentTravelerIds)) {
+                    $placeholders = implode(',', array_fill(0, count($sentTravelerIds), '?'));
+                    $delSql = "DELETE FROM booking_travelers WHERE transactNo = ? AND bookingTravelerId NOT IN ($placeholders)";
+                    $delStmt = $conn->prepare($delSql);
+                    if ($delStmt) {
+                        $delTypes = 's' . str_repeat('i', count($sentTravelerIds));
+                        $delParams = array_merge([$travelerKey], $sentTravelerIds);
+                        mysqli_bind_params_by_ref($delStmt, $delTypes, $delParams);
+                        $delStmt->execute();
+                        $delStmt->close();
+                    }
+                } else if (count($travelers) > 0) {
+                    $delStmt = $conn->prepare("DELETE FROM booking_travelers WHERE transactNo = ?");
+                    if ($delStmt) {
+                        $delStmt->bind_param('s', $travelerKey);
+                        $delStmt->execute();
+                        $delStmt->close();
+                    }
+                }
+            } catch (Throwable $e) { /* ignore */ }
+
+            // 여행자 UPDATE/INSERT (간소화된 버전)
+            foreach ($travelers as $tr) {
+                if (!is_array($tr)) continue;
+                $tid = intval($tr['bookingTravelerId'] ?? 0);
+
+                if ($tid <= 0) {
+                    // 신규 여행자 추가
+                    try {
+                        $travelerType = strtolower(trim((string)($tr['travelerType'] ?? $tr['type'] ?? 'adult')));
+                        $title = trim((string)($tr['title'] ?? ''));
+                        $firstName = trim((string)($tr['firstName'] ?? ''));
+                        $lastName = trim((string)($tr['lastName'] ?? ''));
+                        $birthDate = trim((string)($tr['birthDate'] ?? ''));
+                        $gender = strtolower(trim((string)($tr['gender'] ?? '')));
+                        $nationality = trim((string)($tr['nationality'] ?? ''));
+                        $passportNumber = trim((string)($tr['passportNumber'] ?? ''));
+                        $passportIssueDate = trim((string)($tr['passportIssueDate'] ?? ''));
+                        $passportExpiry = trim((string)($tr['passportExpiry'] ?? ''));
+                        $isMainTraveler = intval($tr['isMainTraveler'] ?? $tr['isMain'] ?? 0);
+
+                        $titleVal = in_array($title, ['MR','MRS','MS','DR']) ? $title : null;
+                        $genderVal = in_array($gender, ['male','female']) ? $gender : null;
+                        $birthDateVal = ($birthDate !== '' && $birthDate !== '0000-00-00') ? $birthDate : null;
+                        $passportIssueDateVal = ($passportIssueDate !== '' && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
+                        $passportExpiryVal = ($passportExpiry !== '' && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
+
+                        $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, isMainTraveler) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $stInsert = $conn->prepare($insertSql);
+                        if ($stInsert) {
+                            $stInsert->bind_param('sssssssssssi', $travelerKey, $travelerType, $titleVal, $firstName, $lastName, $birthDateVal, $genderVal, $nationality, $passportNumber, $passportIssueDateVal, $passportExpiryVal, $isMainTraveler);
+                            $stInsert->execute();
+                            $stInsert->close();
+                        }
+                    } catch (Throwable $e) {
+                        error_log("Insert traveler error: " . $e->getMessage());
+                    }
+                    continue;
+                }
+
+                // 기존 여행자 업데이트
+                $ok = false;
+                try {
+                    $chk = $conn->prepare("SELECT bookingTravelerId FROM booking_travelers WHERE bookingTravelerId = ? AND transactNo = ? LIMIT 1");
+                    if ($chk) {
+                        $chk->bind_param('is', $tid, $travelerKey);
+                        $chk->execute();
+                        $rs = $chk->get_result();
+                        $ok = ($rs && $rs->num_rows > 0);
+                        $chk->close();
+                    }
+                } catch (Throwable $e) { $ok = false; }
+                if (!$ok) continue;
+
+                $fields = [];
+                $vals = [];
+                $types = '';
+
+                // 기본 정보 필드들
+                $fieldMap = [
+                    'title' => 's', 'firstName' => 's', 'lastName' => 's', 'birthDate' => 's',
+                    'gender' => 's', 'nationality' => 's', 'passportNumber' => 's',
+                    'passportIssueDate' => 's', 'passportExpiry' => 's', 'visaType' => 's',
+                    'visaRequired' => 'i', 'childRoom' => 'i', 'isMainTraveler' => 'i'
+                ];
+
+                foreach ($fieldMap as $field => $type) {
+                    if (array_key_exists($field, $tr)) {
+                        $fields[] = "$field = ?";
+                        $val = $tr[$field];
+                        if ($type === 'i') $val = intval($val);
+                        $vals[] = $val;
+                        $types .= $type;
+                    }
+                }
+
+                if (!empty($fields)) {
+                    $vals[] = $tid;
+                    $types .= 'i';
+                    $upSql = "UPDATE booking_travelers SET " . implode(', ', $fields) . " WHERE bookingTravelerId = ?";
+                    $upStmt = $conn->prepare($upSql);
+                    if ($upStmt) {
+                        mysqli_bind_params_by_ref($upStmt, $types, $vals);
+                        $upStmt->execute();
+                        $upStmt->close();
+                    }
+                }
+            }
+
+            // selectedRooms 저장 (selectedOptions 업데이트)
+            try {
+                $soRaw = '';
+                $stRead = $conn->prepare("SELECT selectedOptions FROM bookings WHERE bookingId = ? LIMIT 1");
+                if ($stRead) {
+                    $stRead->bind_param('s', $bookingId);
+                    $stRead->execute();
+                    $readRes = $stRead->get_result();
+                    if ($readRes && $readRow = $readRes->fetch_assoc()) {
+                        $soRaw = (string)($readRow['selectedOptions'] ?? '');
+                    }
+                    $stRead->close();
+                }
+                $soObj = [];
+                if ($soRaw !== '') {
+                    $tmp = json_decode($soRaw, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) $soObj = $tmp;
+                }
+                $soObj['selectedRooms'] = $selectedRooms;
+
+                $newRaw = json_encode($soObj, JSON_UNESCAPED_UNICODE);
+                $st = $conn->prepare("UPDATE bookings SET selectedOptions = ? WHERE bookingId = ?");
+                if ($st) {
+                    $st->bind_param('ss', $newRaw, $bookingId);
+                    $st->execute();
+                    $st->close();
+                }
+            } catch (Throwable $e) { /* ignore */ }
+
+            send_success_response([
+                'saved' => true,
+                'bookingId' => $bookingId
+            ], 'Changes saved successfully');
+        }
+    } catch (Exception $e) {
+        send_error_response('Update failed: ' . $e->getMessage());
     }
 }
 
@@ -12995,29 +13643,29 @@ function rejectPayment($conn, $input) {
             send_error_response('Booking not found');
         }
 
-        // 결제 타입별 파일 삭제 및 DB 업데이트 (상태를 rejected로 변경)
+        // 결제 타입별 파일 삭제 및 DB 업데이트 (이전 waiting 상태로 복원 - 재고 유지)
         switch ($paymentType) {
             case 'down':
                 $filePath = $booking['downPaymentFile'];
-                $sql = "UPDATE bookings SET downPaymentFile = NULL, downPaymentFileName = NULL, downPaymentUploadedAt = NULL, downPaymentRejectedAt = NOW(), downPaymentRejectionReason = ?, bookingStatus = 'rejected' WHERE bookingId = ?";
+                $sql = "UPDATE bookings SET downPaymentFile = NULL, downPaymentFileName = NULL, downPaymentUploadedAt = NULL, downPaymentRejectedAt = NOW(), downPaymentRejectionReason = ?, bookingStatus = 'waiting_down_payment' WHERE bookingId = ?";
                 $uploadDir = 'down';
                 break;
 
             case 'second':
                 $filePath = $booking['advancePaymentFile'];
-                $sql = "UPDATE bookings SET advancePaymentFile = NULL, advancePaymentFileName = NULL, advancePaymentUploadedAt = NULL, advancePaymentRejectedAt = NOW(), advancePaymentRejectionReason = ?, bookingStatus = 'rejected' WHERE bookingId = ?";
+                $sql = "UPDATE bookings SET advancePaymentFile = NULL, advancePaymentFileName = NULL, advancePaymentUploadedAt = NULL, advancePaymentRejectedAt = NOW(), advancePaymentRejectionReason = ?, bookingStatus = 'waiting_second_payment' WHERE bookingId = ?";
                 $uploadDir = 'second';
                 break;
 
             case 'balance':
                 $filePath = $booking['balanceFile'];
-                $sql = "UPDATE bookings SET balanceFile = NULL, balanceFileName = NULL, balanceUploadedAt = NULL, balanceRejectedAt = NOW(), balanceRejectionReason = ?, bookingStatus = 'rejected' WHERE bookingId = ?";
+                $sql = "UPDATE bookings SET balanceFile = NULL, balanceFileName = NULL, balanceUploadedAt = NULL, balanceRejectedAt = NOW(), balanceRejectionReason = ?, bookingStatus = 'waiting_balance' WHERE bookingId = ?";
                 $uploadDir = 'balance';
                 break;
 
             case 'full':
                 $filePath = $booking['fullPaymentFile'];
-                $sql = "UPDATE bookings SET fullPaymentFile = NULL, fullPaymentFileName = NULL, fullPaymentUploadedAt = NULL, fullPaymentRejectedAt = NOW(), fullPaymentRejectionReason = ?, bookingStatus = 'rejected' WHERE bookingId = ?";
+                $sql = "UPDATE bookings SET fullPaymentFile = NULL, fullPaymentFileName = NULL, fullPaymentUploadedAt = NULL, fullPaymentRejectedAt = NOW(), fullPaymentRejectionReason = ?, bookingStatus = 'waiting_full_payment' WHERE bookingId = ?";
                 $uploadDir = 'full';
                 break;
         }
@@ -13037,6 +13685,18 @@ function rejectPayment($conn, $input) {
             send_error_response('Failed to reject payment');
         }
         $stmt->close();
+
+        // Send rejection notification email
+        if (function_exists('send_rejection_notification_email')) {
+            $paymentTypeMap = [
+                'down' => 'down_payment',
+                'second' => 'advance_payment',
+                'balance' => 'balance',
+                'full' => 'full_payment',
+            ];
+            $mappedPaymentType = $paymentTypeMap[$paymentType] ?? $paymentType;
+            send_rejection_notification_email($conn, $bookingId, 'payment', $reason, $mappedPaymentType);
+        }
 
         send_success_response([], 'Payment rejected successfully');
     } catch (Exception $e) {
@@ -13071,7 +13731,7 @@ function approveB2BBooking($conn, $input) {
             send_error_response('Booking ID is required');
         }
 
-        // pending 상태인지 확인 및 paymentType 조회
+        // pending/pending_update 상태인지 확인 및 paymentType 조회
         $checkSql = "SELECT bookingStatus, paymentType FROM bookings WHERE bookingId = ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param('s', $bookingId);
@@ -13084,20 +13744,498 @@ function approveB2BBooking($conn, $input) {
             send_error_response('Booking not found');
         }
 
-        if ($booking['bookingStatus'] !== 'pending') {
-            send_error_response('Only pending bookings can be approved. Current status: ' . $booking['bookingStatus']);
+        if ($booking['bookingStatus'] === 'pending') {
+            // 신규 예약 승인: paymentType에 따라 다른 상태로 변경
+            $newStatus = ($booking['paymentType'] === 'full') ? 'waiting_full_payment' : 'waiting_down_payment';
+
+            $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('ss', $newStatus, $bookingId);
+            $stmt->execute();
+            $stmt->close();
+
+            send_success_response([], 'Booking approved successfully');
+        } else if ($booking['bookingStatus'] === 'pending_update') {
+            // booking_change_requests 테이블에서 변경 요청 조회
+            $changeReqSql = "SELECT * FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' ORDER BY requestedAt DESC LIMIT 1";
+            $changeReqStmt = $conn->prepare($changeReqSql);
+            $changeReqStmt->bind_param('s', $bookingId);
+            $changeReqStmt->execute();
+            $changeReqResult = $changeReqStmt->get_result();
+            $changeRequest = $changeReqResult->fetch_assoc();
+            $changeReqStmt->close();
+
+            if (!$changeRequest) {
+                send_error_response('No pending change request found for this booking');
+            }
+
+            $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+
+            if ($changeRequest['changeType'] === 'status') {
+                // 상태 변경 요청 승인: targetStatus로 변경
+                $newStatus = $changeRequest['targetStatus'];
+                $newPaymentStatus = $changeRequest['targetPaymentStatus'];
+
+                if ($newPaymentStatus !== null) {
+                    $sql = "UPDATE bookings SET bookingStatus = ?, paymentStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('sss', $newStatus, $newPaymentStatus, $bookingId);
+                } else {
+                    $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('ss', $newStatus, $bookingId);
+                }
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 승인 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'approved', processedBy = ?, processedAt = NOW() WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                send_success_response([], 'Status change approved successfully');
+
+            } else if ($changeRequest['changeType'] === 'travelers') {
+                // Traveler 변경 요청 승인: pendingTravelers 적용
+                $newData = json_decode($changeRequest['newData'], true);
+                $previousData = json_decode($changeRequest['previousData'], true);
+                $pendingTravelers = $newData['pendingTravelers'] ?? [];
+                $pendingRooms = $newData['pendingRooms'] ?? [];
+                $originalTravelers = $previousData['originalTravelers'] ?? [];
+                $originalRooms = $previousData['originalRooms'] ?? [];
+                $newStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+
+                // 금액 재계산을 위한 가격 정보 조회
+                $priceStmt = $conn->prepare("SELECT totalAmount, adultPrice, childPrice, infantPrice FROM bookings WHERE bookingId = ? LIMIT 1");
+                $priceStmt->bind_param('s', $bookingId);
+                $priceStmt->execute();
+                $priceResult = $priceStmt->get_result();
+                $priceData = $priceResult->fetch_assoc();
+                $priceStmt->close();
+
+                $oldTotalAmount = floatval($priceData['totalAmount'] ?? 0);
+                $adultPrice = floatval($priceData['adultPrice'] ?? 0);
+                $childWithRoomPrice = $adultPrice;
+                $childNoRoomPrice = floatval($priceData['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
+                $infantPrice = floatval($priceData['infantPrice'] ?? 0) ?: 10000;
+
+                // 새로운 총액 계산 함수
+                $calculateTotal = function($travelers, $rooms) use ($adultPrice, $childWithRoomPrice, $childNoRoomPrice, $infantPrice) {
+                    $total = 0;
+                    // Traveler 요금
+                    foreach ($travelers as $t) {
+                        $type = strtolower(trim($t['travelerType'] ?? $t['type'] ?? 'adult'));
+                        if ($type === 'adult') {
+                            $total += $adultPrice;
+                        } elseif ($type === 'child') {
+                            $hasRoom = $t['childRoom'] === true || $t['childRoom'] === 'yes' || $t['childRoom'] === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
+                            $total += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+                        } elseif ($type === 'infant') {
+                            $total += $infantPrice;
+                        }
+                        // Visa 요금
+                        $visaType = strtolower(trim($t['visaType'] ?? ''));
+                        if ($visaType === 'group') $total += 1500;
+                        elseif ($visaType === 'individual') $total += 1900;
+                        // Flight Options
+                        if (!empty($t['flightOptionPrices']) && is_array($t['flightOptionPrices'])) {
+                            foreach ($t['flightOptionPrices'] as $price) {
+                                $total += floatval($price);
+                            }
+                        }
+                    }
+                    // Room 요금
+                    foreach ($rooms as $r) {
+                        $count = intval($r['count'] ?? $r['roomCount'] ?? 0);
+                        $price = floatval($r['roomPrice'] ?? $r['room_price'] ?? 0);
+                        if ($count > 0 && $price > 0) {
+                            $total += $count * $price;
+                        }
+                    }
+                    return $total;
+                };
+
+                // Before/After 금액 계산
+                $beforeTotal = $calculateTotal($originalTravelers, $originalRooms);
+                $afterTotal = $calculateTotal($pendingTravelers, $pendingRooms);
+                $priceAdjustment = $afterTotal - $beforeTotal;
+
+                // Visa Fee와 Flight Option Fee 별도 계산 (pendingTravelers 기준)
+                $newVisaFee = 0;
+                $newFlightOptionFee = 0;
+                foreach ($pendingTravelers as $t) {
+                    $visaType = strtolower(trim($t['visaType'] ?? ''));
+                    if ($visaType === 'group') $newVisaFee += 1500;
+                    elseif ($visaType === 'individual') $newVisaFee += 1900;
+
+                    if (!empty($t['flightOptionPrices']) && is_array($t['flightOptionPrices'])) {
+                        foreach ($t['flightOptionPrices'] as $price) {
+                            $newFlightOptionFee += floatval($price);
+                        }
+                    }
+                }
+
+                // transactNo 조회
+                $travelerKey = $bookingId;
+                try {
+                    $tkStmt = $conn->prepare("SELECT COALESCE(NULLIF(transactNo,''), bookingId) as tk FROM bookings WHERE bookingId = ? LIMIT 1");
+                    if ($tkStmt) {
+                        $tkStmt->bind_param('s', $bookingId);
+                        $tkStmt->execute();
+                        $tkRes = $tkStmt->get_result();
+                        if ($tkRes && $tkRow = $tkRes->fetch_assoc()) {
+                            $travelerKey = $tkRow['tk'];
+                        }
+                        $tkStmt->close();
+                    }
+                } catch (Throwable $e) { /* ignore */ }
+
+                // 기존 여행자 삭제 후 새 여행자 데이터 삽입
+                try {
+                    // 기존 여행자 삭제
+                    $delStmt = $conn->prepare("DELETE FROM booking_travelers WHERE transactNo = ?");
+                    if ($delStmt) {
+                        $delStmt->bind_param('s', $travelerKey);
+                        $delStmt->execute();
+                        $delStmt->close();
+                    }
+
+                    // 기존 flight options 삭제
+                    $delOptStmt = $conn->prepare("DELETE FROM booking_traveler_options WHERE booking_id = ?");
+                    if ($delOptStmt) {
+                        $delOptStmt->bind_param('s', $bookingId);
+                        $delOptStmt->execute();
+                        $delOptStmt->close();
+                    }
+
+                    // 새 여행자 삽입
+                    foreach ($pendingTravelers as $tr) {
+                        if (!is_array($tr)) continue;
+
+                        $travelerType = strtolower(trim((string)($tr['travelerType'] ?? $tr['type'] ?? 'adult')));
+                        $title = trim((string)($tr['title'] ?? ''));
+                        $firstName = trim((string)($tr['firstName'] ?? ''));
+                        $lastName = trim((string)($tr['lastName'] ?? ''));
+                        $birthDate = trim((string)($tr['birthDate'] ?? ''));
+                        $gender = strtolower(trim((string)($tr['gender'] ?? '')));
+                        $nationality = trim((string)($tr['nationality'] ?? ''));
+                        $passportNumber = trim((string)($tr['passportNumber'] ?? ''));
+                        $passportIssueDate = trim((string)($tr['passportIssueDate'] ?? ''));
+                        $passportExpiry = trim((string)($tr['passportExpiry'] ?? ''));
+                        $isMainTraveler = intval($tr['isMainTraveler'] ?? $tr['isMain'] ?? 0);
+
+                        // ENUM 필드 처리
+                        $titleVal = in_array($title, ['MR','MRS','MS','DR']) ? $title : null;
+                        $genderVal = in_array($gender, ['male','female']) ? $gender : null;
+                        $birthDateVal = ($birthDate !== '' && $birthDate !== '0000-00-00') ? $birthDate : null;
+                        $passportIssueDateVal = ($passportIssueDate !== '' && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
+                        $passportExpiryVal = ($passportExpiry !== '' && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
+
+                        $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, isMainTraveler, reservationStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $stInsert = $conn->prepare($insertSql);
+                        if ($stInsert) {
+                            $stInsert->bind_param('sssssssssssis', $travelerKey, $travelerType, $titleVal, $firstName, $lastName, $birthDateVal, $genderVal, $nationality, $passportNumber, $passportIssueDateVal, $passportExpiryVal, $isMainTraveler, $newStatus);
+                            $stInsert->execute();
+                            $stInsert->close();
+                        }
+                    }
+
+                    // 새 flight options 삽입
+                    $travelerIdx = 0;
+                    foreach ($pendingTravelers as $tr) {
+                        if (!is_array($tr)) { $travelerIdx++; continue; }
+                        $flightOptions = $tr['flightOptions'] ?? [];
+                        $flightOptionPrices = $tr['flightOptionPrices'] ?? [];
+                        if (is_array($flightOptions) && count($flightOptions) > 0) {
+                            foreach ($flightOptions as $optionId) {
+                                $optionId = intval($optionId);
+                                $optionPrice = floatval($flightOptionPrices[$optionId] ?? 0);
+                                $insertOptSql = "INSERT INTO booking_traveler_options (booking_id, traveler_index, option_id, price) VALUES (?, ?, ?, ?)";
+                                $stInsertOpt = $conn->prepare($insertOptSql);
+                                if ($stInsertOpt) {
+                                    $stInsertOpt->bind_param('siid', $bookingId, $travelerIdx, $optionId, $optionPrice);
+                                    $stInsertOpt->execute();
+                                    $stInsertOpt->close();
+                                }
+                            }
+                        }
+                        $travelerIdx++;
+                    }
+
+                    // numberOfPeople 업데이트
+                    $travelerCount = count($pendingTravelers);
+                    if ($travelerCount > 0 && __table_has_column($conn, 'bookings', 'numberOfPeople')) {
+                        $updPeople = $conn->prepare("UPDATE bookings SET numberOfPeople = ? WHERE bookingId = ?");
+                        if ($updPeople) {
+                            $updPeople->bind_param('is', $travelerCount, $bookingId);
+                            $updPeople->execute();
+                            $updPeople->close();
+                        }
+                    }
+
+                    // Available Seats 재고 조정 (인원 변경 시)
+                    $oldPeopleCount = count($originalTravelers);
+                    $newPeopleCount = count($pendingTravelers);
+                    $seatDifference = $newPeopleCount - $oldPeopleCount;
+
+                    if ($seatDifference !== 0) {
+                        // 예약의 departureDate와 packageId 조회
+                        $seatInfoStmt = $conn->prepare("SELECT departureDate, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
+                        if ($seatInfoStmt) {
+                            $seatInfoStmt->bind_param('s', $bookingId);
+                            $seatInfoStmt->execute();
+                            $seatInfoResult = $seatInfoStmt->get_result();
+                            if ($seatInfoRow = $seatInfoResult->fetch_assoc()) {
+                                $departureDate = $seatInfoRow['departureDate'];
+                                $packageId = $seatInfoRow['packageId'];
+
+                                // package_available_dates 테이블의 booked_seats 조정
+                                // 인원 증가 시: booked_seats 증가 (seatDifference 양수)
+                                // 인원 감소 시: booked_seats 감소 (seatDifference 음수)
+                                $updateSeatsStmt = $conn->prepare(
+                                    "UPDATE package_available_dates
+                                     SET booked_seats = GREATEST(0, booked_seats + ?)
+                                     WHERE available_date = ? AND package_id = ?"
+                                );
+                                if ($updateSeatsStmt) {
+                                    $updateSeatsStmt->bind_param('isi', $seatDifference, $departureDate, $packageId);
+                                    $updateSeatsStmt->execute();
+                                    $updateSeatsStmt->close();
+                                }
+                            }
+                            $seatInfoStmt->close();
+                        }
+                    }
+                } catch (Throwable $e) {
+                    send_error_response('Failed to apply traveler changes: ' . $e->getMessage());
+                }
+
+                // pendingTravelers에서 타입별 인원 수 계산
+                $newAdults = 0;
+                $newChildren = 0;
+                $newInfants = 0;
+                foreach ($pendingTravelers as $t) {
+                    $type = strtolower(trim($t['travelerType'] ?? $t['type'] ?? 'adult'));
+                    if ($type === 'adult') {
+                        $newAdults++;
+                    } elseif ($type === 'child') {
+                        $newChildren++;
+                    } elseif ($type === 'infant') {
+                        $newInfants++;
+                    }
+                }
+
+                // bookingStatus 복원 + totalAmount, visaFee, flightOptionFee 업데이트 + priceAdjustment 기록 + adults/children/infants 업데이트
+                $adjustmentReason = 'Traveler change approved';
+                $sql = "UPDATE bookings SET bookingStatus = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, priceAdjustment = COALESCE(priceAdjustment, 0) + ?, lastAdjustmentDate = NOW(), adjustmentReason = ?, adults = ?, children = ?, infants = ?, updatedAt = NOW() WHERE bookingId = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('sddddsiiis', $newStatus, $afterTotal, $newVisaFee, $newFlightOptionFee, $priceAdjustment, $adjustmentReason, $newAdults, $newChildren, $newInfants, $bookingId);
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 승인 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'approved', processedBy = ?, processedAt = NOW() WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                // 금액 변동 정보를 응답에 포함
+                $adjustmentInfo = [
+                    'beforeTotal' => $beforeTotal,
+                    'afterTotal' => $afterTotal,
+                    'adjustment' => $priceAdjustment
+                ];
+                send_success_response(['priceAdjustment' => $adjustmentInfo], 'Traveler changes approved and applied successfully. Amount adjusted: ' . ($priceAdjustment >= 0 ? '+' : '') . number_format($priceAdjustment) . ' PHP');
+
+            } else if ($changeRequest['changeType'] === 'product_edit') {
+                // Product Edit 요청 승인: 기존 예약 취소 + 새 예약 생성
+                $newData = json_decode($changeRequest['newData'], true);
+
+                if (!$newData) {
+                    send_error_response('No new data found for product edit request. The edit may not have been completed.');
+                }
+
+                // 1. 기존 예약을 cancelled로 변경
+                $cancelSql = "UPDATE bookings SET bookingStatus = 'cancelled', cancelledAt = NOW(), updatedAt = NOW() WHERE bookingId = ?";
+                $cancelStmt = $conn->prepare($cancelSql);
+                $cancelStmt->bind_param('s', $bookingId);
+                $cancelStmt->execute();
+                $cancelStmt->close();
+
+                // 2. 새 bookingId 생성
+                $newBookingId = generateBookingId($conn);
+
+                // 3. 기존 예약 정보 조회 (메타 정보 복사를 위해)
+                $oldBookingSql = "SELECT * FROM bookings WHERE bookingId = ?";
+                $oldBookingStmt = $conn->prepare($oldBookingSql);
+                $oldBookingStmt->bind_param('s', $bookingId);
+                $oldBookingStmt->execute();
+                $oldBookingResult = $oldBookingStmt->get_result();
+                $oldBooking = $oldBookingResult->fetch_assoc();
+                $oldBookingStmt->close();
+
+                // 4. 새 예약 생성
+                $newStatus = $changeRequest['originalStatus'] ?? 'waiting_down_payment';
+                $newPaymentStatus = $changeRequest['originalPaymentStatus'] ?? 'pending';
+
+                $insertSql = "INSERT INTO bookings (
+                    bookingId, transactNo, packageId, departureDate, returnDate,
+                    adults, children, infants, totalAmount,
+                    meetingTime, meetingLocation, otherRequest,
+                    contactEmail, contactPhone, contactName,
+                    agentId, accountId, customerAccountId,
+                    bookingStatus, paymentStatus, paymentType,
+                    createdAt, updatedAt
+                ) VALUES (
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    NOW(), NOW()
+                )";
+
+                $transactNo = $newBookingId;
+                $packageId = $newData['packageId'] ?? $oldBooking['packageId'];
+                $departureDate = $newData['departureDate'] ?? $oldBooking['departureDate'];
+                $returnDate = $newData['returnDate'] ?? '';
+                $adults = (int)($newData['adults'] ?? 0);
+                $children = (int)($newData['children'] ?? 0);
+                $infants = (int)($newData['infants'] ?? 0);
+                $totalAmount = (float)($newData['totalAmount'] ?? 0);
+                $meetingTime = $newData['meetingTime'] ?? '';
+                $meetingLocation = $newData['meetingLocation'] ?? '';
+                $otherRequest = $newData['otherRequest'] ?? '';
+                $contactEmail = $newData['contactEmail'] ?? ($newData['customerInfo']['email'] ?? '');
+                $contactPhone = $newData['contactPhone'] ?? ($newData['customerInfo']['phone'] ?? '');
+                $contactName = '';
+                if (!empty($newData['customerInfo'])) {
+                    $contactName = trim(($newData['customerInfo']['firstName'] ?? '') . ' ' . ($newData['customerInfo']['lastName'] ?? ''));
+                }
+                $agentId = $oldBooking['agentId'];
+                $accountId = $oldBooking['accountId'];
+                $customerAccountId = $newData['customerAccountId'] ?? ($newData['customerInfo']['accountId'] ?? $oldBooking['customerAccountId']);
+                $paymentType = $newData['paymentType'] ?? 'staged';
+
+                $insertStmt = $conn->prepare($insertSql);
+                $insertStmt->bind_param('ssissiiidssssssiissss',
+                    $newBookingId, $transactNo, $packageId, $departureDate, $returnDate,
+                    $adults, $children, $infants, $totalAmount,
+                    $meetingTime, $meetingLocation, $otherRequest,
+                    $contactEmail, $contactPhone, $contactName,
+                    $agentId, $accountId, $customerAccountId,
+                    $newStatus, $newPaymentStatus, $paymentType
+                );
+                $insertStmt->execute();
+                $insertStmt->close();
+
+                // 5. 여행자 정보 복사 (newData에서)
+                $newTravelers = $newData['travelers'] ?? [];
+                if (!empty($newTravelers)) {
+                    foreach ($newTravelers as $idx => $tr) {
+                        if (!is_array($tr)) continue;
+
+                        $travelerType = strtolower(trim((string)($tr['type'] ?? $tr['travelerType'] ?? 'adult')));
+                        $title = trim((string)($tr['title'] ?? ''));
+                        $firstName = trim((string)($tr['firstName'] ?? ''));
+                        $lastName = trim((string)($tr['lastName'] ?? ''));
+                        $birthDate = trim((string)($tr['birthDate'] ?? ''));
+                        $gender = strtolower(trim((string)($tr['gender'] ?? '')));
+                        $nationality = trim((string)($tr['nationality'] ?? ''));
+                        $passportNumber = trim((string)($tr['passportNumber'] ?? ''));
+                        $passportIssueDate = trim((string)($tr['passportIssueDate'] ?? ''));
+                        $passportExpiry = trim((string)($tr['passportExpiry'] ?? ''));
+                        $isMainTraveler = intval($tr['isMainTraveler'] ?? ($idx === 0 ? 1 : 0));
+
+                        $titleVal = in_array($title, ['MR','MRS','MS','DR']) ? $title : null;
+                        $genderVal = in_array($gender, ['male','female']) ? $gender : null;
+                        $birthDateVal = ($birthDate !== '' && $birthDate !== '0000-00-00') ? $birthDate : null;
+                        $passportIssueDateVal = ($passportIssueDate !== '' && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
+                        $passportExpiryVal = ($passportExpiry !== '' && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
+
+                        $travelersInsertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, isMainTraveler, reservationStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $tInsert = $conn->prepare($travelersInsertSql);
+                        if ($tInsert) {
+                            $tInsert->bind_param('sssssssssssis', $newBookingId, $travelerType, $titleVal, $firstName, $lastName, $birthDateVal, $genderVal, $nationality, $passportNumber, $passportIssueDateVal, $passportExpiryVal, $isMainTraveler, $newStatus);
+                            $tInsert->execute();
+                            $tInsert->close();
+                        }
+                    }
+                }
+
+                // 6. 객실 옵션 복사 (newData에서) - 테이블이 없을 수 있음
+                $newRooms = $newData['selectedRooms'] ?? [];
+                if (!empty($newRooms)) {
+                    try {
+                        $tableCheck = $conn->query("SHOW TABLES LIKE 'booking_room_options'");
+                        if ($tableCheck && $tableCheck->num_rows > 0) {
+                            foreach ($newRooms as $room) {
+                                if (!is_array($room)) continue;
+
+                                $roomId = $room['roomId'] ?? $room['room_id'] ?? null;
+                                $roomType = $room['roomType'] ?? $room['room_type'] ?? '';
+                                $roomPrice = (float)($room['roomPrice'] ?? $room['room_price'] ?? 0);
+                                $capacity = (int)($room['capacity'] ?? 1);
+                                $count = (int)($room['count'] ?? $room['quantity'] ?? 1);
+
+                                if ($roomId) {
+                                    $roomInsertSql = "INSERT INTO booking_room_options (bookingId, roomId, roomType, roomPrice, capacity, count) VALUES (?, ?, ?, ?, ?, ?)";
+                                    $rInsert = $conn->prepare($roomInsertSql);
+                                    if ($rInsert) {
+                                        $rInsert->bind_param('sisdii', $newBookingId, $roomId, $roomType, $roomPrice, $capacity, $count);
+                                        $rInsert->execute();
+                                        $rInsert->close();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Throwable $e) {
+                        // 테이블이 없거나 오류 시 무시하고 계속 진행
+                    }
+                }
+
+                // 7. change_request 상태 업데이트
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'approved', processedBy = ?, processedAt = NOW() WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                // 8. 예약 이력 추가
+                __addBookingHistory($conn, $bookingId, 'Product edit approved - old booking cancelled');
+                __addBookingHistory($conn, $newBookingId, 'Created from product edit approval (original: ' . $bookingId . ')');
+
+                send_success_response([
+                    'oldBookingId' => $bookingId,
+                    'newBookingId' => $newBookingId
+                ], 'Product edit approved. Old booking cancelled, new booking created.');
+
+            } else {
+                // 기타 데이터 수정 요청 승인
+                $newStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+
+                $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $newStatus, $bookingId);
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 승인 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'approved', processedBy = ?, processedAt = NOW() WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                send_success_response([], 'Booking update approved successfully');
+            }
+        } else {
+            send_error_response('Only pending or pending_update bookings can be approved. Current status: ' . $booking['bookingStatus']);
         }
-
-        // paymentType에 따라 다른 상태로 변경
-        $newStatus = ($booking['paymentType'] === 'full') ? 'waiting_full_payment' : 'waiting_down_payment';
-
-        $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('ss', $newStatus, $bookingId);
-        $stmt->execute();
-        $stmt->close();
-
-        send_success_response([], 'Booking approved successfully');
     } catch (Exception $e) {
         send_error_response('Failed to approve B2B booking: ' . $e->getMessage());
     }
@@ -13112,7 +14250,7 @@ function rejectB2BBooking($conn, $input) {
 
         $reason = $input['reason'] ?? '';
 
-        // pending 상태인지 확인
+        // pending/pending_update 상태인지 확인
         $checkSql = "SELECT bookingStatus FROM bookings WHERE bookingId = ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param('s', $bookingId);
@@ -13123,10 +14261,6 @@ function rejectB2BBooking($conn, $input) {
 
         if (!$booking) {
             send_error_response('Booking not found');
-        }
-
-        if ($booking['bookingStatus'] !== 'pending') {
-            send_error_response('Only pending bookings can be rejected. Current status: ' . $booking['bookingStatus']);
         }
 
         // remarks 컬럼 존재 여부 확인
@@ -13140,22 +14274,367 @@ function rejectB2BBooking($conn, $input) {
             $hasRemarks = true;
         }
 
-        // pending → rejected 으로 변경 (거절 사유 저장)
-        if ($hasRemarks && !empty($reason)) {
-            $sql = "UPDATE bookings SET bookingStatus = 'rejected', remarks = CONCAT(COALESCE(remarks, ''), '\n[Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param('ss', $reason, $bookingId);
+        if ($booking['bookingStatus'] === 'pending') {
+            // 신규 예약 거절: pending → rejected
+            if ($hasRemarks && !empty($reason)) {
+                $sql = "UPDATE bookings SET bookingStatus = 'rejected', remarks = CONCAT(COALESCE(remarks, ''), '\n[Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $reason, $bookingId);
+            } else {
+                $sql = "UPDATE bookings SET bookingStatus = 'rejected', updatedAt = NOW() WHERE bookingId = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('s', $bookingId);
+            }
+            $stmt->execute();
+            $stmt->close();
+
+            // Send rejection notification email
+            if (function_exists('send_rejection_notification_email')) {
+                send_rejection_notification_email($conn, $bookingId, 'booking', $reason);
+            }
+
+            send_success_response([], 'Booking rejected successfully');
+        } else if ($booking['bookingStatus'] === 'pending_update') {
+            // booking_change_requests 테이블에서 변경 요청 조회
+            $changeReqSql = "SELECT * FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' ORDER BY requestedAt DESC LIMIT 1";
+            $changeReqStmt = $conn->prepare($changeReqSql);
+            $changeReqStmt->bind_param('s', $bookingId);
+            $changeReqStmt->execute();
+            $changeReqResult = $changeReqStmt->get_result();
+            $changeRequest = $changeReqResult->fetch_assoc();
+            $changeReqStmt->close();
+
+            if (!$changeRequest) {
+                send_error_response('No pending change request found for this booking');
+            }
+
+            $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+            $originalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+            $originalPaymentStatus = $changeRequest['originalPaymentStatus'] ?? null;
+
+            if ($changeRequest['changeType'] === 'status') {
+                // 상태 변경 요청 거절: 원래 상태로 복원
+                if ($hasRemarks && !empty($reason)) {
+                    if ($originalPaymentStatus !== null) {
+                        $sql = "UPDATE bookings SET bookingStatus = ?, paymentStatus = ?, remarks = CONCAT(COALESCE(remarks, ''), '\n[Status Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('ssss', $originalStatus, $originalPaymentStatus, $reason, $bookingId);
+                    } else {
+                        $sql = "UPDATE bookings SET bookingStatus = ?, remarks = CONCAT(COALESCE(remarks, ''), '\n[Status Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('sss', $originalStatus, $reason, $bookingId);
+                    }
+                } else {
+                    if ($originalPaymentStatus !== null) {
+                        $sql = "UPDATE bookings SET bookingStatus = ?, paymentStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('sss', $originalStatus, $originalPaymentStatus, $bookingId);
+                    } else {
+                        $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('ss', $originalStatus, $bookingId);
+                    }
+                }
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 거절 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('ssi', $processedBy, $reason, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                // Send rejection notification email
+                if (function_exists('send_rejection_notification_email')) {
+                    send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
+                }
+
+                send_success_response([], 'Status change rejected successfully');
+
+            } else if ($changeRequest['changeType'] === 'travelers') {
+                // Traveler 변경 요청 거절: pending_update → check_reject (에이전트가 거절 사유 확인 필요)
+                if ($hasRemarks && !empty($reason)) {
+                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Traveler Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('ss', $reason, $bookingId);
+                } else {
+                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('s', $bookingId);
+                }
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 거절 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('ssi', $processedBy, $reason, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                // Send rejection notification email
+                if (function_exists('send_rejection_notification_email')) {
+                    send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
+                }
+
+                send_success_response([], 'Traveler change rejected successfully');
+
+            } else if ($changeRequest['changeType'] === 'product_edit') {
+                // Product Edit 요청 거절: pending_update → check_reject (에이전트가 거절 사유 확인 필요)
+                if ($hasRemarks && !empty($reason)) {
+                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Product Edit Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('ss', $reason, $bookingId);
+                } else {
+                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('s', $bookingId);
+                }
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 거절 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('ssi', $processedBy, $reason, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                // Send rejection notification email
+                if (function_exists('send_rejection_notification_email')) {
+                    send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
+                }
+
+                send_success_response([], 'Product edit rejected successfully');
+
+            } else {
+                // 기타 데이터 수정 요청 거절: pending_update → check_reject (사용자가 확인 필요)
+                if ($hasRemarks && !empty($reason)) {
+                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Update Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('ss', $reason, $bookingId);
+                } else {
+                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('s', $bookingId);
+                }
+                $stmt->execute();
+                $stmt->close();
+
+                // 변경 요청 거절 처리
+                $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";
+                $updateReqStmt = $conn->prepare($updateReqSql);
+                $updateReqStmt->bind_param('ssi', $processedBy, $reason, $changeRequest['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+
+                // Send rejection notification email
+                if (function_exists('send_rejection_notification_email')) {
+                    send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
+                }
+
+                send_success_response([], 'Booking update rejected successfully');
+            }
         } else {
-            $sql = "UPDATE bookings SET bookingStatus = 'rejected', updatedAt = NOW() WHERE bookingId = ?";
+            send_error_response('Only pending or pending_update bookings can be rejected. Current status: ' . $booking['bookingStatus']);
+        }
+    } catch (Exception $e) {
+        send_error_response('Failed to reject B2B booking: ' . $e->getMessage());
+    }
+}
+
+// 에이전트가 예약 수정 시 pending_update 상태로 변경하는 함수
+function updateBookingWithApproval($conn, $input) {
+    try {
+        $bookingId = $input['bookingId'] ?? $input['id'] ?? null;
+        if (empty($bookingId)) {
+            send_error_response('Booking ID is required');
+        }
+
+        // 현재 예약 데이터 조회
+        $checkSql = "SELECT * FROM bookings WHERE bookingId = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param('s', $bookingId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $booking = $result->fetch_assoc();
+        $checkStmt->close();
+
+        if (!$booking) {
+            send_error_response('Booking not found');
+        }
+
+        // 이미 pending_update 상태인 경우 거부
+        if ($booking['bookingStatus'] === 'pending_update' || $booking['bookingStatus'] === 'check_reject') {
+            send_error_response('This booking already has a pending update request. Current status: ' . $booking['bookingStatus']);
+        }
+
+        // 현재 데이터를 previousData에 저장할 JSON 생성
+        $previousData = json_encode([
+            'departureDate' => $booking['departureDate'] ?? null,
+            'adults' => $booking['adults'] ?? 0,
+            'children' => $booking['children'] ?? 0,
+            'infants' => $booking['infants'] ?? 0,
+            'totalAmount' => $booking['totalAmount'] ?? 0,
+            'selectedOptions' => $booking['selectedOptions'] ?? null,
+            'specialRequests' => $booking['specialRequests'] ?? null,
+            'contactName' => $booking['contactName'] ?? null,
+            'contactEmail' => $booking['contactEmail'] ?? null,
+            'contactPhone' => $booking['contactPhone'] ?? null,
+            'savedAt' => date('Y-m-d H:i:s')
+        ], JSON_UNESCAPED_UNICODE);
+
+        // 새 데이터 JSON 생성
+        $newData = json_encode([
+            'departureDate' => $input['departureDate'] ?? $booking['departureDate'],
+            'adults' => $input['adults'] ?? $booking['adults'],
+            'children' => $input['children'] ?? $booking['children'],
+            'infants' => $input['infants'] ?? $booking['infants'],
+            'totalAmount' => $input['totalAmount'] ?? $booking['totalAmount'],
+            'selectedOptions' => $input['selectedOptions'] ?? $booking['selectedOptions'],
+            'specialRequests' => $input['specialRequests'] ?? $booking['specialRequests'],
+            'contactName' => $input['contactName'] ?? $booking['contactName'],
+            'contactEmail' => $input['contactEmail'] ?? $booking['contactEmail'],
+            'contactPhone' => $input['contactPhone'] ?? $booking['contactPhone']
+        ], JSON_UNESCAPED_UNICODE);
+
+        // booking_change_requests 테이블에 변경 요청 저장
+        $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+        $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'other', ?, ?, ?, ?, ?, 'employee', 'pending')";
+        $changeRequestStmt = $conn->prepare($changeRequestSql);
+        if ($changeRequestStmt) {
+            $changeRequestStmt->bind_param('ssssss', $bookingId, $booking['bookingStatus'], $booking['paymentStatus'], $previousData, $newData, $requestedBy);
+            $changeRequestStmt->execute();
+            $changeRequestStmt->close();
+        }
+
+        // bookingStatus만 pending_update로 변경
+        $sql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $stmt->close();
+
+        send_success_response([], 'Booking update request submitted successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to submit booking update: ' . $e->getMessage());
+    }
+}
+
+// 사용자가 거부 확인 시 booking_change_requests에서 원래 상태로 복원하는 함수
+function acknowledgeRejection($conn, $input) {
+    try {
+        $bookingId = $input['bookingId'] ?? $input['id'] ?? null;
+        if (empty($bookingId)) {
+            send_error_response('Booking ID is required');
+        }
+
+        // check_reject 상태인지 확인
+        $checkSql = "SELECT bookingStatus FROM bookings WHERE bookingId = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param('s', $bookingId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $booking = $result->fetch_assoc();
+        $checkStmt->close();
+
+        if (!$booking) {
+            send_error_response('Booking not found');
+        }
+
+        if ($booking['bookingStatus'] !== 'check_reject') {
+            send_error_response('Only check_reject bookings can be acknowledged. Current status: ' . $booking['bookingStatus']);
+        }
+
+        // booking_change_requests에서 거절된 변경 요청 조회
+        $changeReqSql = "SELECT * FROM booking_change_requests WHERE bookingId = ? AND status = 'rejected' ORDER BY processedAt DESC LIMIT 1";
+        $changeReqStmt = $conn->prepare($changeReqSql);
+        $changeReqStmt->bind_param('s', $bookingId);
+        $changeReqStmt->execute();
+        $changeReqResult = $changeReqStmt->get_result();
+        $changeRequest = $changeReqResult->fetch_assoc();
+        $changeReqStmt->close();
+
+        if (!$changeRequest) {
+            send_error_response('No rejected change request found for this booking');
+        }
+
+        // 원래 상태로 복원
+        $originalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+        $originalPaymentStatus = $changeRequest['originalPaymentStatus'];
+
+        if ($originalPaymentStatus !== null) {
+            $sql = "UPDATE bookings SET bookingStatus = ?, paymentStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param('s', $bookingId);
+            $stmt->bind_param('sss', $originalStatus, $originalPaymentStatus, $bookingId);
+        } else {
+            $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('ss', $originalStatus, $bookingId);
         }
         $stmt->execute();
         $stmt->close();
 
-        send_success_response([], 'Booking rejected successfully');
+        // travelers 변경 요청이 거절된 경우 원본 traveler 데이터 복원
+        if ($changeRequest['changeType'] === 'travelers' && !empty($changeRequest['previousData'])) {
+            $previousData = json_decode($changeRequest['previousData'], true);
+            $originalTravelers = $previousData['originalTravelers'] ?? [];
+
+            if (!empty($originalTravelers)) {
+                // 현재 travelers 삭제
+                $deleteSql = "DELETE FROM booking_travelers WHERE transactNo = ?";
+                $deleteStmt = $conn->prepare($deleteSql);
+                $deleteStmt->bind_param('s', $bookingId);
+                $deleteStmt->execute();
+                $deleteStmt->close();
+
+                // 원본 travelers 복원
+                foreach ($originalTravelers as $tr) {
+                    $travelerType = $tr['travelerType'] ?? 'adult';
+                    $title = $tr['title'] ?? null;
+                    $firstName = $tr['firstName'] ?? '';
+                    $lastName = $tr['lastName'] ?? '';
+                    $birthDate = $tr['birthDate'] ?? null;
+                    $gender = $tr['gender'] ?? null;
+                    $nationality = $tr['nationality'] ?? '';
+                    $passportNumber = $tr['passportNumber'] ?? '';
+                    $passportIssueDate = $tr['passportIssueDate'] ?? null;
+                    $passportExpiry = $tr['passportExpiry'] ?? null;
+                    $passportImage = $tr['passportImage'] ?? null;
+                    $visaDocument = $tr['visaDocument'] ?? null;
+                    $visaStatus = $tr['visaStatus'] ?? 'not_required';
+                    $visaType = $tr['visaType'] ?? null;
+                    $specialRequests = $tr['specialRequests'] ?? null;
+                    $isMainTraveler = (int)($tr['isMainTraveler'] ?? 0);
+                    $reservationStatus = $tr['reservationStatus'] ?? null;
+                    $childRoom = (int)($tr['childRoom'] ?? 0);
+
+                    // null 또는 빈 날짜 값 처리
+                    $birthDateVal = (!empty($birthDate) && $birthDate !== '0000-00-00') ? $birthDate : null;
+                    $passportIssueDateVal = (!empty($passportIssueDate) && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
+                    $passportExpiryVal = (!empty($passportExpiry) && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
+
+                    $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, visaStatus, visaType, specialRequests, isMainTraveler, reservationStatus, childRoom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $insertStmt = $conn->prepare($insertSql);
+                    if ($insertStmt) {
+                        $insertStmt->bind_param('ssssssssssssssssssi',
+                            $bookingId, $travelerType, $title, $firstName, $lastName,
+                            $birthDateVal, $gender, $nationality, $passportNumber,
+                            $passportIssueDateVal, $passportExpiryVal, $passportImage,
+                            $visaDocument, $visaStatus, $visaType, $specialRequests,
+                            $isMainTraveler, $reservationStatus, $childRoom
+                        );
+                        $insertStmt->execute();
+                        $insertStmt->close();
+                    }
+                }
+            }
+        }
+
+        send_success_response([], 'Rejection acknowledged and booking status restored successfully');
     } catch (Exception $e) {
-        send_error_response('Failed to reject B2B booking: ' . $e->getMessage());
+        send_error_response('Failed to acknowledge rejection: ' . $e->getMessage());
     }
 }
 
@@ -13165,30 +14644,39 @@ function setPaymentDeadline($conn, $input) {
         if (empty($bookingId)) {
             send_error_response('Booking ID is required');
         }
-        
+
         $deadline = $input['deadline'] ?? null;
-        $deadlineType = $input['deadlineType'] ?? 'balance'; // 'deposit' or 'balance'
-        
+        $deadlineType = $input['deadlineType'] ?? 'balance'; // 'down', 'second', 'balance', 'full'
+
         if (empty($deadline)) {
             send_error_response('Deadline date is required');
         }
-        
-        // bookings 스키마: downPaymentDueDate / balanceDueDate (통일)
-        // (없는 환경이면 생성 시도)
-        $fieldName = 'downPaymentDueDate';
-        if ($deadlineType === 'balance') {
-            $conn->query("ALTER TABLE bookings ADD COLUMN balanceDueDate DATE NULL");
-            $fieldName = 'balanceDueDate';
-        } else {
-            // deposit/down payment
-            $fieldName = 'downPaymentDueDate';
+
+        // bookings 스키마: downPaymentDueDate / advancePaymentDueDate / balanceDueDate / fullPaymentDueDate
+        $fieldName = 'balanceDueDate';
+        switch ($deadlineType) {
+            case 'down':
+            case 'deposit':
+                $fieldName = 'downPaymentDueDate';
+                break;
+            case 'second':
+            case 'advance':
+                $fieldName = 'advancePaymentDueDate';
+                break;
+            case 'balance':
+                $fieldName = 'balanceDueDate';
+                break;
+            case 'full':
+                $fieldName = 'fullPaymentDueDate';
+                break;
         }
+
         $sql = "UPDATE bookings SET $fieldName = ? WHERE bookingId = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ss', $deadline, $bookingId);
         $stmt->execute();
         $stmt->close();
-        
+
         send_success_response([], 'Payment deadline set successfully');
     } catch (Exception $e) {
         send_error_response('Failed to set payment deadline: ' . $e->getMessage());
@@ -14367,7 +15855,7 @@ function getAdminLoginHistory($conn, $input) {
             $types .= 's';
         }
 
-        if ($accountType !== '' && in_array($accountType, ['admin', 'agent', 'guide', 'employee'])) {
+        if ($accountType !== '' && in_array($accountType, ['admin_ph', 'admin_kr', 'agent', 'guide', 'employee'])) {
             $where[] = "h.account_type = ?";
             $params[] = $accountType;
             $types .= 's';
@@ -14521,7 +16009,7 @@ function exportAdminLoginHistoryCsv($conn, $input) {
             $types .= 's';
         }
 
-        if ($accountType !== '' && in_array($accountType, ['admin', 'agent', 'guide', 'employee'])) {
+        if ($accountType !== '' && in_array($accountType, ['admin_ph', 'admin_kr', 'agent', 'guide', 'employee'])) {
             $where[] = "h.account_type = ?";
             $params[] = $accountType;
             $types .= 's';
@@ -14962,35 +16450,246 @@ function uploadSightImage($file) {
     return $filename;
 }
 
-// ============ 항공사 옵션 관리 함수들 ============
+// ============ 옵션 관리 함수들 (대분류/중분류/소분류) ============
 
 /**
- * 항공사 목록 조회 (package_flights에서 distinct airline_name)
+ * 대분류 목록 조회
  */
-function getAirlineList($conn) {
-    // 고정 항공사 목록
-    $airlines = ['Cebu Pacific', 'Air Asia', 'Jeju Air'];
-    send_success_response(['airlines' => $airlines]);
+function getMainOptionCategories($conn) {
+    $sql = "SELECT DISTINCT airline_name as main_category FROM airline_option_categories WHERE airline_name IS NOT NULL AND airline_name != '' ORDER BY airline_name";
+    $result = $conn->query($sql);
+    $categories = [];
+    while ($row = $result->fetch_assoc()) {
+        $categories[] = $row['main_category'];
+    }
+    send_success_response(['mainCategories' => $categories]);
 }
 
 /**
- * 항공사별 옵션 카테고리 및 옵션 조회
+ * 대분류 생성
  */
-function getAirlineOptions($conn, $input) {
-    $airlineName = $input['airlineName'] ?? '';
+function createMainOptionCategory($conn, $input) {
+    $mainCategory = trim($input['mainCategory'] ?? '');
 
-    if (empty($airlineName)) {
-        send_error_response('Airline name is required', 400);
+    if (empty($mainCategory)) {
+        send_error_response('Main category name is required', 400);
         return;
     }
 
-    // 카테고리 조회
+    // 중복 체크
+    $checkSql = "SELECT DISTINCT airline_name FROM airline_option_categories WHERE airline_name = ?";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->bind_param('s', $mainCategory);
+    $checkStmt->execute();
+    if ($checkStmt->get_result()->num_rows > 0) {
+        $checkStmt->close();
+        send_error_response('Main category already exists', 409);
+        return;
+    }
+    $checkStmt->close();
+
+    // 대분류만 생성 (빈 중분류로 placeholder 생성)
+    $sql = "INSERT INTO airline_option_categories (airline_name, category_name, category_name_en, sort_order) VALUES (?, '', '', 0)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $mainCategory);
+
+    if ($stmt->execute()) {
+        $stmt->close();
+        send_success_response(['mainCategory' => $mainCategory], 'Main category created successfully');
+    } else {
+        $stmt->close();
+        send_error_response('Failed to create main category', 500);
+    }
+}
+
+/**
+ * 대분류 수정
+ */
+function updateMainOptionCategory($conn, $input) {
+    $oldName = trim($input['oldName'] ?? '');
+    $newName = trim($input['newName'] ?? '');
+
+    if (empty($oldName) || empty($newName)) {
+        send_error_response('Old and new names are required', 400);
+        return;
+    }
+
+    $sql = "UPDATE airline_option_categories SET airline_name = ? WHERE airline_name = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ss', $newName, $oldName);
+
+    if ($stmt->execute()) {
+        $stmt->close();
+        send_success_response([], 'Main category updated successfully');
+    } else {
+        $stmt->close();
+        send_error_response('Failed to update main category', 500);
+    }
+}
+
+/**
+ * 대분류 삭제 (하위 중분류/소분류 모두 삭제)
+ */
+function deleteMainOptionCategory($conn, $input) {
+    $mainCategory = trim($input['mainCategory'] ?? '');
+
+    if (empty($mainCategory)) {
+        send_error_response('Main category name is required', 400);
+        return;
+    }
+
+    // 해당 대분류의 모든 카테고리 ID 조회
+    $catSql = "SELECT category_id FROM airline_option_categories WHERE airline_name = ?";
+    $catStmt = $conn->prepare($catSql);
+    $catStmt->bind_param('s', $mainCategory);
+    $catStmt->execute();
+    $catResult = $catStmt->get_result();
+
+    $categoryIds = [];
+    while ($row = $catResult->fetch_assoc()) {
+        $categoryIds[] = $row['category_id'];
+    }
+    $catStmt->close();
+
+    // 소분류 옵션 삭제
+    if (!empty($categoryIds)) {
+        $placeholders = implode(',', array_fill(0, count($categoryIds), '?'));
+        $delOptSql = "DELETE FROM airline_options WHERE category_id IN ($placeholders)";
+        $delOptStmt = $conn->prepare($delOptSql);
+        $types = str_repeat('i', count($categoryIds));
+        $delOptStmt->bind_param($types, ...$categoryIds);
+        $delOptStmt->execute();
+        $delOptStmt->close();
+    }
+
+    // 중분류 삭제
+    $sql = "DELETE FROM airline_option_categories WHERE airline_name = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $mainCategory);
+
+    if ($stmt->execute()) {
+        $stmt->close();
+        send_success_response([], 'Main category deleted successfully');
+    } else {
+        $stmt->close();
+        send_error_response('Failed to delete main category', 500);
+    }
+}
+
+/**
+ * 대분류 복사 (중분류/소분류 포함)
+ */
+function copyMainOptionCategory($conn, $input) {
+    $sourceCategory = trim($input['sourceCategory'] ?? '');
+    $newName = trim($input['newName'] ?? '');
+
+    if (empty($sourceCategory) || empty($newName)) {
+        send_error_response('Source category and new name are required', 400);
+        return;
+    }
+
+    if ($sourceCategory === $newName) {
+        send_error_response('New name must be different from source', 400);
+        return;
+    }
+
+    // 중복 체크
+    $checkSql = "SELECT DISTINCT airline_name FROM airline_option_categories WHERE airline_name = ?";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->bind_param('s', $newName);
+    $checkStmt->execute();
+    if ($checkStmt->get_result()->num_rows > 0) {
+        $checkStmt->close();
+        send_error_response('A category with this name already exists', 409);
+        return;
+    }
+    $checkStmt->close();
+
+    // 원본 대분류의 중분류 조회
     $catSql = "SELECT category_id, category_name, category_name_en, sort_order, is_active
                FROM airline_option_categories
-               WHERE airline_name = ?
+               WHERE airline_name = ? AND category_name != ''
                ORDER BY sort_order, category_id";
     $catStmt = $conn->prepare($catSql);
-    $catStmt->bind_param('s', $airlineName);
+    $catStmt->bind_param('s', $sourceCategory);
+    $catStmt->execute();
+    $catResult = $catStmt->get_result();
+
+    $copiedCategories = 0;
+    $copiedOptions = 0;
+
+    while ($cat = $catResult->fetch_assoc()) {
+        $oldCategoryId = $cat['category_id'];
+
+        // 중분류 복사
+        $insertCatSql = "INSERT INTO airline_option_categories (airline_name, category_name, category_name_en, sort_order, is_active) VALUES (?, ?, ?, ?, ?)";
+        $insertCatStmt = $conn->prepare($insertCatSql);
+        $insertCatStmt->bind_param('sssii', $newName, $cat['category_name'], $cat['category_name_en'], $cat['sort_order'], $cat['is_active']);
+        $insertCatStmt->execute();
+        $newCategoryId = $conn->insert_id;
+        $insertCatStmt->close();
+        $copiedCategories++;
+
+        // 해당 중분류의 소분류(옵션) 조회 및 복사
+        $optSql = "SELECT option_name, option_name_en, price, sort_order, is_active
+                   FROM airline_options
+                   WHERE category_id = ?
+                   ORDER BY sort_order, option_id";
+        $optStmt = $conn->prepare($optSql);
+        $optStmt->bind_param('i', $oldCategoryId);
+        $optStmt->execute();
+        $optResult = $optStmt->get_result();
+
+        while ($opt = $optResult->fetch_assoc()) {
+            $insertOptSql = "INSERT INTO airline_options (category_id, option_name, option_name_en, price, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)";
+            $insertOptStmt = $conn->prepare($insertOptSql);
+            $insertOptStmt->bind_param('issdii', $newCategoryId, $opt['option_name'], $opt['option_name_en'], $opt['price'], $opt['sort_order'], $opt['is_active']);
+            $insertOptStmt->execute();
+            $insertOptStmt->close();
+            $copiedOptions++;
+        }
+        $optStmt->close();
+    }
+    $catStmt->close();
+
+    send_success_response([
+        'newName' => $newName,
+        'copiedCategories' => $copiedCategories,
+        'copiedOptions' => $copiedOptions
+    ], "Copied $copiedCategories categories and $copiedOptions options to '$newName'");
+}
+
+/**
+ * 대분류 목록 조회 (하위 호환용 - getMainOptionCategories와 동일)
+ */
+function getAirlineList($conn) {
+    $sql = "SELECT DISTINCT airline_name as main_category FROM airline_option_categories WHERE airline_name IS NOT NULL AND airline_name != '' ORDER BY airline_name";
+    $result = $conn->query($sql);
+    $categories = [];
+    while ($row = $result->fetch_assoc()) {
+        $categories[] = $row['main_category'];
+    }
+    send_success_response(['airlines' => $categories, 'mainCategories' => $categories]);
+}
+
+/**
+ * 특정 대분류의 중분류/소분류 조회
+ */
+function getAirlineOptions($conn, $input) {
+    $mainCategory = $input['mainCategory'] ?? $input['airlineName'] ?? '';
+
+    if (empty($mainCategory)) {
+        send_error_response('Main category is required', 400);
+        return;
+    }
+
+    // 중분류 조회
+    $catSql = "SELECT category_id, category_name, category_name_en, sort_order, is_active
+               FROM airline_option_categories
+               WHERE airline_name = ? AND category_name != ''
+               ORDER BY sort_order, category_id";
+    $catStmt = $conn->prepare($catSql);
+    $catStmt->bind_param('s', $mainCategory);
     $catStmt->execute();
     $catResult = $catStmt->get_result();
 
@@ -15024,41 +16723,41 @@ function getAirlineOptions($conn, $input) {
 }
 
 /**
- * 옵션 카테고리 생성
+ * 중분류 카테고리 생성 (특정 대분류 아래에)
  */
 function createOptionCategory($conn, $input) {
-    $airlineName = $input['airlineName'] ?? '';
+    $mainCategory = $input['mainCategory'] ?? $input['airlineName'] ?? '';
     $categoryName = $input['categoryName'] ?? '';
     $categoryNameEn = $input['categoryNameEn'] ?? '';
 
-    if (empty($airlineName) || empty($categoryName)) {
-        send_error_response('Airline name and category name are required', 400);
+    if (empty($mainCategory) || empty($categoryName)) {
+        send_error_response('Main category and category name are required', 400);
         return;
     }
 
-    // 중복 체크
+    // 중복 체크 (같은 대분류 내에서)
     $checkSql = "SELECT category_id FROM airline_option_categories WHERE airline_name = ? AND category_name = ?";
     $checkStmt = $conn->prepare($checkSql);
-    $checkStmt->bind_param('ss', $airlineName, $categoryName);
+    $checkStmt->bind_param('ss', $mainCategory, $categoryName);
     $checkStmt->execute();
     if ($checkStmt->get_result()->num_rows > 0) {
         $checkStmt->close();
-        send_error_response('Category already exists for this airline', 409);
+        send_error_response('Category already exists in this main category', 409);
         return;
     }
     $checkStmt->close();
 
-    // 정렬 순서
+    // 정렬 순서 (같은 대분류 내에서)
     $orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM airline_option_categories WHERE airline_name = ?";
     $orderStmt = $conn->prepare($orderSql);
-    $orderStmt->bind_param('s', $airlineName);
+    $orderStmt->bind_param('s', $mainCategory);
     $orderStmt->execute();
     $sortOrder = $orderStmt->get_result()->fetch_assoc()['next_order'];
     $orderStmt->close();
 
     $sql = "INSERT INTO airline_option_categories (airline_name, category_name, category_name_en, sort_order) VALUES (?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('sssi', $airlineName, $categoryName, $categoryNameEn, $sortOrder);
+    $stmt->bind_param('sssi', $mainCategory, $categoryName, $categoryNameEn, $sortOrder);
 
     if ($stmt->execute()) {
         $categoryId = $conn->insert_id;
@@ -15204,5 +16903,907 @@ function deleteAirlineOption($conn, $input) {
     } else {
         $stmt->close();
         send_error_response('Failed to delete option', 500);
+    }
+}
+
+// ========================================
+// 예약 상태 변경 히스토리 관련 함수들
+// ========================================
+
+/**
+ * 상태 변경 히스토리 테이블 확인 및 생성
+ */
+function __ensure_booking_status_history_table($conn) {
+    static $checked = false;
+    if ($checked) return true;
+    $checked = true;
+
+    try {
+        $result = $conn->query("SHOW TABLES LIKE 'booking_status_history'");
+        if ($result && $result->num_rows === 0) {
+            $createResult = $conn->query("
+                CREATE TABLE IF NOT EXISTS `booking_status_history` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `bookingId` VARCHAR(50) NOT NULL,
+                    `previousStatus` VARCHAR(50) NULL,
+                    `newStatus` VARCHAR(50) NOT NULL,
+                    `changedBy` VARCHAR(100) NULL,
+                    `changedByType` VARCHAR(20) NULL,
+                    `changedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX `idx_bookingId` (`bookingId`),
+                    INDEX `idx_changedAt` (`changedAt`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+            return $createResult !== false;
+        }
+        return true;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * 상태 변경 로그 저장
+ * @param $overrideChangedBy - 지정 시 세션 대신 이 값 사용 (자동취소 등)
+ * @param $overrideChangedByType - 지정 시 세션 대신 이 값 사용
+ */
+function __log_booking_status_change($conn, $bookingId, $previousStatus, $newStatus, $overrideChangedBy = null, $overrideChangedByType = null) {
+    __ensure_booking_status_history_table($conn);
+
+    try {
+        // override가 지정된 경우 (자동취소 등)
+        if ($overrideChangedBy !== null || $overrideChangedByType !== null) {
+            $changedBy = $overrideChangedBy;
+            $changedByType = $overrideChangedByType ?? 'system';
+        } else {
+            // 현재 로그인한 사용자 정보 가져오기
+            $changedBy = null;
+            $changedByType = 'system';
+
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+
+            if (isset($_SESSION['admin_accountId'])) {
+                $changedByType = 'admin';
+                $adminAccountId = $_SESSION['admin_accountId'];
+                $stmt = $conn->prepare("SELECT emailAddress FROM accounts WHERE accountId = ?");
+                if ($stmt) {
+                    $stmt->bind_param('i', $adminAccountId);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    if ($row = $result->fetch_assoc()) {
+                        $changedBy = $row['emailAddress'];
+                    }
+                    $stmt->close();
+                }
+            } elseif (isset($_SESSION['agent_accountId'])) {
+                $changedByType = 'agent';
+                $agentAccountId = $_SESSION['agent_accountId'];
+                $stmt = $conn->prepare("SELECT emailAddress FROM accounts WHERE accountId = ?");
+                if ($stmt) {
+                    $stmt->bind_param('i', $agentAccountId);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    if ($row = $result->fetch_assoc()) {
+                        $changedBy = $row['emailAddress'];
+                    }
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 필리핀 시간(UTC+8)으로 저장
+        $phpTime = new DateTime('now', new DateTimeZone('Asia/Manila'));
+        $changedAt = $phpTime->format('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        if ($stmt) {
+            $stmt->bind_param('ssssss', $bookingId, $previousStatus, $newStatus, $changedBy, $changedByType, $changedAt);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) {
+        // ignore - 로깅 실패가 메인 기능에 영향을 주지 않도록
+    }
+}
+
+/**
+ * 예약 상태 변경 히스토리 조회
+ */
+function getBookingStatusHistory($conn, $input) {
+    try {
+        __ensure_booking_status_history_table($conn);
+
+        $page = max(1, intval($input['page'] ?? 1));
+        $limit = max(1, min(100, intval($input['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        // 필터
+        $search = trim($input['search'] ?? '');
+        $startDate = trim($input['startDate'] ?? '');
+        $endDate = trim($input['endDate'] ?? '');
+        $statusFilter = trim($input['statusFilter'] ?? '');
+
+        $whereConditions = [];
+        $params = [];
+        $types = '';
+
+        if ($search !== '') {
+            $searchParam = '%' . $search . '%';
+            $whereConditions[] = "(h.bookingId LIKE ? OR h.changedBy LIKE ?)";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= 'ss';
+        }
+
+        if ($startDate !== '') {
+            $whereConditions[] = "DATE(h.changedAt) >= ?";
+            $params[] = $startDate;
+            $types .= 's';
+        }
+
+        if ($endDate !== '') {
+            $whereConditions[] = "DATE(h.changedAt) <= ?";
+            $params[] = $endDate;
+            $types .= 's';
+        }
+
+        if ($statusFilter !== '') {
+            $whereConditions[] = "h.newStatus = ?";
+            $params[] = $statusFilter;
+            $types .= 's';
+        }
+
+        $whereClause = count($whereConditions) > 0 ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        // 총 개수 조회
+        $countSql = "SELECT COUNT(*) as total FROM booking_status_history h $whereClause";
+        $countStmt = $conn->prepare($countSql);
+        if (!$countStmt) {
+            // 테이블이 없으면 빈 결과 반환
+            send_success_response([
+                'histories' => [],
+                'pagination' => [
+                    'currentPage' => 1,
+                    'totalPages' => 0,
+                    'totalCount' => 0,
+                    'limit' => $limit
+                ]
+            ]);
+            return;
+        }
+        if ($types !== '') {
+            mysqli_bind_params_by_ref($countStmt, $types, $params);
+        }
+        $countStmt->execute();
+        $totalCount = $countStmt->get_result()->fetch_assoc()['total'] ?? 0;
+        $countStmt->close();
+
+        // 데이터 조회
+        $dataSql = "
+            SELECT
+                h.id,
+                h.bookingId,
+                h.previousStatus,
+                h.newStatus,
+                h.changedBy,
+                h.changedByType,
+                h.changedAt,
+                b.packageName as productName,
+                b.departureDate as travelDate
+            FROM booking_status_history h
+            LEFT JOIN bookings b ON h.bookingId COLLATE utf8mb4_general_ci = b.bookingId COLLATE utf8mb4_general_ci
+            $whereClause
+            ORDER BY h.changedAt DESC
+            LIMIT ? OFFSET ?
+        ";
+
+        $dataParams = array_merge($params, [$limit, $offset]);
+        $dataTypes = $types . 'ii';
+
+        $dataStmt = $conn->prepare($dataSql);
+        if ($dataStmt) {
+            mysqli_bind_params_by_ref($dataStmt, $dataTypes, $dataParams);
+            $dataStmt->execute();
+            $result = $dataStmt->get_result();
+
+            $histories = [];
+            $rowNum = $totalCount - $offset;
+            while ($row = $result->fetch_assoc()) {
+                $row['rowNum'] = $rowNum--;
+                $row['previousStatusLabel'] = __get_status_label($row['previousStatus']);
+                $row['newStatusLabel'] = __get_status_label($row['newStatus']);
+                $histories[] = $row;
+            }
+            $dataStmt->close();
+
+            $totalPages = ceil($totalCount / $limit);
+
+            send_success_response([
+                'histories' => $histories,
+                'pagination' => [
+                    'currentPage' => $page,
+                    'totalPages' => $totalPages,
+                    'totalCount' => $totalCount,
+                    'limit' => $limit
+                ]
+            ]);
+        } else {
+            send_error_response('Failed to prepare query');
+        }
+    } catch (Exception $e) {
+        send_error_response('Failed to get status history: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 상태 라벨 반환
+ */
+function __get_status_label($status) {
+    $labels = [
+        'pending' => 'Waiting for Down Payment',
+        'waiting_down_payment' => 'Waiting for Down Payment',
+        'checking_down_payment' => 'Checking Down Payment',
+        'waiting_second_payment' => 'Waiting for Second Payment',
+        'checking_second_payment' => 'Checking Second Payment',
+        'waiting_balance' => 'Waiting for Balance',
+        'checking_balance' => 'Checking Balance',
+        'waiting_full_payment' => 'Waiting for Full Payment',
+        'checking_full_payment' => 'Checking Full Payment',
+        'rejected' => 'Payment Rejected',
+        'confirmed' => 'Reservation Confirmed',
+        'completed' => 'Trip Completed',
+        'cancelled' => 'Reservation Cancelled',
+        'refunded' => 'Refund Completed',
+        'partial' => 'Waiting for Second Payment'
+    ];
+    return $labels[$status] ?? $status;
+}
+
+/**
+ * 예약 상태 변경 히스토리 CSV 내보내기
+ */
+function exportBookingStatusHistoryCsv($conn, $input) {
+    try {
+        __ensure_booking_status_history_table($conn);
+
+        // 필터
+        $search = trim($input['search'] ?? '');
+        $startDate = trim($input['startDate'] ?? '');
+        $endDate = trim($input['endDate'] ?? '');
+        $statusFilter = trim($input['statusFilter'] ?? '');
+
+        $whereConditions = [];
+        $params = [];
+        $types = '';
+
+        if ($search !== '') {
+            $searchParam = '%' . $search . '%';
+            $whereConditions[] = "(h.bookingId LIKE ? OR h.changedBy LIKE ?)";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= 'ss';
+        }
+
+        if ($startDate !== '') {
+            $whereConditions[] = "DATE(h.changedAt) >= ?";
+            $params[] = $startDate;
+            $types .= 's';
+        }
+
+        if ($endDate !== '') {
+            $whereConditions[] = "DATE(h.changedAt) <= ?";
+            $params[] = $endDate;
+            $types .= 's';
+        }
+
+        if ($statusFilter !== '') {
+            $whereConditions[] = "h.newStatus = ?";
+            $params[] = $statusFilter;
+            $types .= 's';
+        }
+
+        $whereClause = count($whereConditions) > 0 ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        $sql = "
+            SELECT
+                h.bookingId,
+                b.packageName as productName,
+                b.departureDate as travelDate,
+                h.previousStatus,
+                h.newStatus,
+                h.changedBy,
+                h.changedByType,
+                h.changedAt
+            FROM booking_status_history h
+            LEFT JOIN bookings b ON h.bookingId COLLATE utf8mb4_general_ci = b.bookingId COLLATE utf8mb4_general_ci
+            $whereClause
+            ORDER BY h.changedAt DESC
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if ($types !== '' && $stmt) {
+            mysqli_bind_params_by_ref($stmt, $types, $params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        // CSV 헤더
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="booking_status_history_' . date('Ymd_His') . '.csv"');
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for Excel
+
+        fputcsv($output, [
+            'Booking ID',
+            'Product Name',
+            'Travel Date',
+            'Previous Status',
+            'New Status',
+            'Changed By',
+            'Changed By Type',
+            'Changed At'
+        ]);
+
+        while ($row = $result->fetch_assoc()) {
+            fputcsv($output, [
+                $row['bookingId'],
+                $row['productName'] ?? '',
+                $row['travelDate'] ?? '',
+                __get_status_label($row['previousStatus']),
+                __get_status_label($row['newStatus']),
+                $row['changedBy'] ?? '',
+                $row['changedByType'] ?? '',
+                $row['changedAt']
+            ]);
+        }
+
+        fclose($output);
+        $stmt->close();
+        exit;
+    } catch (Exception $e) {
+        send_error_response('Failed to export CSV: ' . $e->getMessage());
+    }
+}
+
+// =============================================
+// 세일 관리 함수들
+// =============================================
+
+/**
+ * 세일 목록 조회
+ */
+function getSales($conn, $input) {
+    try {
+        $page = max(1, intval($input['page'] ?? 1));
+        $limit = max(1, min(100, intval($input['limit'] ?? 10)));
+        $offset = ($page - 1) * $limit;
+
+        $status = trim($input['status'] ?? '');
+        $search = trim($input['search'] ?? '');
+        $sortOrder = ($input['sortOrder'] ?? 'latest') === 'oldest' ? 'ASC' : 'DESC';
+
+        $whereConditions = [];
+        $params = [];
+        $types = '';
+
+        if ($status === 'active') {
+            $whereConditions[] = "s.is_active = 1";
+        } elseif ($status === 'inactive') {
+            $whereConditions[] = "s.is_active = 0";
+        }
+
+        if ($search !== '') {
+            $searchParam = '%' . $search . '%';
+            $whereConditions[] = "s.sale_name LIKE ?";
+            $params[] = $searchParam;
+            $types .= 's';
+        }
+
+        $whereClause = count($whereConditions) > 0 ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        // 총 개수
+        $countSql = "SELECT COUNT(*) as total FROM sales s $whereClause";
+        if ($types !== '') {
+            $countStmt = $conn->prepare($countSql);
+            mysqli_bind_params_by_ref($countStmt, $types, $params);
+            $countStmt->execute();
+            $countResult = $countStmt->get_result();
+        } else {
+            $countResult = $conn->query($countSql);
+        }
+        $totalCount = $countResult->fetch_assoc()['total'];
+
+        // 세일 목록
+        $sql = "
+            SELECT
+                s.id,
+                s.sale_name,
+                s.discount_amount,
+                s.sale_start_date,
+                s.sale_end_date,
+                s.is_active,
+                s.description,
+                s.created_at,
+                (SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id) as item_count
+            FROM sales s
+            $whereClause
+            ORDER BY s.created_at $sortOrder
+            LIMIT ?, ?
+        ";
+
+        $params[] = $offset;
+        $params[] = $limit;
+        $types .= 'ii';
+
+        $stmt = $conn->prepare($sql);
+        mysqli_bind_params_by_ref($stmt, $types, $params);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $sales = [];
+        $rowNum = $totalCount - $offset;
+        while ($row = $result->fetch_assoc()) {
+            // 현재 진행 중인지 확인
+            $today = date('Y-m-d');
+            $isOngoing = ($row['is_active'] == 1) &&
+                         ($today >= $row['sale_start_date']) &&
+                         ($today <= $row['sale_end_date']);
+
+            $sales[] = [
+                'id' => $row['id'],
+                'rowNum' => $rowNum--,
+                'saleName' => $row['sale_name'],
+                'discountAmount' => floatval($row['discount_amount']),
+                'formattedDiscount' => '₱' . number_format($row['discount_amount'], 0),
+                'saleStartDate' => $row['sale_start_date'],
+                'saleEndDate' => $row['sale_end_date'],
+                'isActive' => $row['is_active'] == 1,
+                'isOngoing' => $isOngoing,
+                'description' => $row['description'],
+                'itemCount' => intval($row['item_count']),
+                'createdAt' => $row['created_at']
+            ];
+        }
+        $stmt->close();
+
+        send_json_response([
+            'success' => true,
+            'data' => [
+                'sales' => $sales,
+                'pagination' => [
+                    'currentPage' => $page,
+                    'totalPages' => ceil($totalCount / $limit),
+                    'totalCount' => $totalCount,
+                    'limit' => $limit
+                ]
+            ]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get sales: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 세일 상세 조회
+ */
+function getSaleDetail($conn, $input) {
+    try {
+        $saleId = intval($input['saleId'] ?? 0);
+        if ($saleId <= 0) {
+            send_error_response('Sale ID is required', 400);
+        }
+
+        // 세일 기본 정보
+        $sql = "SELECT * FROM sales WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('i', $saleId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $sale = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$sale) {
+            send_error_response('Sale not found', 404);
+        }
+
+        // 세일 아이템 (패키지/날짜 정보)
+        $itemSql = "
+            SELECT
+                si.id as saleItemId,
+                si.package_available_date_id,
+                pad.package_id,
+                p.packageName,
+                pad.available_date,
+                pad.price,
+                pad.capacity,
+                COALESCE(pad.booked_seats, 0) as booked_seats
+            FROM sale_items si
+            INNER JOIN package_available_dates pad ON pad.id = si.package_available_date_id
+            INNER JOIN packages p ON p.packageId = pad.package_id
+            WHERE si.sale_id = ?
+            ORDER BY pad.available_date ASC
+        ";
+        $itemStmt = $conn->prepare($itemSql);
+        $itemStmt->bind_param('i', $saleId);
+        $itemStmt->execute();
+        $itemResult = $itemStmt->get_result();
+
+        $items = [];
+        while ($item = $itemResult->fetch_assoc()) {
+            $items[] = [
+                'saleItemId' => $item['saleItemId'],
+                'packageAvailableDateId' => $item['package_available_date_id'],
+                'packageId' => $item['package_id'],
+                'packageName' => $item['packageName'],
+                'availableDate' => $item['available_date'],
+                'originalPrice' => floatval($item['price']),
+                'salePrice' => floatval($item['price']) - floatval($sale['discount_amount']),
+                'capacity' => intval($item['capacity']),
+                'bookedSeats' => intval($item['booked_seats']),
+                'remainingSeats' => intval($item['capacity']) - intval($item['booked_seats'])
+            ];
+        }
+        $itemStmt->close();
+
+        send_json_response([
+            'success' => true,
+            'data' => [
+                'id' => $sale['id'],
+                'saleName' => $sale['sale_name'],
+                'discountAmount' => floatval($sale['discount_amount']),
+                'saleStartDate' => $sale['sale_start_date'],
+                'saleEndDate' => $sale['sale_end_date'],
+                'isActive' => $sale['is_active'] == 1,
+                'description' => $sale['description'],
+                'createdAt' => $sale['created_at'],
+                'updatedAt' => $sale['updated_at'],
+                'items' => $items
+            ]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get sale detail: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 세일 생성
+ */
+function createSale($conn, $input) {
+    try {
+        $saleName = trim($input['saleName'] ?? '');
+        $discountAmount = floatval($input['discountAmount'] ?? 0);
+        $saleStartDate = trim($input['saleStartDate'] ?? '');
+        $saleEndDate = trim($input['saleEndDate'] ?? '');
+        $description = trim($input['description'] ?? '');
+        $isActive = isset($input['isActive']) ? ($input['isActive'] ? 1 : 0) : 1;
+        $items = $input['items'] ?? []; // package_available_date_id 배열
+
+        // 필수 검증
+        if ($saleName === '') {
+            send_error_response('Sale name is required', 400);
+        }
+        if ($discountAmount <= 0) {
+            send_error_response('Discount amount must be greater than 0', 400);
+        }
+        if ($saleStartDate === '' || $saleEndDate === '') {
+            send_error_response('Sale period is required', 400);
+        }
+        if ($saleStartDate > $saleEndDate) {
+            send_error_response('Start date must be before end date', 400);
+        }
+
+        // 트랜잭션 시작
+        $conn->begin_transaction();
+
+        // 세일 생성
+        $adminAccountId = $_SESSION['admin_accountId'] ?? null;
+        $sql = "INSERT INTO sales (sale_name, discount_amount, sale_start_date, sale_end_date, is_active, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('sdssisd', $saleName, $discountAmount, $saleStartDate, $saleEndDate, $isActive, $description, $adminAccountId);
+        $stmt->execute();
+        $saleId = $conn->insert_id;
+        $stmt->close();
+
+        // 세일 아이템 추가
+        if (!empty($items)) {
+            $itemSql = "INSERT INTO sale_items (sale_id, package_available_date_id) VALUES (?, ?)";
+            $itemStmt = $conn->prepare($itemSql);
+            foreach ($items as $padId) {
+                $padId = intval($padId);
+                if ($padId > 0) {
+                    $itemStmt->bind_param('ii', $saleId, $padId);
+                    $itemStmt->execute();
+                }
+            }
+            $itemStmt->close();
+        }
+
+        $conn->commit();
+
+        send_json_response([
+            'success' => true,
+            'message' => 'Sale created successfully',
+            'data' => ['saleId' => $saleId]
+        ]);
+    } catch (Exception $e) {
+        $conn->rollback();
+        send_error_response('Failed to create sale: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 세일 수정
+ */
+function updateSale($conn, $input) {
+    try {
+        $saleId = intval($input['saleId'] ?? 0);
+        if ($saleId <= 0) {
+            send_error_response('Sale ID is required', 400);
+        }
+
+        $saleName = trim($input['saleName'] ?? '');
+        $discountAmount = floatval($input['discountAmount'] ?? 0);
+        $saleStartDate = trim($input['saleStartDate'] ?? '');
+        $saleEndDate = trim($input['saleEndDate'] ?? '');
+        $description = trim($input['description'] ?? '');
+        $isActive = isset($input['isActive']) ? ($input['isActive'] ? 1 : 0) : 1;
+        $items = $input['items'] ?? null; // null이면 아이템 변경 없음
+
+        // 필수 검증
+        if ($saleName === '') {
+            send_error_response('Sale name is required', 400);
+        }
+        if ($discountAmount <= 0) {
+            send_error_response('Discount amount must be greater than 0', 400);
+        }
+        if ($saleStartDate === '' || $saleEndDate === '') {
+            send_error_response('Sale period is required', 400);
+        }
+        if ($saleStartDate > $saleEndDate) {
+            send_error_response('Start date must be before end date', 400);
+        }
+
+        // 트랜잭션 시작
+        $conn->begin_transaction();
+
+        // 세일 수정
+        $sql = "UPDATE sales SET sale_name = ?, discount_amount = ?, sale_start_date = ?, sale_end_date = ?, is_active = ?, description = ? WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('sdssisi', $saleName, $discountAmount, $saleStartDate, $saleEndDate, $isActive, $description, $saleId);
+        $stmt->execute();
+        $stmt->close();
+
+        // 아이템이 전달된 경우 갱신
+        if ($items !== null) {
+            // 기존 아이템 삭제
+            $deleteSql = "DELETE FROM sale_items WHERE sale_id = ?";
+            $deleteStmt = $conn->prepare($deleteSql);
+            $deleteStmt->bind_param('i', $saleId);
+            $deleteStmt->execute();
+            $deleteStmt->close();
+
+            // 새 아이템 추가
+            if (!empty($items)) {
+                $itemSql = "INSERT INTO sale_items (sale_id, package_available_date_id) VALUES (?, ?)";
+                $itemStmt = $conn->prepare($itemSql);
+                foreach ($items as $padId) {
+                    $padId = intval($padId);
+                    if ($padId > 0) {
+                        $itemStmt->bind_param('ii', $saleId, $padId);
+                        $itemStmt->execute();
+                    }
+                }
+                $itemStmt->close();
+            }
+        }
+
+        $conn->commit();
+
+        send_json_response([
+            'success' => true,
+            'message' => 'Sale updated successfully'
+        ]);
+    } catch (Exception $e) {
+        $conn->rollback();
+        send_error_response('Failed to update sale: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 세일 삭제
+ */
+function deleteSale($conn, $input) {
+    try {
+        $saleId = intval($input['saleId'] ?? 0);
+        if ($saleId <= 0) {
+            send_error_response('Sale ID is required', 400);
+        }
+
+        // sale_items는 CASCADE로 자동 삭제됨
+        $sql = "DELETE FROM sales WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('i', $saleId);
+        $stmt->execute();
+        $affectedRows = $stmt->affected_rows;
+        $stmt->close();
+
+        if ($affectedRows === 0) {
+            send_error_response('Sale not found', 404);
+        }
+
+        send_json_response([
+            'success' => true,
+            'message' => 'Sale deleted successfully'
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to delete sale: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 세일 활성화/비활성화 토글
+ */
+function toggleSaleActive($conn, $input) {
+    try {
+        $saleId = intval($input['saleId'] ?? 0);
+        if ($saleId <= 0) {
+            send_error_response('Sale ID is required', 400);
+        }
+
+        $sql = "UPDATE sales SET is_active = NOT is_active WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('i', $saleId);
+        $stmt->execute();
+        $stmt->close();
+
+        // 변경된 상태 조회
+        $checkSql = "SELECT is_active FROM sales WHERE id = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param('i', $saleId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $row = $result->fetch_assoc();
+        $checkStmt->close();
+
+        send_json_response([
+            'success' => true,
+            'message' => 'Sale status toggled successfully',
+            'data' => ['isActive' => $row['is_active'] == 1]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to toggle sale status: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 세일에 추가할 패키지/날짜 목록 조회
+ */
+function getPackagesForSale($conn, $input) {
+    try {
+        $search = trim($input['search'] ?? '');
+        $packageId = intval($input['packageId'] ?? 0);
+        $startDate = trim($input['startDate'] ?? '');
+        $endDate = trim($input['endDate'] ?? '');
+
+        $whereConditions = [
+            "pad.available_date >= CURDATE()",
+            "pad.status IN ('available', 'confirmed', 'open')",
+            "(pad.capacity - COALESCE(pad.booked_seats, 0)) > 0",
+            "p.isActive = 1"
+        ];
+        $params = [];
+        $types = '';
+
+        if ($search !== '') {
+            $searchParam = '%' . $search . '%';
+            $whereConditions[] = "p.packageName LIKE ?";
+            $params[] = $searchParam;
+            $types .= 's';
+        }
+
+        if ($packageId > 0) {
+            $whereConditions[] = "p.packageId = ?";
+            $params[] = $packageId;
+            $types .= 'i';
+        }
+
+        if ($startDate !== '') {
+            $whereConditions[] = "pad.available_date >= ?";
+            $params[] = $startDate;
+            $types .= 's';
+        }
+
+        if ($endDate !== '') {
+            $whereConditions[] = "pad.available_date <= ?";
+            $params[] = $endDate;
+            $types .= 's';
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
+        // 패키지 목록 (검색용)
+        $packageSql = "
+            SELECT DISTINCT p.packageId, p.packageName
+            FROM packages p
+            INNER JOIN package_available_dates pad ON pad.package_id = p.packageId
+            $whereClause
+            ORDER BY p.packageName ASC
+            LIMIT 100
+        ";
+
+        if ($types !== '') {
+            $packageStmt = $conn->prepare($packageSql);
+            mysqli_bind_params_by_ref($packageStmt, $types, $params);
+            $packageStmt->execute();
+            $packageResult = $packageStmt->get_result();
+        } else {
+            $packageResult = $conn->query($packageSql);
+        }
+
+        $packages = [];
+        while ($row = $packageResult->fetch_assoc()) {
+            $packages[] = [
+                'packageId' => $row['packageId'],
+                'packageName' => $row['packageName']
+            ];
+        }
+
+        // 날짜 목록 (B2B 가격 기준)
+        $dateSql = "
+            SELECT
+                pad.id as packageAvailableDateId,
+                pad.package_id as packageId,
+                p.packageName,
+                pad.available_date,
+                COALESCE(pad.b2b_price, pad.price) as price,
+                pad.capacity,
+                COALESCE(pad.booked_seats, 0) as booked_seats,
+                (pad.capacity - COALESCE(pad.booked_seats, 0)) as remaining_seats
+            FROM package_available_dates pad
+            INNER JOIN packages p ON p.packageId = pad.package_id
+            $whereClause
+            ORDER BY p.packageName ASC, pad.available_date ASC
+            LIMIT 500
+        ";
+
+        if ($types !== '') {
+            $dateStmt = $conn->prepare($dateSql);
+            mysqli_bind_params_by_ref($dateStmt, $types, $params);
+            $dateStmt->execute();
+            $dateResult = $dateStmt->get_result();
+        } else {
+            $dateResult = $conn->query($dateSql);
+        }
+
+        $dates = [];
+        while ($row = $dateResult->fetch_assoc()) {
+            $dates[] = [
+                'packageAvailableDateId' => intval($row['packageAvailableDateId']),
+                'packageId' => $row['packageId'],
+                'packageName' => $row['packageName'],
+                'availableDate' => $row['available_date'],
+                'price' => floatval($row['price']),
+                'formattedPrice' => '₱' . number_format($row['price'], 0),
+                'capacity' => intval($row['capacity']),
+                'bookedSeats' => intval($row['booked_seats']),
+                'remainingSeats' => intval($row['remaining_seats'])
+            ];
+        }
+
+        send_json_response([
+            'success' => true,
+            'data' => [
+                'packages' => $packages,
+                'dates' => $dates
+            ]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get packages for sale: ' . $e->getMessage());
     }
 }

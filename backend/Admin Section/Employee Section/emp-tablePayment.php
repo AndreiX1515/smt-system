@@ -127,9 +127,7 @@
                       JOIN flight f ON b.flightId = f.flightId
                       JOIN branch br ON b.agentCode = br.branchAgentCode
                       LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                      LEFT JOIN company c ON a.companyId = c.companyId
                       LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                      LEFT JOIN company cc ON cl.companyId = cc.companyId
                       WHERE p.paymentStatus = 'Submitted'";
 
               $res1 = $conn->query($sql1);

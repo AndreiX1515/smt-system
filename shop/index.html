@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop | Smart Travel</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .shop-header { padding: 16px 20px; border-bottom: 1px solid #eee; }
+        .shop-header h1 { font-size: 20px; font-weight: 600; margin: 0; }
+
+        .category-tabs { display: flex; gap: 8px; padding: 16px 20px; overflow-x: auto; }
+        .category-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f5f5f5;
+            border: none;
+            font-size: 14px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .category-tab.active { background: #000; color: #fff; }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            padding: 16px 20px;
+        }
+
+        .product-card {
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .product-card a { text-decoration: none; color: inherit; }
+        .product-img {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+        .product-img img { width: 100%; height: 100%; object-fit: cover; }
+        .product-img { position: relative; }
+        .badge-featured {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+        .product-info { padding: 12px; }
+        .product-category { font-size: 12px; color: #888; margin-bottom: 4px; }
+        .product-name { font-size: 14px; font-weight: 500; margin-bottom: 8px; line-height: 1.4; }
+        .product-price { font-size: 16px; font-weight: 600; }
+        .product-price .original {
+            font-size: 13px;
+            color: #999;
+            text-decoration: line-through;
+            margin-right: 4px;
+            font-weight: 400;
+        }
+        .product-price .sale { color: #e74c3c; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .cart-float {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-decoration: none;
+        }
+        .cart-float img { width: 24px; filter: invert(1); }
+        .cart-float .badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 12px;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-wrap {
+            position: relative;
+        }
+        .btn-menu {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            padding: 0;
+        }
+        .btn-menu span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #000;
+            border-radius: 1px;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+            min-width: 140px;
+            z-index: 100;
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-menu a {
+            display: block;
+            padding: 14px 16px;
+            color: #333;
+            text-decoration: none;
+            font-size: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .dropdown-menu a:last-child {
+            border-bottom: none;
+        }
+        .dropdown-menu a:hover {
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <header class="header-type1">
+            <a class="btn-mypage" href="/home.html"><img src="/images/ico_home_black.svg"></a>
+            <div class="title">Shop</div>
+            <div class="menu-wrap">
+                <button class="btn-menu" onclick="toggleMenu()">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <a href="cart.html">Cart</a>
+                    <a href="orders.html">My Orders</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="category-tabs" id="categoryTabs">
+            <button class="category-tab active" data-category="all" onclick="selectCategory('all')">All</button>
+        </div>
+
+        <div class="products-grid" id="productsGrid">
+            <!-- 상품 목록 -->
+        </div>
+
+        <a href="cart.html" class="cart-float" id="cartFloat" style="display:none;">
+            <img src="/images/ico_cart.svg">
+            <span class="badge" id="cartBadge">0</span>
+        </a>
+    </div>
+
+    <script>
+        const API_BASE = '/backend/api/shop';
+        let currentCategory = 'all';
+
+        // 메뉴 토글
+        function toggleMenu() {
+            document.getElementById('dropdownMenu').classList.toggle('show');
+        }
+        // 다른 곳 클릭하면 메뉴 닫기
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.menu-wrap')) {
+                document.getElementById('dropdownMenu').classList.remove('show');
+            }
+        });
+
+        // 카테고리 로드
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${API_BASE}/categories.php`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const tabs = document.getElementById('categoryTabs');
+                    data.categories.forEach(cat => {
+                        const btn = document.createElement('button');
+                        btn.className = 'category-tab';
+                        btn.dataset.category = cat.id;
+                        btn.textContent = `${cat.name} (${cat.product_count})`;
+                        btn.onclick = () => selectCategory(cat.id);
+                        tabs.appendChild(btn);
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load categories:', e);
+            }
+        }
+
+        // 카테고리 선택
+        function selectCategory(id) {
+            currentCategory = id;
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.category == id);
+            });
+            loadProducts();
+        }
+
+        // 상품 로드
+        async function loadProducts() {
+            try {
+                let url = `${API_BASE}/products.php`;
+                if (currentCategory !== 'all') {
+                    url += `?category=${currentCategory}`;
+                }
+
+                const res = await fetch(url);
+                const data = await res.json();
+
+                const grid = document.getElementById('productsGrid');
+
+                if (data.success && data.products.length > 0) {
+                    grid.innerHTML = data.products.map(p => `
+                        <div class="product-card">
+                            <a href="product.html?id=${p.id}">
+                                <div class="product-img">
+                                    ${p.is_featured == 1 ? '<span class="badge-featured">추천</span>' : ''}
+                                    ${p.thumbnail
+                                        ? `<img src="${p.thumbnail}" alt="${p.name}">`
+                                        : '📦'}
+                                </div>
+                                <div class="product-info">
+                                    <div class="product-category">${p.category_name}</div>
+                                    <div class="product-name">${p.name}</div>
+                                    <div class="product-price">
+                                        ${p.sale_price
+                                            ? `<span class="original">₱${Number(p.price).toLocaleString()}</span>
+                                               <span class="sale">₱${Number(p.sale_price).toLocaleString()}</span>`
+                                            : `₱${Number(p.price).toLocaleString()}`}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<div class="empty-state">No products found.</div>';
+                }
+            } catch (e) {
+                console.error('Failed to load products:', e);
+            }
+        }
+
+        // 장바구니 개수 로드
+        async function loadCartCount() {
+            const userId = localStorage.getItem('userId');
+            if (!userId) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}`);
+                const data = await res.json();
+
+                if (data.success && data.count > 0) {
+                    document.getElementById('cartFloat').style.display = 'flex';
+                    document.getElementById('cartBadge').textContent = data.count;
+                }
+            } catch (e) {
+                console.error('Failed to load cart:', e);
+            }
+        }
+
+        // 초기화
+        loadCategories();
+        loadProducts();
+        loadCartCount();
+    </script>
+</body>
+</html>

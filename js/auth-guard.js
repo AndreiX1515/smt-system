@@ -219,14 +219,14 @@ function checkPageAccessLevel() {
     //    ( )
     const agentPages = [];
     
-    if (adminPages.includes(currentPage) && authStatus.accountType !== 'admin') {
+    if (adminPages.includes(currentPage) && !['admin_ph', 'admin_kr'].includes(authStatus.accountType)) {
         showAuthAlert('  .', () => {
             history.back();
         });
         return false;
     }
-    
-    if (agentPages.includes(currentPage) && !['agent', 'admin'].includes(authStatus.accountType)) {
+
+    if (agentPages.includes(currentPage) && !['agent', 'admin_ph', 'admin_kr'].includes(authStatus.accountType)) {
         showAuthAlert('  .', () => {
             history.back();
         });

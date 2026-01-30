@@ -568,10 +568,11 @@ function renderBookings(bookings) {
         const numPeople = booking.numPeople || (Number(booking.adults || 0) + Number(booking.children || 0) + Number(booking.infants || 0)) || 0;
         const totalAmount = booking.totalAmount != null ? formatCurrency(Number(booking.totalAmount) || 0) : '';
         
+        // (HTML 태그 수정) 디코딩 적용
         html += `
             <tr onclick="goToReservationDetail('${booking.bookingId}')">
                 <td class="no is-center">${bookings.length - index}</td>
-                <td class="ellipsis">${escapeHtml(booking.packageName || '-')}</td>
+                <td class="ellipsis">${escapeHtml(decodeHtmlEntities(booking.packageName) || '-')}</td>
                 <td class="is-center">${reservationDate}</td>
                 <td class="is-center">${departureDate}</td>
                 <td class="is-center">${status}</td>
@@ -1316,4 +1317,12 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+function decodeHtmlEntities(str) {
+    if (!str) return str;
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
 }

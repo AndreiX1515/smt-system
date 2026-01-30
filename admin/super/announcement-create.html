@@ -228,7 +228,7 @@
 				});
 				const sessionData = await sessionResponse.json();
 
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;
@@ -331,12 +331,13 @@
 						const statusLabel = pkg.status === 'active' ? 'On Sale' : (pkg.status === 'inactive' ? 'Sale Ended' : 'Draft');
 						const statusClass = pkg.status === 'active' ? 'status-active' : 'status-inactive';
 
+						// (HTML 태그 수정) 디코딩 적용
 						html += `
-							<div class="product-item ${isSelected}" onclick="selectProduct(${pkg.packageId}, '${escapeHtml(pkg.packageName || '')}')">
+							<div class="product-item ${isSelected}" onclick="selectProduct(${pkg.packageId}, '${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}')">
 								<div class="product-item-content">
 									<div class="product-thumb" style="${pkg.thumbnailUrl ? `background-image:url('${escapeHtml(pkg.thumbnailUrl)}')` : ''}"></div>
 									<div class="product-info">
-										<div class="product-name">${escapeHtml(pkg.packageName || 'Unnamed Product')}</div>
+										<div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || 'Unnamed Product')}</div>
 										<div class="product-meta">
 											<span class="product-status ${statusClass}">${statusLabel}</span>
 											<span class="product-target">${escapeHtml(pkg.targetMarket || 'B2B')}</span>
@@ -531,6 +532,14 @@
 			const div = document.createElement('div');
 			div.textContent = text;
 			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
 		}
 	</script>
 

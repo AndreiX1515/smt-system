@@ -140,7 +140,7 @@
 				});
 				const sessionData = await sessionResponse.json();
 
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;
@@ -210,7 +210,8 @@
 									<tr style="cursor:pointer;" onclick="window.location.href='announcement-detail.html?id=${item.announcementId}'">
 										<td class="no is-center">${item.rowNum || ''}</td>
 										<td class="is-center cell-ellipsis" title="${escapeHtml(item.title || '')}">${escapeHtml(item.title || '')}</td>
-										<td class="is-center cell-ellipsis" title="${escapeHtml(item.packageName || '')}">${escapeHtml(item.packageName || '-')}</td>
+										<!-- (HTML 태그 수정) 디코딩 적용 -->
+										<td class="is-center cell-ellipsis" title="${escapeHtml(decodeHtmlEntities(item.packageName) || '')}">${escapeHtml(decodeHtmlEntities(item.packageName) || '-')}</td>
 										<td class="is-center">${targetLabel}</td>
 										<td class="is-center"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
 										<td class="is-center">${publishedAt}</td>
@@ -302,6 +303,14 @@
 			const div = document.createElement('div');
 			div.textContent = text;
 			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
 		}
 	</script>
 

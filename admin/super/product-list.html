@@ -153,7 +153,7 @@
 				const sessionData = await sessionResponse.json();
 				
 				// Super  admin  
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;
@@ -222,7 +222,8 @@
 										<td>
 											<div class="cell-thumb">
 												<div class="thumb" aria-hidden="true" style="${product.thumbnailUrl ? `background-image:url('${escapeHtml(product.thumbnailUrl)}'); background-size:cover; background-repeat:no-repeat; background-position:center;` : ''}"></div>
-												<span class="title">${escapeHtml(product.packageName || '')}</span>
+												<!-- (HTML 태그 수정) 디코딩 적용 -->
+												<span class="title">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</span>
 											</div>
 										</td>
 										<td class="is-center">${escapeHtml(product.targetMarket || 'B2B')}</td>
@@ -290,6 +291,14 @@
 			const div = document.createElement('div');
 			div.textContent = text;
 			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
 		}
 	</script>
 </body>

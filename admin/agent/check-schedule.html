@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>SMART TRAVEL ADMIN</title>
+    <link rel="shortcut icon" href="../image/favicon.ico">
+    <link rel="stylesheet" href="../css/a_reset.css">
+    <link rel="stylesheet" href="../css/a_variables.css">
+    <link rel="stylesheet" href="../css/a_components.css">
+    <link rel="stylesheet" href="../css/a_contents.css">
+    <style>
+        .schedule-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .product-search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .product-search-wrapper .form-control {
+            min-width: 300px;
+            height: 44px;
+            padding: 0 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #f9fafb;
+            cursor: pointer;
+        }
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .calendar-nav .month-label {
+            font-size: 20px;
+            font-weight: 600;
+            min-width: 150px;
+            text-align: center;
+        }
+        .calendar-nav button {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-nav button:hover {
+            background: #f5f5f5;
+        }
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+        }
+        .view-toggle button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.15s;
+        }
+        .view-toggle button:hover {
+            background: #f5f5f5;
+        }
+        .view-toggle button.active {
+            background: #0050C8;
+            color: #fff;
+            border-color: #0050C8;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e5e5e5;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .calendar-grid .day-header {
+            background: #f7faff;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: #666;
+        }
+        .calendar-grid .day-header.sun { color: #ef4444; }
+        .calendar-grid .day-header.sat { color: #3b82f6; }
+        .calendar-cell {
+            background: #fff;
+            min-height: 100px;
+            padding: 8px;
+        }
+        .calendar-cell.empty {
+            background: #fafafa;
+        }
+        .calendar-cell.past {
+            background: #f5f5f5;
+            opacity: 0.6;
+        }
+        .calendar-cell .day-num {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .calendar-cell.sun .day-num { color: #ef4444; }
+        .calendar-cell.sat .day-num { color: #3b82f6; }
+        .calendar-cell .seats-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        .calendar-cell .seats-info .booked {
+            font-weight: 600;
+        }
+        .calendar-cell .seats-info.available .booked { color: #22c55e; }
+        .calendar-cell .seats-info.soldout .booked { color: #ef4444; }
+        .calendar-cell .seats-info.closed .booked { color: #9ca3af; }
+        .calendar-cell .price-info {
+            font-size: 11px;
+            color: #999;
+        }
+        .calendar-cell .status-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        .calendar-cell .status-badge.available { background: #dcfce7; color: #16a34a; }
+        .calendar-cell .status-badge.soldout { background: #fee2e2; color: #dc2626; }
+        .calendar-cell .status-badge.closed { background: #f3f4f6; color: #6b7280; }
+        .calendar-cell.outside-sales {
+            background: #f9fafb;
+        }
+        .calendar-cell.outside-sales .day-num {
+            color: #d1d5db;
+        }
+        .calendar-cell.outside-sales .outside-sales-text {
+            color: #d1d5db;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .product-info-bar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 16px;
+            background: #f7faff;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .product-info-bar .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .product-info-bar .info-label {
+            font-size: 13px;
+            color: #666;
+        }
+        .product-info-bar .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        .no-product {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        /* Modal Base Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-content.modal-large {
+            max-width: 700px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .modal-close img {
+            width: 20px;
+            height: 20px;
+        }
+        .modal-body {
+            padding: 24px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid #e5e5e5;
+        }
+        /* Product Search Modal Styles */
+        #product-search-modal .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        #product-search-modal .search-box .form-control {
+            flex: 1;
+            height: 44px;
+            padding: 0 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        #product-search-modal .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+        #product-search-modal .product-item {
+            cursor: pointer;
+            border: 1px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 10px;
+            background: #fff;
+        }
+        #product-search-modal .product-item:hover {
+            border-color: #9CA3AF;
+            background: #F9FAFB;
+        }
+        #product-search-modal .product-item.selected {
+            border: 2px solid #0050C8;
+            box-shadow: 0 0 0 3px rgba(0, 80, 200, 0.12);
+            background: #F7FAFF;
+        }
+        #product-search-modal .product-item-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        #product-search-modal .product-info {
+            flex: 1;
+            min-width: 0;
+        }
+        #product-search-modal .product-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: #111827;
+        }
+        #product-search-modal .product-meta {
+            margin-top: 6px;
+            color: #6B7280;
+            font-size: 13px;
+        }
+        #product-search-modal .product-price {
+            font-weight: 600;
+            color: #0050C8;
+            font-size: 14px;
+        }
+        /* Table View Styles */
+        .table-view-container {
+            display: none;
+        }
+        .table-view-container.active {
+            display: block;
+        }
+        .calendar-view-container.active {
+            display: block;
+        }
+        .calendar-view-container {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="layout-header"></header>
+
+    <main class="layout-main">
+        <nav class="layout-nav"></nav>
+
+        <section class="layout-content">
+            <h1 class="page-title" data-lan-eng="Check Schedule">Check Schedule</h1>
+
+            <div class="card-panel jw-mgt32">
+                <!-- Header: Product Selection + Month Navigation + View Toggle -->
+                <div class="schedule-header">
+                    <div class="product-search-wrapper">
+                        <input type="text" id="productNameDisplay" class="form-control" placeholder="Select a product" data-lan-eng-placeholder="Select a product" readonly>
+                        <button type="button" id="productSearchBtn" class="jw-button typeA">
+                            <img src="../image/search2.svg" alt=""><span data-lan-eng="Product Search">Product Search</span>
+                        </button>
+                        <input type="hidden" id="selectedPackageId">
+                    </div>
+
+                    <div class="calendar-nav">
+                        <button type="button" onclick="changeMonth(-1)" title="Previous month">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M10 12L6 8L10 4" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <span class="month-label" id="monthLabel">2026년 1월</span>
+                        <button type="button" onclick="changeMonth(1)" title="Next month">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M6 4L10 8L6 12" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="view-toggle">
+                        <button type="button" id="calendarViewBtn" class="active" onclick="switchView('calendar')" data-lan-eng="Calendar">Calendar</button>
+                        <button type="button" id="tableViewBtn" onclick="switchView('table')" data-lan-eng="Table">Table</button>
+                    </div>
+                </div>
+
+                <!-- Product Info Bar -->
+                <div class="product-info-bar" id="productInfoBar" style="display:none;">
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="Product">Product:</span>
+                        <span class="info-value" id="infoProductName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="Max Capacity">Max Capacity:</span>
+                        <span class="info-value" id="infoMaxSeats">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="B2B Price">B2B Price:</span>
+                        <span class="info-value" id="infoBasePrice">-</span>
+                    </div>
+                </div>
+
+                <!-- Calendar View -->
+                <div id="calendarContainer" class="calendar-view-container active">
+                    <div class="no-product" id="noProductMessage">
+                        <p data-lan-eng="Please select a product to view schedule">Please select a product to view schedule</p>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid" style="display:none;">
+                        <div class="day-header sun" data-lan-eng="Sun">Sun</div>
+                        <div class="day-header" data-lan-eng="Mon">Mon</div>
+                        <div class="day-header" data-lan-eng="Tue">Tue</div>
+                        <div class="day-header" data-lan-eng="Wed">Wed</div>
+                        <div class="day-header" data-lan-eng="Thu">Thu</div>
+                        <div class="day-header" data-lan-eng="Fri">Fri</div>
+                        <div class="day-header sat" data-lan-eng="Sat">Sat</div>
+                    </div>
+                </div>
+
+                <!-- Table View -->
+                <div id="tableContainer" class="table-view-container">
+                    <div class="no-product" id="noProductMessageTable">
+                        <p data-lan-eng="Please select a product to view schedule">Please select a product to view schedule</p>
+                    </div>
+                    <div class="tableA-scroll" id="tableViewContent" style="display:none;">
+                        <div class="jw-tableA typeB">
+                            <table>
+                                <colgroup>
+                                    <col style="width:50px;"><!-- No -->
+                                    <col style="width:120px;"><!-- Date -->
+                                    <col style="width:60px;"><!-- Day -->
+                                    <col style="width:100px;"><!-- Status -->
+                                    <col style="width:120px;"><!-- Price -->
+                                    <col style="width:80px;"><!-- Booked -->
+                                    <col style="width:80px;"><!-- Remaining -->
+                                    <col style="width:80px;"><!-- Max -->
+                                    <col style="width:100px;"><!-- Departure -->
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th data-lan-eng="Date">Date</th>
+                                        <th data-lan-eng="Day">Day</th>
+                                        <th data-lan-eng="Status">Status</th>
+                                        <th data-lan-eng="B2B Price">B2B Price</th>
+                                        <th data-lan-eng="Booked">Booked</th>
+                                        <th data-lan-eng="Remaining">Remaining</th>
+                                        <th data-lan-eng="Max">Max</th>
+                                        <th data-lan-eng="Departure">Departure</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scheduleTableBody">
+                                    <tr>
+                                        <td colspan="9" class="is-center" data-lan-eng="No data">No data</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Product Search Modal -->
+    <div id="product-search-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 data-lan-eng="Product Search">Product Search</h3>
+                <button type="button" class="modal-close" onclick="closeModal('product-search-modal')">
+                    <img src="../image/button-close2.svg" alt="">
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="search-box">
+                    <input type="text" id="product-search-input" class="form-control" placeholder="Enter product name" data-lan-eng-placeholder="Enter product name">
+                    <button type="button" id="product-search-submit" class="jw-button typeA" data-lan-eng="Search">Search</button>
+                </div>
+                <div class="search-results" id="product-search-results">
+                    <!-- Search results will be displayed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="jw-button typeB" id="product-search-confirm" data-lan-eng="Select" disabled>Select</button>
+                <button type="button" class="jw-button typeD" onclick="closeModal('product-search-modal')" data-lan-eng="Cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/default.js"></script>
+    <script src="../js/agent.js"></script>
+
+    <script>
+        // Global state
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth() + 1;
+        let selectedPackageId = null;
+        let calendarData = [];
+        let productInfo = null;
+        let searchedProducts = [];
+        let selectedProductInModal = null;
+        let currentView = 'calendar';
+
+        // Initialize
+        init({
+            headerUrl: '../inc/header.html',
+            navUrl: '../inc/nav_agent.html'
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Session check
+            try {
+                const sessionResponse = await fetch('../backend/api/check-session.php', {
+                    credentials: 'same-origin'
+                });
+                const sessionData = await sessionResponse.json();
+
+                if (!sessionData.authenticated) {
+                    window.location.href = '../index.html';
+                    return;
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+                window.location.href = '../index.html';
+                return;
+            }
+
+            updateMonthLabel();
+            setupProductSearchModal();
+        });
+
+        // Setup product search modal
+        function setupProductSearchModal() {
+            const searchBtn = document.getElementById('productSearchBtn');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', openProductSearchModal);
+            }
+
+            const productNameDisplay = document.getElementById('productNameDisplay');
+            if (productNameDisplay) {
+                productNameDisplay.addEventListener('click', openProductSearchModal);
+            }
+
+            const searchSubmit = document.getElementById('product-search-submit');
+            if (searchSubmit) {
+                searchSubmit.addEventListener('click', searchProducts);
+            }
+
+            const searchInput = document.getElementById('product-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchProducts();
+                    }
+                });
+            }
+
+            const confirmBtn = document.getElementById('product-search-confirm');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', confirmProductSelection);
+            }
+        }
+
+        // Open product search modal
+        function openProductSearchModal() {
+            selectedProductInModal = null;
+            const confirmBtn = document.getElementById('product-search-confirm');
+            if (confirmBtn) confirmBtn.disabled = true;
+            openModal('product-search-modal');
+            searchProducts();
+        }
+
+        // Search products (B2B only)
+        async function searchProducts() {
+            const searchInput = document.getElementById('product-search-input');
+            const searchTerm = searchInput ? searchInput.value.trim() : '';
+            const resultsContainer = document.getElementById('product-search-results');
+
+            try {
+                resultsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Searching...</div>';
+
+                const params = new URLSearchParams({
+                    salesTarget: 'B2B',
+                    limit: '100'
+                });
+                if (searchTerm) params.set('search', searchTerm);
+
+                const response = await fetch(`/backend/api/packages.php?${params.toString()}`, {
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.length > 0) {
+                    searchedProducts = result.data;
+                    let html = '<div class="product-list">';
+                    result.data.forEach(pkg => {
+                        const displayPrice = pkg.b2bPrice || pkg.packagePrice || 0;
+                        html += `
+                            <div class="product-item" data-package-id="${pkg.packageId}" onclick="selectProductInModal(${pkg.packageId})">
+                                <div class="product-item-content">
+                                    <div class="product-info">
+                                        <div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}</div>
+                                        <div class="product-meta">
+                                            Max: ${pkg.maxParticipants || '-'} seats |
+                                            <span class="product-price">${formatPrice(displayPrice)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultsContainer.innerHTML = html;
+                } else {
+                    resultsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No products found</div>';
+                }
+            } catch (error) {
+                console.error('Error searching products:', error);
+                resultsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">Failed to search products</div>';
+            }
+        }
+
+        // Select product in modal
+        function selectProductInModal(packageId) {
+            document.querySelectorAll('.product-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            const selectedItem = document.querySelector(`[data-package-id="${packageId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+            }
+
+            selectedProductInModal = packageId;
+            const confirmBtn = document.getElementById('product-search-confirm');
+            if (confirmBtn) confirmBtn.disabled = false;
+        }
+
+        // Confirm product selection
+        async function confirmProductSelection() {
+            if (!selectedProductInModal) {
+                alert('Please select a product');
+                return;
+            }
+
+            selectedPackageId = selectedProductInModal;
+
+            const pkg = searchedProducts.find(p => p.packageId === selectedPackageId);
+            if (pkg) {
+                document.getElementById('productNameDisplay').value = decodeHtmlEntities(pkg.packageName);
+                document.getElementById('selectedPackageId').value = pkg.packageId;
+                productInfo = pkg;
+            }
+
+            closeModal('product-search-modal');
+
+            // Load calendar data
+            await loadScheduleData();
+
+            // Move to sales start date if available
+            if (productInfo && productInfo.sales_start_date) {
+                const startDate = new Date(productInfo.sales_start_date);
+                const startYear = startDate.getFullYear();
+                const startMonth = startDate.getMonth() + 1;
+
+                if (startYear !== currentYear || startMonth !== currentMonth) {
+                    currentYear = startYear;
+                    currentMonth = startMonth;
+                    updateMonthLabel();
+                    await loadScheduleData();
+                }
+            }
+        }
+
+        // View toggle
+        function switchView(view) {
+            currentView = view;
+
+            document.getElementById('calendarViewBtn').classList.toggle('active', view === 'calendar');
+            document.getElementById('tableViewBtn').classList.toggle('active', view === 'table');
+
+            document.getElementById('calendarContainer').classList.toggle('active', view === 'calendar');
+            document.getElementById('tableContainer').classList.toggle('active', view === 'table');
+        }
+
+        // Month change
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            } else if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+            updateMonthLabel();
+            if (selectedPackageId) {
+                loadScheduleData();
+            }
+        }
+
+        // Update month label
+        function updateMonthLabel() {
+            const label = document.getElementById('monthLabel');
+            const lang = getCookie('lang') || 'eng';
+            if (lang === 'eng') {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                   'July', 'August', 'September', 'October', 'November', 'December'];
+                label.textContent = `${monthNames[currentMonth - 1]} ${currentYear}`;
+            } else {
+                label.textContent = `${currentYear}년 ${currentMonth}월`;
+            }
+        }
+
+        // Load schedule data
+        async function loadScheduleData() {
+            if (!selectedPackageId) return;
+
+            try {
+                const params = new URLSearchParams({
+                    id: selectedPackageId,
+                    year: currentYear,
+                    month: currentMonth
+                });
+
+                const response = await fetch(`/backend/api/product_availability.php?${params.toString()}`, {
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    calendarData = result.data.availability || [];
+
+                    // Update product info from API response
+                    if (result.data.product) {
+                        productInfo = {
+                            ...productInfo,
+                            ...result.data.product
+                        };
+                    }
+
+                    renderProductInfo();
+                    renderCalendar();
+                    renderTable();
+                } else {
+                    console.error('Failed to load schedule:', result.message);
+                }
+            } catch (error) {
+                console.error('Failed to load schedule:', error);
+            }
+        }
+
+        // Render product info bar
+        function renderProductInfo() {
+            if (!productInfo) return;
+
+            document.getElementById('infoProductName').textContent = decodeHtmlEntities(productInfo.packageName);
+            document.getElementById('infoMaxSeats').textContent = (productInfo.maxParticipants || '-') + ' seats';
+
+            const basePrice = productInfo.b2bPrice || productInfo.packagePrice || 0;
+            document.getElementById('infoBasePrice').textContent = formatPrice(basePrice);
+
+            document.getElementById('productInfoBar').style.display = 'flex';
+        }
+
+        // Render calendar
+        function renderCalendar() {
+            document.getElementById('noProductMessage').style.display = 'none';
+            const grid = document.getElementById('calendarGrid');
+            grid.style.display = 'grid';
+
+            // Remove existing cells (except headers)
+            const cells = grid.querySelectorAll('.calendar-cell');
+            cells.forEach(c => c.remove());
+
+            // Calculate first day of month
+            const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+            // Create availability map
+            const availMap = {};
+            calendarData.forEach(item => {
+                const day = new Date(item.availableDate).getDate();
+                availMap[day] = item;
+            });
+
+            // Add empty cells before first day
+            for (let i = 0; i < firstDay; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell empty';
+                grid.appendChild(cell);
+            }
+
+            // Add day cells
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cell = createDayCell(day, availMap[day] || null, today);
+                grid.appendChild(cell);
+            }
+
+            // Fill remaining cells
+            const totalCells = firstDay + daysInMonth;
+            const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let i = 0; i < remaining; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell empty';
+                grid.appendChild(cell);
+            }
+        }
+
+        // Create day cell
+        function createDayCell(day, data, today) {
+            const cell = document.createElement('div');
+            const dateObj = new Date(currentYear, currentMonth - 1, day);
+            const dow = dateObj.getDay();
+            const isPast = dateObj < today;
+
+            let classes = ['calendar-cell'];
+            if (dow === 0) classes.push('sun');
+            if (dow === 6) classes.push('sat');
+            if (isPast) classes.push('past');
+
+            if (!data) {
+                classes.push('outside-sales');
+                cell.className = classes.join(' ');
+                cell.innerHTML = `
+                    <div class="day-num">${day}</div>
+                    <div class="outside-sales-text">-</div>
+                `;
+                return cell;
+            }
+
+            cell.className = classes.join(' ');
+
+            const status = data.status || 'available';
+            const remainingSeats = data.remainingSeats ?? 0;
+            const maxSeats = data.maxSeats ?? 0;
+            const bookedSeats = data.bookedSeats ?? 0;
+            const price = data.b2bPrice ?? data.price ?? 0;
+
+            let statusText = '';
+            let statusClass = status;
+            if (status === 'available' && remainingSeats > 0) {
+                statusText = 'Available';
+            } else if (status === 'closed' || remainingSeats <= 0) {
+                statusText = remainingSeats <= 0 && maxSeats > 0 ? 'Sold Out' : 'Closed';
+                statusClass = remainingSeats <= 0 && maxSeats > 0 ? 'soldout' : 'closed';
+            }
+
+            cell.innerHTML = `
+                <div class="day-num">${day}</div>
+                <div class="seats-info ${statusClass}">
+                    <span class="booked">${bookedSeats}</span> / ${maxSeats} seats
+                </div>
+                <div class="price-info">${formatPrice(price)}</div>
+                ${statusText ? `<span class="status-badge ${statusClass}">${statusText}</span>` : ''}
+            `;
+
+            return cell;
+        }
+
+        // Render table view
+        function renderTable() {
+            document.getElementById('noProductMessageTable').style.display = 'none';
+            document.getElementById('tableViewContent').style.display = 'block';
+
+            const tbody = document.getElementById('scheduleTableBody');
+
+            if (calendarData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="is-center">No schedule data for this month</td></tr>';
+                return;
+            }
+
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            tbody.innerHTML = calendarData.map((item, index) => {
+                const dateObj = new Date(item.availableDate);
+                const dayName = dayNames[dateObj.getDay()];
+
+                const status = item.status || 'available';
+                const remainingSeats = item.remainingSeats ?? 0;
+                const maxSeats = item.maxSeats ?? 0;
+                const bookedSeats = item.bookedSeats ?? 0;
+                const price = item.b2bPrice ?? item.price ?? 0;
+                const departureTime = item.departureTime || '-';
+
+                let statusText = '';
+                let statusClass = '';
+                if (status === 'available' && remainingSeats > 0) {
+                    statusText = 'Available';
+                    statusClass = 'color: #16a34a;';
+                } else if (remainingSeats <= 0 && maxSeats > 0) {
+                    statusText = 'Sold Out';
+                    statusClass = 'color: #dc2626;';
+                } else {
+                    statusText = 'Closed';
+                    statusClass = 'color: #6b7280;';
+                }
+
+                return `
+                    <tr>
+                        <td class="is-center">${index + 1}</td>
+                        <td class="is-center">${item.availableDate}</td>
+                        <td class="is-center">${dayName}</td>
+                        <td class="is-center" style="${statusClass} font-weight: 600;">${statusText}</td>
+                        <td class="is-center" style="font-weight: 600; color: #0050C8;">${formatPrice(price)}</td>
+                        <td class="is-center">${bookedSeats}</td>
+                        <td class="is-center">${remainingSeats}</td>
+                        <td class="is-center">${maxSeats}</td>
+                        <td class="is-center">${departureTime}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function decodeHtmlEntities(str) {
+            if (!str) return str;
+            const txt = document.createElement('textarea');
+            txt.innerHTML = str;
+            return txt.value;
+        }
+
+        function formatPrice(price) {
+            if (!price) return '₱0';
+            return '₱' + Number(price).toLocaleString();
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    </script>
+</body>
+</html>

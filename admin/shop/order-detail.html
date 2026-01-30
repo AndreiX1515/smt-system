@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>주문 상세 - Shop Admin</title>
+    <link rel="shortcut icon" href="../image/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/a_reset.css">
+    <link rel="stylesheet" href="../css/a_variables.css">
+    <link rel="stylesheet" href="../css/a_components.css">
+    <link rel="stylesheet" href="../css/a_contents.css">
+    <style>
+        .shop-admin { padding: 30px; max-width: 900px; margin: 0 auto; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .btn-back { padding: 10px 20px; background: #f5f5f5; border: none; border-radius: 8px; cursor: pointer; }
+        .info-section { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+        .info-row { display: flex; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { width: 120px; color: #666; font-size: 14px; }
+        .info-value { flex: 1; font-size: 14px; }
+        .status-badge { display: inline-block; padding: 6px 16px; border-radius: 16px; font-size: 14px; font-weight: 500; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-preparing { background: #cce5ff; color: #004085; }
+        .status-shipped { background: #d1ecf1; color: #0c5460; }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .order-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .order-item:last-child { border-bottom: none; }
+        .item-img { width: 60px; height: 60px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .item-info { flex: 1; }
+        .item-name { font-weight: 500; margin-bottom: 4px; }
+        .item-price { color: #666; font-size: 14px; }
+        .item-total { font-weight: 600; text-align: right; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+        .summary-row.total { font-size: 18px; font-weight: 600; padding-top: 12px; border-top: 1px solid #eee; margin-top: 8px; }
+        .status-select { height: 40px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; margin-right: 8px; }
+        .btn-update { height: 40px; padding: 0 20px; background: #0065F8; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+        .status-change { display: flex; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <header class="layout-header"></header>
+
+    <main class="layout-main">
+        <aside class="layout-side"></aside>
+
+        <section class="layout-content">
+            <div class="shop-admin">
+                <div class="page-header">
+                    <h1 class="page-title">주문 상세</h1>
+                    <button class="btn-back" onclick="history.back()">← 목록으로</button>
+                </div>
+
+                <div class="info-section">
+                    <div class="section-title">주문 정보</div>
+                    <div class="info-row">
+                        <span class="info-label">주문번호</span>
+                        <span class="info-value" id="orderNo">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">주문일시</span>
+                        <span class="info-value" id="orderDate">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">주문상태</span>
+                        <span class="info-value"><span class="status-badge" id="orderStatus">-</span></span>
+                    </div>
+                    <div class="status-change">
+                        <select class="status-select" id="newStatus">
+                            <option value="pending">결제대기</option>
+                            <option value="paid">결제완료</option>
+                            <option value="preparing">준비중</option>
+                            <option value="shipped">배송중</option>
+                            <option value="delivered">배송완료</option>
+                            <option value="cancelled">취소</option>
+                            <option value="refunded">환불</option>
+                        </select>
+                        <button class="btn-update" onclick="updateStatus()">상태 변경</button>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <div class="section-title">배송 정보</div>
+                    <div class="info-row">
+                        <span class="info-label">수령인</span>
+                        <span class="info-value" id="receiverName">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">연락처</span>
+                        <span class="info-value" id="receiverPhone">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">주소</span>
+                        <span class="info-value" id="receiverAddress">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">배송메모</span>
+                        <span class="info-value" id="memo">-</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <div class="section-title">주문 상품</div>
+                    <div id="orderItems">
+                        <!-- 상품 목록 -->
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <div class="section-title">결제 정보</div>
+                    <div class="summary-row">
+                        <span>상품 금액</span>
+                        <span id="subtotal">₱0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>배송비</span>
+                        <span id="shippingFee">₱0</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>총 결제금액</span>
+                        <span id="totalAmount">₱0</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="../js/default.js"></script>
+    <script src="../js/super.js"></script>
+    <script>
+        init({
+            headerUrl: '../inc/header.html',
+            sideUrl: '../inc/side-shop.html'
+        });
+
+        const API_BASE = '/backend/api/shop';
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('id');
+
+        const statusLabels = {
+            'pending': '결제대기',
+            'paid': '결제완료',
+            'preparing': '준비중',
+            'shipped': '배송중',
+            'delivered': '배송완료',
+            'cancelled': '취소',
+            'refunded': '환불'
+        };
+
+        let currentOrder = null;
+
+        async function loadOrder() {
+            if (!orderId) {
+                alert('주문 정보가 없습니다.');
+                history.back();
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/admin-orders.php?id=${orderId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    currentOrder = data.order;
+                    renderOrder();
+                } else {
+                    alert('주문을 찾을 수 없습니다.');
+                    history.back();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderOrder() {
+            const o = currentOrder;
+
+            document.getElementById('orderNo').textContent = o.order_no;
+
+            const date = new Date(o.created_at);
+            document.getElementById('orderDate').textContent = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+
+            const statusEl = document.getElementById('orderStatus');
+            statusEl.textContent = statusLabels[o.status] || o.status;
+            statusEl.className = `status-badge status-${o.status}`;
+            document.getElementById('newStatus').value = o.status;
+
+            document.getElementById('receiverName').textContent = o.receiver_name;
+            document.getElementById('receiverPhone').textContent = o.receiver_phone;
+            document.getElementById('receiverAddress').textContent = `${o.receiver_zipcode ? `(${o.receiver_zipcode}) ` : ''}${o.receiver_address}`;
+            document.getElementById('memo').textContent = o.memo || '-';
+
+            // 주문 상품
+            const itemsContainer = document.getElementById('orderItems');
+            if (o.items && o.items.length > 0) {
+                itemsContainer.innerHTML = o.items.map(item => `
+                    <div class="order-item">
+                        <div class="item-img">📦</div>
+                        <div class="item-info">
+                            <div class="item-name">${item.product_name}</div>
+                            <div class="item-price">₱${Number(item.price).toLocaleString()} × ${item.quantity}</div>
+                        </div>
+                        <div class="item-total">₱${(item.price * item.quantity).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            }
+
+            // 결제 정보
+            const subtotal = o.total_amount - o.shipping_fee;
+            document.getElementById('subtotal').textContent = '₱' + subtotal.toLocaleString();
+            document.getElementById('shippingFee').textContent = o.shipping_fee > 0 ? '₱' + o.shipping_fee.toLocaleString() : '무료';
+            document.getElementById('totalAmount').textContent = '₱' + Number(o.total_amount).toLocaleString();
+        }
+
+        async function updateStatus() {
+            const newStatus = document.getElementById('newStatus').value;
+            const currentStatusValue = currentOrder.status;
+
+            if (newStatus === currentStatusValue) {
+                alert('현재 상태와 동일합니다.');
+                return;
+            }
+
+            if (!confirm(`주문 상태를 변경하시겠습니까?\n\n${statusLabels[currentStatusValue]} → ${statusLabels[newStatus]}`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/admin-orders.php`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: orderId,
+                        status: newStatus
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('상태가 변경되었습니다.');
+                    loadOrder();
+                } else {
+                    alert(data.error || '변경 실패');
+                }
+            } catch (e) {
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+        loadOrder();
+    </script>
+</body>
+</html>

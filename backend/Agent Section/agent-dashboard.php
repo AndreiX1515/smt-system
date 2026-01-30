@@ -93,9 +93,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                         $totalTransactionsQuery = "SELECT COUNT(*) AS total FROM booking b
                                                       JOIN flight f ON b.flightId = f.flightId 
                                                       LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                                      LEFT JOIN company c ON a.companyId = c.companyId
                                                       LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                                      LEFT JOIN company cc ON cl.companyId = cc.companyId
                                                       WHERE f.flightDepartureDate >= CURDATE() AND b.agentCode = '$agentCode' 
                                                       AND (COALESCE(c.companyId, '') = COALESCE('$companyId', '') 
                                                       OR COALESCE(cc.companyId, '') = COALESCE('$companyId', ''))";
@@ -139,9 +137,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                         $totalTransactionsQuery = "SELECT COUNT(*) AS total FROM booking b
                                                       JOIN flight f ON b.flightId = f.flightId 
                                                       LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                                      LEFT JOIN company c ON a.companyId = c.companyId
                                                       LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                                      LEFT JOIN company cc ON cl.companyId = cc.companyId
                                                       WHERE b.status = 'Confirmed' AND b.agentCode = '$agentCode' 
                                                       AND (COALESCE(c.companyId, '') = COALESCE('$companyId', '') 
                                                       OR COALESCE(cc.companyId, '') = COALESCE('$companyId', ''))
@@ -190,9 +186,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                         $totalTransactionsQuery = "SELECT COUNT(*) AS total FROM booking b
                                                       JOIN flight f ON b.flightId = f.flightId
                                                       LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                                      LEFT JOIN company c ON a.companyId = c.companyId
                                                       LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                                      LEFT JOIN company cc ON cl.companyId = cc.companyId
                                                       WHERE b.status = 'Pending' AND b.agentCode = '$agentCode' 
                                                       AND (COALESCE(c.companyId, '') = COALESCE('$companyId', '') 
                                                       OR COALESCE(cc.companyId, '') = COALESCE('$companyId', ''))
@@ -235,9 +229,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                         $totalTransactionsQuery = "SELECT COUNT(*) AS total FROM booking b
                                                       JOIN flight f ON b.flightId = f.flightId
                                                       LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                                      LEFT JOIN company c ON a.companyId = c.companyId
                                                       LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                                      LEFT JOIN company cc ON cl.companyId = cc.companyId
                                                       WHERE b.status = 'Reserved' AND b.agentCode = '$agentCode' 
                                                       AND (COALESCE(c.companyId, '') = COALESCE('$companyId', '') 
                                                       OR COALESCE(cc.companyId, '') = COALESCE('$companyId', ''))
@@ -942,17 +934,15 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                           b.status AS `STATUS`,
                                           CASE 
                                             WHEN a.accountId IS NOT NULL 
-                                                THEN CASE WHEN a.companyId IS NOT NULL THEN c.companyName ELSE br.branchName END
+                                                THEN CASE WHEN a.companyId IS NOT NULL THEN '' as companyName ELSE br.branchName END
                                             WHEN cl.accountId IS NOT NULL 
-                                                THEN CASE WHEN cl.companyId IS NOT NULL THEN cc.companyName ELSE br.branchName END
+                                                THEN CASE WHEN cl.companyId IS NOT NULL THEN c'' as companyName ELSE br.branchName END
                                             ELSE 'Unknown' END AS `ACCOUNT NAME`
                                           FROM booking b
                                           LEFT JOIN flight f ON b.flightId = f.flightId
                                           LEFT JOIN package p ON b.packageId = p.packageId
                                           LEFT JOIN agent a ON b.accountId = a.accountId
-                                          LEFT JOIN company c ON a.companyId = c.companyId
                                           LEFT JOIN client cl ON b.accountId = cl.accountId
-                                          LEFT JOIN company cc ON cl.companyId = cc.companyId
                                           JOIN branch br ON b.agentCode = br.branchAgentCode
                                           WHERE b.accountId = '$accountId' AND f.flightDepartureDate >= CURDATE()
                                           AND (b.status = 'Pending' OR b.status = 'Reserved')
@@ -1009,17 +999,15 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                               b.status AS `STATUS`,
                                               CASE 
                                                 WHEN a.accountId IS NOT NULL 
-                                                  THEN CASE WHEN a.companyId IS NOT NULL THEN c.companyName ELSE br.branchName END
+                                                  THEN CASE WHEN a.companyId IS NOT NULL THEN '' as companyName ELSE br.branchName END
                                                 WHEN cl.accountId IS NOT NULL 
-                                                  THEN CASE WHEN cl.companyId IS NOT NULL THEN cc.companyName ELSE br.branchName END
+                                                  THEN CASE WHEN cl.companyId IS NOT NULL THEN c'' as companyName ELSE br.branchName END
                                                 ELSE 'Unknown'END AS `ACCOUNT NAME`
                                               FROM booking b
                                               LEFT JOIN flight f ON b.flightId = f.flightId
                                               LEFT JOIN package p ON b.packageId = p.packageId
                                               LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                              LEFT JOIN company c ON a.companyId = c.companyId
                                               LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                              LEFT JOIN company cc ON cl.companyId = cc.companyId
                                               JOIN branch br ON b.agentCode = br.branchAgentCode
                                               WHERE b.agentCode = '$agentCode' AND f.flightDepartureDate >= CURDATE()
                                               AND (COALESCE(c.companyId, '') = COALESCE('$companyId', '') 
@@ -1196,7 +1184,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                     DATE_FORMAT(r.requestDate, '%Y.%m.%d') AS `Date`,   
                                     CASE 
                                       WHEN a.agentId IS NOT NULL 
-                                        THEN CASE WHEN a.companyId IS NOT NULL THEN co.companyName ELSE br.branchName END
+                                        THEN CASE WHEN a.companyId IS NOT NULL THEN '' as companyName ELSE br.branchName END
                                       WHEN cl.clientId IS NOT NULL 
                                         THEN br.branchName ELSE 'Unknown' END AS `Account Name`
                                     FROM request r
@@ -1205,9 +1193,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                     LEFT JOIN concern c ON r.concernId = c.concernId
                                     LEFT JOIN concerndetails cd ON r.concernDetailsId = cd.concernDetailsId
                                     LEFT JOIN agent a ON b.accountId = a.accountId
-                                    LEFT JOIN company co ON a.companyId = co.companyId
                                     LEFT JOIN client cl ON b.accountId = cl.accountId
-                                    LEFT JOIN company cc ON cl.companyId = cc.companyId 
                                     JOIN branch br ON b.agentCode = br.branchAgentCode
                                     WHERE b.accountId = '$accountId' AND f.flightDepartureDate >= CURDATE()
                                     AND r.requestStatus = 'Submitted'
@@ -1266,11 +1252,11 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                     CASE 
                                       WHEN a.accountId IS NOT NULL 
                                         THEN CASE 
-                                          WHEN a.companyId IS NOT NULL THEN co.companyName 
+                                          WHEN a.companyId IS NOT NULL THEN '' as companyName 
                                           ELSE br.branchName END
                                       WHEN cl.accountId IS NOT NULL 
                                         THEN CASE 
-                                          WHEN cl.companyId IS NOT NULL THEN cc.companyName 
+                                          WHEN cl.companyId IS NOT NULL THEN c'' as companyName 
                                           ELSE br.branchName END ELSE 'Unknown' END AS `Account Name`
                                   FROM request r
                                   LEFT JOIN booking b ON r.transactNo = b.transactNo
@@ -1278,9 +1264,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                   LEFT JOIN concern c ON r.concernId = c.concernId
                                   LEFT JOIN concerndetails cd ON r.concernDetailsId = cd.concernDetailsId
                                   LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                  LEFT JOIN company co ON a.companyId = co.companyId
                                   LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                  LEFT JOIN company cc ON cl.companyId = cc.companyId
                                   LEFT JOIN branch br ON b.agentCode = br.branchAgentCode
                                   WHERE b.agentCode = '$agentCode' AND f.flightDepartureDate >= CURDATE()
                                   AND (COALESCE(co.companyId, '') = COALESCE('$companyId', '') 
@@ -1371,20 +1355,18 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                     CASE 
                                       WHEN a.accountId IS NOT NULL 
                                         THEN CASE 
-                                          WHEN a.companyId IS NOT NULL THEN co.companyName 
+                                          WHEN a.companyId IS NOT NULL THEN '' as companyName 
                                           ELSE br.branchName END
                                       WHEN cl.accountId IS NOT NULL 
                                         THEN CASE 
-                                          WHEN cl.companyId IS NOT NULL THEN cc.companyName 
+                                          WHEN cl.companyId IS NOT NULL THEN c'' as companyName 
                                           ELSE br.branchName END
                                       ELSE 'Unknown' END AS `Account Name`
                                   FROM payment p
                                   JOIN booking b ON p.transactNo = b.transactNo
                                   JOIN flight f ON b.flightId = f.flightId
                                   LEFT JOIN agent a ON b.accountId = a.accountId
-                                  LEFT JOIN company co ON a.companyId = co.companyId
                                   LEFT JOIN client cl ON b.accountId = cl.accountId
-                                  LEFT JOIN company cc ON cl.companyId = cc.companyId
                                   LEFT JOIN branch br ON b.agentCode = br.branchAgentCode
                                   WHERE b.accountId = '$accountId'
                                   AND p.paymentStatus = 'Submitted'
@@ -1450,19 +1432,17 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                                   CASE 
                                                     WHEN a.accountId IS NOT NULL 
                                                       THEN CASE 
-                                                        WHEN a.companyId IS NOT NULL THEN co.companyName 
+                                                        WHEN a.companyId IS NOT NULL THEN '' as companyName 
                                                         ELSE br.branchName END
                                                     WHEN cl.accountId IS NOT NULL 
                                                       THEN CASE 
-                                                        WHEN cl.companyId IS NOT NULL THEN cc.companyName 
+                                                        WHEN cl.companyId IS NOT NULL THEN c'' as companyName 
                                                         ELSE br.branchName END
                                                   ELSE 'Unknown' END AS `Account Name`
                                                 FROM payment p
                                                 JOIN booking b ON p.transactNo = b.transactNo
                                                 LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                                LEFT JOIN company co ON a.companyId = co.companyId
                                                 LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                                LEFT JOIN company cc ON cl.companyId = cc.companyId
                                                 LEFT JOIN branch br ON b.agentCode = br.branchAgentCode
                                                 WHERE br.branchId = '$branchId' 
                                                 AND (COALESCE(co.companyId, '') = COALESCE('$companyId', '') 
@@ -1572,11 +1552,11 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                       CASE 
                                         WHEN a.accountId IS NOT NULL 
                                           THEN CASE 
-                                            WHEN a.companyId IS NOT NULL THEN co.companyName 
+                                            WHEN a.companyId IS NOT NULL THEN '' as companyName 
                                             ELSE br.branchName END
                                         WHEN cl.accountId IS NOT NULL 
                                           THEN CASE 
-                                            WHEN cl.companyId IS NOT NULL THEN cc.companyName 
+                                            WHEN cl.companyId IS NOT NULL THEN c'' as companyName 
                                             ELSE br.branchName END
                                       ELSE 'Unknown' END AS `Account Name`
                                     FROM booking b
@@ -1584,9 +1564,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                     LEFT JOIN package p ON b.packageId = p.packageId
                                     JOIN branch br ON b.agentCode = br.branchAgentCode
                                     LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                    LEFT JOIN company co ON a.companyId = co.companyId
                                     LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                    LEFT JOIN company cc ON cl.companyId = cc.companyId
                                     LEFT JOIN 
                                       (SELECT transactNo, SUM(amount) AS totalPaidAmount FROM payment
                                         WHERE paymentStatus = 'Approved' GROUP BY transactNo) paid ON b.transactNo = paid.transactNo
@@ -1663,11 +1641,11 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                       CASE 
                                         WHEN a.accountId IS NOT NULL 
                                           THEN CASE 
-                                            WHEN a.companyId IS NOT NULL THEN co.companyName 
+                                            WHEN a.companyId IS NOT NULL THEN '' as companyName 
                                             ELSE br.branchName END
                                         WHEN cl.accountId IS NOT NULL 
                                           THEN CASE 
-                                            WHEN cl.companyId IS NOT NULL THEN cc.companyName 
+                                            WHEN cl.companyId IS NOT NULL THEN c'' as companyName 
                                             ELSE br.branchName END
                                       ELSE 'Unknown' END AS `Account Name`
                                     FROM booking b
@@ -1675,9 +1653,7 @@ echo "<script>console.log('Session Data:', " . json_encode($_SESSION, JSON_PRETT
                                     LEFT JOIN package p ON b.packageId = p.packageId
                                     JOIN branch br ON b.agentCode = br.branchAgentCode
                                     LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                    LEFT JOIN company co ON a.companyId = co.companyId
                                     LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                    LEFT JOIN company cc ON cl.companyId = cc.companyId
                                     LEFT JOIN 
                                       (SELECT transactNo, SUM(amount) AS totalPaidAmount FROM payment
                                         WHERE paymentStatus = 'Approved' GROUP BY transactNo) paid ON b.transactNo = paid.transactNo

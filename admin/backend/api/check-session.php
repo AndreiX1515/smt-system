@@ -13,64 +13,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// : ?test_admin=super_admin  Referer test_admin=super_admin    (/ )
-// - super-api.php test_admin   
-// -    URL ?test_admin=super_admin   check-session   Referer 
-try {
-    $testAdmin = $_GET['test_admin'] ?? null;
-    if (!$testAdmin) {
-        $ref = (string)($_SERVER['HTTP_REFERER'] ?? '');
-        if ($ref !== '' && preg_match('/[?&]test_admin=super_admin(?:&|$)/', $ref)) {
-            $testAdmin = 'super_admin';
-        }
-    }
-    if ($testAdmin === 'super_admin') {
-        if (session_status() === PHP_SESSION_NONE) @session_start();
-        $_SESSION['admin_accountId'] = $_SESSION['admin_accountId'] ?? 6; // admin@smarttravel.com
-        $_SESSION['admin_userType'] = $_SESSION['admin_userType'] ?? 'admin';
-        $_SESSION['admin_emailAddress'] = $_SESSION['admin_emailAddress'] ?? 'admin@smarttravel.com';
-    }
-} catch (Throwable $e) {
-    // ignore
-}
-
-// : ?test_guide=1  Referer test_guide=1    (/ )
-try {
-    $testGuide = $_GET['test_guide'] ?? null;
-    if (!$testGuide) {
-        $ref = (string)($_SERVER['HTTP_REFERER'] ?? '');
-        if ($ref !== '' && preg_match('/[?&]test_guide=1(?:&|$)/', $ref)) {
-            $testGuide = '1';
-        }
-    }
-    if ((string)$testGuide === '1') {
-        if (session_status() === PHP_SESSION_NONE) @session_start();
-        if (empty($_SESSION['guide_accountId'])) {
-            // guides/accountType=guide     
-            $gid = null;
-            try {
-                $r = $conn->query("SELECT a.accountId, a.emailAddress
-                                   FROM accounts a
-                                   INNER JOIN guides g ON a.accountId = g.accountId
-                                   WHERE a.accountType = 'guide'
-                                   LIMIT 1");
-                if ($r && $r->num_rows > 0) {
-                    $row = $r->fetch_assoc();
-                    $gid = intval($row['accountId'] ?? 0);
-                    $email = (string)($row['emailAddress'] ?? '');
-                    if ($gid > 0) {
-                        $_SESSION['guide_accountId'] = $gid;
-                        $_SESSION['guide_userType'] = 'guide';
-                        $_SESSION['guide_emailAddress'] = $email;
-                    }
-                }
-            } catch (Throwable $e) {
-                // ignore
-            }
-        }
-    }
-} catch (Throwable $e) {
-    // ignore
+// Helper function to check if userType is admin (admin_ph or admin_kr)
+function isAdminType($type) {
+    return in_array($type, ['admin_ph', 'admin_kr', 'admin'], true);
 }
 
 //   (admin, agent, guide, cs )
@@ -82,14 +27,15 @@ function buildDisplayInfo($conn, $userType, $accountId) {
     $displayName = '';
     $roleLabel = '';
 
-    //   
+    //
     if ($userType === 'agent') $roleLabel = 'Agent';
     else if ($userType === 'guide') $roleLabel = 'Guide';
-    else $roleLabel = 'Employee'; // admin/cs  Employee ()
+    else if (isAdminType($userType)) $roleLabel = 'Administrator';
+    else $roleLabel = 'Employee'; // cs  Employee ()
 
-    //  
-    if ($userType === 'admin') {
-        $displayName = 'ADMIN';
+    //
+    if (isAdminType($userType)) {
+        $displayName = ($userType === 'admin_kr') ? 'ADMIN (KR)' : 'ADMIN (PH)';
         return ['displayName' => $displayName, 'roleLabel' => $roleLabel];
     }
     if ($userType === 'cs') {
@@ -97,15 +43,13 @@ function buildDisplayInfo($conn, $userType, $accountId) {
         return ['displayName' => $displayName, 'roleLabel' => $roleLabel];
     }
 
-    // agent: branchName -> companyName -> accounts.username
+    // agent: accounts.username
     if ($userType === 'agent') {
         $agentTable = $conn->query("SHOW TABLES LIKE 'agent'");
         if ($agentTable && $agentTable->num_rows > 0) {
             $sql = "SELECT
-                        COALESCE(NULLIF(b.branchName,''), NULLIF(c.companyName,''), NULLIF(a.username,''), '') AS displayName
+                        COALESCE(NULLIF(a.username,''), '') AS displayName
                     FROM agent ag
-                    LEFT JOIN company c ON ag.companyId = c.companyId
-                    LEFT JOIN branch b ON c.branchId = b.branchId
                     LEFT JOIN accounts a ON ag.accountId = a.accountId
                     WHERE ag.accountId = ?
                     ORDER BY ag.id ASC

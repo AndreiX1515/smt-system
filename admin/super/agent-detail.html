@@ -55,12 +55,8 @@
 				<div class="grid-wrap">
 					<!-- 1 -->
 					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Agent Name">Agent Name</label>
+						<label class="label-name" data-lan-eng="Agency Name">Agency Name</label>
 						<input type="text" class="form-control" id="companyName" value="Bacolod City">
-					</div>
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Area">Area</label>
-						<input type="text" class="form-control" id="branchName" value="">
 					</div>
 					<div class="grid-item">
 						<label class="label-name" data-lan-eng="Person in charge">Person in charge</label>
@@ -92,11 +88,7 @@
 					<!-- 3 -->
 					<div class="grid-item">
 						<label class="label-name">PW</label>
-						<div class="input-box">
-							<input type="password" id="passwordMasked" value="">
-							<button type="button" class="jw-button typeD" id="resetPwBtn" data-lan-eng="Reset"><img src="../image/replay.svg" alt=""></button>
-							<button type="button" class="jw-button typeD" id="copyPwBtn" data-lan-eng="Copy">Copy</button>
-						</div>
+						<input type="password" class="form-control" id="passwordMasked" value="">
 					</div>
 					<div class="grid-item">
 						<label class="label-name" data-lan-eng="Partnership code">Partnership code</label>
@@ -198,7 +190,7 @@
 				const sessionData = await sessionResponse.json();
 				
 				// Super  admin  
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;
@@ -521,79 +513,6 @@
 				alert('   : ' + (error?.message || ''));
 			}
 		}
-
-		//   (  )
-		let __lastTempPassword = '';
-		async function copyToClipboard(text) {
-			const v = (text || '').toString();
-			if (!v) return false;
-			try {
-				if (navigator.clipboard && window.isSecureContext) {
-					await navigator.clipboard.writeText(v);
-					return true;
-				}
-			} catch (_) {}
-			try {
-				const ta = document.createElement('textarea');
-				ta.value = v;
-				ta.style.position = 'fixed';
-				ta.style.left = '-9999px';
-				document.body.appendChild(ta);
-				ta.select();
-				const ok = document.execCommand('copy');
-				ta.remove();
-				return ok;
-			} catch (_) {
-				return false;
-			}
-		}
-
-		document.getElementById('resetPwBtn')?.addEventListener('click', async (e) => {
-			e.preventDefault();
-			if (!agentAccountId) {
-				alert('    .');
-				return;
-			}
-			if (!confirm(' ?')) return;
-			try {
-				const res = await fetch('../backend/api/super-api.php', {
-					method: 'POST',
-					credentials: 'same-origin',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ action: 'resetAccountPassword', accountId: Number(agentAccountId) })
-				});
-				const json = await res.json().catch(() => ({}));
-				if (res.status === 401) {
-					alert(' .');
-					window.location.href = '../index.html';
-					return;
-				}
-				if (!res.ok) {
-					throw new Error(json.message || ('HTTP ' + res.status));
-				}
-				if (json.success) {
-					__lastTempPassword = (json.data?.tempPassword || '').toString();
-					const copied = await copyToClipboard(__lastTempPassword);
-					alert(` : ${__lastTempPassword}${copied ? '\n( )' : ''}`);
-				} else {
-					alert(json.message || ' .');
-				}
-			} catch (err) {
-				console.error('Reset password error:', err);
-				alert('   : ' + (err?.message || ''));
-			}
-		});
-
-		//   (  )
-		document.getElementById('copyPwBtn')?.addEventListener('click', async (e) => {
-			e.preventDefault();
-			if (!__lastTempPassword) {
-				alert('    .');
-				return;
-			}
-			const ok = await copyToClipboard(__lastTempPassword);
-			alert(ok ? '  .' : ' .');
-		});
 
 		//   (daterangepicker) 
 		(function initContractPicker() {

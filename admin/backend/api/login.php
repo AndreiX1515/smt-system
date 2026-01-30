@@ -73,7 +73,7 @@ try {
     $sql = "SELECT a.accountId, a.username, a.`{$emailCol}` AS emailAddress, a.`{$passwordCol}` AS password, a.accountType, a.`{$statusCol}` AS accountStatus, a.defaultPasswordStat
             FROM accounts a
             WHERE a.`{$emailCol}` = ?
-              AND a.accountType IN ('admin','agent','guide','employee')
+              AND a.accountType IN ('admin_ph','admin_kr','agent','guide','employee')
             LIMIT 1";
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new Exception("데이터베이스 쿼리 준비 실패: " . $conn->error);
@@ -172,13 +172,16 @@ try {
     
     // 세션 데이터 저장 (accountType 별로 분기)
     // - DB enum 상 CS는 employee로 저장됨 → app에서는 cs로 취급
-    $rawType = $account['accountType'] ?? 'admin';
+    $rawType = $account['accountType'] ?? 'admin_ph';
     $type = ($rawType === 'employee') ? 'cs' : $rawType;
     $emailOrUser = $account['emailAddress'] ?: ($account['username'] ?? '');
 
-    if ($type === 'admin') {
+    // Helper function to check admin types
+    $isAdminType = in_array($type, ['admin_ph', 'admin_kr', 'admin'], true);
+
+    if ($isAdminType) {
         $_SESSION['admin_accountId'] = $account['accountId'];
-        $_SESSION['admin_userType'] = 'admin';
+        $_SESSION['admin_userType'] = $type; // admin_ph or admin_kr
         $_SESSION['admin_emailAddress'] = $emailOrUser;
         $_SESSION['admin_timeout'] = time();
         $_SESSION['admin_defaultPasswordStat'] = $account['defaultPasswordStat'] ?? 'N';
@@ -200,9 +203,9 @@ try {
         $_SESSION['cs_emailAddress'] = $emailOrUser;
         $_SESSION['cs_timeout'] = time();
     } else {
-        // 안전장치
+        // 안전장치 (알 수 없는 타입은 admin_ph로 처리)
         $_SESSION['admin_accountId'] = $account['accountId'];
-        $_SESSION['admin_userType'] = 'admin';
+        $_SESSION['admin_userType'] = 'admin_ph';
         $_SESSION['admin_emailAddress'] = $emailOrUser;
         $_SESSION['admin_timeout'] = time();
     }

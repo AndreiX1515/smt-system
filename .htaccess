@@ -1,3 +1,26 @@
+# Cache Control - 브라우저 캐시 무효화
+<IfModule mod_headers.c>
+    # HTML 파일은 캐시하지 않음
+    <FilesMatch "\.(html|htm|php)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+
+    # JS, CSS 파일도 재검증 필요
+    <FilesMatch "\.(js|css)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
 # Naver Maps API
 SetEnv NAVER_CLIENT_ID lrs9959alg
 SetEnv NAVER_CLIENT_SECRET ezknlDyQpGhNE8cu2ZdpXUREChjHwTxdDkDPTTZ6
+
+# AWS SES SMTP
+SetEnv SMTP_HOST email-smtp.ap-southeast-1.amazonaws.com
+SetEnv SMTP_PORT 587
+SetEnv SMTP_USER AKIAUK7YCOPNSTYARL5M
+SetEnv SMTP_PASS BK8oPLQM2DqYh6cgTGbfLYdBQjxirNwvPAyenZLPPUsW
+SetEnv SMTP_FROM noreply@smt-escape.com
+SetEnv SMTP_FROM_NAME "SMT Escape"

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>상품 등록/수정 - Shop Admin</title>
+    <link rel="shortcut icon" href="../image/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/a_reset.css">
+    <link rel="stylesheet" href="../css/a_variables.css">
+    <link rel="stylesheet" href="../css/a_components.css">
+    <link rel="stylesheet" href="../css/a_contents.css">
+    <style>
+        .shop-admin { padding: 30px; max-width: 800px; margin: 0 auto; }
+        .page-header { margin-bottom: 24px; }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .form-section { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: #333; }
+        .form-label .required { color: #ef4444; }
+        .form-input { width: 100%; height: 44px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+        .form-input:focus { border-color: #0065F8; outline: none; }
+        .form-textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; min-height: 120px; resize: vertical; box-sizing: border-box; }
+        .form-select { display: block !important; width: 100%; height: 44px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; background: #fff; cursor: pointer; }
+        .form-row { display: flex; gap: 16px; }
+        .form-row .form-group { flex: 1; }
+        .form-check { display: flex; align-items: center; gap: 8px; }
+        .form-check input { width: 18px; height: 18px; }
+        .btn-group { display: flex; gap: 12px; justify-content: center; margin-top: 30px; }
+        .btn-cancel { height: 48px; padding: 0 32px; background: #fff; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn-save { height: 48px; padding: 0 32px; background: #0065F8; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .img-preview { width: 150px; height: 150px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-top: 8px; font-size: 48px; border: 2px dashed #ddd; cursor: pointer; transition: border-color 0.2s; }
+        .img-preview:hover { border-color: #0065F8; }
+        .img-preview.dragover { border-color: #0065F8; background: #f0f7ff; }
+        .img-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        .img-preview .upload-hint { font-size: 13px; color: #888; text-align: center; line-height: 1.5; }
+        .upload-progress { margin-top: 8px; font-size: 13px; color: #0065F8; display: block; width: 100%; }
+    </style>
+</head>
+<body>
+    <header class="layout-header"></header>
+
+    <main class="layout-main">
+        <aside class="layout-side"></aside>
+
+        <section class="layout-content">
+            <div class="shop-admin">
+                <div class="page-header">
+                    <h1 class="page-title" id="pageTitle">상품 등록</h1>
+                </div>
+
+                <form id="productForm">
+                    <div class="form-section">
+                        <div class="section-title">기본 정보</div>
+
+                        <div class="form-group">
+                            <label class="form-label">카테고리 <span class="required">*</span></label>
+                            <select class="form-select" id="categoryId" required>
+                                <option value="">선택하세요</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">상품명 <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="name" required placeholder="Product name in English">
+                        </div>
+
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">가격 및 재고</div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">정가 (₱) <span class="required">*</span></label>
+                                <input type="number" class="form-input" id="price" required min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">할인가 (₱)</label>
+                                <input type="number" class="form-input" id="salePrice" min="0" placeholder="할인 없으면 비워두세요">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">재고 수량 <span class="required">*</span></label>
+                                <input type="number" class="form-input" id="stock" required min="0" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">상품 설명</div>
+
+                        <div class="form-group">
+                            <label class="form-label">설명</label>
+                            <textarea class="form-textarea" id="description" placeholder="Product description in English"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">이미지</div>
+
+                        <div class="form-group">
+                            <label class="form-label">이미지 업로드</label>
+                            <div class="upload-area" id="uploadArea">
+                                <input type="file" id="imageFile" accept="image/*" style="display:none;">
+                                <div class="img-preview" id="imgPreview" onclick="document.getElementById('imageFile').click()">
+                                    <span class="upload-hint">클릭하여 이미지 선택<br><small>또는 드래그 앤 드롭</small></span>
+                                </div>
+                                <div class="upload-progress" id="uploadProgress" style="display:none;">업로드 중...</div>
+                            </div>
+                            <input type="hidden" id="thumbnail">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">판매 설정</div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" id="isActive" checked>
+                                    <span>판매중</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" id="isFeatured">
+                                    <span>추천 상품</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" class="btn-cancel" onclick="history.back()">취소</button>
+                        <button type="submit" class="btn-save">저장</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script src="../js/default.js"></script>
+    <script src="../js/super.js"></script>
+    <script>
+        init({
+            headerUrl: '../inc/header.html',
+            sideUrl: '../inc/side-shop.html'
+        });
+
+        const API_BASE = '/backend/api/shop';
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+        const isEdit = !!productId;
+
+        if (isEdit) {
+            document.getElementById('pageTitle').textContent = '상품 수정';
+        }
+
+        // 카테고리 로드
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${API_BASE}/categories.php`);
+                const data = await res.json();
+                if (data.success && data.categories) {
+                    const select = document.getElementById('categoryId');
+                    data.categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // 상품 로드 (수정 모드)
+        async function loadProduct() {
+            if (!productId) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/products.php?id=${productId}&admin=1`);
+                const data = await res.json();
+                if (data.success) {
+                    const p = data.product;
+                    document.getElementById('categoryId').value = p.category_id;
+                    document.getElementById('name').value = p.name;
+                    document.getElementById('price').value = p.price;
+                    document.getElementById('salePrice').value = p.sale_price || '';
+                    document.getElementById('stock').value = p.stock;
+                    document.getElementById('description').value = p.description || '';
+                    document.getElementById('thumbnail').value = p.thumbnail || '';
+                    document.getElementById('isActive').checked = p.is_active == 1;
+                    document.getElementById('isFeatured').checked = p.is_featured == 1;
+
+                    if (p.thumbnail) {
+                        document.getElementById('imgPreview').innerHTML = `<img src="${p.thumbnail}">`;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // 이미지 업로드 처리
+        const imgPreview = document.getElementById('imgPreview');
+        const imageFile = document.getElementById('imageFile');
+        const uploadProgress = document.getElementById('uploadProgress');
+
+        // 파일 선택 시
+        imageFile.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                uploadImage(this.files[0]);
+            }
+        });
+
+        // 드래그 앤 드롭
+        imgPreview.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        imgPreview.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+        });
+
+        imgPreview.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                uploadImage(e.dataTransfer.files[0]);
+            }
+        });
+
+        // 이미지 업로드 함수
+        async function uploadImage(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('이미지 파일만 업로드 가능합니다.');
+                return;
+            }
+
+            uploadProgress.style.display = 'block';
+            uploadProgress.textContent = '업로드 중...';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const res = await fetch(`${API_BASE}/upload.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('thumbnail').value = data.url;
+                    imgPreview.innerHTML = `<img src="${data.url}">`;
+                    uploadProgress.style.display = 'none';
+                } else {
+                    alert(data.error || '업로드 실패');
+                    uploadProgress.style.display = 'none';
+                }
+            } catch (e) {
+                console.error(e);
+                alert('업로드 중 오류가 발생했습니다.');
+                uploadProgress.style.display = 'none';
+            }
+        }
+
+
+
+        // 폼 제출
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const description = document.getElementById('description').value;
+            const formData = {
+                category_id: document.getElementById('categoryId').value,
+                name: name,
+                price: parseFloat(document.getElementById('price').value),
+                sale_price: document.getElementById('salePrice').value ? parseFloat(document.getElementById('salePrice').value) : null,
+                stock: parseInt(document.getElementById('stock').value),
+                description: description,
+                thumbnail: document.getElementById('thumbnail').value,
+                is_active: document.getElementById('isActive').checked ? 1 : 0,
+                is_featured: document.getElementById('isFeatured').checked ? 1 : 0
+            };
+
+            if (isEdit) {
+                formData.id = productId;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/products.php`, {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(isEdit ? '수정되었습니다.' : '등록되었습니다.');
+                    location.href = 'product-list.html';
+                } else {
+                    alert(data.error || '저장 실패');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('오류가 발생했습니다.');
+            }
+        });
+
+        // 카테고리 먼저 로드 후 상품 로드
+        (async function() {
+            await loadCategories();
+            if (isEdit) await loadProduct();
+        })();
+    </script>
+</body>
+</html>

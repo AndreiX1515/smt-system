@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>장바구니 | Shop</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .cart-list { padding: 16px 20px; }
+
+        .cart-item {
+            display: flex;
+            gap: 12px;
+            padding: 16px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .cart-item-img {
+            width: 80px;
+            height: 80px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        .cart-item-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        .cart-item-info { flex: 1; }
+        .cart-item-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+        .cart-item-price { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+        .cart-item-price .original {
+            font-size: 13px;
+            color: #999;
+            text-decoration: line-through;
+            margin-right: 4px;
+            font-weight: 400;
+        }
+
+        .cart-item-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .quantity-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .quantity-val {
+            width: 36px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .btn-delete {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #888;
+            cursor: pointer;
+        }
+
+        .empty-cart {
+            text-align: center;
+            padding: 80px 20px;
+            color: #888;
+        }
+        .empty-cart-icon { font-size: 64px; margin-bottom: 16px; }
+        .empty-cart a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #000;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+
+        .cart-summary {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 16px 20px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .summary-row.total {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+        .btn-checkout {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            background: #000;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-checkout:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="main" style="padding-bottom: 180px;">
+        <header class="header-type1">
+            <a class="btn-mypage" href="index.html"><img src="/images/ico_arrow_left.svg"></a>
+            <div class="title">Cart</div>
+            <div style="width: 24px;"></div>
+        </header>
+
+        <div class="cart-list" id="cartList">
+            <div class="empty-cart" id="emptyCart" style="display:none;">
+                <div class="empty-cart-icon">🛒</div>
+                <div>장바구니가 비어있습니다</div>
+                <a href="index.html">쇼핑 계속하기</a>
+            </div>
+        </div>
+
+        <div class="cart-summary" id="cartSummary" style="display:none;">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span id="subtotal">₱0</span>
+            </div>
+            <div class="summary-row" id="shippingRow" style="display:none;">
+                <span>Shipping</span>
+                <span id="shippingFee">₱0</span>
+            </div>
+            <div class="summary-row total">
+                <span>Total</span>
+                <span id="totalAmount">₱0</span>
+            </div>
+            <button class="btn-checkout" id="btnCheckout">Checkout (<span id="itemCount">0</span> items)</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/backend/api/shop';
+
+        let cartItems = [];
+        let userId = localStorage.getItem('userId');
+
+        async function loadCart() {
+            if (!userId) {
+                showEmpty();
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    cartItems = data.items;
+                    if (cartItems.length > 0) {
+                        renderCart();
+                    } else {
+                        showEmpty();
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function showEmpty() {
+            document.getElementById('cartList').innerHTML = `
+                <div class="empty-cart">
+                    <div class="empty-cart-icon">🛒</div>
+                    <div>Your cart is empty</div>
+                    <a href="index.html">Continue Shopping</a>
+                </div>
+            `;
+            document.getElementById('cartSummary').style.display = 'none';
+        }
+
+        function renderCart() {
+            const list = document.getElementById('cartList');
+            list.innerHTML = cartItems.map(item => {
+                const price = item.sale_price || item.price;
+                const name = item.name;
+                return `
+                <div class="cart-item" data-id="${item.id}">
+                    <div class="cart-item-img">
+                        ${item.thumbnail
+                            ? `<img src="${item.thumbnail}" alt="${name}">`
+                            : '📦'}
+                    </div>
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">${name}</div>
+                        <div class="cart-item-price">
+                            ${item.sale_price
+                                ? `<span class="original">₱${Number(item.price).toLocaleString()}</span>`
+                                : ''}
+                            ₱${Number(price).toLocaleString()}
+                        </div>
+                        <div class="cart-item-controls">
+                            <div class="quantity-controls">
+                                <button class="quantity-btn" onclick="changeQty(${item.id}, ${item.quantity - 1})">−</button>
+                                <span class="quantity-val">${item.quantity}</span>
+                                <button class="quantity-btn" onclick="changeQty(${item.id}, ${item.quantity + 1})">+</button>
+                            </div>
+                            <button class="btn-delete" onclick="deleteItem(${item.id})">Delete</button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            // 합계 계산
+            let subtotal = 0;
+            cartItems.forEach(item => {
+                const price = item.sale_price || item.price;
+                subtotal += price * item.quantity;
+            });
+
+            const shippingFee = 0; // 배송비 임시 비활성화
+            const total = subtotal + shippingFee;
+
+            document.getElementById('subtotal').textContent = '₱' + subtotal.toLocaleString();
+            document.getElementById('shippingFee').textContent = shippingFee === 0 ? 'Free' : '₱' + shippingFee.toLocaleString();
+            document.getElementById('totalAmount').textContent = '₱' + total.toLocaleString();
+            document.getElementById('itemCount').textContent = cartItems.length;
+            document.getElementById('cartSummary').style.display = 'block';
+        }
+
+        async function changeQty(cartId, newQty) {
+            if (newQty < 1) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        cart_id: cartId,
+                        quantity: newQty
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    loadCart();
+                } else {
+                    alert(data.error);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function deleteItem(cartId) {
+            if (!confirm('Remove this item?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}&cart_id=${cartId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    loadCart();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('btnCheckout').onclick = () => {
+            if (cartItems.length === 0) return;
+            location.href = 'checkout.html';
+        };
+
+        loadCart();
+    </script>
+</body>
+</html>

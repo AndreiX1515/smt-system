@@ -9,6 +9,7 @@ let currentBookingData = null;
 let selectedPaymentType = 'staged';
 let downPaymentFile = null;
 let fullPaymentFile = null;
+let isReservationCompleted = false; // 예약 완료 여부 플래그
 
 // 페이지 초기화
 document.addEventListener('DOMContentLoaded', async function() {
@@ -32,6 +33,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     // 이벤트 핸들러 등록
     document.getElementById('saveBtn').addEventListener('click', handleSave);
     document.getElementById('backBtn').addEventListener('click', handleBack);
+
+    // 페이지 이탈 시 draft 예약 삭제
+    window.addEventListener('beforeunload', handlePageUnload);
+    window.addEventListener('pagehide', handlePageUnload);
 });
 
 /**
@@ -66,6 +71,9 @@ async function loadReservationDetail(bookingId) {
             currentBookingData.selectedOptions = result.data.selectedOptions;
         }
 
+        // 할인 정보 조회 (해당 날짜에 세일이 적용되어 있는지 확인)
+        await loadSaleInfo(currentBookingData);
+
         displayReservationSummary(currentBookingData);
         displayPaymentInfo(currentBookingData);
 
@@ -73,6 +81,44 @@ async function loadReservationDetail(bookingId) {
         console.error('Error loading reservation:', error);
         alert('Failed to load reservation: ' + error.message);
         window.location.href = 'reservation-list.html';
+    }
+}
+
+/**
+ * 할인 정보 조회 (해당 날짜에 세일이 적용되어 있는지 확인)
+ */
+async function loadSaleInfo(data) {
+    try {
+        const packageId = data.packageId;
+        const departureDate = data.departureDate;
+
+        if (!packageId || !departureDate) return;
+
+        const dateObj = new Date(departureDate);
+        const year = dateObj.getFullYear();
+        const month = dateObj.getMonth() + 1;
+
+        const response = await fetch(`${window.location.origin}/backend/api/product_availability.php?id=${packageId}&year=${year}&month=${month}`, {
+            credentials: 'same-origin'
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data && result.data.availability) {
+            const dateInfo = result.data.availability.find(d => d.availableDate === departureDate);
+            if (dateInfo && dateInfo.isOnSale) {
+                data.saleInfo = {
+                    isOnSale: true,
+                    discountAmount: dateInfo.discountAmount || 0,
+                    saleName: dateInfo.saleName || '',
+                    originalPrice: dateInfo.originalPrice || 0,
+                    originalB2bPrice: dateInfo.originalB2bPrice || 0
+                };
+                console.log('[Payment] Sale info loaded:', data.saleInfo);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading sale info:', error);
     }
 }
 
@@ -115,25 +161,34 @@ function displayReservationSummary(data) {
         travelersEl.textContent = parts.length > 0 ? parts.join(', ') : '-';
     }
 
-    // 총 금액
+    // 금액 상세 breakdown 표시 (먼저 계산)
+    const breakdown = displayAmountBreakdown(data);
+
+    // 총 금액 (Visa Fee, Flight Options 포함된 계산 총액 사용)
     const totalAmountEl = document.getElementById('summary_total_amount');
     if (totalAmountEl) {
-        const totalAmount = parseFloat(data.totalAmount) || 0;
-        totalAmountEl.textContent = `PHP ${formatCurrency(totalAmount)}`;
+        const displayTotal = breakdown.total || parseFloat(data.totalAmount) || 0;
+        totalAmountEl.textContent = `PHP ${formatCurrency(displayTotal)}`;
     }
 
-    // 금액 상세 breakdown 표시
-    displayAmountBreakdown(data);
+    // 계산된 총액을 data에 저장 (Payment 계산에서 사용)
+    data._calculatedTotal = breakdown.total || 0;
+    data._visaFee = breakdown.visaFee || 0;
+    data._flightOptions = breakdown.flightOptions || 0;
 }
 
 /**
  * 금액 상세 breakdown 표시
+ * - Package Price: 여행자별 가격 합계 (adults × packagePrice, child/infant는 별도 계산)
+ * - Room Options: 선택된 룸 옵션 합계
+ * - Visa Fee: 여행자별 비자 요금 합계
+ * - Flight Options: 여행자별 항공 옵션 합계
  */
 function displayAmountBreakdown(data) {
     const breakdownSection = document.getElementById('amount-breakdown-section');
     const breakdownList = document.getElementById('amount-breakdown-list');
 
-    if (!breakdownSection || !breakdownList) return;
+    if (!breakdownSection || !breakdownList) return { total: 0, visaFee: 0, flightOptions: 0 };
 
     // selectedOptions 파싱
     let selectedOptions = {};
@@ -162,12 +217,69 @@ function displayAmountBreakdown(data) {
         }
     }
 
-    // 2. Room Options 계산
+    // 1. Package Price 계산 (여행자별 가격 합계)
+    // - Adult: packagePrice
+    // - Child (Room Yes): adult price
+    // - Child (Room No): childPrice || adult × 70%
+    // - Infant: infantPrice || 10,000
+
+    // 할인 정보 확인 - 할인 전 가격으로 Package Price 표시
+    const saleInfo = data.saleInfo || null;
+    const discountPerAdult = (saleInfo && saleInfo.isOnSale) ? (saleInfo.discountAmount || 0) : 0;
+
+    // 할인된 가격 (저장된 값)
+    const packagePrice = parseFloat(data.packagePrice) || 0;
+    // 할인 전 가격 계산 (할인이 있으면 원래 가격 사용)
+    const originalPackagePrice = discountPerAdult > 0 ? (packagePrice + discountPerAdult) : packagePrice;
+
+    const childPrice = parseFloat(data.childPrice) || 0;
+    const infantPrice = parseFloat(data.infantPrice) || 0;
+
+    let packageTotal = 0;  // 할인 전 가격 기준
+    let adultCount = 0;    // 할인 적용 대상 인원 (성인)
+
+    if (travelersArr.length > 0) {
+        travelersArr.forEach(t => {
+            const type = (t.travelerType || t.type || 'adult').toLowerCase();
+            if (type.includes('infant') || type.includes('baby')) {
+                // Infant: DB price or 10,000
+                packageTotal += (infantPrice > 0) ? infantPrice : 10000;
+            } else if (type.includes('child') || type.includes('kid')) {
+                // Child: Room Yes → adult price, Room No → childPrice or adult×80%
+                const childRoom = t.childRoom === true || t.childRoom === 1 || t.childRoom === '1';
+                if (childRoom) {
+                    packageTotal += originalPackagePrice;
+                    adultCount++; // Child with room도 할인 적용
+                } else {
+                    packageTotal += (childPrice > 0) ? childPrice : Math.round(originalPackagePrice * 0.8);
+                }
+            } else {
+                // Adult - 할인 전 가격 사용
+                packageTotal += originalPackagePrice;
+                adultCount++;
+            }
+        });
+    } else {
+        // fallback: travelers 정보 없으면 인원수 기반 계산
+        const adults = parseInt(data.adults) || 0;
+        const children = parseInt(data.children) || 0;
+        const infants = parseInt(data.infants) || 0;
+        adultCount = adults;
+        packageTotal = (adults * originalPackagePrice) +
+                       (children * ((childPrice > 0) ? childPrice : Math.round(originalPackagePrice * 0.8))) +
+                       (infants * ((infantPrice > 0) ? infantPrice : 10000));
+    }
+
+    // 총 할인 금액 계산
+    const totalDiscount = discountPerAdult * adultCount;
+
+    // 2. Room Options 계산 (1인 예약이어도 싱글룸 추가요금 부과)
     const selectedRooms = selectedOptions.selectedRooms || [];
     let roomTotal = 0;
     selectedRooms.forEach(room => {
         const price = parseFloat(room.roomPrice || room.price || 0);
         const count = parseInt(room.count || 1);
+        if (count <= 0) return;
         roomTotal += price * count;
     });
 
@@ -192,15 +304,10 @@ function displayAmountBreakdown(data) {
         }
     });
 
-    // 1. Base Amount (totalAmount에서 추가 금액을 뺀 값)
-    const totalAmount = parseFloat(data.totalAmount) || 0;
-    const additionalAmount = roomTotal + visaTotal + flightOptionsTotal;
-    const baseAmount = totalAmount - additionalAmount;
-
     // Package Price 추가 (항상 표시)
-    if (baseAmount > 0) {
-        breakdownItems.push({ label: 'Package Price', value: baseAmount });
-        calculatedTotal += baseAmount;
+    if (packageTotal > 0) {
+        breakdownItems.push({ label: 'Package Price', value: packageTotal });
+        calculatedTotal += packageTotal;
     }
 
     // Room Options 추가
@@ -224,6 +331,8 @@ function displayAmountBreakdown(data) {
     // Breakdown이 있으면 표시
     if (breakdownItems.length > 0) {
         let html = '';
+
+        // 일반 항목들 (Package Price, Room Options, Visa Fee, Flight Options)
         breakdownItems.forEach(item => {
             html += `
                 <div class="breakdown-item">
@@ -233,12 +342,26 @@ function displayAmountBreakdown(data) {
             `;
         });
 
-        // Total
-        const displayTotal = parseFloat(data.totalAmount) || calculatedTotal;
+        // 할인 항목 표시 (할인이 있는 경우만)
+        if (totalDiscount > 0 && saleInfo && saleInfo.saleName) {
+            html += `
+                <div class="breakdown-item" style="background: #FEF2F2; border: 1px solid #FECACA;">
+                    <span class="breakdown-item-label" style="color: #DC2626; font-weight: 600;">
+                        <span style="background: #DC2626; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">SALE</span>
+                        ${saleInfo.saleName}
+                    </span>
+                    <span class="breakdown-item-value" style="color: #DC2626; font-weight: 600;">-₱${formatCurrency(totalDiscount)}</span>
+                </div>
+            `;
+            // 할인 차감
+            calculatedTotal -= totalDiscount;
+        }
+
+        // Total: 계산된 총액 (할인 차감 후)
         html += `
             <div class="breakdown-item total">
                 <span class="breakdown-item-label">Total Amount</span>
-                <span class="breakdown-item-value">₱${formatCurrency(displayTotal)}</span>
+                <span class="breakdown-item-value">₱${formatCurrency(calculatedTotal)}</span>
             </div>
         `;
 
@@ -247,20 +370,34 @@ function displayAmountBreakdown(data) {
     } else {
         breakdownSection.style.display = 'none';
     }
+
+    // 계산된 총액, Visa Fee, Flight Options 반환
+    return { total: calculatedTotal, visaFee: visaTotal, flightOptions: flightOptionsTotal };
 }
 
 /**
  * 결제 정보 표시
  */
 function displayPaymentInfo(data) {
-    const totalAmount = parseFloat(data.totalAmount) || 0;
+    // 계산된 총액 사용 (Visa Fee, Flight Options 포함)
+    const totalAmount = parseFloat(data._calculatedTotal || data.totalAmount) || 0;
 
     // 인원수 계산 (adults + children, infants 제외)
     const adults = parseInt(data.adults) || 0;
     const children = parseInt(data.children) || 0;
     const travelerCount = adults + children;
 
-    // Order Amount 표시
+    // Visa Fee: 이미 계산된 값 사용 또는 재계산
+    let visaFee = parseFloat(data._visaFee) || 0;
+    if (visaFee === 0 && Array.isArray(data.travelers)) {
+        data.travelers.forEach(t => {
+            const visaType = String(t.visaType || '').toLowerCase();
+            if (visaType === 'group') visaFee += 1500;
+            else if (visaType === 'individual') visaFee += 1900;
+        });
+    }
+
+    // Order Amount 표시 (계산된 총액)
     const payTotalEl = document.getElementById('pay_total');
     const fullPayTotalEl = document.getElementById('full_pay_total');
     if (payTotalEl) payTotalEl.value = formatCurrency(totalAmount);
@@ -270,8 +407,8 @@ function displayPaymentInfo(data) {
     const existingPaymentType = data.paymentType || 'staged';
     switchPaymentType(existingPaymentType);
 
-    // Staged Payment 금액 계산 (인원수 전달)
-    calculatePaymentAmounts(totalAmount, travelerCount);
+    // Staged Payment 금액 계산 (인원수, Visa Fee 전달)
+    calculatePaymentAmounts(totalAmount, travelerCount, visaFee);
 
     // Full Payment 금액
     const fullPaymentAmountEl = document.getElementById('full_payment_amount');
@@ -284,14 +421,14 @@ function displayPaymentInfo(data) {
 /**
  * Payment 금액 계산
  */
-function calculatePaymentAmounts(totalAmount, travelerCount) {
+function calculatePaymentAmounts(totalAmount, travelerCount, visaFee = 0) {
     // Down Payment: 5,000 PHP × 인원수
     const downPayment = 5000 * travelerCount;
     const downPaymentEl = document.getElementById('down_payment_amount');
     if (downPaymentEl) downPaymentEl.value = formatCurrency(downPayment);
 
-    // Second Payment: 10,000 PHP × 인원수
-    const secondPayment = 10000 * travelerCount;
+    // Second Payment: 10,000 PHP × 인원수 + Visa Fee
+    const secondPayment = 10000 * travelerCount + visaFee;
     const secondPaymentEl = document.getElementById('second_payment_amount');
     if (secondPaymentEl) secondPaymentEl.value = formatCurrency(secondPayment);
 
@@ -431,13 +568,24 @@ async function handleSave() {
         downPaymentDueDate.setDate(downPaymentDueDate.getDate() + 3);
         const downPaymentDueDateStr = downPaymentDueDate.toISOString().split('T')[0];
 
-        const totalAmount = parseFloat(currentBookingData?.totalAmount) || 0;
+        // 계산된 총액 사용 (Visa Fee, Flight Options 포함)
+        const totalAmount = parseFloat(currentBookingData?._calculatedTotal || currentBookingData?.totalAmount) || 0;
         const adults = parseInt(currentBookingData?.adults) || 0;
         const children = parseInt(currentBookingData?.children) || 0;
         const travelerCount = adults + children;
 
+        // Visa Fee: 이미 계산된 값 사용 또는 재계산
+        let visaFee = parseFloat(currentBookingData?._visaFee) || 0;
+        if (visaFee === 0 && Array.isArray(currentBookingData?.travelers)) {
+            currentBookingData.travelers.forEach(t => {
+                const visaType = String(t.visaType || '').toLowerCase();
+                if (visaType === 'group') visaFee += 1500;
+                else if (visaType === 'individual') visaFee += 1900;
+            });
+        }
+
         const downPaymentAmount = 5000 * travelerCount;
-        const secondPaymentAmount = 10000 * travelerCount;
+        const secondPaymentAmount = 10000 * travelerCount + visaFee;
         const balanceAmount = totalAmount - downPaymentAmount - secondPaymentAmount;
 
         const paymentData = {
@@ -480,7 +628,9 @@ async function handleSave() {
             throw new Error(result.message || 'Failed to update payment info');
         }
 
-        // 성공
+        // 성공 - 플래그 설정 (페이지 이탈 시 삭제 방지)
+        isReservationCompleted = true;
+
         alert('Reservation completed successfully!');
         window.location.href = `reservation-detail.html?id=${currentBookingId}`;
 
@@ -498,9 +648,56 @@ async function handleSave() {
  * 뒤로가기 핸들러
  */
 function handleBack() {
-    if (confirm('Are you sure you want to go back? Payment information will not be saved.')) {
-        // bookingId를 전달하여 예약 정보를 유지
-        window.location.href = `create-reservation.html?bookingId=${currentBookingId}`;
+    if (confirm('Are you sure you want to go back? The reservation will be cancelled.')) {
+        // draft 예약 삭제 후 예약 생성 페이지로 이동
+        deleteDraftReservation().then(() => {
+            window.location.href = 'create-reservation.html';
+        }).catch(() => {
+            window.location.href = 'create-reservation.html';
+        });
+    }
+}
+
+/**
+ * 페이지 이탈 시 draft 예약 삭제
+ */
+function handlePageUnload(event) {
+    // 예약이 완료된 경우 삭제하지 않음
+    if (isReservationCompleted || !currentBookingId) {
+        return;
+    }
+
+    // navigator.sendBeacon을 사용하여 페이지 이탈 시에도 API 호출 보장
+    const data = JSON.stringify({
+        action: 'deleteDraftReservation',
+        bookingId: currentBookingId
+    });
+
+    // sendBeacon은 POST로 전송되며, Content-Type을 설정할 수 없음
+    // FormData나 Blob을 사용해야 함
+    const blob = new Blob([data], { type: 'application/json' });
+    navigator.sendBeacon('../backend/api/agent-api.php', blob);
+}
+
+/**
+ * Draft 예약 삭제 API 호출
+ */
+async function deleteDraftReservation() {
+    if (!currentBookingId) return;
+
+    try {
+        const response = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                action: 'deleteDraftReservation',
+                bookingId: currentBookingId
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error deleting draft reservation:', error);
     }
 }
 

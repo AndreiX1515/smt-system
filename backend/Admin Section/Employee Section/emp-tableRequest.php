@@ -109,9 +109,7 @@
                       JOIN branch br ON b.agentCode = br.branchAgentCode
                       LEFT JOIN payment p ON b.transactNo = p.transactNo
                       LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                      LEFT JOIN company co ON a.companyId = co.companyId
                       LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                      LEFT JOIN company cc ON cl.companyId = cc.companyId
                       WHERE r.requestStatus = 'Submitted'
                       GROUP BY r.requestId";
 

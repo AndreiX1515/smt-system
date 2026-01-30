@@ -388,8 +388,8 @@ function sendResetLink($conn, $input) {
     $mailErr = (string)($sendRes['error'] ?? '');
 
     // SMTP    ""   (:     +  )
-    $smtpConfigured = (trim((string)getenv('SMTP_HOST')) !== '' && trim((string)getenv('SMTP_USER')) !== '' && (string)getenv('SMTP_PASS') !== '');
-    if (!$mailSent && $smtpConfigured) {
+    $postmarkConfigured = (trim((string)getenv('POSTMARK_API_TOKEN')) !== '');
+    if (!$mailSent && $postmarkConfigured) {
         error_log("Password reset link mail FAILED via {$mailVia} for {$email}: {$mailErr}");
         send_json_response([
             'success' => false,

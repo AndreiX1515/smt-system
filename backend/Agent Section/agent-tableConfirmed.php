@@ -110,9 +110,7 @@
                     LEFT JOIN flight f ON b.flightId = f.flightId
                     LEFT JOIN package p ON b.packageId = p.packageId
                     LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                    LEFT JOIN company c ON a.companyId = c.companyId
                     LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                    LEFT JOIN company cc ON cl.companyId = cc.companyId
                     JOIN branch br ON b.agentCode = br.branchAgentCode
                     WHERE b.agentCode = '$agentCode' AND b.status = 'Confirmed'
                     AND (COALESCE(c.companyId, '') = COALESCE('$companyId', '') 

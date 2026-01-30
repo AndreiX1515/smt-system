@@ -1,7 +1,7 @@
 <ul class="nav-list">
 
-	<!--  -->
-	<li class="nav-item">
+	<!-- 대시보드 -->
+	<li class="nav-item" data-menu="dashboard">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -10,50 +10,48 @@
 			</i>
 			<span class="nav-btn-label" data-lan-eng="Dashboard" >Dashboard</span>
 		</button>
-		
+
 		<div class="nav-sub">
-			<a class="side-link" data-page="overview" href="../super/overview.html" data-lan-eng="Operating Status">
+			<a class="side-link" data-page="overview" data-menu="overview" href="../super/overview.html" data-lan-eng="Operating Status">
 				Operating Status
+			</a>
+			<a class="side-link" data-page="reservation-status" data-menu="reservation-status" href="../super/reservation-status.html" data-lan-eng="Reservation Status">
+				Reservation Status
 			</a>
 		</div>
 	</li>
 
 
-	<!--   -->
-	<li class="nav-item">
+	<!-- 회원관리 -->
+	<li class="nav-item" data-menu="member-management">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M10.417 12.5C12.718 12.5002 14.583 14.3659 14.583 16.667V18.75H13.0205V16.667C13.0205 15.2289 11.8551 14.0627 10.417 14.0625H4.16699C2.72875 14.0625 1.5625 15.2288 1.5625 16.667V18.75H0V16.667C0 14.3658 1.86581 12.5 4.16699 12.5H10.417ZM14.583 12.5C16.8842 12.5 18.75 14.3658 18.75 16.667V18.75H17.1875V16.667C17.1875 15.3289 16.1777 14.2271 14.8789 14.0801C14.4087 13.4656 13.7362 12.9266 12.916 12.5H14.583ZM7.29199 0C10.1682 0.00017606 12.4998 2.33178 12.5 5.20801C12.5 8.08438 10.1683 10.4168 7.29199 10.417C4.41551 10.417 2.08301 8.08449 2.08301 5.20801C2.08318 2.33167 4.41562 0 7.29199 0ZM13.1104 2.12891C15.1221 2.4243 16.667 4.15622 16.667 6.25C16.667 8.55119 14.8012 10.417 12.5 10.417C12.0617 10.417 11.639 10.3481 11.2422 10.2227C11.6582 9.8082 12.0252 9.34487 12.3398 8.8457C12.3927 8.84891 12.4463 8.85449 12.5 8.85449C13.9382 8.85449 15.1045 7.68824 15.1045 6.25C15.1045 5.16421 14.4396 4.23366 13.4951 3.84277C13.4313 3.24885 13.2997 2.67536 13.1104 2.12891ZM7.29199 1.5625C5.27856 1.5625 3.64568 3.19462 3.64551 5.20801C3.64551 7.22155 5.27845 8.85449 7.29199 8.85449C9.30538 8.85432 10.9375 7.22144 10.9375 5.20801C10.9373 3.19473 9.30527 1.56268 7.29199 1.5625Z" /path>
+				<path d="M10.417 12.5C12.718 12.5002 14.583 14.3659 14.583 16.667V18.75H13.0205V16.667C13.0205 15.2289 11.8551 14.0627 10.417 14.0625H4.16699C2.72875 14.0625 1.5625 15.2288 1.5625 16.667V18.75H0V16.667C0 14.3658 1.86581 12.5 4.16699 12.5H10.417ZM14.583 12.5C16.8842 12.5 18.75 14.3658 18.75 16.667V18.75H17.1875V16.667C17.1875 15.3289 16.1777 14.2271 14.8789 14.0801C14.4087 13.4656 13.7362 12.9266 12.916 12.5H14.583ZM7.29199 0C10.1682 0.00017606 12.4998 2.33178 12.5 5.20801C12.5 8.08438 10.1683 10.4168 7.29199 10.417C4.41551 10.417 2.08301 8.08449 2.08301 5.20801C2.08318 2.33167 4.41562 0 7.29199 0ZM13.1104 2.12891C15.1221 2.4243 16.667 4.15622 16.667 6.25C16.667 8.55119 14.8012 10.417 12.5 10.417C12.0617 10.417 11.639 10.3481 11.2422 10.2227C11.6582 9.8082 12.0252 9.34487 12.3398 8.8457C12.3927 8.84891 12.4463 8.85449 12.5 8.85449C13.9382 8.85449 15.1045 7.68824 15.1045 6.25C15.1045 5.16421 14.4396 4.23366 13.4951 3.84277C13.4313 3.24885 13.2997 2.67536 13.1104 2.12891ZM7.29199 1.5625C5.27856 1.5625 3.64568 3.19462 3.64551 5.20801C3.64551 7.22155 5.27845 8.85449 7.29199 8.85449C9.30538 8.85432 10.9375 7.22144 10.9375 5.20801C10.9373 3.19473 9.30527 1.56268 7.29199 1.5625Z" />
 				</svg>
 			</i>
 			<span class="nav-btn-label" data-lan-eng="Member Management">Member Management</span>
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="member-list" href="../super/member-list.html" data-lan-eng="Member List">
+			<a class="side-link" data-page="member-list" data-menu="member-list" href="../super/member-list.html" data-lan-eng="Member List">
 				Member List
 			</a>
-			<a class="side-link" data-page="b2b-customer-list, b2b-customer-detail" href="../super/b2b-customer-list.html" data-lan-eng="B2B Customer List">
+			<a class="side-link" data-page="b2b-customer-list, b2b-customer-detail" data-menu="b2b-customer-list" href="../super/b2b-customer-list.html" data-lan-eng="B2B Customer List">
 				B2B Customer List
 			</a>
-			<!-- B2C Customer List - 숨김 처리
-			<a class="side-link" data-page="b2c-customer-list, b2c-customer-detail" href="../super/b2c-customer-list.html" data-lan-eng="B2C Customer List">
-				B2C Customer List
-			</a>
-			-->
-			<a class="side-link" data-page="agent-list, agent-detail, agent-registration" href="../super/agent-list.html" data-lan-eng="Agent List">
+			<a class="side-link" data-page="agent-list, agent-detail, agent-registration" data-menu="agent-list" href="../super/agent-list.html" data-lan-eng="Agent List">
 				Agent List
 			</a>
-			<a class="side-link" data-page="guide-list, guide-detail, guide-registration" href="../super/guide-list.html" data-lan-eng="Guide List">
+			<a class="side-link" data-page="guide-list, guide-detail, guide-registration" data-menu="guide-list" href="../super/guide-list.html" data-lan-eng="Guide List">
 				Guide List
 			</a>
 		</div>
 	</li>
 
 
-	<!--   -->
-	<li class="nav-item">
+	<!-- 예약관리 -->
+	<li class="nav-item" data-menu="reservation-management">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="19" height="21" viewBox="0 0 19 21" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -64,23 +62,18 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="b2b-pending-list" href="../super/b2b-pending-list.html" data-lan-eng="B2B Pending List">
+			<a class="side-link" data-page="b2b-pending-list" data-menu="b2b-pending-list" href="../super/b2b-pending-list.html" data-lan-eng="B2B Pending List">
 				B2B Pending List
 			</a>
-			<a class="side-link" data-page="b2b-booking-list, b2b-booking-detail" href="../super/b2b-booking-list.html" data-lan-eng="B2B Reservation List">
+			<a class="side-link" data-page="b2b-booking-list, b2b-booking-detail" data-menu="b2b-booking-list" href="../super/b2b-booking-list.html" data-lan-eng="B2B Reservation List">
 				B2B Reservation List
 			</a>
-			<!-- B2C Reservation List - 숨김 처리
-			<a class="side-link" data-page="b2c-booking-list, b2c-booking-detail" href="../super/b2c-booking-list.html" data-lan-eng="B2C Reservation List">
-				B2C Reservation List
-			</a>
-			-->
 		</div>
 	</li>
 
 
-	<!--   -->
-	<li class="nav-item">
+	<!-- 매출관리 -->
+	<li class="nav-item" data-menu="sales-management">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -91,18 +84,18 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="sales-date" href="../super/sales-date.html" data-lan-eng="Sales by date">
+			<a class="side-link" data-page="sales-date" data-menu="sales-date" href="../super/sales-date.html" data-lan-eng="Sales by date">
 				Sales by date
 			</a>
-			<a class="side-link" data-page="sales-product" href="../super/sales-product.html" data-lan-eng="Sales by product">
+			<a class="side-link" data-page="sales-product" data-menu="sales-product" href="../super/sales-product.html" data-lan-eng="Sales by product">
 				Sales by product
 			</a>
 		</div>
 	</li>
 
 
-	<!--   -->
-	<li class="nav-item">
+	<!-- 상품관리 -->
+	<li class="nav-item" data-menu="product-management">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -117,33 +110,36 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="product-list, product-update, product-detail" href="../super/product-list.html" data-lan-eng="Product List">
+			<a class="side-link" data-page="product-list, product-update, product-detail" data-menu="product-list" href="../super/product-list.html" data-lan-eng="Product List">
 				Product List
 			</a>
-			<a class="side-link" data-page="product-registration" href="../super/product-registration.html" data-lan-eng="Product Registration">
+			<a class="side-link" data-page="product-registration" data-menu="product-registration" href="../super/product-registration.html" data-lan-eng="Product Registration">
 				Product Registration
 			</a>
-			<a class="side-link" data-page="sight-list, sight-registration" href="../super/sight-list.html" data-lan-eng="Sight Management">
+			<a class="side-link" data-page="sight-list, sight-registration" data-menu="sight-list" href="../super/sight-list.html" data-lan-eng="Sight Management">
 				Sight Management
 			</a>
-			<a class="side-link" data-page="inventory-management" href="../super/inventory-management.html" data-lan-eng="Inventory Management">
+			<a class="side-link" data-page="inventory-management" data-menu="inventory-management" href="../super/inventory-management.html" data-lan-eng="Inventory Management">
 				Inventory Management
 			</a>
-			<a class="side-link" data-page="template-list, template-detail, template-registration" href="../super/template-list.html" data-lan-eng="Template List">
+			<a class="side-link" data-page="template-list, template-detail, template-registration" data-menu="template-list" href="../super/template-list.html" data-lan-eng="Template List">
 				Template List
 			</a>
-			<a class="side-link" data-page="category-management" href="../super/category-management.html" data-lan-eng="Category Management">
+			<a class="side-link" data-page="category-management" data-menu="category-management" href="../super/category-management.html" data-lan-eng="Category Management">
 				Category Management
 			</a>
-			<a class="side-link" data-page="option-management" href="../super/option-management.html" data-lan-eng="Option Management">
+			<a class="side-link" data-page="option-management" data-menu="option-management" href="../super/option-management.html" data-lan-eng="Option Management">
 				Option Management
+			</a>
+			<a class="side-link" data-page="sale-management" data-menu="sale-management" href="../super/sale-management.html" data-lan-eng="Sale Management">
+				Sale Management
 			</a>
 		</div>
 	</li>
 
 
-	<!--   -->
-	<li class="nav-item">
+	<!-- 문의관리 -->
+	<li class="nav-item" data-menu="inquiry-management">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -155,18 +151,18 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="user-inquiry-list" href="../super/user-inquiry-list.html" data-lan-eng="Member Inquiry List">
+			<a class="side-link" data-page="user-inquiry-list" data-menu="user-inquiry-list" href="../super/user-inquiry-list.html" data-lan-eng="Member Inquiry List">
 				Member Inquiry List
 			</a>
-			<a class="side-link" data-page="agent-inquiry-list" href="../super/agent-inquiry-list.html" data-lan-eng="Agent Inquiry List">
+			<a class="side-link" data-page="agent-inquiry-list" data-menu="agent-inquiry-list" href="../super/agent-inquiry-list.html" data-lan-eng="Agent Inquiry List">
 				Agent Inquiry List
 			</a>
 		</div>
 	</li>
 
 
-	<!--    -->
-	<li class="nav-item">
+	<!-- 비자신청관리 -->
+	<li class="nav-item" data-menu="visa-management">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="15" height="19" viewBox="0 0 15 19" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -178,7 +174,7 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="visa-app-list" href="../super/visa-app-list.html" data-lan-eng="Visa Application List">
+			<a class="side-link" data-page="visa-app-list" data-menu="visa-app-list" href="../super/visa-app-list.html" data-lan-eng="Visa Application List">
 				Visa Application List
 			</a>
 		</div>
@@ -186,7 +182,7 @@
 
 
 	<!-- Announcements -->
-	<li class="nav-item">
+	<li class="nav-item" data-menu="announcements">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -197,15 +193,15 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="announcements-list" href="../super/announcements-list.html" data-lan-eng="Announcements List">
+			<a class="side-link" data-page="announcements-list" data-menu="announcements-list" href="../super/announcements-list.html" data-lan-eng="Announcements List">
 				Announcements List
 			</a>
 		</div>
 	</li>
 
 
-	<!--   -->
-	<li class="nav-item">
+	<!-- 사이트설정 -->
+	<li class="nav-item" data-menu="site-settings">
 		<button class="nav-btn">
 			<i class="nav-icon" aria-hidden="true">
 				<svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -216,26 +212,32 @@
 		</button>
 
 		<div class="nav-sub">
-			<a class="side-link" data-page="popup-management" href="../super/popup-management.html" data-lan-eng="Popup Management">
+			<a class="side-link" data-page="popup-management" data-menu="popup-management" href="../super/popup-management.html" data-lan-eng="Popup Management">
 				Popup Management
 			</a>
-			<a class="side-link" data-page="banner-management" href="../super/banner-management.html" data-lan-eng="Banner Management">
+			<a class="side-link" data-page="banner-management" data-menu="banner-management" href="../super/banner-management.html" data-lan-eng="Banner Management">
 				Banner Management
 			</a>
-			<a class="side-link" data-page="notice" href="../super/notice.html" data-lan-eng="Announcements">
+			<a class="side-link" data-page="notice" data-menu="notice" href="../super/notice.html" data-lan-eng="Announcements">
 				Announcements
 			</a>
-			<a class="side-link" data-page="terms" href="../super/terms.html" data-lan-eng="Terms of Use">
+			<a class="side-link" data-page="terms" data-menu="terms" href="../super/terms.html" data-lan-eng="Terms of Use">
 				Terms of Use
 			</a>
-			<a class="side-link" data-page="company-information" href="../super/company-information.html" data-lan-eng="Company Information">
+			<a class="side-link" data-page="company-information" data-menu="company-information" href="../super/company-information.html" data-lan-eng="Company Information">
 				Company Information
 			</a>
-			<a class="side-link" data-page="partner-management" href="../super/partner-management.html" data-lan-eng="Partner Management">
+			<a class="side-link" data-page="partner-management" data-menu="partner-management" href="../super/partner-management.html" data-lan-eng="Partner Management">
 				Partner Management
 			</a>
-			<a class="side-link" data-page="login-history" href="../super/login-history.html" data-lan-eng="Login History">
+			<a class="side-link" data-page="login-history" data-menu="login-history" href="../super/login-history.html" data-lan-eng="Login History">
 				Login History
+			</a>
+			<a class="side-link" data-page="status-history" data-menu="status-history" href="../super/status-history.html" data-lan-eng="Status Change History">
+				Status Change History
+			</a>
+			<a class="side-link" data-page="menu-permission" data-menu="menu-permission" href="../super/menu-permission.html" data-lan-eng="Menu Permission">
+				Menu Permission
 			</a>
 		</div>
 	</li>

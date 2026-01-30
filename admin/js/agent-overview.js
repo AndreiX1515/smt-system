@@ -170,10 +170,11 @@ function renderTodayItineraries(itineraries) {
         return;
     }
     
+    // (HTML 태그 수정) 디코딩 적용
     tbody.innerHTML = itineraries.map((item, index) => `
         <tr onclick="goToReservationDetail('${escapeHtml(item.bookingId)}')" style="cursor: pointer;">
             <td class="is-center">${index + 1}</td>
-            <td>${escapeHtml(item.packageName)}</td>
+            <td>${escapeHtml(decodeHtmlEntities(item.packageName) || '')}</td>
             <td class="is-center">${item.travelPeriod}</td>
             <td class="is-center">${item.customerType}</td>
             <td class="is-center">${item.numPeople}</td>
@@ -190,4 +191,12 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+function decodeHtmlEntities(str) {
+    if (!str) return str;
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
 }

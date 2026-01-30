@@ -33,7 +33,7 @@ try {
 
     // ===== B2B/B2C 판별 (홈페이지용) =====
     // B2B/B2C 판별: accounts.accountType 기반
-    // - accountType IN ('agent', 'admin') → B2B (sales_target='B2B')
+    // - accountType IN ('agent', 'admin_ph', 'admin_kr') → B2B (sales_target='B2B')
     // - accountType IN ('guest', 'guide', 'cs', '') → B2C (sales_target IS NULL/'B2C')
     $sessionAccountId = $_SESSION['user_id'] ?? ($_SESSION['accountId'] ?? null);
     $sessionAccountId = $sessionAccountId !== null ? (int)$sessionAccountId : 0;
@@ -46,7 +46,7 @@ try {
                 $st->execute();
                 $row = $st->get_result()->fetch_assoc();
                 $st->close();
-                $isB2BUser = in_array(($row['accountType'] ?? ''), ['agent', 'admin'], true);
+                $isB2BUser = in_array(($row['accountType'] ?? ''), ['agent', 'admin_ph', 'admin_kr'], true);
             }
         } catch (Throwable $e) { $isB2BUser = false; }
     }

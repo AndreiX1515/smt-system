@@ -108,7 +108,7 @@
 				
 				if (data.authenticated) {
 					// 이미 로그인되어 있으면 권한별 대시보드로 리다이렉트
-					const t = data.userType || 'admin';
+					const t = data.userType || 'admin_ph';
 					if (t === 'agent') window.location.href = './agent/overview.html';
 					else if (t === 'guide') window.location.href = './guide/full-list.html';
 					else if (t === 'cs') window.location.href = './cs/inquiry-list.html';

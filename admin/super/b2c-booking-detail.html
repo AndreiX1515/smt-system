@@ -367,7 +367,7 @@
 			try {
 				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
 				const sessionData = await sessionResponse.json();
-				if (!sessionData?.authenticated || sessionData.userType !== 'admin') {
+				if (!sessionData?.authenticated || !['admin_ph', 'admin_kr'].includes(sessionData.userType)) {
 					window.location.href = '../index.html';
 					return;
 				}

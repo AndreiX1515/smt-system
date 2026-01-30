@@ -443,14 +443,14 @@ function getInquiries($conn, $input) {
                 FROM inquiry_replies ir
                 JOIN accounts ar ON ir.authorId = ar.accountId
                 WHERE ir.inquiryId = i.inquiryId
-                  AND ar.accountType IN ('admin','super','employee','cs')
+                  AND ar.accountType IN ('admin_ph','admin_kr','super','employee','cs')
             )";
             $replyNotExistsSql = "NOT EXISTS (
                 SELECT 1
                 FROM inquiry_replies ir
                 JOIN accounts ar ON ir.authorId = ar.accountId
                 WHERE ir.inquiryId = i.inquiryId
-                  AND ar.accountType IN ('admin','super','employee','cs')
+                  AND ar.accountType IN ('admin_ph','admin_kr','super','employee','cs')
             )";
         }
         if ($replyStatus === 'answered') {
@@ -671,14 +671,13 @@ function getInquiryDetail($conn, $input) {
                 // client.companyId -> company.companyId
                 $cCols = table_columns_map($conn, 'client');
                 $cCompanyId = $cCols['companyid'] ?? 'companyId';
-                $joins .= " LEFT JOIN company co ON c.`{$cCompanyId}` = co.`{$coId}`";
-                $selectCompany = "co.`{$coName}` as companyName";
+                $selectCompany = "'' as companyName";
                 if ($branchTable && $coBranchId) {
                     $bCols = table_columns_map($conn, $branchTable);
                     $bId = $bCols['branchid'] ?? null;
                     $bName = $bCols['branchname'] ?? null;
                     if ($bId && $bName) {
-                        $joins .= " LEFT JOIN `{$branchTable}` b ON co.`{$coBranchId}` = b.`{$bId}`";
+                        $joins .= " LEFT JOIN `{$branchTable}` b ON ''";
                         $selectBranch = "b.`{$bName}` as branchName";
                     }
                 }
@@ -785,7 +784,7 @@ function getInquiryDetail($conn, $input) {
                                             $bId2 = $bCols2['branchid'] ?? null;
                                             $bName2 = $bCols2['branchname'] ?? null;
                                             if ($bId2 && $bName2) {
-                                                $bJoin = " LEFT JOIN `{$branchTable2}` bb ON co.`{$coBranchId2}` = bb.`{$bId2}`";
+                                                $bJoin = " LEFT JOIN `{$branchTable2}` bb ON ''";
                                                 $bNameExpr = "COALESCE(bb.`{$bName2}`,'')";
                                             }
                                         }
@@ -796,9 +795,8 @@ function getInquiryDetail($conn, $input) {
                                         if ($agentIdCol) { $where[] = "a.`{$agentIdCol}` = ?"; $params2[] = $aff; $types2 .= 's'; }
                                         if ($agentCodeCol) { $where[] = "a.`{$agentCodeCol}` = ?"; $params2[] = $aff; $types2 .= 's'; }
                                         if (!empty($where)) {
-                                            $sql2 = "SELECT {$bNameExpr} AS branchName, COALESCE(co.`{$coName2}`,'') AS companyName
+                                            $sql2 = "SELECT {$bNameExpr} AS branchName, COALESCE('','') AS companyName
                                                      FROM agent a
-                                                     LEFT JOIN company co ON a.`{$agentCompanyIdCol}` = co.`{$coId2}`
                                                      {$bJoin}
                                                      WHERE (" . implode(' OR ', $where) . ")
                                                      LIMIT 1";
@@ -1159,14 +1157,14 @@ function downloadInquiries($conn, $input) {
                 FROM inquiry_replies ir
                 JOIN accounts ar ON ir.authorId = ar.accountId
                 WHERE ir.inquiryId = i.inquiryId
-                  AND ar.accountType IN ('admin','super','employee','cs')
+                  AND ar.accountType IN ('admin_ph','admin_kr','super','employee','cs')
             )";
             $replyNotExistsSql = "NOT EXISTS (
                 SELECT 1
                 FROM inquiry_replies ir
                 JOIN accounts ar ON ir.authorId = ar.accountId
                 WHERE ir.inquiryId = i.inquiryId
-                  AND ar.accountType IN ('admin','super','employee','cs')
+                  AND ar.accountType IN ('admin_ph','admin_kr','super','employee','cs')
             )";
         }
         if ($replyStatus === 'answered') {

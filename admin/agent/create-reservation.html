@@ -211,7 +211,6 @@
 
 		<div class="jw-cols jw-between jw-mgt32">
 			<h2 class="section-title" data-lan-eng="Traveler Information">Traveler Information</h2>
-			<button type="button" id="load_traveler_customers_btn" class="jw-button typeA" onclick="openTravelCustomerSearchModal()" data-lan-eng="Loading customer information">Loading customer information</button>
 		</div>
 		<div class="card-panel jw-mgt16">
 			<div class="traveler-summary-section">
@@ -678,7 +677,7 @@
 </div>
 
 <!-- 파일 뷰어 모달 (Flyer/Detail) -->
-<div id="file-viewer-modal" class="modal" style="display: none;">
+<div id="file-viewer-modal" class="modal" style="display: none; z-index: 1200;">
 	<div class="modal-content modal-file-viewer">
 		<div class="modal-header">
 			<h3 id="file-viewer-title">File Viewer</h3>
@@ -781,7 +780,7 @@
 </div>
 
 <!-- 여행 고객 검색 모달 (복수 선택) -->
-<div id="travel-customer-search-modal" class="modal" style="display: none;">
+<div id="travel-customer-search-modal" class="modal" style="display: none; z-index: 1100;">
 	<div class="modal-content modal-large">
 		<div class="modal-header">
 			<h3 data-lan-eng="Customer Search">고객 검색</h3>
@@ -848,6 +847,7 @@
 				<div class="traveler-cards-header">
 					<span class="traveler-count" id="traveler-modal-count">0 Travelers</span>
 					<div class="traveler-cards-actions">
+						<button type="button" class="jw-button typeA" onclick="openTravelCustomerSearchModal()" data-lan-eng="Loading customer information">Loading customer information</button>
 						<button type="button" class="jw-button typeA" onclick="addTravelerCard()">+ Add Traveler</button>
 					</div>
 				</div>
@@ -1120,7 +1120,8 @@
 	.passport-photo-upload {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 8px;
+		flex-wrap: wrap;
 	}
 	.btn-upload-photo {
 		display: flex;
@@ -1149,21 +1150,23 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 6px 12px;
+		padding: 6px 10px;
 		background: #F0F9FF;
 		border: 1px solid #BAE6FD;
 		border-radius: 6px;
+		max-width: 100%;
 	}
 	.passport-photo-info.hidden {
 		display: none;
 	}
 	.photo-filename {
-		font-size: 13px;
+		font-size: 12px;
 		color: #0369A1;
-		max-width: 200px;
+		max-width: 80px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		flex-shrink: 1;
 	}
 	.btn-remove-photo {
 		padding: 2px;
@@ -1181,31 +1184,73 @@
 	.btn-remove-photo:hover img {
 		opacity: 1;
 	}
+	/* 파일 액션 버튼 스타일 */
+	.file-action-buttons {
+		display: flex;
+		gap: 2px;
+		align-items: center;
+		flex-shrink: 0;
+		margin-left: auto;
+	}
+	.btn-file-action {
+		padding: 4px;
+		border: none;
+		background: transparent;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.15s;
+	}
+	.btn-file-action:hover {
+		background: rgba(0, 0, 0, 0.08);
+	}
+	.btn-file-action img {
+		width: 16px;
+		height: 16px;
+		opacity: 0.7;
+	}
+	.btn-file-action:hover img {
+		opacity: 1;
+	}
+	.btn-file-action.btn-preview img {
+		filter: brightness(0) saturate(100%) invert(25%) sepia(98%) saturate(1653%) hue-rotate(199deg) brightness(93%) contrast(101%);
+	}
+	.btn-file-action.btn-download img {
+		filter: brightness(0) saturate(100%) invert(44%) sepia(83%) saturate(376%) hue-rotate(93deg) brightness(92%) contrast(91%);
+	}
+	.btn-file-action.btn-delete img {
+		filter: brightness(0) saturate(100%) invert(26%) sepia(89%) saturate(2046%) hue-rotate(347deg) brightness(89%) contrast(89%);
+	}
 	/* Visa Document 업로드 스타일 */
 	.visa-document-upload {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 8px;
+		flex-wrap: wrap;
 	}
 	.visa-document-info {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 6px 12px;
+		padding: 6px 10px;
 		background: #F0FDF4;
 		border: 1px solid #86EFAC;
 		border-radius: 6px;
+		max-width: 100%;
 	}
 	.visa-document-info.hidden {
 		display: none;
 	}
 	.visa-filename {
-		font-size: 13px;
+		font-size: 12px;
 		color: #166534;
-		max-width: 200px;
+		max-width: 80px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		flex-shrink: 1;
 	}
 	.visa-upload-container {
 		margin-top: 4px;

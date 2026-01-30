@@ -49,7 +49,7 @@ if (isset($_POST['month']) && isset($_POST['year']))
               END AS flightPrice, b.totalPrice as totalPrice
             FROM booking b
             JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-            JOIN company c ON a.companyId = c.companyId
+            
             JOIN flight f ON b.flightId = f.flightId
             WHERE f.flightId IN ($flightIdsString)  -- Fetch all flights with the same departure date
               AND b.status = 'Confirmed'

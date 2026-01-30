@@ -19,7 +19,7 @@ try {
     $agentSessionId = $agentSessionId !== null ? (int)$agentSessionId : 0;
     $sessionAccountType = strtolower(trim((string)($_SESSION['account_type'] ?? '')));
 
-    if ($agentSessionId > 0 || in_array($sessionAccountType, ['agent', 'admin'], true)) {
+    if ($agentSessionId > 0 || in_array($sessionAccountType, ['agent', 'admin_ph', 'admin_kr'], true)) {
         $isB2B = true;
     } elseif ($sessionAccountId > 0) {
         $stmtBiz = $conn->prepare("
@@ -161,14 +161,52 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
     $monthStartStr = $monthStart->format('Y-m-d');
     $monthEndStr = $monthEnd->format('Y-m-d');
 
-    // 1) package_available_dates   ( '  ' )
+    // 1) package_available_dates 조회 (기존 '열림' 상태인 날짜만)
     $availabilityByDate = [];
+
+    // Sale 할인 정보 조회 (활성화된 세일 중 해당 월에 적용되는 것)
+    $saleDiscountByDateId = [];
+    try {
+        $tblSales = $conn->query("SHOW TABLES LIKE 'sales'");
+        $tblSaleItems = $conn->query("SHOW TABLES LIKE 'sale_items'");
+        $hasSaleTables = ($tblSales && $tblSales->num_rows > 0) && ($tblSaleItems && $tblSaleItems->num_rows > 0);
+
+        if ($hasSaleTables) {
+            $saleSt = $conn->prepare("
+                SELECT si.package_available_date_id, s.discount_amount, s.sale_name
+                FROM sale_items si
+                INNER JOIN sales s ON s.id = si.sale_id
+                INNER JOIN package_available_dates pad ON pad.id = si.package_available_date_id
+                WHERE s.is_active = 1
+                  AND CURDATE() BETWEEN s.sale_start_date AND s.sale_end_date
+                  AND pad.package_id = ?
+                  AND pad.available_date >= ?
+                  AND pad.available_date <= ?
+            ");
+            if ($saleSt) {
+                $saleSt->bind_param('iss', $packageId, $monthStartStr, $monthEndStr);
+                $saleSt->execute();
+                $saleRs = $saleSt->get_result();
+                while ($saleRow = $saleRs->fetch_assoc()) {
+                    $dateId = (int)$saleRow['package_available_date_id'];
+                    $saleDiscountByDateId[$dateId] = [
+                        'discountAmount' => floatval($saleRow['discount_amount']),
+                        'saleName' => $saleRow['sale_name']
+                    ];
+                }
+                $saleSt->close();
+            }
+        }
+    } catch (Throwable $e) {
+        $saleDiscountByDateId = [];
+    }
+
     try {
         $tbl = $conn->query("SHOW TABLES LIKE 'package_available_dates'");
         $hasPkgAvail = ($tbl && $tbl->num_rows > 0);
         if ($hasPkgAvail) {
             $st = $conn->prepare("
-                SELECT available_date, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, singlePrice, capacity, flight_id, departure_time, status
+                SELECT id, available_date, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, singlePrice, capacity, flight_id, departure_time, status
                 FROM package_available_dates
                 WHERE package_id = ?
                   AND available_date >= ?
@@ -183,10 +221,33 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
                 while ($r = $rs->fetch_assoc()) {
                     $ds = substr((string)($r['available_date'] ?? ''), 0, 10);
                     if ($ds === '') continue;
+
+                    $dateId = (int)$r['id'];
+                    $saleDiscount = $saleDiscountByDateId[$dateId] ?? null;
+                    $discountAmount = $saleDiscount ? $saleDiscount['discountAmount'] : 0;
+                    $saleName = $saleDiscount ? $saleDiscount['saleName'] : null;
+
+                    // 원본 가격
+                    $originalPrice = floatval($r['price'] ?? 0);
+                    $originalB2bPrice = isset($r['b2b_price']) && $r['b2b_price'] !== null ? floatval($r['b2b_price']) : null;
+
+                    // 할인 적용 가격 계산
+                    $finalPrice = $isB2B
+                        ? floatval($r['b2b_price'] ?? $r['price'] ?? 0) - $discountAmount
+                        : floatval($r['price'] ?? 0) - $discountAmount;
+                    $finalPrice = max($finalPrice, 0); // 음수 방지
+
+                    $finalB2bPrice = $originalB2bPrice !== null
+                        ? max($originalB2bPrice - $discountAmount, 0)
+                        : null;
+
                     $availabilityByDate[$ds] = [
+                        'dateId' => $dateId,
                         'availableSeats' => intval($r['capacity'] ?? 0),
-                        'price' => $isB2B ? floatval($r['b2b_price'] ?? $r['price'] ?? 0) : floatval($r['price'] ?? 0),
-                        'b2bPrice' => isset($r['b2b_price']) && $r['b2b_price'] !== null ? floatval($r['b2b_price']) : null,
+                        'price' => $finalPrice,
+                        'originalPrice' => $originalPrice,
+                        'b2bPrice' => $finalB2bPrice,
+                        'originalB2bPrice' => $originalB2bPrice,
                         'childPrice' => isset($r['childPrice']) ? floatval($r['childPrice']) : null,
                         'b2bChildPrice' => isset($r['b2b_child_price']) && $r['b2b_child_price'] !== null ? floatval($r['b2b_child_price']) : null,
                         'infantPrice' => isset($r['infant_price']) ? floatval($r['infant_price']) : null,
@@ -194,6 +255,9 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
                         'singlePrice' => isset($r['singlePrice']) ? floatval($r['singlePrice']) : null,
                         'flightId' => isset($r['flight_id']) ? (int)$r['flight_id'] : 0,
                         'departureTime' => substr((string)($r['departure_time'] ?? ''), 0, 5),
+                        'discountAmount' => $discountAmount,
+                        'saleName' => $saleName,
+                        'isOnSale' => $discountAmount > 0,
                     ];
                 }
                 $st->close();
@@ -368,17 +432,26 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
         }
         
         if ($status !== 'unavailable') {
+            // Sale 할인 정보 가져오기
+            $discountAmount = $availabilityByDate[$dateStr]['discountAmount'] ?? 0;
+            $saleName = $availabilityByDate[$dateStr]['saleName'] ?? null;
+            $isOnSale = $availabilityByDate[$dateStr]['isOnSale'] ?? false;
+            $originalPrice = $availabilityByDate[$dateStr]['originalPrice'] ?? $price;
+            $originalB2bPrice = $availabilityByDate[$dateStr]['originalB2bPrice'] ?? $b2bPrice;
+
             $availability[] = [
                 'availabilityId' => $availabilityId++,
                 'availableDate' => $dateStr,
                 'status' => $status,
-                // B2C 가격 (기본)
+                // B2C 가격 (기본) - 할인 적용된 가격
                 'price' => round($price, 0),
+                'originalPrice' => round($originalPrice, 0),
                 'childPrice' => $childPrice,
                 'infantPrice' => $infantPrice,
                 'singlePrice' => $singlePrice,
-                // B2B 가격 (에이전트/관리자용)
+                // B2B 가격 (에이전트/관리자용) - 할인 적용된 가격
                 'b2bPrice' => $b2bPrice !== null ? round($b2bPrice, 0) : null,
+                'originalB2bPrice' => $originalB2bPrice !== null ? round($originalB2bPrice, 0) : null,
                 'b2bChildPrice' => $b2bChildPrice,
                 'b2bInfantPrice' => $b2bInfantPrice,
                 'remainingSeats' => $remainingSeats,
@@ -387,7 +460,11 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
                 'flightPrice' => $flightFare,
                 'landPrice' => $landFare,
                 'bookedSeats' => $bookedSeats,
-                'departureTime' => $departureTime, // HH:MM ( )
+                'departureTime' => $departureTime, // HH:MM (선택)
+                // Sale 할인 정보
+                'discountAmount' => $discountAmount,
+                'saleName' => $saleName,
+                'isOnSale' => $isOnSale,
             ];
         }
         

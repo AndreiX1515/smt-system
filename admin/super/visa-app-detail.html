@@ -13,8 +13,8 @@
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="../css/a_reset.css">
 	<link rel="stylesheet" href="../css/a_variables.css">
-	<link rel="stylesheet" href="../css/a_components.css?v=20260111">
-	<link rel="stylesheet" href="../css/a_contents.css?v=20260111">
+	<link rel="stylesheet" href="../css/a_components.css?v=20260127">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20260127">
 </head>
 
 <body>
@@ -36,17 +36,41 @@
 
 				<div class="page-toolbar-actions">
 					<select class="select" id="statusSelect" disabled>
-						<option value="pending" data-lan-eng="Request Received">서류미비</option>
-						<option value="reviewing" data-lan-eng="Under Review">심사중</option>
-						<option value="approved" data-lan-eng="Issuance Complete">발급 완료</option>
-						<option value="rejected" data-lan-eng="Returned">반려</option>
+						<option value="pending" data-lan-eng="Request Received">Request Received</option>
+						<option value="reviewing" data-lan-eng="Under Review">Under Review</option>
+						<option value="approved" data-lan-eng="Issuance Complete">Issuance Complete</option>
+						<option value="rejected" data-lan-eng="Returned">Returned</option>
 					</select>
-					<!-- 퍼블리싱 원본과 동일하게 "저장" 버튼은 노출(요구사항: 상태 자동이므로 disabled) -->
 					<button type="button" class="jw-button typeB" id="saveStatusBtn" data-lan-eng="Save" disabled>저장</button>
 				</div>
 			</div>
 			<h1 class="page-title" data-lan-eng="Visa Application Details">비자 신청 상세</h1>
-			
+
+			<!-- Document Guide Section -->
+			<div id="documentGuideSection" class="jw-mgt32" style="display: none;">
+				<div class="card-panel" style="background: #f8f9fa;">
+					<div id="documentGuideHeader" style="padding: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<div style="font-size: 14px; font-weight: 600; color: #121212;">
+							<span id="visaTypeLabel">Group Visa</span> - Required Documents
+						</div>
+						<span id="documentGuideArrow" style="font-size: 12px; transition: transform 0.3s; transform: rotate(180deg);">▼</span>
+					</div>
+					<div id="documentGuideContent" style="padding: 0 16px 16px 16px;">
+						<div id="documentGuideList"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Document Download Section -->
+			<div id="visaFormDownloadSection" style="display: none;">
+				<h2 class="section-title jw-mgt32" data-lan-eng="Document Download">Document Download</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap" id="downloadGridWrap">
+						<!-- Downloads will be rendered dynamically -->
+					</div>
+				</div>
+			</div>
+
 			<h2 class="section-title jw-mgt32" data-lan-eng="Document details">서류 내역</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap" id="documentGridWrap">
@@ -107,9 +131,7 @@
 						<input type="text" class="form-control" id="firstName" value="" disabled>
 					</div>
 					<div class="grid-item">
-						<!-- SMT 수정 시작 -->
 						<label class="label-name" data-lan-eng="Last Name">성</label>
-						<!-- SMT 수정 완료 -->
 						<input type="text" class="form-control" id="lastName" value="" disabled>
 					</div>
 
@@ -142,17 +164,16 @@
 						<label class="label-name" data-lan-eng="Passport Issue Date">여권 발행일</label>
 						<input type="text" class="form-control" id="passportIssueDate" value="" disabled>
 					</div>
-					
+
 					<div class="grid-item">
 						<label class="label-name" data-lan-eng="Passport expiration date">여권 만료일</label>
 						<input type="text" class="form-control" id="passportExpiryDate" value="" disabled>
 					</div>
-					
+
 					<div class="grid-item">
 						<label class="label-name" data-lan-eng="Passport photo">여권 사진</label>
-						<!-- 기획서: 업로드가 아니라 프리뷰 표시(관리자 읽기전용) -->
 						<div class="upload-box">
-							<div class="thumb" id="passportPhotoPreview" aria-label="passport photo preview"></div>
+							<div class="thumb" id="passportPhotoPreview" aria-label="passport photo preview" style="cursor: pointer;" onclick="viewPassportPhoto()"></div>
 							<div class="file-controller">
 								<div class="jw-center jw-gap10">
 									<img src="../image/file.svg" alt="">
@@ -161,10 +182,10 @@
 							</div>
 						</div>
 					</div>
-					
+
 				</div>
 			</div>
-			
+
 			<h2 class="section-title jw-mgt32" data-lan-eng="Visa Upload">비자 업로드</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
@@ -185,9 +206,157 @@
 
 	</main>
 
-	<script src="../js/default.js?v=20260111"></script>
-	<script src="../js/super.js?v=20260111"></script>
-	<script src="../js/passport-photo.js?v=20260111"></script>
+	<!-- File Viewer Modal -->
+	<div id="fileViewerModal" class="file-viewer-modal" style="display:none;">
+		<div class="file-viewer-overlay" onclick="closeFileViewer()"></div>
+		<div class="file-viewer-container">
+			<div class="file-viewer-header">
+				<span class="file-viewer-title" id="fileViewerTitle">File Preview</span>
+				<div class="file-viewer-actions">
+					<button type="button" class="file-viewer-btn" id="fileViewerDownload" title="Download">
+						<img src="../image/button-download.svg" alt="Download">
+					</button>
+					<button type="button" class="file-viewer-btn" onclick="closeFileViewer()" title="Close">
+						<img src="../image/button-close2.svg" alt="Close">
+					</button>
+				</div>
+			</div>
+			<div class="file-viewer-content" id="fileViewerContent">
+				<!-- Content will be loaded here -->
+			</div>
+		</div>
+	</div>
+
+	<style>
+		.file-viewer-modal {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 9999;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.file-viewer-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.7);
+		}
+		.file-viewer-container {
+			position: relative;
+			background: #fff;
+			border-radius: 12px;
+			width: 90%;
+			max-width: 1200px;
+			height: 90%;
+			max-height: 90vh;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		}
+		.file-viewer-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 16px 20px;
+			border-bottom: 1px solid #e5e5e5;
+			background: #f8f9fa;
+		}
+		.file-viewer-title {
+			font-size: 16px;
+			font-weight: 600;
+			color: #121212;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			flex: 1;
+			margin-right: 16px;
+		}
+		.file-viewer-actions {
+			display: flex;
+			gap: 8px;
+		}
+		.file-viewer-btn {
+			width: 36px;
+			height: 36px;
+			border: 1px solid #d4d4d4;
+			border-radius: 8px;
+			background: #fff;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: background 0.2s;
+		}
+		.file-viewer-btn:hover {
+			background: #f0f0f0;
+		}
+		.file-viewer-btn img {
+			width: 20px;
+			height: 20px;
+		}
+		.file-viewer-content {
+			flex: 1;
+			overflow: auto;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+			background: #e9ecef;
+		}
+		.file-viewer-content img {
+			max-width: 100%;
+			max-height: 100%;
+			object-fit: contain;
+			border-radius: 4px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		}
+		.file-viewer-content iframe,
+		.file-viewer-content object {
+			width: 100%;
+			height: 100%;
+			border: none;
+			border-radius: 4px;
+			background: #fff;
+		}
+		.file-viewer-unsupported {
+			text-align: center;
+			padding: 40px;
+		}
+		.file-viewer-unsupported img {
+			width: 64px;
+			height: 64px;
+			margin-bottom: 16px;
+			opacity: 0.5;
+		}
+		.file-viewer-unsupported p {
+			font-size: 14px;
+			color: #6c757d;
+			margin-bottom: 16px;
+		}
+		.file-viewer-unsupported button {
+			padding: 10px 24px;
+			background: #0066FF;
+			color: #fff;
+			border: none;
+			border-radius: 8px;
+			font-size: 14px;
+			cursor: pointer;
+		}
+		.file-viewer-unsupported button:hover {
+			background: #0052cc;
+		}
+	</style>
+
+	<script src="../js/default.js?v=20260127"></script>
+	<script src="../js/super.js?v=20260127"></script>
+	<script src="../js/passport-photo.js?v=20260127"></script>
 
 	<script>
 		init({
@@ -199,27 +368,23 @@
 		let __visaApplication = null;
 		let __currentVisaType = 'group'; // default to group
 
-		// Document configuration by visa type (matches user page config)
+		// Document configuration by visa type
 		const DOCUMENT_CONFIG = {
 			group: [
-				{ key: 'passport', title: 'Passport bio page', required: true, multiple: false },
-				{ key: 'visaApplicationForm', title: 'Visa Application Form', required: true, multiple: false, download: true, downloadPath: '/uploads/visa/doc/Korea-visa-application.pdf' },
-				{ key: 'bankCertificate', title: 'Bank Certificate', required: true, multiple: false },
-				{ key: 'bankStatement', title: 'Bank Statement', required: true, multiple: false },
-				{ key: 'additionalDocuments', title: 'Additional requirements', required: false, multiple: true }
+				{ key: 'passport', title: 'Passport bio page', required: true },
+				{ key: 'visaApplicationForm', title: 'Visa Application Form', required: true },
+				{ key: 'bankCertificate', title: 'Bank Certificate', required: true },
+				{ key: 'bankStatement', title: 'Bank Statement', required: true },
+				{ key: 'additionalDocuments', title: 'Additional requirements', required: false }
 			],
-			individual: [
-				{ key: 'visaApplicationForm', title: 'Visa Application Form', required: false, multiple: false, download: true, downloadPath: '/uploads/visa/doc/Korea-visa-application.pdf' },
-				{ key: 'dataPrivacyConsent', title: 'Signed Data Privacy Consent Form', required: false, multiple: false, download: true, downloadPath: '/uploads/visa/doc/Data-Privacy-Consent-Form_KVAC.pdf' }
-			]
+			individual: []
 		};
 
-		// SMT 수정: 변경사항은 즉시 반영하지 않고 "저장" 버튼 클릭 시에만 적용
+		// Pending changes (admin can only upload visa file)
 		const __pending = {
-			deleteDocs: new Set(),      // docKey list
-			newVisaFilePath: '',        // 업로드한(아직 미저장) 비자 파일 경로
-			newVisaFileSize: 0,         // 업로드한 파일 크기 (bytes)
-			deleteVisaFile: false,      // 기존 비자 파일 삭제 예약
+			newVisaFilePath: '',
+			newVisaFileSize: 0,
+			deleteVisaFile: false,
 		};
 
 		function formatFileSize(bytes) {
@@ -236,93 +401,7 @@
 		}
 
 		function __hasPendingChanges() {
-			return (__pending.deleteDocs.size > 0) || Boolean(__pending.newVisaFilePath) || Boolean(__pending.deleteVisaFile);
-		}
-
-		function __effectiveApplication(base) {
-			const app = base ? { ...base } : {};
-			// doc 삭제 예약은 루트 키로 비우고, derive/status/UI 렌더가 이를 따라가게 한다.
-			try {
-				__pending.deleteDocs.forEach((k) => {
-					// Clear the document key - works with any key dynamically
-					app[k] = '';
-				});
-			} catch (_) {}
-
-			// visa file
-			if (__pending.deleteVisaFile) {
-				app.visaFile = '';
-				app.visa_file = '';
-				app.visaDocument = '';
-				app.visa_document = '';
-				app.visaUrl = '';
-			}
-			if (__pending.newVisaFilePath) {
-				app.visaFile = __pending.newVisaFilePath;
-			}
-			return app;
-		}
-
-		function __renderDocsAndVisaFile() {
-			// 서류/비자파일 및 상태는 "효과 적용된" 데이터를 기준으로 UI만 갱신
-			const effective = __effectiveApplication(__visaApplication);
-
-			// 상태(자동 산정/표시)
-			try {
-				const derived = deriveUiStatusFromApplication(effective);
-				setValue('statusDisplay', statusLabel(derived));
-				setSelect('statusSelect', derived);
-				syncJwSelectDisplay(document.getElementById('statusSelect'));
-			} catch (_) {}
-
-			// 서류 내역 - 현재 visaType에 맞는 문서들만 업데이트
-			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
-			config.forEach(doc => {
-				// download-only documents (individual visa) don't need file path checks
-				if (doc.download && __currentVisaType === 'individual') return;
-				setDocRow(doc.key, effective);
-			});
-
-			// 비자 파일 표시
-			const visaFile = pickFirst(effective, ['visaFile', 'visa_file', 'visaDocument', 'visa_document', 'visaUrl']);
-			const list = document.getElementById('visaFileList');
-			if (list) {
-				list.innerHTML = '';
-				if (visaFile) {
-					const p = String(visaFile);
-					const fullName = p.split('/').pop() || p;
-					const lastDot = fullName.lastIndexOf('.');
-					const nameWithoutExt = lastDot > 0 ? fullName.substring(0, lastDot) : fullName;
-					const ext = lastDot > 0 ? fullName.substring(lastDot + 1).toLowerCase() : '';
-					// 파일 크기: pending upload 시 저장된 크기 사용, 기존 파일은 크기 정보 없음
-					const fileSize = __pending.newVisaFilePath ? formatFileSize(__pending.newVisaFileSize) : '';
-					const fileMeta = ext ? (fileSize ? `[${ext}, ${fileSize}]` : `[${ext}]`) : '';
-					const pendingTag = '';
-					list.innerHTML = `
-						<div style="display:flex; align-items:center; gap:8px; padding:11px 12px; border:1px solid #D4D4D4; border-radius:12px; background:#fff; max-width:492px; margin-bottom:8px;">
-							<div style="display:flex; align-items:center; gap:6px; flex:1;">
-								<img src="../image/file.svg" alt="" style="width:20px; height:20px; flex-shrink:0;">
-								<div style="display:flex; align-items:center; gap:2px; font-size:14px; line-height:20px; color:#121212;">
-									<span style="font-weight:500;">${escapeHtml(nameWithoutExt)}</span>
-									<span style="font-weight:400;">${escapeHtml(fileMeta)}</span>
-									${pendingTag}
-								</div>
-							</div>
-							<div style="width:1px; height:20px; background:#D4D4D4;"></div>
-							<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer; flex-shrink:0;" onclick="downloadAttachment('${escapeHtml(p)}')" title="Download">
-								<img src="../image/button-download.svg" alt="" style="width:24px; height:24px;">
-							</button>
-							<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer; flex-shrink:0;" onclick="deleteVisaFile()" title="Delete">
-								<img src="../image/button-close2.svg" alt="" style="width:24px; height:24px;">
-							</button>
-						</div>
-					`;
-				} else if (__pending.deleteVisaFile) {
-					list.innerHTML = `<div style="display:flex; align-items:center; gap:8px; padding:11px 12px; border:1px solid #D4D4D4; border-radius:12px; background:#fff; max-width:492px;"><img src="../image/file.svg" alt="" style="width:20px; height:20px;"><span style="font-size:14px; color:#121212;">Pending deletion</span></div>`;
-				}
-			}
-
-			__setSaveEnabled(__hasPendingChanges());
+			return Boolean(__pending.newVisaFilePath) || Boolean(__pending.deleteVisaFile);
 		}
 
 		document.addEventListener('DOMContentLoaded', async () => {
@@ -343,14 +422,12 @@
 					if (stSel) stSel.disabled = true;
 					const stBtn = document.getElementById('saveStatusBtn');
 					if (stBtn) {
-						stBtn.disabled = true; // 변경사항 발생 시에만 enable
+						stBtn.disabled = true;
 						stBtn.addEventListener('click', handleSaveVisaChanges);
 					}
 				} catch (_) {}
-				// 퍼블리싱 원본 버튼은 파일 선택 트리거 역할이므로, 업로드는 input change에서 처리
+
 				document.getElementById('visaFileInput')?.addEventListener('change', handleVisaUpload);
-				wireDocButtons();
-				wireDocDeleteButtons();
 
 				if (visaApplicationId) {
 					await loadVisaApplicationDetail();
@@ -360,11 +437,6 @@
 				window.location.href = '../index.html';
 			}
 		});
-
-		function wireDocButtons() {
-			// Now handled dynamically by wireDocButtonsDynamic() called after renderDocumentSection()
-			// This function is kept for backward compatibility but does nothing
-		}
 
 		function pickFirst(obj, keys) {
 			for (const k of keys) {
@@ -384,14 +456,12 @@
 			const s = String(raw || 'pending');
 			if (s === 'approved' || s === 'completed') return 'approved';
 			if (s === 'rejected') return 'rejected';
-			// document_required는 "요청 접수(서류 미비 포함)"로 취급
 			if (s === 'under_review' || s === 'reviewing') return 'reviewing';
 			if (s === 'document_required' || s === 'pending') return 'pending';
 			return 'pending';
 		}
 
 		function statusLabel(status) {
-			// 요구사항(id 93): 상태 표기는 영문 라벨로 노출
 			const map = {
 				pending: 'Request Received',
 				reviewing: 'Under Review',
@@ -413,9 +483,17 @@
 			const v = String(val || '');
 			const opt = Array.from(el.options || []).find(o => o.value === v);
 			el.value = opt ? v : (el.options?.[0]?.value || '');
+
+			// Update custom jw-select UI if exists
+			const wrap = el.closest('.jw-select');
+			if (wrap) {
+				const box = wrap.querySelector('.jw-selected');
+				if (box && opt) {
+					box.textContent = opt.textContent;
+				}
+			}
 		}
 
-		// jw_select(커스텀 셀렉트) 표시 동기화: programmatic value 변경 시 UI가 갱신되지 않는 경우가 있어 보강
 		function syncJwSelectDisplay(selectEl) {
 			try {
 				if (!selectEl) return;
@@ -430,55 +508,31 @@
 		}
 
 		function __docPathFor(docKey, application) {
-			// 1) application 루트 필드(가장 빠름)
 			const rootMap = {
-				// Group visa documents
-				passport: ['passport', 'passportCopy', 'passport_copy', 'passport_copy_path', 'passportCopyPath'],
-				visaApplicationForm: ['visaApplicationForm', 'visa_application_form', 'visaApplicationFormPath'],
-				bankCertificate: ['bankCertificate', 'bank_certificate', 'bankCertificatePath'],
-				bankStatement: ['bankStatement', 'bank_statement', 'bankStatementPath'],
-				additionalDocuments: ['additionalDocuments', 'additional_documents', 'additionalDocumentsPath'],
-				// Individual visa documents
-				dataPrivacyConsent: ['dataPrivacyConsent', 'data_privacy_consent', 'dataPrivacyConsentPath'],
-				// Legacy keys for backward compatibility
-				idPhoto: ['idPhoto', 'id_photo', 'id_photo_path', 'idPhotoPath'],
-				passportCopy: ['passportCopy', 'passport_copy', 'passport_copy_path', 'passportCopyPath'],
-				itinerary: ['itinerary', 'itinerary_path', 'itineraryPath'],
+				passport: ['passport', 'passportCopy', 'passport_copy'],
+				visaApplicationForm: ['visaApplicationForm', 'visa_application_form'],
+				bankCertificate: ['bankCertificate', 'bank_certificate'],
+				bankStatement: ['bankStatement', 'bank_statement'],
+				additionalDocuments: ['additionalDocuments', 'additional_documents']
 			};
 			const direct = String(pickFirst(application, rootMap[docKey] || [docKey]) || '').trim();
 			if (direct) return direct[0] === '/' ? direct : ('/' + direct);
 
-			// 2) application.documents 같은 중첩 구조 대응
 			try {
-				const docsObj = application?.documents || application?.docments || null;
+				const docsObj = application?.documents || null;
 				if (docsObj && typeof docsObj === 'object') {
 					const v2 = String(pickFirst(docsObj, rootMap[docKey] || [docKey]) || '').trim();
 					if (v2) return v2[0] === '/' ? v2 : ('/' + v2);
 				}
 			} catch (_) {}
 
-			// 3) application.notes(JSON) 파싱하여 documents에서 찾기(키 변형/구버전 대응)
 			try {
 				const notesTxt = String(application?.notes || '').trim();
 				if (!notesTxt) return '';
 				const j = JSON.parse(notesTxt);
 				const docs = (j && j.documents && typeof j.documents === 'object') ? j.documents : null;
 				if (!docs) return '';
-				const notesKeyMap = {
-					// Group visa documents
-					passport: ['passport', 'passportCopy', 'passport_copy', 'passport_copy_path'],
-					visaApplicationForm: ['visaApplicationForm', 'visa_application_form'],
-					bankCertificate: ['bankCertificate', 'bank_certificate', 'bankCertificatePath'],
-					bankStatement: ['bankStatement', 'bank_statement', 'bankStatementPath'],
-					additionalDocuments: ['additionalDocuments', 'additional_documents'],
-					// Individual visa documents
-					dataPrivacyConsent: ['dataPrivacyConsent', 'data_privacy_consent'],
-					// Legacy keys
-					idPhoto: ['idPhoto', 'photo', 'id_photo', 'id_photo_path'],
-					passportCopy: ['passportCopy', 'passport', 'passport_copy', 'passport_copy_path'],
-					itinerary: ['itinerary', 'itinerary_path', 'itineraryPath'],
-				};
-				const v3 = String(pickFirst(docs, notesKeyMap[docKey] || [docKey]) || '').trim();
+				const v3 = String(pickFirst(docs, rootMap[docKey] || [docKey]) || '').trim();
 				if (!v3) return '';
 				return v3[0] === '/' ? v3 : ('/' + v3);
 			} catch (_) {
@@ -486,53 +540,427 @@
 			}
 		}
 
-		function setDocRow(docKey, application) {
-			const path = __docPathFor(docKey, application);
-			const meta = document.getElementById(`docMeta-${docKey}`);
-			const dlBtn = document.getElementById(`docDl-${docKey}`);
-			const delBtn = document.getElementById(`docDel-${docKey}`);
-			const rowEl = meta?.closest('.field-row') || dlBtn?.closest('.field-row') || delBtn?.closest('.field-row') || null;
+		function renderDocumentGuide() {
+			const section = document.getElementById('documentGuideSection');
+			const downloadSection = document.getElementById('visaFormDownloadSection');
+			const label = document.getElementById('visaTypeLabel');
+			const list = document.getElementById('documentGuideList');
+			const downloadGrid = document.getElementById('downloadGridWrap');
 
-			// UX 통일: 상태와 무관하게 항상 동일한 UI(파일 없음 표시)를 보여주고
-			// 다운로드/삭제 버튼만 파일 존재 시 활성화한다.
-			if (rowEl) rowEl.style.display = '';
+			if (!section || !list) return;
 
-			if (meta) {
-				if (!path) {
-					meta.textContent = 'No file';
+			section.style.display = 'block';
+			if (downloadSection) downloadSection.style.display = 'block';
+
+			if (__currentVisaType === 'group') {
+				if (label) label.textContent = 'Group Visa';
+				list.innerHTML = getGroupGuideHtml();
+				if (downloadGrid) downloadGrid.innerHTML = getGroupDownloadHtml();
+			} else {
+				if (label) label.textContent = 'Individual Visa';
+				list.innerHTML = getIndividualGuideHtml();
+				if (downloadGrid) downloadGrid.innerHTML = getIndividualDownloadHtml();
+			}
+
+			setupDocumentGuideToggle();
+		}
+
+		function getGroupDownloadHtml() {
+			return `
+				<div class="grid-item">
+					<label class="label-name">Visa Application Form</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span>Korea-visa-application.pdf</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" onclick="downloadStaticDoc('/uploads/visa/doc/Korea-visa-application.pdf')" title="Download">
+									<img src="../image/button-download.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function getIndividualDownloadHtml() {
+			return `
+				<div class="grid-item">
+					<label class="label-name">Visa Application Form</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span>Korea-visa-application.pdf</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" onclick="downloadStaticDoc('/uploads/visa/doc/Korea-visa-application.pdf')" title="Download">
+									<img src="../image/button-download.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-item">
+					<label class="label-name">Signed Data Privacy Consent Form</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span>Data-Privacy-Consent-Form_KVAC.pdf</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" onclick="downloadStaticDoc('/uploads/visa/doc/Data-Privacy-Consent-Form_KVAC.pdf')" title="Download">
+									<img src="../image/button-download.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function getGroupGuideHtml() {
+			return `
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #121212; margin-bottom: 8px;">GENERAL REQUIREMENTS:</div>
+					<ol style="padding-left: 20px; margin: 0;">
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Passport bio page <span style="color: #6c757d;">(Make sure it is signed & still valid.)</span> <span style="color: #6c757d;">(Kindly submit old passport for checking of previous Korean Visa application)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Application form <span style="color: #6c757d;">(computerized/handwritten, print in A4, original/e-signature)</span> with attach passport size photo <span style="color: #6c757d;">(formal, NO HEAD ACCESSORIES, no teeth shown, or better studio taken)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Certificate with Average Daily Balance for 6 months, date opened, account type & balance <span style="color: #6c757d;">(should be addressed to Korean Embassy)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Statement – 3 months
+						</li>
+					</ol>
+				</div>
+
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #dc3545; margin-bottom: 8px;">PLEASE NOTE ADDITIONAL REQUIREMENTS BELOW:</div>
+					<div style="background: #e7f3ff; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; color: #0056b3;">
+						<strong>NOTE:</strong> If applying as family, PSA documents only, no need for Affidavit of Support for student child and spouse.
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR BUSINESS OWNER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ BUSINESS DOCUMENTS<br>
+							&nbsp;&nbsp;- SEC or DTI (whichever is applicable)<br>
+							&nbsp;&nbsp;- Business Permit<br>
+							&nbsp;&nbsp;- BIR Certificate of Registration<br>
+							&nbsp;&nbsp;- BIR Income Tax Return
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR EMPLOYED</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Certificate of employment with compensation, date hired & position, also include that the applicant is applying for Korean Visa<br>
+							○ Company ID (PRC ID IF ANY)<br>
+							○ Approval of Leave<br>
+							○ Income Tax Return (2316)
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR HOUSEWIFE</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ HUSBAND'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ PSA MARRIAGE CERTIFICATE<br>
+							○ Affidavit of Support (Notarized)
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR SENIORS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Senior Citizen ID<br>
+							○ Retirement certificate if any
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR STUDENTS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ PARENT'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ Affidavit of Support (Notarized)<br>
+							○ School ID<br>
+							○ PSA Birth Certificate
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">IF APPLICANT IS SUPPORTED BY AN OVERSEAS FILIPINO WORKERS/SEAFARER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Clear scan copy of contract or certificate of employment abroad<br>
+							○ Copy of OWWA Verified Contract<br>
+							○ Copy of POEA Contract<br>
+							○ Working Visa<br>
+							○ Copy of ID if applicable / Marina ID & Seamans Book – for seafarer
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function getIndividualGuideHtml() {
+			return `
+				<div style="background: #fff3cd; padding: 10px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 13px; color: #856404;">
+					<strong>※ All documents must be sent to office via MAIL or FAX</strong>
+				</div>
+
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #121212; margin-bottom: 8px;">GENERAL REQUIREMENTS:</div>
+					<ol style="padding-left: 20px; margin: 0;">
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Passport bio page <span style="color: #6c757d;">(Make sure it is signed & still valid. Broken passport is not accepted.)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Copy of valid visa/s and arrival stamps to OECD countries for the past 5 years. <span style="color: #6c757d;">(if applicable)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Application form <span style="color: #6c757d;">(computerized/handwritten, print in A4, original/e-signature)</span> with attach passport size photo <span style="color: #6c757d;">(formal, NO HEAD ACCESSORIES, no teeth shown, photo taken within 6 months or better studio taken)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Certificate with Average Daily Balance for 6 months, date opened, account type & balance <span style="color: #6c757d;">(should be addressed to Korean Embassy)</span>
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Bank Statement – 3 months
+						</li>
+						<li style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">
+							Signed Data Privacy Consent Form
+						</li>
+					</ol>
+				</div>
+
+				<div style="margin-bottom: 16px;">
+					<div style="font-size: 13px; font-weight: 600; color: #dc3545; margin-bottom: 8px;">PLEASE NOTE ADDITIONAL REQUIREMENTS BELOW:</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR BUSINESS OWNER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ BUSINESS DOCUMENTS<br>
+							&nbsp;&nbsp;- SEC or DTI (whichever is applicable)<br>
+							&nbsp;&nbsp;- Business Permit<br>
+							&nbsp;&nbsp;- BIR Certificate of Registration<br>
+							&nbsp;&nbsp;- BIR Income Tax Return
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR EMPLOYED</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Certificate of employment with compensation, date hired & position, also include that the applicant is applying for Korean Visa<br>
+							○ Company ID (PRC ID IF ANY)<br>
+							○ Approval of Leave<br>
+							○ Income Tax Return (2316)
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR HOUSEWIFE</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ HUSBAND'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ PSA MARRIAGE CERTIFICATE<br>
+							○ Notarized Affidavit of Support. If not married Notarized Affidavit of common law partner.<br>
+							<span style="color: #6c757d;">** If the housewife has bank documents, it's better to provide it.</span>
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR SENIORS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Sponsor's Documents<br>
+							○ Senior Citizen ID<br>
+							○ PSA Birth Certificate<br>
+							○ Retirement certificate if applicable<br>
+							○ Proof of pension if applicable<br>
+							○ Notarized Affidavit of Support<br>
+							<span style="color: #6c757d;">** If the senior has bank documents, it's better to provide it.</span>
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">FOR STUDENTS</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ PARENT'S/SPONSOR'S DOCUMENTS (BUSINESSMAN OR EMPLOYED)<br>
+							○ Notarized Affidavit of Support<br>
+							○ School ID<br>
+							○ PSA Birth Certificate
+						</div>
+					</div>
+
+					<div style="margin-bottom: 12px;">
+						<div style="font-size: 13px; font-weight: 600; color: #4e4e4e; margin-bottom: 4px;">IF APPLICANT IS SUPPORTED BY AN OVERSEAS FILIPINO WORKERS/SEAFARER</div>
+						<div style="padding-left: 12px; font-size: 12px; color: #495057; line-height: 1.6;">
+							○ Clear scan copy of contract or certificate of employment abroad<br>
+							○ Copy of OWWA Verified Contract<br>
+							○ Copy of POEA Contract<br>
+							○ Working Visa<br>
+							○ Copy of ID if applicable / Marina ID & Seamans Book – for seafarer
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
+		function setupDocumentGuideToggle() {
+			const header = document.getElementById('documentGuideHeader');
+			const content = document.getElementById('documentGuideContent');
+			const arrow = document.getElementById('documentGuideArrow');
+
+			if (!header || !content || !arrow) return;
+
+			// Remove existing listener by cloning
+			const newHeader = header.cloneNode(true);
+			header.parentNode.replaceChild(newHeader, header);
+
+			newHeader.addEventListener('click', function() {
+				const isExpanded = content.style.display !== 'none';
+				if (isExpanded) {
+					content.style.display = 'none';
+					document.getElementById('documentGuideArrow').style.transform = 'rotate(0deg)';
 				} else {
-					const name = path.split('/').pop() || path;
-					meta.textContent = `[${name}]`;
+					content.style.display = 'block';
+					document.getElementById('documentGuideArrow').style.transform = 'rotate(180deg)';
+				}
+			});
+		}
+
+		function renderDocumentSection() {
+			const container = document.getElementById('documentGridWrap');
+			if (!container) return;
+			container.innerHTML = '';
+
+			// Render document guide
+			renderDocumentGuide();
+
+			// For individual visa, show only "Documents Send" status (read-only for admin)
+			if (__currentVisaType === 'individual') {
+				const visaSendRaw = __visaApplication?.visaSend;
+				const isYes = (visaSendRaw === 1 || visaSendRaw === '1' || String(visaSendRaw).toLowerCase() === 'yes');
+
+				const div = document.createElement('div');
+				div.className = 'grid-item';
+				div.innerHTML = `
+					<label class="label-name">Documents Send</label>
+					<input type="text" class="form-control" id="docSendStatus" value="${isYes ? 'Yes' : 'No'}" disabled>
+				`;
+				container.appendChild(div);
+				return;
+			}
+
+			// For group visa, show uploaded documents (read-only for admin - no upload buttons)
+			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
+			config.forEach(doc => {
+				const div = document.createElement('div');
+				div.className = 'grid-item';
+
+				const path = __docPathFor(doc.key, __visaApplication);
+				const hasFile = path !== '';
+				const fileName = hasFile ? path.split('/').pop() : 'No file';
+
+				div.innerHTML = `
+					<label class="label-name">${escapeHtml(doc.title)}${doc.required ? ' *' : ''}</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" style="flex:1;">
+								<img src="../image/file.svg" alt="">
+								<span id="docMeta-${doc.key}">${hasFile ? '[' + escapeHtml(fileName) + ']' : 'No file'}</span>
+							</div>
+							<div class="jw-center jw-gap10">
+								<button type="button" class="jw-button typeF" id="docView-${doc.key}" ${hasFile ? '' : 'style="display:none;"'} onclick="openFileViewer('${escapeHtml(path)}', '${escapeHtml(doc.title)}')" title="View"><img src="../image/eye.svg" alt="" ></button>
+								<button type="button" class="jw-button typeF" id="docDl-${doc.key}" ${hasFile ? '' : 'style="display:none;"'} onclick="downloadAttachment('${escapeHtml(path)}')" title="Download"><img src="../image/button-download.svg" alt=""></button>
+							</div>
+						</div>
+					</div>
+				`;
+				container.appendChild(div);
+			});
+		}
+
+		function __renderVisaFile() {
+			const list = document.getElementById('visaFileList');
+			if (!list) return;
+
+			let visaFile = '';
+			if (__pending.deleteVisaFile) {
+				visaFile = '';
+			} else if (__pending.newVisaFilePath) {
+				visaFile = __pending.newVisaFilePath;
+			} else {
+				visaFile = pickFirst(__visaApplication, ['visaFile', 'visa_file', 'visaDocument', 'visa_document', 'visaUrl']);
+				if (!visaFile) {
+					try {
+						const notesTxt = String(__visaApplication?.notes || '').trim();
+						if (notesTxt) {
+							const j = JSON.parse(notesTxt);
+							visaFile = j?.visaFile || j?.visa_file || '';
+						}
+					} catch (_) {}
 				}
 			}
 
-			// 버튼: 경로가 있을 때만 활성화/노출
-			if (dlBtn) {
-				dlBtn.disabled = !path;
-				dlBtn.style.display = path ? '' : 'none';
-			}
-			if (delBtn) {
-				delBtn.disabled = !path;
-				delBtn.style.display = path ? '' : 'none';
+			list.innerHTML = '';
+			if (visaFile) {
+				const p = String(visaFile);
+				const fullName = p.split('/').pop() || p;
+				const lastDot = fullName.lastIndexOf('.');
+				const nameWithoutExt = lastDot > 0 ? fullName.substring(0, lastDot) : fullName;
+				const ext = lastDot > 0 ? fullName.substring(lastDot + 1).toLowerCase() : '';
+				const fileSize = __pending.newVisaFilePath ? formatFileSize(__pending.newVisaFileSize) : '';
+				const fileMeta = ext ? (fileSize ? `[${ext}, ${fileSize}]` : `[${ext}]`) : '';
+				list.innerHTML = `
+					<div style="display:flex; align-items:center; gap:8px; padding:11px 12px; border:1px solid #D4D4D4; border-radius:12px; background:#fff; max-width:492px; margin-bottom:8px;">
+						<div style="display:flex; align-items:center; gap:6px; flex:1;">
+							<img src="../image/file.svg" alt="" style="width:20px; height:20px; flex-shrink:0;">
+							<div style="display:flex; align-items:center; gap:2px; font-size:14px; line-height:20px; color:#121212;">
+								<span style="font-weight:500;">${escapeHtml(nameWithoutExt)}</span>
+								<span style="font-weight:400;">${escapeHtml(fileMeta)}</span>
+							</div>
+						</div>
+						<div style="width:1px; height:20px; background:#D4D4D4;"></div>
+						<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer; flex-shrink:0;" onclick="openFileViewer('${escapeHtml(p)}', 'Visa File')" title="View">
+							<img src="../image/eye.svg" alt="" style="width:24px; height:24px;" >
+						</button>
+						<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer; flex-shrink:0;" onclick="downloadAttachment('${escapeHtml(p)}')" title="Download">
+							<img src="../image/button-download.svg" alt="" style="width:24px; height:24px;">
+						</button>
+						<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer; flex-shrink:0;" onclick="deleteVisaFile()" title="Delete">
+							<img src="../image/button-close2.svg" alt="" style="width:24px; height:24px;">
+						</button>
+					</div>
+				`;
 			}
 		}
 
-		function deriveUiStatusFromApplication(application) {
-			// Use current visa type's required documents for status calculation
-			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
-			const requiredDocs = config.filter(d => d.required && !d.download).map(d => d.key);
+		function __updateUI() {
+			renderDocumentSection();
+			__renderVisaFile();
+			__setSaveEnabled(__hasPendingChanges());
+		}
 
-			// For individual visa (download-only), consider it as pending/reviewing based on visaSend
+		function deriveUiStatusFromApplication(application) {
+			// For individual visa
 			if (__currentVisaType === 'individual') {
 				const visaFile = String(pickFirst(application, ['visaFile', 'visa_file', 'visaDocument', 'visa_document', 'visaUrl']) || '').trim();
 				if (visaFile) return 'approved';
-				// visaSend can be integer (1/0) or string ('yes'/'no')
 				const visaSendRaw = application?.visaSend;
 				if (visaSendRaw === 1 || visaSendRaw === '1' || String(visaSendRaw).toLowerCase() === 'yes') return 'reviewing';
 				return 'pending';
 			}
 
-			// For group visa, check uploaded documents
+			// For group visa
+			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
+			const requiredDocs = config.filter(d => d.required).map(d => d.key);
 			const present = requiredDocs.filter(k => String(__docPathFor(k, application) || '').trim() !== '').length;
 			const visaFile = String(pickFirst(application, ['visaFile', 'visa_file', 'visaDocument', 'visa_document', 'visaUrl']) || '').trim();
 			if (visaFile) return 'approved';
@@ -541,31 +969,12 @@
 			return 'rejected';
 		}
 
-		async function ensureAutoStatus(application) {
-			try {
-				const derived = deriveUiStatusFromApplication(application);
-				const current = normalizeVisaStatus(application?.status);
-				// UI만 갱신
-				// 퍼블리싱 원본에는 statusDisplay가 없을 수 있어 optional
-				setValue('statusDisplay', statusLabel(derived));
-				setSelect('statusSelect', derived);
-				// SMT 수정: DB는 즉시 갱신하지 않음(저장 버튼 클릭 시에만 반영)
-				// (CSV 요구사항: 파일 삭제/업로드 변경사항은 저장 버튼을 눌러야 반영)
-			} catch (_) {}
-		}
-
-		function wireDocDeleteButtons() {
-			// Now handled dynamically by wireDocButtonsDynamic() called after renderDocumentSection()
-			// This function is kept for backward compatibility but does nothing
-		}
-
 		async function loadVisaApplicationDetail() {
 			try {
 				const response = await fetch(`../backend/api/super-api.php?action=getVisaApplicationDetail&id=${encodeURIComponent(visaApplicationId)}`, {
 					credentials: 'same-origin'
 				});
 				if (response.status === 401) {
-					// 세션 만료/권한 없음
 					alert('로그인이 필요합니다.');
 					window.location.href = '../index.html';
 					return;
@@ -584,110 +993,63 @@
 				const visaType = (application.visaType || 'group').toLowerCase();
 				__currentVisaType = visaType;
 
-				// Render document section based on visa type
-				renderDocumentSection(visaType);
+				// Populate form
+				setValue('bookingIdDisplay', pickFirst(application, ['bookingId', 'transactNo']) || '-');
+				setValue('visaTypeDisplay', visaType === 'individual' ? 'Individual' : 'Group');
+				setValue('productName', pickFirst(application, ['packageName', 'productName', 'destinationCountry']) || '-');
 
-				const applyToDom = () => {
-					// Booking 정보
-					setValue('bookingIdDisplay', pickFirst(application, ['bookingId', 'transactNo']) || '-');
-					setValue('productName', pickFirst(application, ['packageName', 'productName', 'package_name', 'destinationCountry']) || '-');
+				const createdAt = pickFirst(application, ['submittedAt', 'createdAt', 'applicationDate', 'submitted_at']);
+				setValue('applicationDate', formatDateTime(createdAt) || '-');
 
-					const createdAt = pickFirst(application, ['submittedAt', 'createdAt', 'applicationDate', 'submitted_at']);
-					setValue('applicationDate', formatDateTime(createdAt) || '-');
+				const depDate = pickFirst(application, ['departureDate', 'departure_date']);
+				setValue('departureDate', depDate ? formatDateTime(depDate).split(' ')[0] : '-');
 
-					// Departure date
-					const depDate = pickFirst(application, ['departureDate', 'departure_date']);
-					setValue('departureDate', depDate ? formatDateTime(depDate).split(' ')[0] : '-');
-
-					// Booking Status
-					const bookingStatus = pickFirst(application, ['bookingStatus', 'booking_status']) || '';
-					const statusMap = {
-						'pending': 'Pending',
-						'confirmed': 'Confirmed',
-						'completed': 'Completed',
-						'cancelled': 'Cancelled'
-					};
-					setValue('bookingStatusDisplay', statusMap[bookingStatus.toLowerCase()] || bookingStatus || '-');
-
-					// Visa Type 표시
-					const visaTypeLabel = visaType === 'individual' ? 'Individual' : 'Group';
-					setValue('visaTypeDisplay', visaTypeLabel);
-
-					// Individual visa: Documents Send 상태 표시 (Document details 섹션에 표시)
-					if (visaType === 'individual') {
-						// visaSend can be integer (1/0) or string ('yes'/'no')
-						const visaSendRaw = application.visaSend;
-						const visaSendLabel = (visaSendRaw === 1 || visaSendRaw === '1' || String(visaSendRaw).toLowerCase() === 'yes') ? 'Yes' : 'No';
-						setValue('docSendStatus', visaSendLabel);
-					}
-
-					// 상태(자동 산정/표시)
-					let uiStatus = normalizeVisaStatus(application.status);
-
-					// Individual visa: Documents Send가 yes면 Under Review로 표시
-					if (visaType === 'individual') {
-						// visaSend can be integer (1/0) or string ('yes'/'no')
-						const visaSendRaw = application.visaSend;
-						const isVisaSendYes = (visaSendRaw === 1 || visaSendRaw === '1' || String(visaSendRaw).toLowerCase() === 'yes');
-						const visaFile = String(pickFirst(application, ['visaFile', 'visa_file', 'visaDocument', 'visa_document', 'visaUrl']) || '').trim();
-						if (visaFile) {
-							uiStatus = 'approved';
-						} else if (isVisaSendYes) {
-							uiStatus = 'reviewing';
-						} else {
-							uiStatus = 'pending';
-						}
-					}
-
-					setValue('statusDisplay', statusLabel(uiStatus)); // (존재할 때만)
-					setSelect('statusSelect', uiStatus);
-					syncJwSelectDisplay(document.getElementById('statusSelect'));
-
-					// 신청자 정보
-					setSelect('honorific', pickFirst(application, ['honorific', 'title', 'salutation']));
-					syncJwSelectDisplay(document.getElementById('honorific'));
-					setValue('firstName', pickFirst(application, ['fName', 'firstName', 'fname', 'applicantFirstName']));
-					setValue('lastName', pickFirst(application, ['lName', 'lastName', 'lname', 'applicantLastName']));
-					setSelect('gender', String(pickFirst(application, ['gender']) || '').toLowerCase());
-					syncJwSelectDisplay(document.getElementById('gender'));
-					setValue('age', pickFirst(application, ['age']));
-					setValue('birthDate', pickFirst(application, ['birthDate', 'dateOfBirth', 'dob']));
-
-					setValue('countryOfOrigin', pickFirst(application, ['nationality', 'countryOfOrigin', 'country_of_origin']));
-					setValue('passportNumber', pickFirst(application, ['passportNumber', 'passport_no', 'passportNo']));
-					setValue('passportIssueDate', pickFirst(application, ['passportIssueDate', 'passport_issue_date']));
-					setValue('passportExpiryDate', pickFirst(application, ['passportExpiryDate', 'passportExpirationDate', 'passport_expiry_date']));
-
-					// 서류 내역 - 동적으로 렌더링된 문서들 업데이트
-					const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
-					config.forEach(doc => {
-						// download-only documents (individual visa) don't need file path checks
-						if (doc.download && __currentVisaType === 'individual') return;
-						setDocRow(doc.key, application);
-					});
+				const bookingStatus = pickFirst(application, ['bookingStatus', 'booking_status']) || '';
+				const bookingStatusMap = {
+					'pending': 'Pending',
+					'confirmed': 'Confirmed',
+					'completed': 'Completed',
+					'cancelled': 'Cancelled'
 				};
+				setValue('bookingStatusDisplay', bookingStatusMap[bookingStatus.toLowerCase()] || bookingStatus || '-');
 
-				applyToDom();
-				// init(super.js)가 jw_select 등을 늦게 적용하는 경우가 있어 재적용(값이 “비어 보이는” 현상 방지)
-				setTimeout(applyToDom, 120);
-				setTimeout(applyToDom, 450);
+				// Applicant info
+				setSelect('honorific', pickFirst(application, ['honorific', 'title', 'salutation']));
+				syncJwSelectDisplay(document.getElementById('honorific'));
+				setValue('firstName', pickFirst(application, ['fName', 'firstName', 'fname', 'applicantFirstName']));
+				setValue('lastName', pickFirst(application, ['lName', 'lastName', 'lname', 'applicantLastName']));
+				setSelect('gender', String(pickFirst(application, ['gender']) || '').toLowerCase());
+				syncJwSelectDisplay(document.getElementById('gender'));
+				setValue('age', pickFirst(application, ['age']));
+				setValue('birthDate', pickFirst(application, ['birthDate', 'dateOfBirth', 'dob']));
+				setValue('countryOfOrigin', pickFirst(application, ['nationality', 'countryOfOrigin', 'country_of_origin']));
+				setValue('passportNumber', pickFirst(application, ['passportNumber', 'passport_no', 'passportNo']));
+				setValue('passportIssueDate', pickFirst(application, ['passportIssueDate', 'passport_issue_date']));
+				setValue('passportExpiryDate', pickFirst(application, ['passportExpiryDate', 'passportExpirationDate', 'passport_expiry_date']));
 
-				// 여권 사진 프리뷰
+				// Status - use DB value, map to UI
+				const dbStatus = application.status || 'pending';
+				const dbToUiStatusMap = {
+					'under_review': 'reviewing',
+					'completed': 'approved',
+					'document_required': 'pending'
+				};
+				const uiStatus = dbToUiStatusMap[dbStatus] || dbStatus;
+				setSelect('statusSelect', uiStatus);
+				syncJwSelectDisplay(document.getElementById('statusSelect'));
+
+				// Passport photo preview
 				const passportPhoto = pickFirst(application, ['passportPhoto', 'passport_photo', 'passportPhotoUrl']);
 				const preview = document.getElementById('passportPhotoPreview');
 				const metaEl = document.getElementById('passportPhotoMeta');
 				if (preview) {
 					if (passportPhoto) {
 						let url = String(passportPhoto).trim();
-						// uploads 경로는 절대경로로 보정(상대경로면 /admin/super/ 아래로 붙어서 깨짐)
 						if (url.startsWith('uploads/')) url = '/' + url;
-
-						// uploads 파일은 download.php(inline)로 불러오면 권한/헤더 차이에도 안정적으로 표시됨
 						let bgUrl = url;
 						if (bgUrl.startsWith('/uploads/')) {
 							bgUrl = `/backend/api/download.php?file=${encodeURIComponent(bgUrl)}&inline=1`;
 						}
-
 						preview.style.backgroundImage = `url('${bgUrl}')`;
 						preview.style.backgroundSize = 'cover';
 						preview.style.backgroundPosition = 'center';
@@ -705,35 +1067,35 @@
 					}
 				}
 
-				// 비자 파일 표시(있으면 목록에 노출)
-				__renderDocsAndVisaFile();
+				// Render documents and visa file
+				__updateUI();
 
-				// 상태 자동 산정/동기화(셀렉트는 비활성화)
-				await ensureAutoStatus(application);
+				// Re-apply after init (jw_select timing)
+				const reapply = () => {
+					setSelect('statusSelect', uiStatus);
+					syncJwSelectDisplay(document.getElementById('statusSelect'));
+				};
+				setTimeout(reapply, 120);
+				setTimeout(reapply, 450);
+
 			} catch (error) {
 				console.error('Error loading visa application detail:', error);
 				alert('비자 신청 상세를 불러오는 중 오류가 발생했습니다.');
 			}
 		}
 
-		// handleSaveStatus는 요구사항(자동 상태)으로 사용하지 않음
-
 		async function handleVisaUpload() {
 			try {
 				if (!visaApplicationId) return;
 				const input = document.getElementById('visaFileInput');
 				const file = input?.files?.[0] || null;
-				if (!file) {
-					// 파일 선택 취소
-					return;
-				}
+				if (!file) return;
 
 				const fd = new FormData();
 				fd.append('file', file);
 				fd.append('type', 'visa');
 				fd.append('related_id', String(visaApplicationId));
 
-				// admin 페이지에서는 절대경로로 업로드 API 호출해야 함(/admin/backend/api로 잘못 붙는 문제 방지)
 				const upRes = await fetch('/backend/api/upload.php', {
 					method: 'POST',
 					body: fd,
@@ -750,11 +1112,11 @@
 					alert('No file path returned from upload.');
 					return;
 				}
-				// SMT 수정: DB 반영은 저장 버튼 클릭 시 수행
+
 				__pending.newVisaFilePath = filePath;
-				__pending.newVisaFileSize = file.size || 0;  // 파일 크기 저장
+				__pending.newVisaFileSize = file.size || 0;
 				__pending.deleteVisaFile = false;
-				__renderDocsAndVisaFile();
+				__updateUI();
 				alert('File uploaded. Click Save to apply changes.');
 			} catch (e) {
 				console.error('handleVisaUpload error:', e);
@@ -765,18 +1127,19 @@
 		async function deleteVisaFile() {
 			try {
 				if (!visaApplicationId) return;
-				// 1) 새로 업로드한(미저장) 파일이 있으면: "변경 취소"로 동작
+
 				if (__pending.newVisaFilePath) {
 					if (!confirm('Remove the uploaded file before saving?')) return;
 					__pending.newVisaFilePath = '';
 					__pending.newVisaFileSize = 0;
-					__renderDocsAndVisaFile();
+					__updateUI();
 					return;
 				}
-				// 2) 기존 파일은 즉시 서버에서 삭제 처리
+
 				const hasFile = String(pickFirst(__visaApplication, ['visaFile', 'visa_file', 'visaDocument', 'visa_document', 'visaUrl']) || '').trim() !== '';
 				if (!hasFile) return;
 				if (!confirm('Delete the uploaded visa file?')) return;
+
 				const res = await fetch('../backend/api/super-api.php', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -788,7 +1151,7 @@
 					alert('Failed to delete visa file: ' + (j?.message || ('HTTP ' + res.status)));
 					return;
 				}
-				// 로컬 상태 초기화 후 재로딩
+
 				__pending.deleteVisaFile = false;
 				await loadVisaApplicationDetail();
 			} catch (e) {
@@ -804,23 +1167,7 @@
 				const btn = document.getElementById('saveStatusBtn');
 				if (btn) btn.disabled = true;
 
-				// 1) delete docs
-				for (const k of Array.from(__pending.deleteDocs)) {
-					const res = await fetch('../backend/api/super-api.php', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ action: 'deleteVisaDocument', visaApplicationId, docKey: k }),
-						credentials: 'same-origin'
-					});
-					const j = await res.json().catch(() => ({}));
-					if (!res.ok || !j?.success) {
-						alert('Failed to save (delete document): ' + (j?.message || ('HTTP ' + res.status)));
-						__setSaveEnabled(true);
-						return;
-					}
-				}
-
-				// 2) delete visa file
+				// Delete visa file
 				if (__pending.deleteVisaFile) {
 					const res = await fetch('../backend/api/super-api.php', {
 						method: 'POST',
@@ -836,7 +1183,7 @@
 					}
 				}
 
-				// 3) update visa file
+				// Update visa file
 				if (__pending.newVisaFilePath) {
 					const res = await fetch('../backend/api/super-api.php', {
 						method: 'POST',
@@ -852,9 +1199,11 @@
 					}
 				}
 
-				// 4) status update (자동 산정 값으로 저장)
+				// Update status (auto-calculated)
 				try {
-					const effective = __effectiveApplication(__visaApplication);
+					const effective = { ...__visaApplication };
+					if (__pending.newVisaFilePath) effective.visaFile = __pending.newVisaFilePath;
+					if (__pending.deleteVisaFile) effective.visaFile = '';
 					const derived = deriveUiStatusFromApplication(effective);
 					await fetch('../backend/api/super-api.php', {
 						method: 'POST',
@@ -873,11 +1222,14 @@
 			}
 		}
 
+		function downloadStaticDoc(path) {
+			if (!path) return;
+			window.open(path, '_blank');
+		}
+
 		function downloadAttachment(filePath) {
 			const raw = String(filePath || '').trim();
 			if (!raw) return;
-
-			// 파일 경로가 "download.php?file=..." 형태로 들어오는 구버전/혼합 데이터 대응
 			let p = raw;
 			try {
 				if (p.includes('download.php?file=')) {
@@ -885,12 +1237,8 @@
 					const fp = u.searchParams.get('file');
 					if (fp) p = fp;
 				}
-			} catch (_) { /* ignore */ }
-
-			// download.php는 /uploads 하위만 허용하므로, uploads로 시작하면 /를 보강
+			} catch (_) {}
 			if (p.startsWith('uploads/')) p = '/' + p;
-
-			// admin 페이지에서는 절대경로로 호출해야 함(/admin/backend/api 경로로 잘못 붙는 문제 방지)
 			window.open(`/backend/api/download.php?file=${encodeURIComponent(p)}`, '_blank');
 		}
 
@@ -900,128 +1248,113 @@
 			return div.innerHTML;
 		}
 
-		// Render document section based on visa type
-		function renderDocumentSection(visaType) {
-			const container = document.getElementById('documentGridWrap');
-			if (!container) return;
+		// File Viewer Functions
+		let __currentViewerFile = '';
 
-			const type = (visaType || 'group').toLowerCase();
-			__currentVisaType = type;
+		function getFileExtension(filePath) {
+			const path = String(filePath || '').trim();
+			const lastDot = path.lastIndexOf('.');
+			if (lastDot < 0) return '';
+			return path.substring(lastDot + 1).toLowerCase();
+		}
 
-			container.innerHTML = '';
+		function isImageFile(filePath) {
+			const ext = getFileExtension(filePath);
+			return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
+		}
 
-			// For individual visa, show only "Documents Send" status
-			if (type === 'individual') {
-				const div = document.createElement('div');
-				div.className = 'grid-item';
-				div.innerHTML = `
-					<label class="label-name">Documents Send</label>
-					<input type="text" class="form-control" id="docSendStatus" value="" disabled>
-				`;
-				container.appendChild(div);
-				return;
+		function isPdfFile(filePath) {
+			return getFileExtension(filePath) === 'pdf';
+		}
+
+		function getFileUrl(filePath, inline = false) {
+			let p = String(filePath || '').trim();
+			if (!p) return '';
+			if (p.startsWith('uploads/')) p = '/' + p;
+			const inlineParam = inline ? '&inline=1' : '';
+			return `/backend/api/download.php?file=${encodeURIComponent(p)}${inlineParam}`;
+		}
+
+		function openFileViewer(filePath, title) {
+			const path = String(filePath || '').trim();
+			if (!path) return;
+
+			__currentViewerFile = path;
+			const modal = document.getElementById('fileViewerModal');
+			const content = document.getElementById('fileViewerContent');
+			const titleEl = document.getElementById('fileViewerTitle');
+			const downloadBtn = document.getElementById('fileViewerDownload');
+
+			if (!modal || !content) return;
+
+			// Set title
+			const fileName = path.split('/').pop() || path;
+			titleEl.textContent = title || fileName;
+
+			// Set download button
+			downloadBtn.onclick = () => downloadAttachment(path);
+
+			// Clear previous content
+			content.innerHTML = '';
+
+			const fileUrl = getFileUrl(path, true);
+
+			if (isImageFile(path)) {
+				// Image preview
+				const img = document.createElement('img');
+				img.src = fileUrl;
+				img.alt = fileName;
+				img.onerror = () => {
+					content.innerHTML = getUnsupportedHtml(path, 'Failed to load image');
+				};
+				content.appendChild(img);
+			} else if (isPdfFile(path)) {
+				// PDF preview
+				const iframe = document.createElement('iframe');
+				iframe.src = fileUrl;
+				iframe.title = fileName;
+				content.appendChild(iframe);
+			} else {
+				// Unsupported file type
+				content.innerHTML = getUnsupportedHtml(path, 'Preview not available for this file type');
 			}
 
-			// For group visa, show upload documents
-			const config = DOCUMENT_CONFIG[type] || DOCUMENT_CONFIG.group;
-
-			config.forEach(doc => {
-				const div = document.createElement('div');
-				div.className = 'grid-item';
-
-				// Regular upload-required documents (group visa)
-				const uploadedHtml = doc.download ? `
-					<button type="button" class="jw-button typeF" id="docStaticDl-${doc.key}" aria-label="download template" onclick="downloadStaticDoc('${escapeHtml(doc.downloadPath)}')" title="Download template">
-						<img src="../image/button-download.svg" alt="">
-					</button>
-				` : '';
-
-				div.innerHTML = `
-					<label class="label-name">${escapeHtml(doc.title)}</label>
-					<div class="cell">
-						<div class="field-row jw-center">
-							<div class="jw-center jw-gap10">
-								<img src="../image/file.svg" alt="">
-								<span id="docMeta-${doc.key}">No file</span>
-							</div>
-							<div class="jw-center jw-gap10">
-								${uploadedHtml}
-								<button type="button" class="jw-button typeF" id="docDl-${doc.key}" aria-label="download" style="display:none;">
-									<img src="../image/button-download.svg" alt="">
-								</button>
-								<button type="button" class="jw-button typeF" id="docDel-${doc.key}" aria-label="delete" disabled style="display:none;">
-									<img src="../image/button-close2.svg" alt="">
-								</button>
-							</div>
-						</div>
-					</div>
-				`;
-
-				container.appendChild(div);
-			});
-
-			// Wire download and delete buttons for dynamically created elements
-			wireDocButtonsDynamic();
+			modal.style.display = 'flex';
+			document.body.style.overflow = 'hidden';
 		}
 
-		// Download static document (template files)
-		function downloadStaticDoc(path) {
-			if (!path) return;
-			window.open(path, '_blank');
+		function getUnsupportedHtml(filePath, message) {
+			return `
+				<div class="file-viewer-unsupported">
+					<img src="../image/file.svg" alt="">
+					<p>${escapeHtml(message)}</p>
+					<button type="button" onclick="downloadAttachment('${escapeHtml(filePath)}')">Download File</button>
+				</div>
+			`;
 		}
 
-		// Wire dynamic document buttons
-		function wireDocButtonsDynamic() {
-			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
-			config.forEach((doc) => {
-				const dlBtn = document.getElementById(`docDl-${doc.key}`);
-				if (dlBtn && !doc.download) {
-					dlBtn.onclick = (e) => {
-						e.preventDefault();
-						const path = __docPathFor(doc.key, __visaApplication);
-						if (path) downloadAttachment(path);
-					};
-				}
-
-				const delBtn = document.getElementById(`docDel-${doc.key}`);
-				if (delBtn) {
-					delBtn.onclick = async (e) => {
-						e.preventDefault();
-						if (!visaApplicationId) return;
-						const path = __docPathFor(doc.key, __visaApplication);
-						if (!path) return;
-						if (!confirm('해당 서류를 삭제하시겠습니까?')) return;
-						try {
-							const res = await fetch('../backend/api/super-api.php', {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({ action: 'deleteVisaDocument', visaApplicationId, docKey: doc.key }),
-								credentials: 'same-origin'
-							});
-							const j = await res.json().catch(() => ({}));
-							if (!res.ok || !j?.success) {
-								alert('삭제 실패: ' + (j?.message || ('HTTP ' + res.status)));
-								return;
-							}
-							try { __pending.deleteDocs.delete(doc.key); } catch (_) {}
-							await loadVisaApplicationDetail();
-						} catch (err) {
-							console.error('deleteVisaDocument error:', err);
-							alert('삭제 중 오류가 발생했습니다.');
-						}
-					};
-				}
-			});
+		function closeFileViewer() {
+			const modal = document.getElementById('fileViewerModal');
+			if (modal) modal.style.display = 'none';
+			document.body.style.overflow = '';
+			__currentViewerFile = '';
 		}
 
-		// Get document keys for current visa type
-		function getCurrentDocKeys() {
-			const config = DOCUMENT_CONFIG[__currentVisaType] || DOCUMENT_CONFIG.group;
-			return config.map(d => d.key);
+		// Close on Escape key
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') closeFileViewer();
+		});
+
+		// View passport photo in viewer
+		function viewPassportPhoto() {
+			if (!__visaApplication) return;
+			const passportPhoto = pickFirst(__visaApplication, ['passportPhoto', 'passport_photo', 'passportPhotoUrl']);
+			if (!passportPhoto) return;
+			let path = String(passportPhoto).trim();
+			if (path.startsWith('uploads/')) path = '/' + path;
+			openFileViewer(path, 'Passport Photo');
 		}
 	</script>
 </body>
 
 </html>
-
-

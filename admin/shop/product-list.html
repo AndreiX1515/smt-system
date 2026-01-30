@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>상품 관리 - Shop Admin</title>
+    <link rel="shortcut icon" href="../image/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/a_reset.css">
+    <link rel="stylesheet" href="../css/a_variables.css">
+    <link rel="stylesheet" href="../css/a_components.css">
+    <link rel="stylesheet" href="../css/a_contents.css">
+    <style>
+        .shop-admin { padding: 30px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+        .filter-bar select, .filter-bar input { display: block !important; height: 40px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+        .filter-bar input { width: 250px; }
+        .btn-add { height: 44px; padding: 0 24px; background: #0065F8; color: #fff; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .btn-edit { padding: 8px 16px; background: #fff; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .btn-delete { padding: 8px 16px; background: #fff; border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .product-thumb { width: 50px; height: 50px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .product-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        .status-active { color: #22c55e; font-weight: 500; }
+        .status-inactive { color: #ef4444; font-weight: 500; }
+        .price-sale { color: #ef4444; font-weight: 600; }
+        .price-original { color: #999; text-decoration: line-through; font-size: 13px; }
+        .action-btns { display: flex; gap: 8px; justify-content: center; }
+        .stock-low { color: #ef4444; font-weight: 600; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; background: #f5f5f5; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .tab.active { background: #0065F8; color: #fff; }
+        .badge-featured { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <header class="layout-header"></header>
+
+    <main class="layout-main">
+        <aside class="layout-side"></aside>
+
+        <section class="layout-content">
+            <div class="shop-admin">
+                <div class="page-header">
+                    <h1 class="page-title">상품 관리</h1>
+                    <button class="btn-add" onclick="location.href='product-form.html'">+ 상품 등록</button>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" data-category="all" onclick="selectCategory('all')">전체</button>
+                </div>
+
+                <div class="filter-bar">
+                    <select id="filterStatus">
+                        <option value="">상태 전체</option>
+                        <option value="1">판매중</option>
+                        <option value="0">판매중지</option>
+                    </select>
+                    <input type="text" id="searchKeyword" placeholder="상품명 검색">
+                    <button class="jw-button typeB" onclick="loadProducts()">검색</button>
+                </div>
+
+                <table class="jw-tableA">
+                    <thead>
+                        <tr>
+                            <th class="col-60">No</th>
+                            <th class="col-80">이미지</th>
+                            <th class="col-200">상품명</th>
+                            <th class="col-150">카테고리</th>
+                            <th class="col-150">가격</th>
+                            <th class="col-80">재고</th>
+                            <th class="col-80">판매량</th>
+                            <th class="col-80">상태</th>
+                            <th class="col-150">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productList">
+                        <tr><td colspan="9" class="is-center">로딩중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="../js/default.js"></script>
+    <script src="../js/super.js"></script>
+    <script>
+        init({
+            headerUrl: '../inc/header.html',
+            sideUrl: '../inc/side-shop.html'
+        });
+
+        const API_BASE = '/backend/api/shop';
+
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${API_BASE}/categories.php`);
+                const data = await res.json();
+                if (data.success) {
+                    const tabs = document.querySelector('.tabs');
+                    data.categories.forEach(cat => {
+                        const btn = document.createElement('button');
+                        btn.className = 'tab';
+                        btn.dataset.category = cat.id;
+                        btn.textContent = `${cat.name} (${cat.product_count})`;
+                        btn.onclick = () => selectCategory(cat.id);
+                        tabs.appendChild(btn);
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function selectCategory(id) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.category == id));
+            currentCategory = (id === 'all') ? null : id;
+            loadProducts();
+        }
+
+        let currentCategory = null;
+
+        async function loadProducts() {
+
+            const status = document.getElementById('filterStatus').value;
+            const keyword = document.getElementById('searchKeyword').value.trim();
+
+            try {
+                let url = `${API_BASE}/products.php?limit=100&admin=1`;
+                if (currentCategory) url += `&category=${currentCategory}`;
+                if (status !== '') url += `&status=${status}`;
+                if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+
+                const res = await fetch(url);
+                const data = await res.json();
+
+                const tbody = document.getElementById('productList');
+                if (data.success && data.products.length > 0) {
+                    tbody.innerHTML = data.products.map((p, i) => `
+                        <tr>
+                            <td class="is-center">${i + 1}</td>
+                            <td>
+                                <div class="product-thumb">
+                                    ${p.thumbnail ? `<img src="${p.thumbnail}">` : '📦'}
+                                </div>
+                            </td>
+                            <td><strong>${p.name}</strong>${p.is_featured == 1 ? '<span class="badge-featured">추천</span>' : ''}</td>
+                            <td class="is-center">${p.category_name || '-'}</td>
+                            <td class="is-center">
+                                ${p.sale_price
+                                    ? `<div class="price-original">₱${Number(p.price).toLocaleString()}</div>
+                                       <div class="price-sale">₱${Number(p.sale_price).toLocaleString()}</div>`
+                                    : `₱${Number(p.price).toLocaleString()}`}
+                            </td>
+                            <td class="is-center ${p.stock <= 10 ? 'stock-low' : ''}">${p.stock}</td>
+                            <td class="is-center">${p.sold_count}</td>
+                            <td class="is-center">
+                                <span class="${p.is_active ? 'status-active' : 'status-inactive'}">
+                                    ${p.is_active ? '판매중' : '중지'}
+                                </span>
+                            </td>
+                            <td class="is-center">
+                                <div class="action-btns">
+                                    <button class="btn-edit" onclick="editProduct(${p.id})">수정</button>
+                                    <button class="btn-delete" onclick="deleteProduct(${p.id}, '${p.name}')">삭제</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="9" class="is-center">상품이 없습니다.</td></tr>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function editProduct(id) {
+            location.href = `product-form.html?id=${id}`;
+        }
+
+        async function deleteProduct(id, name) {
+            if (!confirm(`"${name}" 상품을 삭제하시겠습니까?`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/products.php?id=${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    alert('삭제되었습니다.');
+                    loadProducts();
+                } else {
+                    alert(data.error || '삭제 실패');
+                }
+            } catch (e) {
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+        // 엔터키로 검색
+        document.getElementById('searchKeyword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loadProducts();
+        });
+
+        // 상태 변경 시 자동 검색
+        document.getElementById('filterStatus').addEventListener('change', function() {
+            loadProducts();
+        });
+
+        loadCategories();
+        loadProducts();
+    </script>
+</body>
+</html>

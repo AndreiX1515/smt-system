@@ -1,121 +1,217 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<title>SMART TRAVEL ADMIN</title>
+	<title>SMART TRAVEL ADMIN - Visa Application List</title>
 
-	<!-- 공통 스타일 -->
 	<link rel="shortcut icon" href="../image/favicon.ico">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="../css/a_reset.css">
 	<link rel="stylesheet" href="../css/a_variables.css">
 	<link rel="stylesheet" href="../css/a_components.css">
 	<link rel="stylesheet" href="../css/a_contents.css">
+	<style>
+		.sortable {
+			cursor: pointer;
+			user-select: none;
+		}
+		.sortable:hover {
+			background-color: rgba(0, 0, 0, 0.05);
+		}
+		#dateSortIcon {
+			font-size: 0.8em;
+			margin-left: 4px;
+		}
+		/* 토글 버튼 스타일 */
+		.toggle-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 10px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			background: #f8f9fa;
+			cursor: pointer;
+			font-size: 13px;
+			transition: all 0.2s;
+		}
+		.toggle-btn:hover {
+			background: #e9ecef;
+			border-color: #adb5bd;
+		}
+		.toggle-btn .arrow {
+			transition: transform 0.2s;
+			font-size: 10px;
+		}
+		.toggle-btn.expanded .arrow {
+			transform: rotate(180deg);
+		}
+		.toggle-btn .count {
+			background: #007bff;
+			color: white;
+			padding: 2px 6px;
+			border-radius: 10px;
+			font-size: 11px;
+			font-weight: bold;
+		}
+		/* 동행자 sub-row 스타일 */
+		.traveler-row {
+			background-color: #f8f9fa;
+		}
+		.traveler-row td {
+			padding: 8px 12px !important;
+			border-top: none !important;
+		}
+		.traveler-row:hover {
+			background-color: #e9ecef;
+		}
+		.traveler-name {
+			padding-left: 20px;
+			position: relative;
+		}
+		.traveler-name::before {
+			content: "└";
+			position: absolute;
+			left: 4px;
+			color: #6c757d;
+		}
+		/* 메인 row 스타일 */
+		.main-row {
+			background-color: #fff;
+		}
+		.main-row:hover {
+			background-color: #f1f3f5;
+		}
+		.main-row.has-travelers {
+			border-bottom: none;
+		}
+		/* 상태 배지 스타일 */
+		.status-badge {
+			display: inline-block;
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 500;
+		}
+		.status-pending { background: #fff3cd; color: #856404; }
+		.status-reviewing { background: #cce5ff; color: #004085; }
+		.status-approved { background: #d4edda; color: #155724; }
+		.status-rejected { background: #f8d7da; color: #721c24; }
+		/* 텍스트 오버플로우 처리 */
+		.jw-tableA td, .jw-tableA th {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		.jw-tableA td[title] {
+			cursor: help;
+		}
+	</style>
 </head>
 
 <body>
 
-	<!-- header 들어올 자리 -->
+	<!-- header -->
 	<header class="layout-header"></header>
 
-	<!-- 본문 영역 -->
+	<!-- main -->
 	<main class="layout-main">
-		<!-- nav 들어올 자리 -->
+		<!-- nav -->
 		<nav class="layout-nav"></nav>
 
 		<section class="layout-content">
-			<h1 class="page-title" data-lan-eng="Visa Application List">비자 신청 목록</h1>
+			<time class="page-date" id="current-date" datetime=""></time>
+
+			<h1 class="page-title" data-lan-eng="Visa Application List">Visa Application List</h1>
 
 			<div class="card-panel jw-mgt32">
-
 				<div class="list-header">
 					<div class="result-count">
-						<span data-lan-eng="Search results">검색결과</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">개</span>
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items"> items</span>
 					</div>
 					<form class="search-form" action="" method="get" id="filterForm">
 						<select class="select" name="status" id="statusFilter" onchange="applyFilters()">
-							<option value="" data-lan-eng="Overall Status">전체 상태</option>
-							<option value="pending" data-lan-eng="Request Received">요청 접수</option>
-							<option value="reviewing" data-lan-eng="Under Review">심사중</option>
-							<option value="approved" data-lan-eng="Issuance Complete">발급 완료</option>
-							<option value="rejected" data-lan-eng="Returned">반려</option>
+							<option value="" data-lan-eng="Overall Status">Overall Status</option>
+							<option value="pending" data-lan-eng="Request Received">Request Received</option>
+							<option value="reviewing" data-lan-eng="Under Review">Under Review</option>
+							<option value="approved" data-lan-eng="Issuance Complete">Issuance Complete</option>
+							<option value="rejected" data-lan-eng="Returned">Returned</option>
 						</select>
 						<select class="select" name="sortOrder" id="sortOrderFilter" onchange="applyFilters()">
-							<option value="latest" data-lan-eng="Latest">최신순</option>
-							<option value="oldest" data-lan-eng="Oldest">오래된 순</option>
+							<option value="latest" data-lan-eng="Latest">Latest</option>
+							<option value="oldest" data-lan-eng="Oldest">Oldest</option>
 						</select>
 					</form>
 				</div>
 
-				<table class="jw-tableA">
+				<table class="jw-tableA" style="table-layout: fixed; width: 100%;">
 					<colgroup>
-						<col class="col-60"> <!-- No -->
-						<col> <!-- 신청자명 -->
-						<col> <!-- Visa Type -->
-						<col> <!-- 신청일시 -->
-						<col> <!-- 상태 -->
+						<col style="width: 50px;"> <!-- No -->
+						<col style="width: 120px;"> <!-- Booking ID -->
+						<col style="width: 70px;"> <!-- Travelers -->
+						<col style="width: 120px;"> <!-- Representative -->
+						<col style="width: 80px;"> <!-- Visa Type -->
+						<col style="width: 130px;"> <!-- Agency Name -->
+						<col style="width: 95px;"> <!-- Travel Start Date -->
+						<col style="width: 130px;"> <!-- Application date/time -->
+						<col style="width: 110px;"> <!-- Status -->
 					</colgroup>
 					<thead>
 						<tr>
 							<th class="no is-center">No</th>
-							<th class="is-center" data-lan-eng="Applicant name">신청자명</th>
+							<th class="is-center" data-lan-eng="Booking ID">Booking ID</th>
+							<th class="is-center" data-lan-eng="Travelers">Travelers</th>
+							<th class="is-center" data-lan-eng="Representative">Representative</th>
 							<th class="is-center" data-lan-eng="Visa Type">Visa Type</th>
-							<th class="is-center" data-lan-eng="Application date/time">신청일시</th>
-							<th class="is-center" data-lan-eng="Status">상태</th>
+							<th class="is-center" data-lan-eng="Agency Name">Agency Name</th>
+							<th class="is-center" data-lan-eng="Travel Start Date">Travel Start Date</th>
+							<th class="is-center sortable" data-lan-eng="Application date/time" id="sortByDate" onclick="toggleDateSort()" style="cursor: pointer;">
+								Application date/time <span id="dateSortIcon">▼</span>
+							</th>
+							<th class="is-center" data-lan-eng="Status">Status</th>
 						</tr>
 					</thead>
 					<tbody id="visaAppsTableBody">
 						<tr>
-							<td colspan="5" class="is-center">데이터를 불러오는 중...</td>
+							<td colspan="9" class="is-center">Loading...</td>
 						</tr>
 					</tbody>
 				</table>
 
-
-				
-				<div class="jw-pagebox" role="navigation" aria-label="페이지네이션">
+				<div class="jw-pagebox" role="navigation" aria-label="Pagination">
 					<div class="contents">
-						<button type="button" class="first" aria-label="첫 페이지" aria-disabled="false">
+						<button type="button" class="first" aria-label="First page" aria-disabled="false">
 							<img src="../image/first.svg" alt="">
 						</button>
-						<button type="button" class="prev" aria-label="이전 페이지" aria-disabled="false">
+						<button type="button" class="prev" aria-label="Previous page" aria-disabled="false">
 							<img src="../image/prev.svg" alt="">
 						</button>
 
 						<div class="page" role="list">
-							<button type="button" class="p" role="listitem">1</button>
-							<button type="button" class="p" role="listitem">2</button>
-							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
-							<button type="button" class="p" role="listitem">4</button>
-							<button type="button" class="p" role="listitem">5</button>
+							<button type="button" class="p show" role="listitem" aria-current="page">1</button>
 						</div>
 
-						<button type="button" class="next" aria-label="다음 페이지" aria-disabled="false">
+						<button type="button" class="next" aria-label="Next page" aria-disabled="false">
 							<img src="../image/next.svg" alt="">
 						</button>
-						<button type="button" class="last" aria-label="마지막 페이지" aria-disabled="false">
+						<button type="button" class="last" aria-label="Last page" aria-disabled="false">
 							<img src="../image/last.svg" alt="">
 						</button>
 					</div>
 				</div>
-
 			</div>
-			
+
 			<div class="controller">
-				<button type="button" class="jw-button typeA" id="downloadBtn" onclick="handleDownload()" data-lan-eng="Download">다운로드</button>
+				<button type="button" class="jw-button typeA" id="downloadBtn" onclick="handleDownload()" data-lan-eng="Download">Download</button>
 			</div>
 
 		</section>
 
 	</main>
 
-	<script src="../js/default.js?v=20251226_visalistfix1"></script>
+	<script src="../js/default.js?v=20251227_change_pw_1"></script>
 	<script src="../js/super.js?v=20251226_visalistfix1"></script>
-
 	<script>
 		init({
 			headerUrl: '../inc/header.html',
@@ -132,13 +228,13 @@
 					credentials: 'same-origin'
 				});
 				const sessionData = await sessionResponse.json();
-				
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;
 				}
-				
+
 				await loadVisaApplications();
 			} catch (error) {
 				console.error('Session check error:', error);
@@ -150,23 +246,43 @@
 		function applyFilters() {
 			currentFilters.status = document.getElementById('statusFilter').value;
 			currentFilters.sortOrder = document.getElementById('sortOrderFilter').value;
+			updateSortIcon();
 			currentPage = 1;
 			loadVisaApplications();
+		}
+
+		function toggleDateSort() {
+			if (currentFilters.sortOrder === 'latest') {
+				currentFilters.sortOrder = 'oldest';
+			} else {
+				currentFilters.sortOrder = 'latest';
+			}
+			document.getElementById('sortOrderFilter').value = currentFilters.sortOrder;
+			updateSortIcon();
+			currentPage = 1;
+			loadVisaApplications();
+		}
+
+		function updateSortIcon() {
+			const icon = document.getElementById('dateSortIcon');
+			if (icon) {
+				icon.textContent = currentFilters.sortOrder === 'latest' ? '▼' : '▲';
+			}
 		}
 
 		async function loadVisaApplications(page = currentPage) {
 			try {
 				const tbody = document.getElementById('visaAppsTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="4" class="is-center">데이터를 불러오는 중...</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="9" class="is-center">Loading...</td></tr>';
 				}
 
 				const params = new URLSearchParams({
-					action: 'getVisaApplications',
+					action: 'getVisaApplicationsGrouped',
 					page: page,
 					limit: limit
 				});
-				
+
 				if (currentFilters.status) params.append('status', currentFilters.status);
 				if (currentFilters.sortOrder) params.append('sortOrder', currentFilters.sortOrder);
 
@@ -184,38 +300,89 @@
 
 				if (result.success && result.data) {
 					const { applications, pagination } = result.data;
-					
+
 					const totalCountEl = document.getElementById('totalCount');
 					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
 
 					if (tbody) {
 						if (applications.length === 0) {
-							tbody.innerHTML = '<tr><td colspan="5" class="is-center">No visa applications found.</td></tr>';
+							tbody.innerHTML = '<tr><td colspan="9" class="is-center">No visa applications found.</td></tr>';
 						} else {
 							tbody.innerHTML = applications.map((app, index) => {
-								const createdAt = app.createdAt ? app.createdAt.replace('T', ' ').substring(0, 16) : '';
-								// 요구사항(id 93): 상태 표기는 영문 라벨로 노출
+								const travelStartDate = app.travelStartDate || '';
+								const travelers = app.travelers || [];
+								const travelerCount = app.travelerCount || travelers.length || 1;
+								const repName = app.representativeName || (travelers[0]?.applicantName) || '';
+								const repStatus = app.representativeStatus || (travelers[0]?.status) || 'pending';
+								const repId = app.representativeId || (travelers[0]?.visaApplicationId) || '';
+								const repCreatedAt = app.representativeCreatedAt || (travelers[0]?.createdAt) || '';
+								const repVisaType = app.representativeVisaType || (travelers[0]?.visaType) || '';
+								const rowNum = app.rowNum || (pagination.totalCount - (page - 1) * limit - index);
+								const bookingId = app.bookingId || '';
+
 								const statusMap = {
 									'pending': 'Request Received',
 									'reviewing': 'Under Review',
 									'approved': 'Issuance Complete',
 									'rejected': 'Returned'
 								};
-								const statusLabel = statusMap[String(app.status || '').toLowerCase()] || 'Request Received';
-								const appId = app.visaApplicationId || app.applicationId || app.id;
-								const rowNum = pagination ? (pagination.totalCount - (page - 1) * limit - index) : (app.rowNum || index + 1);
-								// Visa Type 표시
-								const visaType = (app.visaType || 'individual').toLowerCase();
-								const visaTypeLabel = visaType === 'group' ? 'Group' : 'Individual';
-								return `
-									<tr onclick="window.location.href='visa-app-detail.html?id=${escapeHtml(appId)}'" style="cursor: pointer;">
+								const statusClassMap = {
+									'pending': 'status-pending',
+									'reviewing': 'status-reviewing',
+									'approved': 'status-approved',
+									'rejected': 'status-rejected'
+								};
+								const visaTypeMap = {
+									'group': 'Group',
+									'individual': 'Individual'
+								};
+
+								const getStatusLabel = (status) => statusMap[String(status || '').toLowerCase()] || 'Request Received';
+								const getStatusClass = (status) => statusClassMap[String(status || '').toLowerCase()] || 'status-pending';
+								const getVisaTypeLabel = (type) => visaTypeMap[String(type || '').toLowerCase()] || type || '-';
+
+								// 메인 row (대표 신청자)
+								let html = `
+									<tr class="main-row ${travelerCount > 1 ? 'has-travelers' : ''}" data-booking-id="${escapeHtml(bookingId)}">
 										<td class="no is-center">${rowNum}</td>
-										<td class="is-center">${escapeHtml(app.applicantName || '')}</td>
-										<td class="is-center">${escapeHtml(visaTypeLabel)}</td>
-										<td class="is-center">${escapeHtml(createdAt)}</td>
-										<td class="is-center">${escapeHtml(statusLabel)}</td>
+										<td class="is-center" title="${escapeHtml(bookingId)}">${escapeHtml(bookingId)}</td>
+										<td class="is-center">
+											${travelerCount > 1 ? `
+												<button type="button" class="toggle-btn" onclick="toggleTravelers(event, '${escapeHtml(bookingId)}')">
+													<span class="count">${travelerCount}</span>
+													<span class="arrow">▼</span>
+												</button>
+											` : `<span style="color:#6c757d;">1</span>`}
+										</td>
+										<td class="is-center" style="cursor:pointer;" title="${escapeHtml(repName)}" onclick="window.location.href='visa-app-detail.html?id=${escapeHtml(repId)}'">${escapeHtml(repName)}</td>
+										<td class="is-center">${escapeHtml(getVisaTypeLabel(repVisaType))}</td>
+										<td class="is-center" title="${escapeHtml(app.agencyName || '')}">${escapeHtml(app.agencyName || '')}</td>
+										<td class="is-center">${escapeHtml(travelStartDate)}</td>
+										<td class="is-center">${escapeHtml(repCreatedAt)}</td>
+										<td class="is-center"><span class="status-badge ${getStatusClass(repStatus)}">${escapeHtml(getStatusLabel(repStatus))}</span></td>
 									</tr>
 								`;
+
+								// 동행자 rows (처음에는 숨김)
+								if (travelerCount > 1) {
+									travelers.slice(1).forEach((t, tIdx) => {
+										html += `
+											<tr class="traveler-row" data-booking-id="${escapeHtml(bookingId)}" style="display:none;">
+												<td class="is-center"></td>
+												<td class="is-center"></td>
+												<td class="is-center"></td>
+												<td class="is-center traveler-name" style="cursor:pointer;" title="${escapeHtml(t.applicantName || '')}" onclick="window.location.href='visa-app-detail.html?id=${escapeHtml(t.visaApplicationId)}'">${escapeHtml(t.applicantName || '')}</td>
+												<td class="is-center">${escapeHtml(getVisaTypeLabel(t.visaType))}</td>
+												<td class="is-center"></td>
+												<td class="is-center"></td>
+												<td class="is-center">${escapeHtml(t.createdAt || '')}</td>
+												<td class="is-center"><span class="status-badge ${getStatusClass(t.status)}">${escapeHtml(getStatusLabel(t.status))}</span></td>
+											</tr>
+										`;
+									});
+								}
+
+								return html;
 							}).join('');
 						}
 					}
@@ -229,21 +396,32 @@
 				console.error('Error loading visa applications:', error);
 				const tbody = document.getElementById('visaAppsTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="5" class="is-center">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="9" class="is-center">Error loading data.</td></tr>';
 				}
 			}
 		}
-		
+
+		function toggleTravelers(event, bookingId) {
+			event.stopPropagation();
+			const btn = event.currentTarget;
+			const isExpanded = btn.classList.toggle('expanded');
+
+			const travelerRows = document.querySelectorAll(`.traveler-row[data-booking-id="${bookingId}"]`);
+			travelerRows.forEach(row => {
+				row.style.display = isExpanded ? 'table-row' : 'none';
+			});
+		}
+
 		function updatePagination(pagination) {
 			const { currentPage, totalPages } = pagination;
 			const pageContainer = document.querySelector('.jw-pagebox .page');
-			
+
 			if (pageContainer) {
 				pageContainer.innerHTML = '';
 				const groupSize = 5;
 				const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
 				const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
-				
+
 				for (let i = groupStart; i <= groupEnd; i++) {
 					const button = document.createElement('button');
 					button.type = 'button';
@@ -255,18 +433,18 @@
 					pageContainer.appendChild(button);
 				}
 			}
-			
+
 			const firstBtn = document.querySelector('.jw-pagebox .first');
 			const prevBtn = document.querySelector('.jw-pagebox .prev');
 			const nextBtn = document.querySelector('.jw-pagebox .next');
 			const lastBtn = document.querySelector('.jw-pagebox .last');
-			
+
 			if (firstBtn) {
 				firstBtn.disabled = currentPage === 1;
 				firstBtn.setAttribute('aria-disabled', currentPage === 1);
 				firstBtn.onclick = currentPage === 1 ? null : () => loadVisaApplications(1);
 			}
-			// prev/next는 5개 묶음 이동
+
 			const groupSize = 5;
 			const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
 			const prevTarget = Math.max(1, groupStart - groupSize);
@@ -288,7 +466,7 @@
 				lastBtn.onclick = currentPage >= totalPages ? null : () => loadVisaApplications(totalPages);
 			}
 		}
-		
+
 		async function handleDownload() {
 			try {
 				const params = new URLSearchParams({
@@ -296,11 +474,11 @@
 					status: currentFilters.status,
 					sortOrder: currentFilters.sortOrder
 				});
-				
+
 				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
 			} catch (error) {
 				console.error('Error downloading CSV:', error);
-				alert('다운로드 중 오류가 발생했습니다.');
+				alert('Error downloading file.');
 			}
 		}
 

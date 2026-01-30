@@ -1,17 +1,28 @@
 <aside class="admin-sidebar">
     <nav class="sidebar-nav">
         <ul class="nav-list">
-            <!--  -->
+            <!-- Dashboard (서브메뉴) -->
             <li class="nav-item">
-                <a href="admin-dashboard.php" class="nav-link">
+                <a href="#" class="nav-link has-submenu" onclick="toggleSubmenu(event, 'dashboard-submenu')">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="11" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="11" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
                     </svg>
-                    <span></span>
+                    <span>Dashboard</span>
+                    <svg class="chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
                 </a>
+                <ul class="submenu open" id="dashboard-submenu">
+                    <li class="submenu-item">
+                        <a href="admin-dashboard.php" class="submenu-link">Overview</a>
+                    </li>
+                    <li class="submenu-item">
+                        <a href="admin-reservationStatus.php" class="submenu-link">Reservation Status</a>
+                    </li>
+                </ul>
             </li>
 
             <!--  -->

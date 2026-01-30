@@ -42,7 +42,7 @@ function handleGetPermissions($userId) {
     try {
         //     
         $stmt = $conn->prepare("
-            SELECT 
+            SELECT
                 a.accountId,
                 a.username,
                 a.emailAddress,
@@ -53,11 +53,9 @@ function handleGetPermissions($userId) {
                 c.lName,
                 c.clientType,
                 c.clientRole,
-                c.seats,
-                comp.companyName
+                c.seats
             FROM accounts a
             LEFT JOIN client c ON a.accountId = c.accountId
-            LEFT JOIN company comp ON c.companyId = comp.companyId
             WHERE a.accountId = ?
         ");
         $stmt->bind_param("i", $userId);
@@ -70,7 +68,7 @@ function handleGetPermissions($userId) {
         
         $user = $result->fetch_assoc();
         
-        //   
+        //
         $permissions = [
             'accountId' => $user['accountId'],
             'username' => $user['username'],
@@ -82,8 +80,7 @@ function handleGetPermissions($userId) {
                 'name' => trim($user['fName'] . ' ' . $user['lName']),
                 'clientType' => $user['clientType'],
                 'clientRole' => $user['clientRole'],
-                'seats' => $user['seats'],
-                'companyName' => $user['companyName']
+                'seats' => $user['seats']
             ],
             'availableAccountTypes' => ['guest', 'agent', 'employee'],
             'availableClientTypes' => ['Retailer', 'Wholeseller'],

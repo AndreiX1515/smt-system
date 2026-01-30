@@ -1,88 +1,102 @@
 /**
- * Option Management - 항공사별 옵션 관리
+ * Option Management - 옵션 카테고리 관리 (대분류/중분류/소분류)
  */
 
 const API_URL = '../backend/api/super-api.php';
-let selectedAirline = '';
+let selectedMainCategory = '';
 
 // 페이지 초기화
 document.addEventListener('DOMContentLoaded', function() {
-    loadAirlineList();
+    loadMainCategories();
 });
 
 /**
- * 항공사 목록 로드
+ * 대분류 목록 로드
  */
-async function loadAirlineList() {
+async function loadMainCategories() {
     try {
-        const response = await fetch(`${API_URL}?action=getAirlineList`, {
+        const response = await fetch(`${API_URL}?action=getMainOptionCategories`, {
             credentials: 'same-origin'
         });
         const result = await response.json();
 
         if (!result.success) {
-            throw new Error(result.message || 'Failed to load airlines');
+            throw new Error(result.message || 'Failed to load main categories');
         }
 
-        const airlines = result.data?.airlines || [];
-        const select = document.getElementById('airlineSelect');
+        const mainCategories = result.data?.mainCategories || [];
+        const select = document.getElementById('mainCategorySelect');
 
-        select.innerHTML = '<option value="">-- Select Airline --</option>';
-        airlines.forEach(airline => {
+        select.innerHTML = '<option value="">-- Select Main Category --</option>';
+        mainCategories.forEach(cat => {
             const option = document.createElement('option');
-            option.value = airline;
-            option.textContent = airline;
+            option.value = cat;
+            option.textContent = cat;
             select.appendChild(option);
         });
 
+        // 이전에 선택한 대분류가 있으면 다시 선택
+        if (selectedMainCategory && mainCategories.includes(selectedMainCategory)) {
+            select.value = selectedMainCategory;
+            loadSubCategories();
+        }
+
     } catch (error) {
-        console.error('Error loading airlines:', error);
-        alert('Failed to load airline list: ' + error.message);
+        console.error('Error loading main categories:', error);
+        alert('Failed to load main categories: ' + error.message);
     }
 }
 
 /**
- * 선택된 항공사의 옵션 로드
+ * 중분류/소분류 로드 (대분류 선택 시)
  */
-async function loadAirlineOptions() {
-    const select = document.getElementById('airlineSelect');
-    selectedAirline = select.value;
+async function loadSubCategories() {
+    const select = document.getElementById('mainCategorySelect');
+    selectedMainCategory = select.value;
 
     const addCategoryBtn = document.getElementById('addCategoryBtn');
     const container = document.getElementById('categoriesContainer');
 
-    if (!selectedAirline) {
+    const copyMainCategoryBtn = document.getElementById('copyMainCategoryBtn');
+
+    if (!selectedMainCategory) {
         addCategoryBtn.disabled = true;
+        if (copyMainCategoryBtn) copyMainCategoryBtn.disabled = true;
         container.innerHTML = `
             <div class="empty-state">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
                     <path d="M19 11H5M19 11C20.1046 11 21 11.8954 21 13V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V13C3 11.8954 3.89543 11 5 11M19 11V9C19 7.89543 18.1046 7 17 7M5 11V9C5 7.89543 5.89543 7 7 7M7 7V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V7M7 7H17"/>
                 </svg>
-                <p data-lan-eng="Select an airline to manage options">Select an airline to manage options</p>
+                <p data-lan-eng="Select a main category to manage options">Select a main category to manage options</p>
             </div>
         `;
         return;
     }
 
     addCategoryBtn.disabled = false;
+    if (copyMainCategoryBtn) copyMainCategoryBtn.disabled = false;
 
     try {
-        const response = await fetch(`${API_URL}?action=getAirlineOptions&airlineName=${encodeURIComponent(selectedAirline)}`, {
+        const response = await fetch(`${API_URL}?action=getAirlineOptions&mainCategory=${encodeURIComponent(selectedMainCategory)}`, {
             credentials: 'same-origin'
         });
         const result = await response.json();
 
         if (!result.success) {
-            throw new Error(result.message || 'Failed to load options');
+            throw new Error(result.message || 'Failed to load categories');
         }
 
         renderCategories(result.data?.categories || []);
 
     } catch (error) {
-        console.error('Error loading options:', error);
-        alert('Failed to load options: ' + error.message);
+        console.error('Error loading categories:', error);
+        alert('Failed to load categories: ' + error.message);
     }
 }
+
+// 하위 호환성
+function loadOptionCategories() { loadMainCategories(); }
+function loadAirlineOptions() { loadSubCategories(); }
 
 /**
  * 카테고리 및 옵션 렌더링
@@ -96,7 +110,7 @@ function renderCategories(categories) {
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
                     <path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
-                <p data-lan-eng="No categories yet. Click 'Add Category' to create one.">No categories yet. Click 'Add Category' to create one.</p>
+                <p data-lan-eng="No categories yet. Click '+ Add Sub Category' to create one.">No categories yet. Click '+ Add Sub Category' to create one.</p>
             </div>
         `;
         return;
@@ -165,10 +179,159 @@ function renderCategories(categories) {
     `).join('');
 }
 
+// ============ Main Category Modal ============
+
+function openAddMainCategoryModal() {
+    document.getElementById('mainCategoryModalTitle').textContent = 'Add Main Category';
+    document.getElementById('editMainCategoryOldName').value = '';
+    document.getElementById('mainCategoryName').value = '';
+    document.getElementById('mainCategoryModal').style.display = 'flex';
+}
+
+function openEditMainCategoryModal(oldName) {
+    document.getElementById('mainCategoryModalTitle').textContent = 'Edit Main Category';
+    document.getElementById('editMainCategoryOldName').value = oldName;
+    document.getElementById('mainCategoryName').value = oldName;
+    document.getElementById('mainCategoryModal').style.display = 'flex';
+}
+
+function closeMainCategoryModal() {
+    document.getElementById('mainCategoryModal').style.display = 'none';
+}
+
+async function saveMainCategory() {
+    const oldName = document.getElementById('editMainCategoryOldName').value;
+    const newName = document.getElementById('mainCategoryName').value.trim();
+
+    if (!newName) {
+        alert('Please enter a main category name.');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        if (oldName) {
+            formData.append('action', 'updateMainOptionCategory');
+            formData.append('oldName', oldName);
+            formData.append('newName', newName);
+        } else {
+            formData.append('action', 'createMainOptionCategory');
+            formData.append('mainCategory', newName);
+        }
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to save main category');
+        }
+
+        closeMainCategoryModal();
+        selectedMainCategory = newName;
+        loadMainCategories();
+
+    } catch (error) {
+        console.error('Error saving main category:', error);
+        alert('Failed to save main category: ' + error.message);
+    }
+}
+
+async function deleteMainCategory(mainCategory) {
+    if (!confirm(`Are you sure you want to delete "${mainCategory}"? All sub-categories and options will also be deleted.`)) {
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'deleteMainOptionCategory');
+        formData.append('mainCategory', mainCategory);
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to delete main category');
+        }
+
+        selectedMainCategory = '';
+        loadMainCategories();
+
+    } catch (error) {
+        console.error('Error deleting main category:', error);
+        alert('Failed to delete main category: ' + error.message);
+    }
+}
+
+// ============ Copy Main Category Modal ============
+
+function openCopyMainCategoryModal() {
+    if (!selectedMainCategory) {
+        alert('Please select a main category first.');
+        return;
+    }
+    document.getElementById('copySourceCategory').value = selectedMainCategory;
+    document.getElementById('copyNewName').value = '';
+    document.getElementById('copyMainCategoryModal').style.display = 'flex';
+}
+
+function closeCopyMainCategoryModal() {
+    document.getElementById('copyMainCategoryModal').style.display = 'none';
+}
+
+async function copyMainCategory() {
+    const sourceCategory = document.getElementById('copySourceCategory').value;
+    const newName = document.getElementById('copyNewName').value.trim();
+
+    if (!newName) {
+        alert('Please enter a new category name.');
+        return;
+    }
+
+    if (sourceCategory === newName) {
+        alert('New name must be different from source.');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'copyMainOptionCategory');
+        formData.append('sourceCategory', sourceCategory);
+        formData.append('newName', newName);
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to copy category');
+        }
+
+        alert(`Successfully copied to "${newName}"!\n(${result.data?.copiedCategories || 0} categories, ${result.data?.copiedOptions || 0} options)`);
+        closeCopyMainCategoryModal();
+        selectedMainCategory = newName;
+        loadMainCategories();
+
+    } catch (error) {
+        console.error('Error copying main category:', error);
+        alert('Failed to copy category: ' + error.message);
+    }
+}
+
 // ============ Category Modal ============
 
 function openAddCategoryModal() {
-    document.getElementById('categoryModalTitle').textContent = 'Add Category';
+    document.getElementById('categoryModalTitle').textContent = 'Add Sub Category';
     document.getElementById('editCategoryId').value = '';
     document.getElementById('categoryName').value = '';
     document.getElementById('categoryNameEn').value = '';
@@ -176,7 +339,7 @@ function openAddCategoryModal() {
 }
 
 function openEditCategoryModal(categoryId, name, nameEn) {
-    document.getElementById('categoryModalTitle').textContent = 'Edit Category';
+    document.getElementById('categoryModalTitle').textContent = 'Edit Sub Category';
     document.getElementById('editCategoryId').value = categoryId;
     document.getElementById('categoryName').value = name;
     document.getElementById('categoryNameEn').value = nameEn;
@@ -204,7 +367,7 @@ async function saveCategory() {
             formData.append('categoryId', categoryId);
         } else {
             formData.append('action', 'createOptionCategory');
-            formData.append('airlineName', selectedAirline);
+            formData.append('mainCategory', selectedMainCategory);
         }
         formData.append('categoryName', categoryName);
         formData.append('categoryNameEn', categoryNameEn);
@@ -221,7 +384,7 @@ async function saveCategory() {
         }
 
         closeCategoryModal();
-        loadAirlineOptions();
+        loadSubCategories();
 
     } catch (error) {
         console.error('Error saving category:', error);
@@ -250,7 +413,7 @@ async function deleteCategory(categoryId) {
             throw new Error(result.message || 'Failed to delete category');
         }
 
-        loadAirlineOptions();
+        loadSubCategories();
 
     } catch (error) {
         console.error('Error deleting category:', error);
@@ -321,7 +484,7 @@ async function saveOption() {
         }
 
         closeOptionModal();
-        loadAirlineOptions();
+        loadSubCategories();
 
     } catch (error) {
         console.error('Error saving option:', error);
@@ -350,7 +513,7 @@ async function deleteOption(optionId) {
             throw new Error(result.message || 'Failed to delete option');
         }
 
-        loadAirlineOptions();
+        loadSubCategories();
 
     } catch (error) {
         console.error('Error deleting option:', error);

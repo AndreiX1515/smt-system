@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Shop</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .checkout-section {
+            padding: 20px;
+            border-bottom: 8px solid #f5f5f5;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex !important;
+            flex-direction: column !important;
+            margin-bottom: 20px;
+        }
+        #zipcodeGroup {
+            display: none !important;
+        }
+        .form-group .form-label {
+            display: block !important;
+            width: 100% !important;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .form-group .form-input {
+            display: block !important;
+            width: 100% !important;
+            padding: 14px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background: #fff;
+        }
+        .form-group .form-input:focus { border-color: #000; outline: none; }
+        .form-group .form-textarea {
+            display: block !important;
+            width: 100% !important;
+            padding: 14px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            min-height: 80px;
+            resize: vertical;
+            background: #fff;
+        }
+        .phone-input-wrap {
+            display: flex !important;
+            gap: 8px;
+        }
+        .phone-input-wrap .country-code {
+            width: 110px !important;
+            flex-shrink: 0;
+            padding: 14px 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+        }
+        .phone-input-wrap .phone-number {
+            flex: 1;
+        }
+
+        .order-items { margin-bottom: 16px; }
+        .order-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .order-item:last-child { border-bottom: none; }
+        .order-item-img {
+            width: 60px;
+            height: 60px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .order-item-info { flex: 1; }
+        .order-item-name { font-size: 14px; margin-bottom: 4px; }
+        .order-item-qty { font-size: 13px; color: #888; }
+        .order-item-price { font-size: 15px; font-weight: 600; text-align: right; }
+
+        .summary-box {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .summary-row.total {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+            margin-bottom: 0;
+        }
+
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 16px 20px;
+        }
+        .btn-order {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            background: #000;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-order:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            font-size: 18px;
+        }
+        .loading.hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="main" style="padding-bottom: 80px;">
+        <header class="header-type1">
+            <a class="btn-mypage" href="cart.html"><img src="/images/ico_arrow_left.svg"></a>
+            <div class="title">Checkout</div>
+            <div style="width: 24px;"></div>
+        </header>
+
+        <div class="checkout-section">
+            <div class="section-title">Shipping Information</div>
+            <div class="form-group">
+                <label class="form-label">Recipient Name *</label>
+                <input type="text" class="form-input" id="receiverName" placeholder="Enter name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone *</label>
+                <div class="phone-input-wrap">
+                    <select class="form-select country-code" id="countryCode">
+                        <option value="+63">+63 (PH)</option>
+                        <option value="+82">+82 (KR)</option>
+                    </select>
+                    <input type="tel" class="form-input phone-number" id="receiverPhone" placeholder="912 345 6789">
+                </div>
+            </div>
+            <div class="form-group" id="zipcodeGroup" style="display:none;">
+                <label class="form-label">Zip Code</label>
+                <input type="text" class="form-input" id="receiverZipcode" placeholder="Zip code">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address *</label>
+                <input type="text" class="form-input" id="receiverAddress" placeholder="Enter shipping address">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Delivery Notes</label>
+                <textarea class="form-textarea" id="memo" placeholder="Special instructions for delivery"></textarea>
+            </div>
+        </div>
+
+        <div class="checkout-section">
+            <div class="section-title">Order Items</div>
+            <div class="order-items" id="orderItems">
+                <!-- 상품 목록 -->
+            </div>
+        </div>
+
+        <div class="checkout-section">
+            <div class="section-title">Payment Summary</div>
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="subtotal">₱0</span>
+                </div>
+                <div class="summary-row" id="shippingRow" style="display:none;">
+                    <span>Shipping</span>
+                    <span id="shippingFee">₱0</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span id="totalAmount">₱0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-bar">
+            <button class="btn-order" id="btnOrder">Place Order</button>
+        </div>
+
+        <div class="loading hidden" id="loading">Processing order...</div>
+    </div>
+
+    <script>
+        const API_BASE = '/backend/api/shop';
+        let cartItems = [];
+        let subtotal = 0;
+        let shippingFee = 0;
+        const userId = localStorage.getItem('userId');
+
+        async function loadCart() {
+            if (!userId) {
+                alert('Please sign in to continue.');
+                location.href = 'index.html';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}`);
+                const data = await res.json();
+
+                if (data.success && data.items.length > 0) {
+                    cartItems = data.items;
+                    renderOrderItems();
+                } else {
+                    alert('Your cart is empty.');
+                    location.href = 'cart.html';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderOrderItems() {
+            const container = document.getElementById('orderItems');
+            container.innerHTML = cartItems.map(item => {
+                const price = item.sale_price || item.price;
+                const itemTotal = price * item.quantity;
+                const name = item.name;
+                return `
+                <div class="order-item">
+                    <div class="order-item-img">📦</div>
+                    <div class="order-item-info">
+                        <div class="order-item-name">${name}</div>
+                        <div class="order-item-qty">₱${Number(price).toLocaleString()} × ${item.quantity}</div>
+                    </div>
+                    <div class="order-item-price">₱${itemTotal.toLocaleString()}</div>
+                </div>
+                `;
+            }).join('');
+
+            // 합계 계산
+            subtotal = 0;
+            cartItems.forEach(item => {
+                const price = item.sale_price || item.price;
+                subtotal += price * item.quantity;
+            });
+
+            shippingFee = 0; // 배송비 임시 비활성화
+            const total = subtotal + shippingFee;
+
+            document.getElementById('subtotal').textContent = '₱' + subtotal.toLocaleString();
+            document.getElementById('shippingFee').textContent = shippingFee === 0 ? 'Free' : '₱' + shippingFee.toLocaleString();
+            document.getElementById('totalAmount').textContent = '₱' + total.toLocaleString();
+        }
+
+        document.getElementById('btnOrder').onclick = async () => {
+            const receiverName = document.getElementById('receiverName').value.trim();
+            const countryCode = document.getElementById('countryCode').value;
+            const phoneNumber = document.getElementById('receiverPhone').value.trim();
+            const receiverPhone = countryCode + ' ' + phoneNumber;
+            const receiverAddress = document.getElementById('receiverAddress').value.trim();
+            const receiverZipcode = document.getElementById('receiverZipcode').value.trim();
+            const memo = document.getElementById('memo').value.trim();
+
+            if (!receiverName) {
+                alert('Please enter recipient name.');
+                return;
+            }
+            if (!phoneNumber) {
+                alert('Please enter phone number.');
+                return;
+            }
+            if (!receiverAddress) {
+                alert('Please enter shipping address.');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('btnOrder').disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/orders.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        receiver_name: receiverName,
+                        receiver_phone: receiverPhone,
+                        receiver_address: receiverAddress,
+                        receiver_zipcode: receiverZipcode,
+                        memo: memo,
+                        shipping_fee: shippingFee
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    location.href = `order-complete.html?order_no=${data.order_no}`;
+                } else {
+                    alert(data.error || 'Failed to process order.');
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('btnOrder').disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                alert('An error occurred.');
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('btnOrder').disabled = false;
+            }
+        };
+
+        loadCart();
+    </script>
+</body>
+</html>

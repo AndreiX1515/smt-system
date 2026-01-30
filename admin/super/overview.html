@@ -529,7 +529,7 @@
 									return `
 										<tr>
 											<td class="is-center">${index + 1}</td>
-											<td class="ellipsis" onclick="window.location.href='${detailPage}?id=${bookingId}'" style="cursor: pointer;">${escapeHtml(booking.packageName || '')}</td>
+											<!-- (HTML 태그 수정) 디코딩 적용 --><td class="ellipsis" onclick="window.location.href='${detailPage}?id=${bookingId}'" style="cursor: pointer;">${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</td>
 											<td class="is-center">${travelPeriod}</td>
 											<td class="is-center">${customerType}</td>
 											<td class="is-center">${booking.numberOfTravelers || 0}</td>
@@ -561,7 +561,8 @@
 									const percentage = maxCount > 0 ? Math.round((product.bookingCount / maxCount) * 100) : 0;
 									return `
 										<div class="sales-item">
-											<p class="sales-title">${escapeHtml(product.packageName || '')}</p>
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<p class="sales-title">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</p>
 											<div class="bar"><span class="bar__fill" style="width:${percentage}%"></span></div>
 											<div class="value">${product.bookingCount || 0}</div>
 										</div>
@@ -585,7 +586,8 @@
 									return `
 										<tr>
 											<td class="is-center">${index + 1}</td>
-											<td>${escapeHtml(product.packageName || '')}</td>
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<td>${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</td>
 											<td class="is-center">${viewCount > 0 ? viewCount.toLocaleString() : '-'}</td>
 											<td class="is-center">${bookingCount}</td>
 											<td class="is-center">${reservationRate !== '-' ? reservationRate + '%' : '-'}</td>
@@ -609,14 +611,22 @@
 				}
 			}
 
-			// HTML  
+			// HTML
 			function escapeHtml(text) {
 				const div = document.createElement('div');
 				div.textContent = text;
 				return div.innerHTML;
 			}
-			
-			//     
+
+			// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+			function decodeHtmlEntities(str) {
+				if (!str) return str;
+				const txt = document.createElement('textarea');
+				txt.innerHTML = str;
+				return txt.value;
+			}
+
+			//
 			async function loadSalesData(period, startDate = null, endDate = null) {
 				try {
 					let url = '../backend/api/overview.php?period=' + encodeURIComponent(period);
@@ -727,7 +737,8 @@
 									const percentage = maxCount > 0 ? Math.round((product.bookingCount / maxCount) * 100) : 0;
 									return `
 										<div class="sales-item">
-											<p class="sales-title">${escapeHtml(product.packageName || '')}</p>
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<p class="sales-title">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</p>
 											<div class="bar"><span class="bar__fill" style="width:${percentage}%"></span></div>
 											<div class="value">${product.bookingCount || 0}</div>
 										</div>
@@ -751,7 +762,8 @@
 									return `
 										<tr>
 											<td class="is-center">${index + 1}</td>
-											<td>${escapeHtml(product.packageName || '')}</td>
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<td>${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</td>
 											<td class="is-center">${viewCount > 0 ? viewCount.toLocaleString() : '-'}</td>
 											<td class="is-center">${bookingCount}</td>
 											<td class="is-center">${reservationRate !== '-' ? reservationRate + '%' : '-'}</td>

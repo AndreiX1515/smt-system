@@ -1,180 +1,82 @@
 <?php
 /**
- * Minimal mailer with optional SMTP (Gmail-ready).
+ * Postmark API mailer
  *
  * Configure via environment variables:
- * - SMTP_HOST (e.g. smtp.gmail.com)
- * - SMTP_PORT (e.g. 587)
- * - SMTP_USER (full email)
- * - SMTP_PASS (Gmail App Password)
- * - SMTP_FROM (optional, default SMTP_USER)
- * - SMTP_FROM_NAME (optional, default "Smart Travel")
- *
- * If SMTP_* are not configured, this will fall back to PHP mail() if available.
- * If mail() is also unavailable, it will return false (caller may log).
+ * - POSTMARK_API_TOKEN (Server API Token)
+ * - MAIL_FROM (sender email)
+ * - MAIL_FROM_NAME (sender name, default "SMT Escape")
  */
 
 function mailer_send(string $toEmail, string $subject, string $htmlBody, string $textBody = ''): array {
-    $host = trim((string)getenv('SMTP_HOST'));
-    $port = (int)(getenv('SMTP_PORT') ?: 587);
-    $user = trim((string)getenv('SMTP_USER'));
-    $pass = (string)getenv('SMTP_PASS');
-    $from = trim((string)getenv('SMTP_FROM'));
-    $fromName = trim((string)getenv('SMTP_FROM_NAME')) ?: 'Smart Travel';
+    $apiToken = trim((string)getenv('POSTMARK_API_TOKEN'));
+    $from = trim((string)getenv('MAIL_FROM'));
+    $fromName = trim((string)getenv('MAIL_FROM_NAME')) ?: 'SMT Escape';
 
-    if ($from === '') $from = $user;
-
-    // Prefer SMTP when configured
-    if ($host !== '' && $port > 0 && $user !== '' && $pass !== '' && $from !== '') {
-        $smtp = smtp_send_mail($host, $port, $user, $pass, $from, $fromName, $toEmail, $subject, $htmlBody, $textBody);
+    if ($apiToken === '' || $from === '') {
         return [
-            'ok' => (bool)($smtp['ok'] ?? false),
-            'via' => 'smtp',
-            'error' => $smtp['error'] ?? null,
+            'ok' => false,
+            'via' => 'none',
+            'error' => 'Postmark API token or FROM email not configured',
         ];
     }
 
-    // Fallback: PHP mail()
-    if (function_exists('mail')) {
-        $boundary = 'bnd_' . bin2hex(random_bytes(8));
-        $headers = [];
-        $headers[] = 'MIME-Version: 1.0';
-        $headers[] = 'From: ' . sprintf('"%s" <%s>', addcslashes($fromName, '"\\'), $from ?: 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-        $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+    $fromHeader = sprintf('%s <%s>', $fromName, $from);
 
-        $text = $textBody !== '' ? $textBody : strip_tags($htmlBody);
-        $body = '';
-        $body .= "--{$boundary}\r\n";
-        $body .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
-        $body .= $text . "\r\n";
-        $body .= "--{$boundary}\r\n";
-        $body .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
-        $body .= $htmlBody . "\r\n";
-        $body .= "--{$boundary}--\r\n";
+    $payload = json_encode([
+        'From' => $fromHeader,
+        'To' => $toEmail,
+        'Subject' => $subject,
+        'HtmlBody' => $htmlBody,
+        'TextBody' => $textBody !== '' ? $textBody : strip_tags($htmlBody),
+        'MessageStream' => 'outbound',
+    ]);
 
-        $ok = @mail($toEmail, $subject, $body, implode("\r\n", $headers));
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", [
+                'Accept: application/json',
+                'Content-Type: application/json',
+                'X-Postmark-Server-Token: ' . $apiToken,
+            ]),
+            'content' => $payload,
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $response = @file_get_contents('https://api.postmarkapp.com/email', false, $context);
+
+    if ($response === false) {
         return [
-            'ok' => (bool)$ok,
-            'via' => 'mail',
+            'ok' => false,
+            'via' => 'postmark',
+            'error' => 'Failed to connect to Postmark API',
+        ];
+    }
+
+    $result = json_decode($response, true);
+
+    // HTTP 상태 코드 확인
+    $httpCode = 0;
+    if (isset($http_response_header[0])) {
+        preg_match('/HTTP\/\d\.\d\s+(\d+)/', $http_response_header[0], $matches);
+        $httpCode = (int)($matches[1] ?? 0);
+    }
+
+    if ($httpCode === 200 && isset($result['MessageID'])) {
+        return [
+            'ok' => true,
+            'via' => 'postmark',
+            'message_id' => $result['MessageID'],
         ];
     }
 
     return [
         'ok' => false,
-        'via' => 'none',
-        'error' => 'No SMTP config and mail() unavailable',
+        'via' => 'postmark',
+        'error' => $result['Message'] ?? "HTTP {$httpCode}",
+        'error_code' => $result['ErrorCode'] ?? null,
     ];
 }
-
-function smtp_send_mail(
-    string $host,
-    int $port,
-    string $user,
-    string $pass,
-    string $fromEmail,
-    string $fromName,
-    string $toEmail,
-    string $subject,
-    string $htmlBody,
-    string $textBody = ''
-): array {
-    $timeout = 12;
-    $transport = ($port === 465) ? "ssl://{$host}:{$port}" : "tcp://{$host}:{$port}";
-    $fp = @stream_socket_client($transport, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT);
-    if (!$fp) return ['ok' => false, 'error' => "connect failed: {$errstr} ({$errno})"];
-
-    stream_set_timeout($fp, $timeout);
-
-    $expect = function(array $codes) use ($fp) {
-        $data = '';
-        while (($line = fgets($fp, 515)) !== false) {
-            $data .= $line;
-            // multi-line response ends when 4th char is space
-            if (strlen($line) >= 4 && $line[3] === ' ') break;
-        }
-        $code = (int)substr($data, 0, 3);
-        return ['ok' => in_array($code, $codes, true), 'code' => $code, 'raw' => $data];
-    };
-
-    $send = function(string $cmd) use ($fp) {
-        fwrite($fp, $cmd . "\r\n");
-    };
-
-    $r = $expect([220]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'bad greeting: ' . ($r['raw'] ?? '')]; }
-
-    $localHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $send("EHLO {$localHost}");
-    $r = $expect([250]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'EHLO failed: ' . ($r['raw'] ?? '')]; }
-
-    // STARTTLS (587). For 465, TLS is already established via ssl://
-    if ($port !== 465) {
-        $send("STARTTLS");
-        $r = $expect([220]);
-        if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'STARTTLS failed: ' . ($r['raw'] ?? '')]; }
-        $cryptoOk = @stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-        if ($cryptoOk !== true) { fclose($fp); return ['ok' => false, 'error' => 'TLS negotiation failed']; }
-
-        // EHLO again after TLS
-        $send("EHLO {$localHost}");
-        $r = $expect([250]);
-        if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'EHLO(after TLS) failed: ' . ($r['raw'] ?? '')]; }
-    }
-
-    // AUTH LOGIN
-    $send("AUTH LOGIN");
-    $r = $expect([334]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'AUTH LOGIN rejected: ' . ($r['raw'] ?? '')]; }
-    $send(base64_encode($user));
-    $r = $expect([334]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'AUTH user rejected: ' . ($r['raw'] ?? '')]; }
-    $send(base64_encode($pass));
-    $r = $expect([235]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'AUTH pass rejected: ' . ($r['raw'] ?? '')]; }
-
-    $send("MAIL FROM:<{$fromEmail}>");
-    $r = $expect([250]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'MAIL FROM failed: ' . ($r['raw'] ?? '')]; }
-
-    $send("RCPT TO:<{$toEmail}>");
-    $r = $expect([250, 251]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'RCPT TO failed: ' . ($r['raw'] ?? '')]; }
-
-    $send("DATA");
-    $r = $expect([354]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'DATA failed: ' . ($r['raw'] ?? '')]; }
-
-    $boundary = 'bnd_' . bin2hex(random_bytes(8));
-    $text = $textBody !== '' ? $textBody : strip_tags($htmlBody);
-    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-    $fromHeader = sprintf('"%s" <%s>', addcslashes($fromName, '"\\'), $fromEmail);
-
-    $headers = [];
-    $headers[] = "From: {$fromHeader}";
-    $headers[] = "To: <{$toEmail}>";
-    $headers[] = "Subject: {$encodedSubject}";
-    $headers[] = "MIME-Version: 1.0";
-    $headers[] = "Content-Type: multipart/alternative; boundary=\"{$boundary}\"";
-
-    $msg = implode("\r\n", $headers) . "\r\n\r\n";
-    $msg .= "--{$boundary}\r\n";
-    $msg .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
-    $msg .= $text . "\r\n";
-    $msg .= "--{$boundary}\r\n";
-    $msg .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
-    $msg .= $htmlBody . "\r\n";
-    $msg .= "--{$boundary}--\r\n";
-
-    // Dot-stuffing
-    $msg = preg_replace("/\r\n\./", "\r\n..", $msg);
-
-    fwrite($fp, $msg . "\r\n.\r\n");
-    $r = $expect([250]);
-    if (!($r['ok'] ?? false)) { fclose($fp); return ['ok' => false, 'error' => 'message not accepted: ' . ($r['raw'] ?? '')]; }
-
-    $send("QUIT");
-    fclose($fp);
-    return ['ok' => true];
-}
-

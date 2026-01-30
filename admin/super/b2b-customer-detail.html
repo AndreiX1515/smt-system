@@ -355,6 +355,14 @@
 			return div.innerHTML;
 		}
 
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+
 		let customerId = null;
 
 		document.addEventListener('DOMContentLoaded', async () => {
@@ -365,7 +373,7 @@
 				const sessionData = await sessionResponse.json();
 				
 				// Super 화면은 admin만 접근 가능 (agent/guide 로그인 세션을 차단)
-				const isAdmin = sessionData && sessionData.authenticated && (sessionData.userType === 'admin' || sessionData.userType === 'super');
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) {
 					window.location.href = '../index.html';
 					return;
@@ -604,7 +612,8 @@
 					return `
 						<tr data-booking-id="${bookingId}" data-detail="${detailPage}" style="cursor:pointer;">
 							<td class="no">${row.rowNum ?? ''}</td>
-							<td class="td-ellipsis"><span>${escapeHtml(row.packageName || '')}</span></td>
+							<!-- (HTML 태그 수정) 디코딩 적용 -->
+							<td class="td-ellipsis"><span>${escapeHtml(decodeHtmlEntities(row.packageName) || '')}</span></td>
 							<td class="is-center">${escapeHtml(row.reservationDate || '')}</td>
 							<td class="is-center">${escapeHtml(row.travelStartDate || '')}</td>
 							<td class="is-center">${escapeHtml(statusLabel(row.bookingStatus))}</td>

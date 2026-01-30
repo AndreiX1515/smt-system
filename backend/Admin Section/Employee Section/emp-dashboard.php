@@ -805,9 +805,7 @@ error_reporting(E_ALL);
                                 JOIN booking b ON r.transactNo = b.transactNo
                                 JOIN concern c ON r.concernId = c.concernId
                                 LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                LEFT JOIN company co ON a.companyId = co.companyId
                                 LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                LEFT JOIN company cc ON cl.companyId = cc.companyId
                                 JOIN flight f ON b.flightId = f.flightId
                                 JOIN branch br ON b.agentCode = br.branchAgentCode
                                 WHERE 
@@ -899,9 +897,7 @@ error_reporting(E_ALL);
                                 FROM payment p
                                 JOIN booking b ON p.transactNo = b.transactNo
                                 LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                                LEFT JOIN company c ON a.companyId = c.companyId
                                 LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                                LEFT JOIN company cc ON cl.companyId = cc.companyId
                                 JOIN flight f ON b.flightId = f.flightId
                                 JOIN branch br ON b.agentCode = br.branchAgentCode
                                 WHERE p.paymentStatus = 'Submitted'
@@ -972,9 +968,7 @@ error_reporting(E_ALL);
                   ELSE 'Unknown' END AS `Account Name`
                 FROM booking b 
                 LEFT JOIN agent a ON b.accountType = 'Agent' AND b.accountId = a.accountId
-                LEFT JOIN company co ON a.companyId = co.companyId
                 LEFT JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-                LEFT JOIN company cc ON cl.companyId = cc.companyId
                 JOIN branch br ON b.agentCode = br.branchAgentCode
                 JOIN flight f ON b.flightId = f.flightId
                 JOIN package p ON b.packageId = p.packageId

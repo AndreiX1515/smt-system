@@ -127,12 +127,12 @@ function handleGetPackages() {
         $agentAccountId = $_SESSION['agent_accountId'] ?? null;
         $agentAccountId = $agentAccountId !== null ? (int)$agentAccountId : 0;
         $sessionRole = $_SESSION['accountRole'] ?? $_SESSION['accountType'] ?? $_SESSION['account_type'] ?? ($_SESSION['userType'] ?? '');
-        if (empty($sessionRole) && !empty($_SESSION['admin_accountId'])) $sessionRole = 'admin';
-        $isAdmin = in_array($sessionRole, ['admin', 'super', 'super_admin', 'agent_admin'], true);
+        if (empty($sessionRole) && !empty($_SESSION['admin_accountId'])) $sessionRole = $_SESSION['admin_userType'] ?? 'admin_ph';
+        $isAdmin = in_array($sessionRole, ['admin_ph', 'admin_kr', 'super', 'super_admin', 'agent_admin'], true);
 
         $isB2BUser = false;
         // B2B/B2C 판별: accounts.accountType 기반
-        // - accountType IN ('agent', 'admin') → B2B
+        // - accountType IN ('agent', 'admin_ph', 'admin_kr') → B2B
         // - accountType IN ('guest', 'guide', 'cs', '') → B2C
         if ($sessionAccountId > 0 && !$isAdmin) {
             try {
@@ -142,7 +142,7 @@ function handleGetPackages() {
                     $st->execute();
                     $row = $st->get_result()->fetch_assoc();
                     $st->close();
-                    $isB2BUser = in_array(($row['accountType'] ?? ''), ['agent', 'admin'], true);
+                    $isB2BUser = in_array(($row['accountType'] ?? ''), ['agent', 'admin_ph', 'admin_kr'], true);
                 }
             } catch (Throwable $e) { $isB2BUser = false; }
         } elseif ($agentAccountId > 0 && !$isAdmin) {
@@ -192,9 +192,7 @@ function handleGetPackages() {
                          paAny.availCount AS availCount,
                          paNext.nextDate AS nextAvailableDate,
                          MAX(pa.price) AS nextFlightPrice,
-                         MAX(paRemain.remainingSeats) AS nextAvailableSeats,
-                         GROUP_CONCAT(DISTINCT CONCAT(ro.roomId, ':', ro.roomType, ':', ro.roomPrice) SEPARATOR '||') as room_options,
-                         GROUP_CONCAT(DISTINCT CONCAT(po.optionId, ':', po.optionName, ':', po.optionPrice, ':', IFNULL(po.optionDescription,'')) SEPARATOR '||') as package_options
+                         MAX(paRemain.remainingSeats) AS nextAvailableSeats
                   FROM packages p
                   LEFT JOIN (
                         SELECT package_id, COUNT(*) AS availCount
@@ -229,8 +227,6 @@ function handleGetPackages() {
                   ) paRemain
                     ON paRemain.package_id = pa.package_id
                    AND paRemain.available_date = paNext.nextDate
-                  LEFT JOIN room_options ro ON p.packageId = ro.packageId AND ro.isAvailable = 1
-                  LEFT JOIN package_options po ON p.packageId = po.packageId AND po.isAvailable = 1
                   WHERE p.isActive = 1
                     AND (p.status IS NULL OR p.status = 'active')";
         
@@ -674,39 +670,6 @@ function processPackageData($row) {
     // NOTE:  images  fallback  (placeholder   ).
     //        thumbnail_image/product_images   imageUrl/images  .
     
-    //   
-    if (!empty($row['room_options'])) {
-        $rooms = explode('||', $row['room_options']);
-        foreach ($rooms as $room) {
-            $roomData = explode(':', $room);
-            if (count($roomData) >= 3) {
-                $package['roomOptions'][] = [
-                    'roomId' => $roomData[0],
-                    'roomType' => $roomData[1],
-                    'roomPrice' => floatval($roomData[2]),
-                    'roomDescription' => $roomData[3] ?? '',
-                    'maxOccupancy' => isset($roomData[4]) ? intval($roomData[4]) : 2
-                ];
-            }
-        }
-    }
-    
-    //   
-    if (!empty($row['package_options'])) {
-        $options = explode('||', $row['package_options']);
-        foreach ($options as $option) {
-            $optionData = explode(':', $option);
-            if (count($optionData) >= 4) {
-                $package['packageOptions'][] = [
-                    'optionId' => $optionData[0],
-                    'optionName' => $optionData[1],
-                    'optionPrice' => floatval($optionData[2]),
-                    'optionCategory' => $optionData[3]
-                ];
-            }
-        }
-    }
-
     //     (package_pricing_options)
     try {
         global $conn;
@@ -789,26 +752,16 @@ function getSinglePackage($packageId, $salesTarget = 'B2C', $isAdmin = false) {
     global $conn;
 
     // :     + sales_target  
-    $query = "SELECT p.*,
-                     GROUP_CONCAT(DISTINCT CONCAT(ro.roomId, ':', ro.roomType, ':', ro.roomPrice, ':', IFNULL(ro.roomDescription,''), ':', ro.maxOccupancy) SEPARATOR '||') as room_options,
-                     GROUP_CONCAT(DISTINCT CONCAT(po.optionId, ':', po.optionName, ':', po.optionPrice, ':', IFNULL(po.optionDescription,'')) SEPARATOR '||') as package_options
+    $query = "SELECT p.*
               FROM packages p
-              LEFT JOIN room_options ro ON p.packageId = ro.packageId AND ro.isAvailable = 1
-              LEFT JOIN package_options po ON p.packageId = po.packageId AND po.isAvailable = 1
-              WHERE p.packageId = ?
-              GROUP BY p.packageId";
+              WHERE p.packageId = ?";
     if (!$isAdmin) {
         // 일반 사용자 - 활성 상품만 (sales_target 필터 제거 - 이중 가격 시스템)
-        $query = "SELECT p.*,
-                         GROUP_CONCAT(DISTINCT CONCAT(ro.roomId, ':', ro.roomType, ':', ro.roomPrice, ':', IFNULL(ro.roomDescription,''), ':', ro.maxOccupancy) SEPARATOR '||') as room_options,
-                         GROUP_CONCAT(DISTINCT CONCAT(po.optionId, ':', po.optionName, ':', po.optionPrice, ':', IFNULL(po.optionDescription,'')) SEPARATOR '||') as package_options
+        $query = "SELECT p.*
                   FROM packages p
-                  LEFT JOIN room_options ro ON p.packageId = ro.packageId AND ro.isAvailable = 1
-                  LEFT JOIN package_options po ON p.packageId = po.packageId AND po.isAvailable = 1
                   WHERE p.packageId = ?
                     AND p.isActive = 1
-                    AND (p.status IS NULL OR p.status = 'active')
-                  GROUP BY p.packageId";
+                    AND (p.status IS NULL OR p.status = 'active')";
     }
 
     $stmt = $conn->prepare($query);
@@ -843,39 +796,22 @@ function handleCreatePackage() {
         ?? $_SESSION['account_type']
         ?? ($_SESSION['userType'] ?? '');
 
-    // admin   
+    // admin 세션 확인
     if (empty($accountRole) && !empty($_SESSION['admin_accountId'])) {
-        $accountRole = 'admin';
+        $accountRole = $_SESSION['admin_userType'] ?? 'admin_ph';
     }
 
-    // userType admin/super   
+    // userType admin/super 정규화
     if (in_array($accountRole, ['super', 'super_admin'], true)) {
         $accountRole = 'super_admin';
-    } elseif (in_array($accountRole, ['admin'], true)) {
-        $accountRole = 'admin';
+    } elseif (in_array($accountRole, ['admin_ph', 'admin_kr'], true)) {
+        // keep as is
     }
-    
-    // : GET     (/  -    )
-    if (isset($_GET['test_admin']) && $_GET['test_admin'] === 'super_admin') {
-        $accountRole = 'super_admin';
-        error_log("TEST MODE: Using test_admin parameter for create package");
-    }
-    
-    // :   
-    error_log("Create Package - Session info: " . json_encode([
-        'accountRole' => $_SESSION['accountRole'] ?? 'not set',
-        'accountType' => $_SESSION['accountType'] ?? 'not set',
-        'account_type' => $_SESSION['account_type'] ?? 'not set',
-        'userType' => $_SESSION['userType'] ?? 'not set',
-        'admin_accountId' => $_SESSION['admin_accountId'] ?? 'not set',
-        'user_id' => $_SESSION['user_id'] ?? 'not set',
-        'test_mode' => isset($_GET['test_admin'])
-    ]));
-    
-    if (!in_array($accountRole, ['super_admin', 'agent_admin', 'admin'])) {
+
+    if (!in_array($accountRole, ['super_admin', 'agent_admin', 'admin_ph', 'admin_kr'])) {
         send_json_response([
-            'success' => false, 
-            'message' => ' . (super_admin, agent_admin, admin)  .  : ' . ($accountRole ?: '') . ' |    | : ?test_admin=super_admin '
+            'success' => false,
+            'message' => 'Admin permission required. (super_admin, agent_admin, admin_ph, admin_kr)'
         ], 401);
         return;
     }
@@ -969,35 +905,18 @@ function handleUpdatePackage() {
         ?? ($_SESSION['userType'] ?? '');
 
     if (empty($accountRole) && !empty($_SESSION['admin_accountId'])) {
-        $accountRole = 'admin';
+        $accountRole = $_SESSION['admin_userType'] ?? 'admin_ph';
     }
     if (in_array($accountRole, ['super', 'super_admin'], true)) {
         $accountRole = 'super_admin';
-    } elseif (in_array($accountRole, ['admin'], true)) {
-        $accountRole = 'admin';
+    } elseif (in_array($accountRole, ['admin_ph', 'admin_kr'], true)) {
+        // keep as is
     }
-    
-    // : GET     (/  -    )
-    if (isset($_GET['test_admin']) && $_GET['test_admin'] === 'super_admin') {
-        $accountRole = 'super_admin';
-        error_log("TEST MODE: Using test_admin parameter for update package");
-    }
-    
-    // :   
-    error_log("Update Package - Session info: " . json_encode([
-        'accountRole' => $_SESSION['accountRole'] ?? 'not set',
-        'accountType' => $_SESSION['accountType'] ?? 'not set',
-        'account_type' => $_SESSION['account_type'] ?? 'not set',
-        'userType' => $_SESSION['userType'] ?? 'not set',
-        'admin_accountId' => $_SESSION['admin_accountId'] ?? 'not set',
-        'user_id' => $_SESSION['user_id'] ?? 'not set',
-        'test_mode' => isset($_GET['test_admin'])
-    ]));
-    
-    if (!in_array($accountRole, ['super_admin', 'agent_admin', 'admin'])) {
+
+    if (!in_array($accountRole, ['super_admin', 'agent_admin', 'admin_ph', 'admin_kr'])) {
         send_json_response([
-            'success' => false, 
-            'message' => ' . (super_admin, agent_admin, admin)  .  : ' . ($accountRole ?: '') . ' |    | : ?test_admin=super_admin '
+            'success' => false,
+            'message' => 'Admin permission required. (super_admin, agent_admin, admin_ph, admin_kr)'
         ], 401);
         return;
     }
@@ -1079,32 +998,18 @@ function handleDeletePackage() {
             ?? $_SESSION['account_type']
             ?? ($_SESSION['userType'] ?? '');
         if (empty($accountRole) && !empty($_SESSION['admin_accountId'])) {
-            $accountRole = 'admin';
+            $accountRole = $_SESSION['admin_userType'] ?? 'admin_ph';
         }
         if (in_array($accountRole, ['super', 'super_admin'], true)) {
             $accountRole = 'super_admin';
-        } elseif (in_array($accountRole, ['admin'], true)) {
-            $accountRole = 'admin';
+        } elseif (in_array($accountRole, ['admin_ph', 'admin_kr'], true)) {
+            // keep as is
         }
-        if (isset($_GET['test_admin']) && $_GET['test_admin'] === 'super_admin') {
-            $accountRole = 'super_admin';
-            error_log("TEST MODE: Using test_admin parameter for delete package");
-        }
-        
-        error_log("Delete Package - Session info: " . json_encode([
-            'accountRole' => $_SESSION['accountRole'] ?? 'not set',
-            'accountType' => $_SESSION['accountType'] ?? 'not set',
-            'account_type' => $_SESSION['account_type'] ?? 'not set',
-            'userType' => $_SESSION['userType'] ?? 'not set',
-            'admin_accountId' => $_SESSION['admin_accountId'] ?? 'not set',
-            'user_id' => $_SESSION['user_id'] ?? 'not set',
-            'test_mode' => isset($_GET['test_admin'])
-        ]));
-        
-        if (!in_array($accountRole, ['super_admin', 'agent_admin', 'admin'])) {
+
+        if (!in_array($accountRole, ['super_admin', 'agent_admin', 'admin_ph', 'admin_kr'])) {
             send_json_response([
-                'success' => false, 
-                'message' => ' . (super_admin, agent_admin, admin)  .  : ' . ($accountRole ?: '') . ' |    | : ?test_admin=super_admin '
+                'success' => false,
+                'message' => 'Admin permission required. (super_admin, agent_admin, admin_ph, admin_kr)'
             ], 401);
             return;
         }

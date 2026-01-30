@@ -12,11 +12,11 @@ function escapeHtml(text) {
 
 function getHomeSalesTarget() {
     // B2B/B2C 판별: accountType 기반
-    // - accountType IN ('agent', 'admin') → B2B
+    // - accountType IN ('agent', 'admin_ph', 'admin_kr') → B2B
     // - accountType IN ('guest', 'guide', 'cs', '') → B2C
     try {
         const at = String(localStorage.getItem('accountType') || '').toLowerCase();
-        if (at === 'agent' || at === 'admin') return 'B2B';
+        if (at === 'agent' || at === 'admin_ph' || at === 'admin_kr') return 'B2B';
     } catch (_) {}
     return 'B2C';
 }
@@ -437,7 +437,7 @@ function updateHeaderForLoginStatus() {
 async function loadUserTripStatus() {
     // agent/admin 계정은 예약 여행정보 섹션을 표시하지 않음
     const accountType = (localStorage.getItem('accountType') || '').toLowerCase();
-    if (accountType === 'agent' || accountType === 'admin') {
+    if (accountType === 'agent' || accountType === 'admin_ph' || accountType === 'admin_kr') {
         hideAllTripSections();
         return;
     }

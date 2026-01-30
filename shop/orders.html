@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders | Shop</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .orders-list { padding: 16px 20px; }
+
+        .order-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+        }
+        .order-no { font-size: 13px; color: #666; }
+        .order-status {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .order-status.pending { background: #fff3cd; color: #856404; }
+        .order-status.paid { background: #d4edda; color: #155724; }
+        .order-status.preparing { background: #cce5ff; color: #004085; }
+        .order-status.shipped { background: #d1ecf1; color: #0c5460; }
+        .order-status.delivered { background: #d4edda; color: #155724; }
+        .order-status.cancelled { background: #f8d7da; color: #721c24; }
+
+        .order-body { padding: 16px; }
+        .order-date { font-size: 12px; color: #888; margin-bottom: 12px; }
+        .order-items-preview { font-size: 14px; margin-bottom: 8px; }
+        .order-total {
+            font-size: 16px;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .empty-orders {
+            text-align: center;
+            padding: 80px 20px;
+            color: #888;
+        }
+        .empty-orders-icon { font-size: 64px; margin-bottom: 16px; }
+        .empty-orders a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #000;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <header class="header-type1">
+            <a class="btn-mypage" href="index.html"><img src="/images/ico_arrow_left.svg"></a>
+            <div class="title">My Orders</div>
+            <div style="width: 24px;"></div>
+        </header>
+
+        <div class="orders-list" id="ordersList">
+            <!-- 주문 목록 -->
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/backend/api/shop';
+        const userId = localStorage.getItem('userId');
+
+        const statusLabels = {
+            'pending': 'Pending',
+            'paid': 'Paid',
+            'preparing': 'Preparing',
+            'shipped': 'Shipped',
+            'delivered': 'Delivered',
+            'cancelled': 'Cancelled',
+            'refunded': 'Refunded'
+        };
+
+        async function loadOrders() {
+            if (!userId) {
+                showEmpty();
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/orders.php?user_id=${userId}`);
+                const data = await res.json();
+
+                if (data.success && data.orders.length > 0) {
+                    renderOrders(data.orders);
+                } else {
+                    showEmpty();
+                }
+            } catch (e) {
+                console.error(e);
+                showEmpty();
+            }
+        }
+
+        function showEmpty() {
+            document.getElementById('ordersList').innerHTML = `
+                <div class="empty-orders">
+                    <div class="empty-orders-icon">📦</div>
+                    <div>No orders yet</div>
+                    <a href="index.html">Start Shopping</a>
+                </div>
+            `;
+        }
+
+        function renderOrders(orders) {
+            const container = document.getElementById('ordersList');
+            container.innerHTML = orders.map(order => {
+                const date = new Date(order.created_at);
+                const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+
+                return `
+                <div class="order-card">
+                    <div class="order-header">
+                        <span class="order-no">${order.order_no}</span>
+                        <span class="order-status ${order.status}">${statusLabels[order.status] || order.status}</span>
+                    </div>
+                    <div class="order-body">
+                        <div class="order-date">${dateStr}</div>
+                        <div class="order-total">₱${Number(order.total_amount).toLocaleString()}</div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>

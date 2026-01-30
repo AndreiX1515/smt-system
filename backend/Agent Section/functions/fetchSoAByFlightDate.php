@@ -18,10 +18,7 @@ if (isset($_POST['flightId']))
   $formattedTotalAmount = "0.00";
 
   // Query to get the branchAgentCode
-  $sql1 = "SELECT c.companyName, b.branchAgentCode
-          FROM company c 
-          JOIN branch b ON c.branchId = b.branchId
-          WHERE c.companyId = $companyId";
+  $sql1 = "SELECT '' as companyName, b.branchAgentCode
   $result = $conn->query($sql1);
 
   $businessUnit = "";
@@ -66,12 +63,12 @@ if (isset($_POST['flightId']))
               END AS flightPrice, b.totalPrice as totalPrice
             FROM booking b
             JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-            JOIN company c ON cl.companyId = c.companyId
+            
             JOIN flight f ON b.flightId = f.flightId
             WHERE b.agentCode = '$businessUnit' 
               AND f.flightId IN ($flightIdsString)  -- Fetch all flights with the same departure date
               AND b.status = 'Confirmed'
-              AND cl.companyId = $companyId
+              
             ORDER BY f.flightId";
 
     $res3 = $conn->query($sql3);

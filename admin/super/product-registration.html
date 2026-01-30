@@ -215,12 +215,9 @@
 						</div>
 
 						<div class="grid-item">
-							<label class="label-name"><span data-lan-eng="Airline">Airline</span></label>
-							<select class="select airline-select">
-								<option value="">Select Airline</option>
-								<option value="Cebu Pacific">Cebu Pacific</option>
-								<option value="Air Asia">Air Asia</option>
-								<option value="Jeju Air">Jeju Air</option>
+							<label class="label-name"><span data-lan-eng="Option Category">Option Category</span></label>
+							<select class="select airline-select option-category-select">
+								<option value="">Select Option</option>
 							</select>
 						</div>
 
@@ -323,12 +320,9 @@
 						</div>
 
 						<div class="grid-item">
-							<label class="label-name"><span data-lan-eng="Airline">Airline</span></label>
-							<select class="select airline-select">
-								<option value="">Select Airline</option>
-								<option value="Cebu Pacific">Cebu Pacific</option>
-								<option value="Air Asia">Air Asia</option>
-								<option value="Jeju Air">Jeju Air</option>
+							<label class="label-name"><span data-lan-eng="Option Category">Option Category</span></label>
+							<select class="select airline-select option-category-select">
+								<option value="">Select Option</option>
 							</select>
 						</div>
 
@@ -464,13 +458,19 @@
 								<col>
 								<col>
 								<col>
+								<col>
+								<col>
+								<col style="width:60px">
 							</colgroup>
 							<thead>
 								<tr>
 									<th class="no is-center">No</th>
 									<th data-lan-eng="Flight departure date">Flight departure date</th>
+									<th data-lan-eng="Reserved personnel">Reserved personnel</th>
 									<th data-lan-eng="Maximum capacity">Maximum capacity</th>
-									<th data-lan-eng="Airfare (₱)">Airfare (₱)</th>
+									<th data-lan-eng="B2C Price (₱)">B2C Price (₱)</th>
+									<th data-lan-eng="B2B Price (₱)">B2B Price (₱)</th>
+									<th data-lan-eng="Delete">Delete</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -1193,6 +1193,25 @@
 
 		// Super  admin   ( /  401  )
 		document.addEventListener('DOMContentLoaded', async () => {
+			// 옵션 대분류 로드 (Option Category Select)
+			try {
+				const optRes = await fetch('../backend/api/super-api.php?action=getMainOptionCategories', { credentials: 'same-origin' });
+				const optData = await optRes.json().catch(() => ({}));
+				if (optData?.success && Array.isArray(optData?.data?.mainCategories)) {
+					const optionSelects = document.querySelectorAll('.option-category-select');
+					optionSelects.forEach(sel => {
+						sel.innerHTML = '<option value="">Select Option</option>';
+						optData.data.mainCategories.forEach(cat => {
+							const opt = document.createElement('option');
+							opt.value = cat;
+							opt.textContent = cat;
+							sel.appendChild(opt);
+						});
+						try { if (typeof updateJwSelect === 'function') updateJwSelect(sel); } catch (_) {}
+					});
+				}
+			} catch (e) { console.warn('Failed to load option categories:', e); }
+
 			// product categories meta preload
 			try {
 				// " "   : super-api.php?action=getCategories
@@ -1255,7 +1274,8 @@
 			try {
 				const r = await fetch('../backend/api/check-session.php', { credentials: 'include' });
 				const j = await r.json().catch(() => ({}));
-				const ok = j && j.authenticated && (j.userType === 'admin' || j.userType === 'super');
+				const adminTypes = ['admin', 'admin_ph', 'admin_kr', 'super'];
+				const ok = j && j.authenticated && adminTypes.includes(j.userType);
 				if (!ok) {
 					window.location.href = '../index.html';
 				}
@@ -1954,7 +1974,8 @@
 					return {
 						date: String(tds[1]?.textContent || '').trim(),
 						capacity: String(inputs[0]?.value || '').trim(),
-						fee: String(inputs[1]?.value || '').trim()
+						b2cPrice: String(inputs[1]?.value || '').trim(),
+						b2bPrice: String(inputs[2]?.value || '').trim()
 					};
 				}).filter(r => r.date);
 			};
@@ -2533,11 +2554,13 @@
 					const date = String(tds[1]?.textContent || '').trim();
 					const inputs = Array.from(tr.querySelectorAll('input.form-control'));
 					const seats = String(inputs[0]?.value || '').trim().replace(/[^0-9]/g, '');
-					const price = String(inputs[1]?.value || '').trim().replace(/[^0-9.]/g, '');
+					const b2cPrice = String(inputs[1]?.value || '').trim().replace(/[^0-9.]/g, '');
+					const b2bPrice = String(inputs[2]?.value || '').trim().replace(/[^0-9.]/g, '');
 					if (!date) return;
 					fd.append('availabilityDate[]', date);
 					fd.append('availabilitySeats[]', seats || '0');
-					fd.append('availabilityPrice[]', price || '0');
+					fd.append('availabilityPrice[]', b2cPrice || '0');
+					fd.append('availabilityB2bPrice[]', b2bPrice || '0');
 				});
 			})();
 
@@ -4018,7 +4041,7 @@
 
 			const state = {
 				selected: new Set(), // date string(YYYY-MM-DD)
-				values: {} // { [date]: { capacity: string, fee: string } }
+				values: {} // { [date]: { capacity: string, b2cPrice: string, b2bPrice: string } }
 			};
 
 			const pad2 = (n) => String(n).padStart(2, '0');
@@ -4102,21 +4125,34 @@
 					if (td) td.textContent = String(idx + 1);
 				});
 			};
+			const getDefaultPrices = () => {
+				const b2cEl = document.getElementById('b2cPrice');
+				const b2bEl = document.getElementById('b2bPrice');
+				return {
+					b2c: String(b2cEl?.value || '0').replace(/[^0-9]/g, '') || '0',
+					b2b: String(b2bEl?.value || '0').replace(/[^0-9]/g, '') || '0'
+				};
+			};
 			const rebuildTable = () => {
 				const dates = Array.from(state.selected).sort(); // YYYY-MM-DD lexical sort = date sort
-				const canEditFare = (function () {
-					const t = document.querySelector('button[data-target-section="flight-information"]');
-					// default.js: on=true => hidden(plus icon), on=false => shown(minus icon)
-					return !(t && t.classList.contains('on'));
-				})();
+				const defaults = getDefaultPrices();
 				tbody.innerHTML = dates.map((ds, idx) => {
 					const v = state.values[ds] || {};
+					// B2C 가격 - 0이거나 없으면 기본값 사용
+					let b2cPrice = String(v.b2cPrice || v.fee || '').replace(/[^0-9]/g, '');
+					if (!b2cPrice || b2cPrice === '0') b2cPrice = defaults.b2c;
+					// B2B 가격 - 0이거나 없으면 기본값 사용
+					let b2bPrice = String(v.b2bPrice || '').replace(/[^0-9]/g, '');
+					if (!b2bPrice || b2bPrice === '0') b2bPrice = defaults.b2b;
 					return `
-						<tr data-date="${ds}">
+						<tr data-date="${ds}" data-active="1">
 							<td class="no is-center">${idx + 1}</td>
 							<td class="is-center">${ds}</td>
-							<td class="is-center"><div class="cell"><input type="text" class="form-control" value="${String(v.capacity || '').replace(/"/g, '&quot;')}" min="0" placeholder="Enter numbers"></div></td>
-							<td class="is-center"><div class="cell"><input type="text" class="form-control" value="${String(v.fee || '').replace(/"/g, '&quot;')}" inputmode="numeric" placeholder="Enter numbers" ${canEditFare ? '' : 'disabled'}></div></td>
+							<td class="is-center">0</td>
+							<td class="is-center"><div class="cell"><input type="text" class="form-control" value="${String(v.capacity || '').replace(/"/g, '&quot;')}" min="0" inputmode="numeric"></div></td>
+							<td class="is-center"><div class="cell"><input type="text" class="form-control" value="${b2cPrice.replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
+							<td class="is-center"><div class="cell"><input type="text" class="form-control" value="${b2bPrice.replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
+							<td class="is-center"><button type="button" class="jw-button typeB btn-delete-date" data-date="${ds}" style="padding:4px 8px;font-size:12px;color:#e74c3c;">X</button></td>
 						</tr>
 					`;
 				}).join('');
@@ -4136,7 +4172,22 @@
 				const inputs = Array.from(tr.querySelectorAll('input.form-control'));
 				state.values[ds] = state.values[ds] || {};
 				state.values[ds].capacity = String(inputs[0]?.value || '');
-				state.values[ds].fee = String(inputs[1]?.value || '');
+				state.values[ds].b2cPrice = String(inputs[1]?.value || '');
+				state.values[ds].b2bPrice = String(inputs[2]?.value || '');
+			});
+
+			// 삭제 버튼 클릭 이벤트
+			tbody.addEventListener('click', (e) => {
+				const btn = e.target?.closest?.('.btn-delete-date');
+				if (!btn) return;
+				const ds = btn.getAttribute('data-date');
+				if (!ds) return;
+				state.selected.delete(ds);
+				// 캘린더에서 선택 해제
+				const cell = calRow.querySelector(`.cal-day[data-date="${ds}"]`);
+				if (cell) cell.classList.remove('is-selected');
+				rebuildTable();
+				renumber();
 			});
 
 			//  ()
@@ -4156,13 +4207,11 @@
 				} else {
 					state.selected.add(ds);
 					cell.classList.add('is-selected');
-					//        ( )
+					// 기본 B2C/B2B 가격 설정
 					state.values[ds] = state.values[ds] || {};
-					{
-						const t = document.querySelector('button[data-target-section="flight-information"]');
-						const canEditFare = !(t && t.classList.contains('on'));
-						if (canEditFare && !state.values[ds].fee) state.values[ds].fee = getBaseFare() || '';
-					}
+					const defaults = getDefaultPrices();
+					if (!state.values[ds].b2cPrice) state.values[ds].b2cPrice = defaults.b2c;
+					if (!state.values[ds].b2bPrice) state.values[ds].b2bPrice = defaults.b2b;
 				}
 				rebuildTable();
 				renumber();

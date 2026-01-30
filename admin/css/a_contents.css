@@ -176,15 +176,18 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 
 /* 룸 옵션 모달 스타일 (Figma 디자인 적용) */
 .modal-content.modal-room-option {
-    max-width: 800px;
-    min-width: 700px;
-    border-radius: 6px;
+    max-width: 1100px;
+    min-width: 900px;
+    border-radius: 12px;
+    max-height: 90vh;
 }
 
 .room-option-modal-body {
-    padding: 40px;
+    padding: 32px 40px;
     display: flex;
     flex-direction: column;
+    max-height: calc(90vh - 40px);
+    overflow-y: auto;
 }
 
 .room-option-title {
@@ -230,22 +233,131 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 
 .room-option-container {
     display: flex;
-    gap: 20px;
+    gap: 32px;
 }
 
 .room-option-left {
-    flex: 1;
+    flex: 1.5;
+    min-width: 0;
 }
 
 #room-option-list {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 8px;
+}
+
+/* Room Option Card - 간결한 가로 레이아웃 */
+.room-option-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: all 0.15s ease;
+}
+
+.room-option-card:hover {
+    border-color: #0050C8;
+    background: #FAFBFF;
+}
+
+.room-option-card.selected {
+    border-color: #0050C8;
+    background: #F0F5FF;
+}
+
+.room-option-card-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.room-option-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    min-width: 140px;
+}
+
+.room-option-card-capacity {
+    font-size: 13px;
+    color: #6B7280;
+    min-width: 70px;
+}
+
+.room-option-card-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: #10B981;
+    background: #ECFDF5;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    min-width: 80px;
+    text-align: center;
+}
+
+.room-option-card-price.has-price {
+    color: #0050C8;
+    background: #EFF6FF;
+}
+
+.room-option-card-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    background: #F3F4F6;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.room-option-card-controls .room-qty-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #FFFFFF;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #374151;
+    font-size: 18px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.room-option-card-controls .room-qty-btn:hover:not(:disabled) {
+    background: #0050C8;
+    color: #FFFFFF;
+}
+
+.room-option-card-controls .room-qty-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.room-option-card-controls .room-qty-value {
+    min-width: 32px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: #9CA3AF;
+}
+
+.room-option-card-controls .room-qty-value.has-value {
+    color: #0050C8;
 }
 
 .room-option-right {
     flex: 1;
-    padding: 0 20px;
+    min-width: 280px;
+    max-width: 320px;
+    padding: 20px;
+    background: #F9FAFB;
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
 }
 
 /* 룸 옵션 아이템 - Figma 디자인: 경계선 없음 */
@@ -350,11 +462,22 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 #order-summary-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
     border-radius: 0 !important;
+}
+
+.order-summary-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed #E5E7EB;
+    margin-bottom: 4px;
 }
 
 .room-option-right .order-summary-item,
@@ -591,8 +714,8 @@ hr { border:0; height:1px; background:#EAEAEA; }
 .popup-image-box img { max-width:100%; max-height:100%; object-fit:contain; }
 .popup-image-box .inputFile { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
 
-.calendar-row { display:grid; grid-template-columns:repeat(4, minmax(220px, 1fr)); gap:16px; align-items:start; }
-.calendar-row > div { display:flex; justify-content:center; }
+.calendar-row { display:flex; flex-wrap:nowrap; gap:16px; align-items:start; overflow-x:auto; padding-bottom:8px; }
+.calendar-row > div { display:flex; justify-content:center; flex-shrink:0; }
 .cal-month { width:224px; background:#fff; }
 .cal-month .cal-header { height:48px; font-weight:bold; font-size:16px; text-align:center; }
 .cal-month .cal-head { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:8px; }
@@ -681,6 +804,37 @@ hr { border:0; height:1px; background:#EAEAEA; }
 .calendar tbody td.available.selected {
     background: #0056d9;
     color: #fff;
+}
+
+.calendar tbody td.available.selected .sale-badge {
+    background: #fff;
+    color: #DC2626;
+}
+
+.calendar tbody td.available.on-sale {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+}
+
+.calendar tbody td.available.on-sale:hover {
+    background: #FEE2E2;
+}
+
+.calendar tbody td.available.on-sale.selected {
+    background: #DC2626;
+    border-color: #DC2626;
+}
+
+.calendar tbody td .sale-badge {
+    display: inline-block;
+    background: #DC2626;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-top: 2px;
+    line-height: 1.2;
 }
 
 .calendar tbody td.today {
@@ -1001,6 +1155,9 @@ hr { border:0; height:1px; background:#EAEAEA; }
 .badge-completed { --bgcolor:#ECEFF1; --color:#546E7A; --icon:#546E7A; }      /* 여행 완료 - 회색 */
 .badge-cancelled { --bgcolor:#FFCDD2; --color:#B71C1C; --icon:#B71C1C; }      /* 예약 취소 - 빨강 */
 .badge-refunded { --bgcolor:#37474F; --color:#FFFFFF; --icon:#FFFFFF; }       /* 환불 완료 - 검정 */
+.badge-pending { --bgcolor:#EDE7F6; --color:#5E35B1; --icon:#5E35B1; }        /* 대기중 - 연한 보라 */
+.badge-pending-update { --bgcolor:#D1C4E9; --color:#4527A0; --icon:#4527A0; } /* 수정 대기 - 보라 */
+.badge-check-reject { --bgcolor:#FFCDD2; --color:#C62828; --icon:#C62828; }   /* 거절 확인 필요 - 빨강 */
 
 .line { margin:16px 0; display:flex; border-top: 1px solid #EAEAEA; width:100%; height:1px; }
 .form-desc { color:#F28B00; font-weight:500; }

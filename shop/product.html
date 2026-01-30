@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product | Shop</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .product-image {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+        }
+        .product-image img { width: 100%; height: 100%; object-fit: cover; }
+
+        .product-detail { padding: 20px; }
+        .product-category {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .badge-featured {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 12px;
+            margin-left: 8px;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+        .product-name { font-size: 22px; font-weight: 600; margin-bottom: 16px; line-height: 1.4; }
+
+        .price-box { margin-bottom: 20px; }
+        .price-original {
+            font-size: 16px;
+            color: #999;
+            text-decoration: line-through;
+            margin-bottom: 4px;
+        }
+        .price-sale { font-size: 28px; font-weight: 700; color: #e74c3c; }
+        .price-normal { font-size: 28px; font-weight: 700; }
+        .discount-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .stock-info {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .stock-info.low { color: #e74c3c; background: #fff5f5; }
+
+        .description {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #444;
+            padding: 20px 0;
+            border-top: 1px solid #eee;
+        }
+
+        .quantity-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .quantity-box label { font-size: 14px; font-weight: 500; }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .quantity-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .quantity-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .quantity-input {
+            width: 50px;
+            height: 32px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .bottom-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+        }
+        .btn-cart {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid #000;
+            background: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-buy {
+            flex: 2;
+            padding: 16px;
+            border: none;
+            background: #000;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-buy:disabled, .btn-cart:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.show { display: block; animation: fadeInOut 2s ease; }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main" style="padding-bottom: 80px;">
+        <header class="header-type1">
+            <a class="btn-mypage" href="index.html"><img src="/images/ico_arrow_left.svg"></a>
+            <div class="title">Product</div>
+            <div style="width: 24px;"></div>
+        </header>
+
+        <div id="productContent">
+            <div class="product-image" id="productImage">📦</div>
+            <div class="product-detail">
+                <div class="product-category" id="productCategory">-</div>
+                <h1 class="product-name" id="productName">-</h1>
+                <div class="price-box" id="priceBox">-</div>
+                <div class="stock-info" id="stockInfo">-</div>
+                <div class="quantity-box">
+                    <label>Quantity</label>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" id="btnMinus">−</button>
+                        <input type="number" class="quantity-input" id="quantity" value="1" min="1">
+                        <button class="quantity-btn" id="btnPlus">+</button>
+                    </div>
+                </div>
+                <div class="description" id="productDesc">-</div>
+            </div>
+        </div>
+
+        <div class="bottom-actions">
+            <button class="btn-cart" id="btnCart">Add to Cart</button>
+            <button class="btn-buy" id="btnBuy">Buy Now</button>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/backend/api/shop';
+
+        let product = null;
+        let quantity = 1;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        async function loadProduct() {
+            if (!productId) {
+                alert('Product not found.');
+                history.back();
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/products.php?id=${productId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    product = data.product;
+                    renderProduct();
+                } else {
+                    alert('Product not found.');
+                    history.back();
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Failed to load product.');
+            }
+        }
+
+        function renderProduct() {
+            const name = product.name;
+            const description = product.description;
+            document.title = `${name} | Shop`;
+
+            // 이미지
+            const imgEl = document.getElementById('productImage');
+            if (product.thumbnail) {
+                imgEl.innerHTML = `<img src="${product.thumbnail}" alt="${name}">`;
+            } else {
+                imgEl.textContent = '📦';
+            }
+
+            // 카테고리
+            const categoryEl = document.getElementById('productCategory');
+            categoryEl.textContent = product.category_name;
+            if (product.is_featured == 1) {
+                categoryEl.insertAdjacentHTML('afterend', '<span class="badge-featured">추천</span>');
+            }
+
+            // 이름
+            document.getElementById('productName').textContent = name;
+
+            // 가격
+            const priceBox = document.getElementById('priceBox');
+            if (product.sale_price) {
+                const discount = Math.round((1 - product.sale_price / product.price) * 100);
+                priceBox.innerHTML = `
+                    <div class="price-original">₱${Number(product.price).toLocaleString()}</div>
+                    <span class="price-sale">₱${Number(product.sale_price).toLocaleString()}</span>
+                    <span class="discount-badge">${discount}% OFF</span>
+                `;
+            } else {
+                priceBox.innerHTML = `<span class="price-normal">₱${Number(product.price).toLocaleString()}</span>`;
+            }
+
+            // 재고
+            const stockEl = document.getElementById('stockInfo');
+            if (product.stock <= 0) {
+                stockEl.textContent = 'Out of Stock';
+                stockEl.classList.add('low');
+                document.getElementById('btnCart').disabled = true;
+                document.getElementById('btnBuy').disabled = true;
+            } else if (product.stock <= 10) {
+                stockEl.textContent = `Only ${product.stock} left in stock!`;
+                stockEl.classList.add('low');
+            } else {
+                stockEl.textContent = `${product.stock} in stock`;
+            }
+
+            // 설명
+            document.getElementById('productDesc').textContent = description;
+
+            // 수량 최대값 설정
+            document.getElementById('quantity').max = product.stock;
+        }
+
+        // 수량 조절
+        document.getElementById('btnMinus').onclick = () => {
+            if (quantity > 1) {
+                quantity--;
+                document.getElementById('quantity').value = quantity;
+            }
+        };
+
+        document.getElementById('btnPlus').onclick = () => {
+            if (product && quantity < product.stock) {
+                quantity++;
+                document.getElementById('quantity').value = quantity;
+            }
+        };
+
+        document.getElementById('quantity').onchange = (e) => {
+            let val = parseInt(e.target.value) || 1;
+            if (val < 1) val = 1;
+            if (product && val > product.stock) val = product.stock;
+            quantity = val;
+            e.target.value = val;
+        };
+
+        // 장바구니 추가
+        document.getElementById('btnCart').onclick = async () => {
+            let userId = localStorage.getItem('userId');
+            if (!userId) {
+                userId = 'guest_' + Date.now();
+                localStorage.setItem('userId', userId);
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        product_id: product.id,
+                        quantity: quantity
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Added to cart');
+                } else {
+                    alert(data.error || 'Failed to add to cart');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('An error occurred.');
+            }
+        };
+
+        // 바로 구매
+        document.getElementById('btnBuy').onclick = async () => {
+            // 먼저 장바구니에 추가 후 checkout으로 이동
+            let userId = localStorage.getItem('userId');
+            if (!userId) {
+                userId = 'guest_' + Date.now();
+                localStorage.setItem('userId', userId);
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        product_id: product.id,
+                        quantity: quantity
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    location.href = 'checkout.html';
+                } else {
+                    alert(data.error || '오류가 발생했습니다.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('오류가 발생했습니다.');
+            }
+        };
+
+        loadProduct();
+    </script>
+</body>
+</html>

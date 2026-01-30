@@ -129,7 +129,7 @@ $password = $_POST['password'] ?? 'admin123';
                 }
                 
                 //   
-                $checkSql = "SELECT accountId FROM accounts WHERE emailAddress = ? AND accountType = 'admin'";
+                $checkSql = "SELECT accountId FROM accounts WHERE emailAddress = ? AND accountType IN ('admin_ph','admin_kr')";
                 $checkStmt = $conn->prepare($checkSql);
                 $checkStmt->bind_param('s', $email);
                 $checkStmt->execute();
@@ -146,7 +146,7 @@ $password = $_POST['password'] ?? 'admin123';
                         $updateFields[] = 'updatedAt = NOW()';
                     }
                     
-                    $updateSql = "UPDATE accounts SET " . implode(', ', $updateFields) . " WHERE emailAddress = ? AND accountType = 'admin'";
+                    $updateSql = "UPDATE accounts SET " . implode(', ', $updateFields) . " WHERE emailAddress = ? AND accountType IN ('admin_ph','admin_kr')";
                     $updateValues[] = $email;
                     $paramTypes .= 's';
                     
@@ -169,7 +169,7 @@ $password = $_POST['password'] ?? 'admin123';
                     //   
                     // columns    
                     $fields = ['emailAddress', 'password', 'accountType', 'accountStatus'];
-                    $values = [$email, $password, 'admin', 'active'];
+                    $values = [$email, $password, 'admin_ph', 'active'];
                     
                     // createdAt   
                     if (in_array('createdAt', $columns)) {
@@ -211,7 +211,7 @@ $password = $_POST['password'] ?? 'admin123';
         } else {
             //  admin  
             try {
-                $checkSql = "SELECT accountId, emailAddress, accountStatus, createdAt FROM accounts WHERE accountType = 'admin'";
+                $checkSql = "SELECT accountId, emailAddress, accountStatus, createdAt FROM accounts WHERE accountType IN ('admin_ph','admin_kr')";
                 $result = $conn->query($checkSql);
                 
                 if ($result && $result->num_rows > 0) {

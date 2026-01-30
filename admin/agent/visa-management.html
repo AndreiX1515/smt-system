@@ -23,6 +23,90 @@
 			font-size: 0.8em;
 			margin-left: 4px;
 		}
+		/* 토글 버튼 스타일 */
+		.toggle-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 10px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			background: #f8f9fa;
+			cursor: pointer;
+			font-size: 13px;
+			transition: all 0.2s;
+		}
+		.toggle-btn:hover {
+			background: #e9ecef;
+			border-color: #adb5bd;
+		}
+		.toggle-btn .arrow {
+			transition: transform 0.2s;
+			font-size: 10px;
+		}
+		.toggle-btn.expanded .arrow {
+			transform: rotate(180deg);
+		}
+		.toggle-btn .count {
+			background: #007bff;
+			color: white;
+			padding: 2px 6px;
+			border-radius: 10px;
+			font-size: 11px;
+			font-weight: bold;
+		}
+		/* 동행자 sub-row 스타일 */
+		.traveler-row {
+			background-color: #f8f9fa;
+		}
+		.traveler-row td {
+			padding: 8px 12px !important;
+			border-top: none !important;
+		}
+		.traveler-row:hover {
+			background-color: #e9ecef;
+		}
+		.traveler-name {
+			padding-left: 20px;
+			position: relative;
+		}
+		.traveler-name::before {
+			content: "└";
+			position: absolute;
+			left: 4px;
+			color: #6c757d;
+		}
+		/* 메인 row 스타일 */
+		.main-row {
+			background-color: #fff;
+		}
+		.main-row:hover {
+			background-color: #f1f3f5;
+		}
+		.main-row.has-travelers {
+			border-bottom: none;
+		}
+		/* 상태 배지 스타일 */
+		.status-badge {
+			display: inline-block;
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 500;
+		}
+		.status-pending { background: #fff3cd; color: #856404; }
+		.status-reviewing { background: #cce5ff; color: #004085; }
+		.status-approved { background: #d4edda; color: #155724; }
+		.status-rejected { background: #f8d7da; color: #721c24; }
+		/* 텍스트 오버플로우 처리 */
+		.jw-tableA td, .jw-tableA th {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		.jw-tableA td[title] {
+			cursor: help;
+		}
 	</style>
 </head>
 
@@ -61,17 +145,27 @@
 					</form>
 				</div>
 
-				<table class="jw-tableA">
+				<table class="jw-tableA" style="table-layout: fixed; width: 100%;">
 					<colgroup>
-						<col class="col-60"> <!-- No -->
-						<col> <!-- Applicant name -->
-						<col> <!-- Application date/time -->
-						<col> <!-- Status -->
+						<col style="width: 50px;"> <!-- No -->
+						<col style="width: 120px;"> <!-- Booking ID -->
+						<col style="width: 70px;"> <!-- Travelers -->
+						<col style="width: 120px;"> <!-- Representative -->
+						<col style="width: 80px;"> <!-- Visa Type -->
+						<col style="width: 130px;"> <!-- Agency Name -->
+						<col style="width: 95px;"> <!-- Travel Start Date -->
+						<col style="width: 130px;"> <!-- Application date/time -->
+						<col style="width: 110px;"> <!-- Status -->
 					</colgroup>
 					<thead>
 						<tr>
 							<th class="no is-center">No</th>
-							<th class="is-center" data-lan-eng="Applicant name">Applicant name</th>
+							<th class="is-center" data-lan-eng="Booking ID">Booking ID</th>
+							<th class="is-center" data-lan-eng="Travelers">Travelers</th>
+							<th class="is-center" data-lan-eng="Representative">Representative</th>
+							<th class="is-center" data-lan-eng="Visa Type">Visa Type</th>
+							<th class="is-center" data-lan-eng="Agency Name">Agency Name</th>
+							<th class="is-center" data-lan-eng="Travel Start Date">Travel Start Date</th>
 							<th class="is-center sortable" data-lan-eng="Application date/time" id="sortByDate" onclick="toggleDateSort()" style="cursor: pointer;">
 								Application date/time <span id="dateSortIcon">▼</span>
 							</th>
@@ -80,7 +174,7 @@
 					</thead>
 					<tbody id="visaAppsTableBody">
 						<tr>
-							<td colspan="4" class="is-center">Loading...</td>
+							<td colspan="9" class="is-center">Loading...</td>
 						</tr>
 					</tbody>
 				</table>
@@ -178,7 +272,7 @@
 			try {
 				const tbody = document.getElementById('visaAppsTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="4" class="is-center">Loading...</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="9" class="is-center">Loading...</td></tr>';
 				}
 
 				const params = new URLSearchParams({
@@ -210,27 +304,83 @@
 
 					if (tbody) {
 						if (applications.length === 0) {
-							tbody.innerHTML = '<tr><td colspan="4" class="is-center">No visa applications found.</td></tr>';
+							tbody.innerHTML = '<tr><td colspan="9" class="is-center">No visa applications found.</td></tr>';
 						} else {
 							tbody.innerHTML = applications.map((app, index) => {
-								const createdAt = app.createdAt ? app.createdAt.replace('T', ' ').substring(0, 16) : '';
+								const travelStartDate = app.travelStartDate || '';
+								const travelers = app.travelers || [];
+								const travelerCount = app.travelerCount || travelers.length || 1;
+								const repName = app.representativeName || (travelers[0]?.applicantName) || '';
+								const repStatus = app.representativeStatus || (travelers[0]?.status) || 'pending';
+								const repId = app.representativeId || (travelers[0]?.visaApplicationId) || '';
+								const repCreatedAt = app.representativeCreatedAt || (travelers[0]?.createdAt) || '';
+								const repVisaType = app.representativeVisaType || (travelers[0]?.visaType) || '';
+								const rowNum = app.rowNum || (pagination.totalCount - (page - 1) * limit - index);
+								const bookingId = app.bookingId || '';
+
 								const statusMap = {
 									'pending': 'Request Received',
 									'reviewing': 'Under Review',
 									'approved': 'Issuance Complete',
 									'rejected': 'Returned'
 								};
-								const statusLabel = statusMap[String(app.status || '').toLowerCase()] || 'Request Received';
-								const appId = app.visaApplicationId || app.applicationId || app.id;
-								const rowNum = pagination ? (pagination.totalCount - (page - 1) * limit - index) : (app.rowNum || index + 1);
-								return `
-									<tr onclick="window.location.href='visa-detail.html?id=${escapeHtml(appId)}'" style="cursor: pointer;">
+								const statusClassMap = {
+									'pending': 'status-pending',
+									'reviewing': 'status-reviewing',
+									'approved': 'status-approved',
+									'rejected': 'status-rejected'
+								};
+								const visaTypeMap = {
+									'group': 'Group',
+									'individual': 'Individual'
+								};
+
+								const getStatusLabel = (status) => statusMap[String(status || '').toLowerCase()] || 'Request Received';
+								const getStatusClass = (status) => statusClassMap[String(status || '').toLowerCase()] || 'status-pending';
+								const getVisaTypeLabel = (type) => visaTypeMap[String(type || '').toLowerCase()] || type || '-';
+
+								// 메인 row (대표 신청자)
+								let html = `
+									<tr class="main-row ${travelerCount > 1 ? 'has-travelers' : ''}" data-booking-id="${escapeHtml(bookingId)}">
 										<td class="no is-center">${rowNum}</td>
-										<td class="is-center">${escapeHtml(app.applicantName || '')}</td>
-										<td class="is-center">${escapeHtml(createdAt)}</td>
-										<td class="is-center">${escapeHtml(statusLabel)}</td>
+										<td class="is-center" title="${escapeHtml(bookingId)}">${escapeHtml(bookingId)}</td>
+										<td class="is-center">
+											${travelerCount > 1 ? `
+												<button type="button" class="toggle-btn" onclick="toggleTravelers(event, '${escapeHtml(bookingId)}')">
+													<span class="count">${travelerCount}</span>
+													<span class="arrow">▼</span>
+												</button>
+											` : `<span style="color:#6c757d;">1</span>`}
+										</td>
+										<td class="is-center" style="cursor:pointer;" title="${escapeHtml(repName)}" onclick="window.location.href='visa-detail.html?id=${escapeHtml(repId)}'">${escapeHtml(repName)}</td>
+										<td class="is-center">${escapeHtml(getVisaTypeLabel(repVisaType))}</td>
+										<td class="is-center" title="${escapeHtml(app.agencyName || '')}">${escapeHtml(app.agencyName || '')}</td>
+										<td class="is-center">${escapeHtml(travelStartDate)}</td>
+										<td class="is-center">${escapeHtml(repCreatedAt)}</td>
+										<td class="is-center"><span class="status-badge ${getStatusClass(repStatus)}">${escapeHtml(getStatusLabel(repStatus))}</span></td>
 									</tr>
 								`;
+
+								// 동행자 rows (처음에는 숨김)
+								if (travelerCount > 1) {
+									travelers.slice(1).forEach((t, tIdx) => {
+										html += `
+											<tr class="traveler-row" data-booking-id="${escapeHtml(bookingId)}" style="display:none;">
+												<td class="is-center"></td>
+												<td class="is-center"></td>
+												<td class="is-center"></td>
+												<td class="is-center traveler-name" style="cursor:pointer;" title="${escapeHtml(t.applicantName || '')}" onclick="window.location.href='visa-detail.html?id=${escapeHtml(t.visaApplicationId)}'">${escapeHtml(t.applicantName || '')}</td>
+												<td class="is-center">${escapeHtml(getVisaTypeLabel(t.visaType))}</td>
+												<td class="is-center"></td>
+												<td class="is-center"></td>
+												<td class="is-center">${escapeHtml(t.createdAt || '')}</td>
+												<td class="is-center"><span class="status-badge ${getStatusClass(t.status)}">${escapeHtml(getStatusLabel(t.status))}</span></td>
+											</tr>
+										`;
+									});
+								}
+
+								return html;
 							}).join('');
 						}
 					}
@@ -244,9 +394,21 @@
 				console.error('Error loading visa applications:', error);
 				const tbody = document.getElementById('visaAppsTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="4" class="is-center">Error loading data.</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="9" class="is-center">Error loading data.</td></tr>';
 				}
 			}
+		}
+
+		function toggleTravelers(event, bookingId) {
+			event.stopPropagation();
+			const btn = event.currentTarget;
+			const isExpanded = btn.classList.toggle('expanded');
+
+			// 해당 bookingId의 동행자 rows 토글
+			const travelerRows = document.querySelectorAll(`.traveler-row[data-booking-id="${bookingId}"]`);
+			travelerRows.forEach(row => {
+				row.style.display = isExpanded ? 'table-row' : 'none';
+			});
 		}
 
 		function updatePagination(pagination) {

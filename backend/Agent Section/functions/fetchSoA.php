@@ -19,24 +19,9 @@ if (isset($_POST['month']) && isset($_POST['year']))
   $formattedTotalRequestCostSum = '0.00';
   $formattedTotalAmount = '0.00';
 
-  // Query to get the branchAgentCode
-  $sql1 = "SELECT c.companyName, b.branchAgentCode
-          FROM company c 
-          JOIN branch b ON c.branchId = b.branchId
-          WHERE c.companyId = $companyId";
-  $result = $conn->query($sql1);
-
-  $businessUnit = "";
-  if ($result && $result->num_rows > 0) 
-  {
-    $row = $result->fetch_assoc();
-    $businessUnit = $row['branchAgentCode'];
-    $_SESSION['companyName'] = $row['companyName']; // Store the branch name in the session
-  }
-  else
-  {
-    $businessUnit = null;
-  }
+  // company 테이블 제거됨
+  $businessUnit = null;
+  $_SESSION['companyName'] = '';
 
   $transactNumbers = [];
   $totalPriceSum = 0;
@@ -53,12 +38,10 @@ if (isset($_POST['month']) && isset($_POST['year']))
             END AS flightPrice, b.totalPrice
           FROM booking b
           JOIN client cl ON b.accountType = 'Client' AND b.accountId = cl.accountId
-          JOIN company c ON cl.companyId = c.companyId
           JOIN flight f ON b.flightId = f.flightId
           WHERE MONTH(f.flightDepartureDate) = $month
             AND YEAR(f.flightDepartureDate) = $year
             AND b.status = 'Confirmed'
-            AND cl.companyId = $companyId
           ORDER BY f.flightId";
 
   $res3 = $conn->query($sql3);

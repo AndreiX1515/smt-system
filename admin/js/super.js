@@ -65,8 +65,47 @@ function runInit(options) {
 	return Promise.all([pHeader, pNav]).then(async () => {
 		// 헤더/프로필 사용자 표시 동기화(default.js에 정의됨)
 		try { if (typeof hydrateAdminIdentityUI === 'function') await hydrateAdminIdentityUI(); } catch (_) { }
+		// 메뉴 권한 필터링
+		try { await filterMenusByPermission(); } catch (e) { console.error('Menu permission filter error:', e); }
 		return true;
 	});
+}
+
+// 메뉴 권한 필터링 함수
+async function filterMenusByPermission() {
+	try {
+		const response = await fetch('../backend/api/menu-api.php?action=getMenus', {
+			credentials: 'same-origin'
+		});
+		const data = await response.json();
+
+		if (!data.success || !data.menuIds) {
+			console.warn('Failed to load menu permissions');
+			return;
+		}
+
+		const allowedMenuIds = new Set(data.menuIds);
+
+		// 모든 data-menu 속성을 가진 요소 필터링
+		document.querySelectorAll('[data-menu]').forEach(el => {
+			const menuId = el.getAttribute('data-menu');
+			if (!allowedMenuIds.has(menuId)) {
+				el.style.display = 'none';
+			}
+		});
+
+		// 자식 메뉴가 모두 숨겨진 상위 메뉴(nav-item) 숨기기
+		document.querySelectorAll('.nav-item[data-menu]').forEach(navItem => {
+			const visibleSubMenus = navItem.querySelectorAll('.nav-sub [data-menu]:not([style*="display: none"])');
+			if (visibleSubMenus.length === 0) {
+				navItem.style.display = 'none';
+			}
+		});
+
+		console.log('Menu permissions applied. Role:', data.role, 'Allowed menus:', data.menuIds.length);
+	} catch (error) {
+		console.error('Error filtering menus:', error);
+	}
 }
 
 function layoutNav() {
