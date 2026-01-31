@@ -8,6 +8,11 @@ function init(options) {
 		setCookie('lang', lang, 365);
 		await Promise.resolve(language_apply(lang));
 		jw_select();
+
+		// 헤더에 로그인한 사용자 정보 표시
+		if (typeof waitForHeaderUserNameAndHydrate === 'function') {
+			waitForHeaderUserNameAndHydrate();
+		}
 	};
 
 	if (document.readyState === 'loading') {
