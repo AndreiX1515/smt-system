@@ -414,67 +414,57 @@
 				<h2 class="section-title jw-mgt32" id="section-sales-info" data-lan-eng="Sales Information">Sales Information</h2>
 				<div class="card-panel jw-mgt16">
 					<h3 class="grid-wrap-title" data-lan-eng="Basic Sales Information">Basic Sales Information</h3>
+					<hr class="jw-mgt16">
 
 					<div class="grid-wrap jw-mgt16">
-						<div class="grid-item">
-							<label class="label-name"><span data-lan-eng="Sale period">Sale period</span> <span class="req">*</span></label>
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Sale period ">Sale period </span> <span class="req">*</span></label>
 							<div class="field-row jw-w400">
-								<input id="contract-period" type="text" class="jw-w form-control" placeholder="YYYY-MM-DD ~ YYYY-MM-DD" data-lan-eng-placeholder="YYYY-MM-DD ~ YYYY-MM-DD" readonly>
+								<input id="contract-period" type="text" class="jw-w form-control" placeholder="Please select a date" readonly>
 								<button type="button" class="btn-icon calendar" aria-label=" " data-target="#contract-period"></button>
 							</div>
-
-							<p class="form-desc is-warning" data-lan-eng="The period can only be set up to a maximum of 100 days.">  <b>100</b>  .</p>
 						</div>
 
-						<div class="grid-item"></div>
-						<div class="grid-item"></div>
+						<!-- // -->
 						<div class="grid-item">
 							<label class="label-name"><span data-lan-eng="Minimum departure headcount">Minimum departure headcount</span> <span class="req">*</span></label>
-							<input id="minParticipants" type="number" class="form-control" value="" min="0" placeholder="Enter numbers">
+							<input id="minParticipants" type="number" class="form-control" value="2" min="0" data-essential="y" placeholder="0">
 						</div>
 
 						<div class="grid-item">
 							<label class="label-name"><span data-lan-eng="Maximum capacity">Maximum capacity</span> <span class="req">*</span></label>
-							<input id="maxParticipants" type="text" class="form-control" value="" min="0" placeholder="Enter numbers">
+							<input id="maxParticipants" type="number" class="form-control" value="36" min="0" data-essential="y" placeholder="0">
 						</div>
 
-						<div class="grid-item" data-section-name="flight-information">
-							<label class="label-name"><span data-lan-eng="Basic Airfare (₱)">Basic Airfare (₱)</span> <span class="req">*</span></label>
-							<input type="text" class="form-control" value="" inputmode="numeric" placeholder="Only products that include flights can be entered." disabled>
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="B2C Price (₱)">B2C Price (₱)</span> <span class="req">*</span></label>
+							<input id="b2cPrice" type="text" class="form-control" value="0" data-essential="y" inputmode="numeric" placeholder="0">
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="B2C Price Text">B2C Price Text</span></label>
+							<input id="priceDisplayText" type="text" class="form-control" value="" placeholder="e.g. Contact Us, TBA">
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="B2B Price (₱)">B2B Price (₱)</span></label>
+							<input id="b2bPrice" type="text" class="form-control" value="0" inputmode="numeric" placeholder="0">
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="B2B Price Text">B2B Price Text</span></label>
+							<input id="b2bPriceDisplayText" type="text" class="form-control" value="" placeholder="e.g. Contact Us, TBA">
 						</div>
 					</div>
 				</div>
 
-				<div class="card-panel jw-mgt16" data-section-name="iljastar">
+				<div class="card-panel jw-mgt16 iljastar" data-section-name="iljastar">
 					<h3 class="grid-wrap-title" data-lan-eng="Daily Sales Adjustment">Daily Sales Adjustment</h3>
-					<div class="calendar-row jw-mgt16">
-						<!--   (#contract-period)   JS  . -->
-
-					</div>
-					<div class="tableA-scrollY jw-mgt32" style="height:400px;">
-						<table class="jw-tableA booking-detail">
-							<colgroup>
-								<col class="col-60">
-								<col>
-								<col>
-								<col>
-								<col>
-								<col>
-								<col style="width:60px">
-							</colgroup>
-							<thead>
-								<tr>
-									<th class="no is-center">No</th>
-									<th data-lan-eng="Flight departure date">Flight departure date</th>
-									<th data-lan-eng="Reserved personnel">Reserved personnel</th>
-									<th data-lan-eng="Maximum capacity">Maximum capacity</th>
-									<th data-lan-eng="B2C Price (₱)">B2C Price (₱)</th>
-									<th data-lan-eng="B2B Price (₱)">B2B Price (₱)</th>
-									<th data-lan-eng="Delete">Delete</th>
-								</tr>
-							</thead>
-							<tbody></tbody>
-						</table>
+					<div class="jw-mgt16" style="display:flex; gap:12px; align-items:center;">
+						<button type="button" class="jw-button typeA" id="openDailySalesModalBtn" onclick="openDailySalesModal()">
+							<span data-lan-eng="Manage Dates">Manage Dates</span>
+						</button>
+						<span id="dailySalesCount" style="color:#666; font-size:14px;">0 dates configured</span>
 					</div>
 				</div>
 
@@ -1948,36 +1938,32 @@
 				};
 			};
 			const readSalesPanel = () => {
-				const panel = Array.from(document.querySelectorAll('.card-panel'))
-					.find(p => p.querySelector('.grid-wrap-title[data-lan-eng="Basic Sales Information"]'));
 				const salesPeriod = String(document.getElementById('contract-period')?.value || '').trim();
-				if (!panel) return { period: salesPeriod };
-				const findValByLabelEng = (labelEng) => {
-					const span = panel.querySelector(`.label-name [data-lan-eng="${CSS.escape(labelEng)}"]`);
-					const grid = span ? span.closest('.grid-item') : null;
-					const input = grid?.querySelector('input.form-control');
-					return String(input?.value || '').trim();
-				};
 				return {
 					period: salesPeriod,
-					minParticipants: findValByLabelEng('Minimum departure headcount'),
-					maxParticipants: findValByLabelEng('Maximum capacity'),
-					baseFlightFare: findValByLabelEng('Basic Airfare (₱)')
+					minParticipants: String(document.getElementById('minParticipants')?.value || '').trim(),
+					maxParticipants: String(document.getElementById('maxParticipants')?.value || '').trim(),
+					b2cPrice: String(document.getElementById('b2cPrice')?.value || '').trim(),
+					priceDisplayText: String(document.getElementById('priceDisplayText')?.value || '').trim(),
+					b2bPrice: String(document.getElementById('b2bPrice')?.value || '').trim(),
+					b2bPriceDisplayText: String(document.getElementById('b2bPriceDisplayText')?.value || '').trim()
 				};
 			};
 			const readDailySalesAdjustment = () => {
 				const panel = document.querySelector('[data-section-name="iljastar"]');
 				if (!panel) return [];
-				return Array.from(panel.querySelectorAll('tbody tr')).map((tr) => {
-					const tds = Array.from(tr.querySelectorAll('td'));
-					const inputs = Array.from(tr.querySelectorAll('input.form-control'));
+				// Read from modal state
+				const state = window.dailySalesState;
+				if (!state || !state.activeDates) return [];
+				return Array.from(state.activeDates).sort().map((date) => {
+					const data = state.dataMap[date] || {};
 					return {
-						date: String(tds[1]?.textContent || '').trim(),
-						capacity: String(inputs[0]?.value || '').trim(),
-						b2cPrice: String(inputs[1]?.value || '').trim(),
-						b2bPrice: String(inputs[2]?.value || '').trim()
+						date: date,
+						capacity: String(data.availableSeats || '').trim(),
+						b2cPrice: String(data.price || '').trim(),
+						b2bPrice: String(data.b2bPrice || '').trim()
 					};
-				}).filter(r => r.date);
+				});
 			};
 
 			// 
@@ -2242,19 +2228,25 @@
 			// /
 			const minP = String(document.getElementById('minParticipants')?.value || '').trim();
 			const maxP = String(document.getElementById('maxParticipants')?.value || '').trim();
-			const basePrice = String(document.getElementById('baseFlightFare')?.value || '').trim();
+			const b2cPrice = String(document.getElementById('b2cPrice')?.value || '').trim();
+			const priceDisplayText = String(document.getElementById('priceDisplayText')?.value || '').trim();
+			const b2bPrice = String(document.getElementById('b2bPrice')?.value || '').trim();
+			const b2bPriceDisplayText = String(document.getElementById('b2bPriceDisplayText')?.value || '').trim();
 			if (minP) fd.append('minParticipants', minP);
 			if (maxP) fd.append('maxParticipants', maxP);
-			if (basePrice) fd.append('basePrice', basePrice);
+			if (b2cPrice) fd.append('basePrice', b2cPrice);
+			if (priceDisplayText) fd.append('priceDisplayText', priceDisplayText);
+			if (b2bPrice) fd.append('b2bPrice', b2bPrice);
+			if (b2bPriceDisplayText) fd.append('b2bPriceDisplayText', b2bPriceDisplayText);
 			// packages.packagePrice( 1 ) " "   .
-			// ( (basePrice) base_price  )
+			// ( (b2cPrice) base_price  )
 			(function () {
 				const feePanel =
 					document.querySelector('.card-panel .grid-wrap-title[data-lan-eng="Number of people fee"]')?.closest('.card-panel') ||
 					Array.from(document.querySelectorAll('.card-panel')).find(p => (p.querySelector('.grid-wrap-title')?.textContent || '').includes(' '));
 				if (!feePanel) {
-					//  :      
-					if (basePrice) fd.append('adultPrice', basePrice);
+					//  :
+					if (b2cPrice) fd.append('adultPrice', b2cPrice);
 					return;
 				}
 				const rows = Array.from(feePanel.querySelectorAll('tbody tr'));
@@ -2271,7 +2263,7 @@
 					else if (name.includes('infant') || name.includes('')) infant = p;
 				});
 				if (adult !== null) fd.append('adultPrice', String(adult));
-				else if (basePrice) fd.append('adultPrice', basePrice);
+				else if (b2cPrice) fd.append('adultPrice', b2cPrice);
 				if (child !== null) fd.append('childPrice', String(child));
 				if (infant !== null) fd.append('infantPrice', String(infant));
 			})();
@@ -2544,19 +2536,15 @@
 				});
 					})();
 
-			//   (package_availability)
+			//   (package_availability) - Modal based
 			(function () {
-				const panel = document.querySelector('[data-section-name="iljastar"]');
-				if (!panel) return;
-				const rows = Array.from(panel.querySelectorAll('tbody tr'));
-				rows.forEach((tr) => {
-					const tds = Array.from(tr.querySelectorAll('td'));
-					const date = String(tds[1]?.textContent || '').trim();
-					const inputs = Array.from(tr.querySelectorAll('input.form-control'));
-					const seats = String(inputs[0]?.value || '').trim().replace(/[^0-9]/g, '');
-					const b2cPrice = String(inputs[1]?.value || '').trim().replace(/[^0-9.]/g, '');
-					const b2bPrice = String(inputs[2]?.value || '').trim().replace(/[^0-9.]/g, '');
-					if (!date) return;
+				const state = window.dailySalesState;
+				if (!state || !state.activeDates) return;
+				Array.from(state.activeDates).sort().forEach((date) => {
+					const data = state.dataMap[date] || {};
+					const seats = String(data.availableSeats || '').trim().replace(/[^0-9]/g, '');
+					const b2cPrice = String(data.price || '').trim().replace(/[^0-9.]/g, '');
+					const b2bPrice = String(data.b2bPrice || '').trim().replace(/[^0-9.]/g, '');
 					fd.append('availabilityDate[]', date);
 					fd.append('availabilitySeats[]', seats || '0');
 					fd.append('availabilityPrice[]', b2cPrice || '0');
@@ -2918,7 +2906,10 @@
 			d.querySelector('#previewSalesPeriod')?.replaceChildren(document.createTextNode(sales.period || '-'));
 				d.querySelector('#previewMinParticipants')?.replaceChildren(document.createTextNode(sales.minParticipants || '-'));
 				d.querySelector('#previewMaxParticipants')?.replaceChildren(document.createTextNode(sales.maxParticipants || '-'));
-				d.querySelector('#previewBaseFlightFare')?.replaceChildren(document.createTextNode(sales.baseFlightFare || '-'));
+				d.querySelector('#previewB2cPrice')?.replaceChildren(document.createTextNode(sales.b2cPrice || '-'));
+				d.querySelector('#previewPriceDisplayText')?.replaceChildren(document.createTextNode(sales.priceDisplayText || '-'));
+				d.querySelector('#previewB2bPrice')?.replaceChildren(document.createTextNode(sales.b2bPrice || '-'));
+				d.querySelector('#previewB2bPriceDisplayText')?.replaceChildren(document.createTextNode(sales.b2bPriceDisplayText || '-'));
 
 			//   ( )
 			{
@@ -4783,7 +4774,561 @@
 				</label>
 			`;
 		}
+
+		// ============================================
+		// Daily Sales Adjustment Modal Functions
+		// ============================================
+
+		function getDefaultPrices() {
+			const b2cEl = document.getElementById('b2cPrice');
+			const b2bEl = document.getElementById('b2bPrice');
+			return {
+				b2c: String(b2cEl?.value || '0').replace(/[^0-9]/g, '') || '0',
+				b2b: String(b2bEl?.value || '0').replace(/[^0-9]/g, '') || '0'
+			};
+		}
+
+		function fmtDate(d) {
+			const y = d.getFullYear();
+			const m = String(d.getMonth() + 1).padStart(2, '0');
+			const dd = String(d.getDate()).padStart(2, '0');
+			return `${y}-${m}-${dd}`;
+		}
+
+		function initDailySalesState() {
+			const panel = document.querySelector('.iljastar');
+			if (!panel) return;
+
+			const contractEl = document.getElementById('contract-period');
+			const rawPeriod = String(contractEl?.value || '').trim();
+
+			const parseRange = (s) => {
+				const m = String(s || '').match(/(\d{4}-\d{2}-\d{2})/g) || [];
+				if (m.length >= 2) return { start: m[0], end: m[1] };
+				if (m.length === 1) return { start: m[0], end: m[0] };
+				return { start: '', end: '' };
+			};
+
+			const toDate = (ymd) => {
+				try {
+					if (window.moment) {
+						const mm = window.moment(ymd, 'YYYY-MM-DD', true);
+						if (mm.isValid()) return mm.toDate();
+					}
+				} catch (_) {}
+				const d = new Date(String(ymd || '') + 'T00:00:00');
+				return isNaN(d.getTime()) ? null : d;
+			};
+
+			const parsed = parseRange(rawPeriod);
+			const start = parsed.start || '';
+			const end = parsed.end || '';
+			const startD = toDate(start);
+			const endD = toDate(end);
+
+			// Initialize global state for modal
+			window.dailySalesState = {
+				activeDates: new Set(),
+				deletedDates: new Set(),
+				dataMap: {},
+				selectedDates: new Set(),
+				monthOffset: 0,
+				rangeStart: startD,
+				rangeEnd: endD
+			};
+
+			// Store state on panel for save logic
+			panel.__activeDates = window.dailySalesState.activeDates;
+			panel.__deletedDates = window.dailySalesState.deletedDates;
+			panel.__dataMap = window.dailySalesState.dataMap;
+
+			// Update count display
+			const countEl = document.getElementById('dailySalesCount');
+			if (countEl) {
+				countEl.textContent = `${window.dailySalesState.activeDates.size} dates configured`;
+			}
+		}
+
+		// Initialize on page load
+		document.addEventListener('DOMContentLoaded', function() {
+			// Re-init on contract period change
+			const contractEl = document.getElementById('contract-period');
+			if (contractEl && window.jQuery) {
+				window.jQuery(contractEl).on('apply.daterangepicker cancel.daterangepicker', () => {
+					setTimeout(initDailySalesState, 0);
+				});
+			}
+		});
+
+		function openDailySalesModal() {
+			// Initialize state if not exists
+			if (!window.dailySalesState) {
+				initDailySalesState();
+			}
+
+			const state = window.dailySalesState;
+			if (!state || !state.rangeStart || !state.rangeEnd) {
+				alert('Please set the sales period first.');
+				return;
+			}
+			state.selectedDates = new Set();
+			state.monthOffset = 0;
+			renderModalCalendar();
+			renderModalTable();
+			updateSelectionButtons();
+			document.getElementById('dailySalesModal').style.display = 'flex';
+			document.body.style.overflow = 'hidden';
+		}
+
+		function closeDailySalesModal() {
+			document.getElementById('dailySalesModal').style.display = 'none';
+			document.body.style.overflow = '';
+		}
+
+		function renderModalCalendar() {
+			const state = window.dailySalesState;
+			const calRow = document.getElementById('modalCalendarRow');
+			if (!calRow || !state || !state.rangeStart || !state.rangeEnd) return;
+
+			const monthLabel = (d) => {
+				try {
+					if (window.moment) return window.moment(d).format('MMM YYYY');
+				} catch (_) {}
+				return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+			};
+
+			const baseMonth = new Date(state.rangeStart.getFullYear(), state.rangeStart.getMonth(), 1);
+			const endMonth = new Date(state.rangeEnd.getFullYear(), state.rangeEnd.getMonth(), 1);
+			const totalMonths = (endMonth.getFullYear() - baseMonth.getFullYear()) * 12 + (endMonth.getMonth() - baseMonth.getMonth()) + 1;
+
+			const monthsPerPage = 4;
+			const monthOffset = state.monthOffset || 0;
+
+			const isInRange = (ymd) => (ymd >= fmtDate(state.rangeStart) && ymd <= fmtDate(state.rangeEnd));
+
+			const renderMonth = (m0) => {
+				const y = m0.getFullYear();
+				const m = m0.getMonth();
+				const first = new Date(y, m, 1);
+				const last = new Date(y, m + 1, 0);
+				const daysInMonth = last.getDate();
+				const startDow = first.getDay();
+
+				const cells = [];
+				for (let i = 0; i < startDow; i++) {
+					cells.push('<div class="cal-day is-muted"><time datetime=""></time></div>');
+				}
+				for (let d = 1; d <= daysInMonth; d++) {
+					const dt = new Date(y, m, d);
+					const ymd = fmtDate(dt);
+					const cls = ['cal-day'];
+					if (dt.getDay() === 0) cls.push('is-sun');
+					if (dt.getDay() === 6) cls.push('is-sat');
+					if (isInRange(ymd)) cls.push('is-in-range');
+					else cls.push('is-muted');
+					if (state.activeDates.has(ymd)) cls.push('is-active', 'is-selected');
+					const today = new Date();
+					const todayYmd = fmtDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+					if (ymd === todayYmd) cls.push('is-today');
+					cells.push(`<div class="${cls.join(' ')}" data-date="${ymd}"><time datetime="${ymd}">${d}</time></div>`);
+				}
+				return `
+					<div>
+						<div class="cal-month">
+							<div class="cal-header">${monthLabel(m0)}</div>
+							<div class="cal-head"><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div></div>
+							<div class="cal-body">${cells.join('')}</div>
+						</div>
+					</div>
+				`;
+			};
+
+			const months = [];
+			for (let i = 0; i < monthsPerPage; i++) {
+				const idx = monthOffset + i;
+				if (idx >= totalMonths) break;
+				months.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth() + idx, 1));
+			}
+
+			const canGoPrev = monthOffset > 0;
+			const canGoNext = monthOffset + monthsPerPage < totalMonths;
+
+			calRow.innerHTML = `
+				<div class="cal-nav" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+					<button type="button" class="cal-nav-btn cal-prev" style="padding:4px 12px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; ${canGoPrev ? '' : 'opacity:0.3; pointer-events:none;'}">&lt; Prev</button>
+					<span style="font-size:13px; color:#666;">Page ${Math.floor(monthOffset / monthsPerPage) + 1} / ${Math.ceil(totalMonths / monthsPerPage)}</span>
+					<button type="button" class="cal-nav-btn cal-next" style="padding:4px 12px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; ${canGoNext ? '' : 'opacity:0.3; pointer-events:none;'}">Next &gt;</button>
+				</div>
+				<div class="cal-months" style="display:flex; gap:12px; flex-wrap:wrap;">
+					${months.map(renderMonth).join('')}
+				</div>
+			`;
+
+			// Navigation events
+			calRow.querySelector('.cal-prev')?.addEventListener('click', () => {
+				if (state.monthOffset > 0) {
+					state.monthOffset -= monthsPerPage;
+					if (state.monthOffset < 0) state.monthOffset = 0;
+					renderModalCalendar();
+				}
+			});
+			calRow.querySelector('.cal-next')?.addEventListener('click', () => {
+				if (state.monthOffset + monthsPerPage < totalMonths) {
+					state.monthOffset += monthsPerPage;
+					renderModalCalendar();
+				}
+			});
+
+			// Calendar click handler
+			calRow.querySelectorAll('.cal-day[data-date]').forEach(cell => {
+				cell.addEventListener('click', () => {
+					const ymd = cell.getAttribute('data-date');
+					if (!ymd || !isInRange(ymd)) return;
+					if (state.activeDates.has(ymd)) {
+						state.activeDates.delete(ymd);
+						state.deletedDates.add(ymd);
+					} else {
+						state.activeDates.add(ymd);
+						state.deletedDates.delete(ymd);
+						// Set default values for new date
+						if (!state.dataMap[ymd]) {
+							const defaults = getDefaultPrices();
+							state.dataMap[ymd] = {
+								availableSeats: '',
+								price: defaults.b2c,
+								b2bPrice: defaults.b2b,
+								bookedSeats: ''
+							};
+						}
+					}
+					renderModalCalendar();
+					renderModalTable();
+				});
+			});
+		}
+
+		function renderModalTable() {
+			const state = window.dailySalesState;
+			const tbody = document.querySelector('#modalDailySalesTable tbody');
+			if (!tbody || !state) return;
+
+			const list = Array.from(state.activeDates).sort();
+			const defaults = getDefaultPrices();
+
+			tbody.innerHTML = '';
+			list.forEach((date, idx) => {
+				const data = state.dataMap[date] || {};
+				const booked = (data.bookedSeats != null) ? String(data.bookedSeats) : '';
+				const seats = (data.availableSeats != null) ? String(data.availableSeats) : '';
+				let priceInt = String(data.price || '').split('.')[0].replace(/[^0-9]/g, '');
+				if (!priceInt || priceInt === '0') priceInt = defaults.b2c;
+				let b2bPriceInt = String(data.b2bPrice || '').split('.')[0].replace(/[^0-9]/g, '');
+				if (!b2bPriceInt || b2bPriceInt === '0') b2bPriceInt = defaults.b2b;
+
+				const isChecked = state.selectedDates.has(date);
+
+				const tr = document.createElement('tr');
+				tr.dataset.date = date;
+				tr.innerHTML = `
+					<td class="is-center"><input type="checkbox" class="date-checkbox" data-date="${date}" ${isChecked ? 'checked' : ''}></td>
+					<td class="no is-center">${idx + 1}</td>
+					<td class="is-center">${date}</td>
+					<td class="is-center">${booked}</td>
+					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-seats" data-date="${date}" value="${seats.replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
+					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-b2c" data-date="${date}" value="${String(priceInt || '').replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
+					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-b2b" data-date="${date}" value="${String(b2bPriceInt || '').replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
+					<td class="is-center"><button type="button" class="jw-button typeB btn-modal-delete-date" data-date="${date}" style="padding:4px 8px;font-size:12px;color:#e74c3c;">X</button></td>
+				`;
+				tbody.appendChild(tr);
+			});
+
+			// Bind events
+			tbody.querySelectorAll('.date-checkbox').forEach(cb => {
+				cb.addEventListener('change', function() {
+					const d = this.dataset.date;
+					if (this.checked) state.selectedDates.add(d);
+					else state.selectedDates.delete(d);
+					updateSelectionButtons();
+				});
+			});
+
+			tbody.querySelectorAll('.modal-seats, .modal-b2c, .modal-b2b').forEach(input => {
+				input.addEventListener('change', function() {
+					const d = this.dataset.date;
+					if (!state.dataMap[d]) state.dataMap[d] = {};
+					if (this.classList.contains('modal-seats')) {
+						state.dataMap[d].availableSeats = this.value;
+					} else if (this.classList.contains('modal-b2c')) {
+						state.dataMap[d].price = this.value;
+					} else if (this.classList.contains('modal-b2b')) {
+						state.dataMap[d].b2bPrice = this.value;
+					}
+				});
+			});
+
+			tbody.querySelectorAll('.btn-modal-delete-date').forEach(btn => {
+				btn.addEventListener('click', function() {
+					const d = this.dataset.date;
+					if (!confirm(`Delete date ${d}?`)) return;
+					state.activeDates.delete(d);
+					state.deletedDates.add(d);
+					state.selectedDates.delete(d);
+					renderModalCalendar();
+					renderModalTable();
+				});
+			});
+
+			// Update select all checkbox
+			const selectAllCb = document.getElementById('selectAllDates');
+			if (selectAllCb) {
+				selectAllCb.checked = list.length > 0 && state.selectedDates.size === list.length;
+			}
+		}
+
+		function toggleSelectAllDates(checked) {
+			const state = window.dailySalesState;
+			if (!state) return;
+			if (checked) {
+				state.activeDates.forEach(d => state.selectedDates.add(d));
+			} else {
+				state.selectedDates.clear();
+			}
+			renderModalTable();
+			updateSelectionButtons();
+		}
+
+		function updateSelectionButtons() {
+			const state = window.dailySalesState;
+			const hasSelection = state && state.selectedDates.size > 0;
+			const bulkBtn = document.getElementById('bulkEditBtn');
+			const delBtn = document.getElementById('deleteSelectedBtn');
+			if (bulkBtn) bulkBtn.disabled = !hasSelection;
+			if (delBtn) delBtn.disabled = !hasSelection;
+		}
+
+		function deleteSelectedDates() {
+			const state = window.dailySalesState;
+			if (!state || state.selectedDates.size === 0) return;
+			if (!confirm(`Delete ${state.selectedDates.size} selected date(s)?`)) return;
+			state.selectedDates.forEach(d => {
+				state.activeDates.delete(d);
+				state.deletedDates.add(d);
+			});
+			state.selectedDates.clear();
+			renderModalCalendar();
+			renderModalTable();
+			updateSelectionButtons();
+		}
+
+		function handleCsvUpload(file) {
+			if (!file) return;
+			const state = window.dailySalesState;
+			if (!state) return;
+
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				const text = e.target.result;
+				const lines = text.split('\n').slice(1); // skip header
+				let added = 0;
+				lines.forEach(line => {
+					const parts = line.split(',').map(s => s.trim());
+					const date = parts[0];
+					const seats = parts[1] || '';
+					const b2cPrice = parts[2] || '';
+					const b2bPrice = parts[3] || '';
+					if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+						state.activeDates.add(date);
+						state.deletedDates.delete(date);
+						state.dataMap[date] = {
+							availableSeats: seats,
+							price: b2cPrice,
+							b2bPrice: b2bPrice,
+							bookedSeats: state.dataMap[date]?.bookedSeats || ''
+						};
+						added++;
+					}
+				});
+				alert(`${added} date(s) imported from CSV.`);
+				renderModalCalendar();
+				renderModalTable();
+			};
+			reader.readAsText(file);
+			// Reset file input
+			document.getElementById('csvFileInput').value = '';
+		}
+
+		function downloadSampleCsv() {
+			const csv = `date,seats,b2c_price,b2b_price
+2025-06-01,10,25000,20000
+2025-06-02,10,25000,20000
+2025-06-03,15,30000,25000`;
+			const blob = new Blob([csv], { type: 'text/csv' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = 'daily_sales_sample.csv';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		}
+
+		function openBulkEditModal() {
+			const state = window.dailySalesState;
+			if (!state || state.selectedDates.size === 0) return;
+			document.getElementById('bulkEditInfo').textContent = `Editing ${state.selectedDates.size} date(s)`;
+			document.getElementById('bulkSeats').value = '';
+			document.getElementById('bulkB2cPrice').value = '';
+			document.getElementById('bulkB2bPrice').value = '';
+			document.getElementById('bulkEditModal').style.display = 'flex';
+		}
+
+		function closeBulkEditModal() {
+			document.getElementById('bulkEditModal').style.display = 'none';
+		}
+
+		function applyBulkEdit() {
+			const state = window.dailySalesState;
+			if (!state) return;
+
+			const seats = document.getElementById('bulkSeats').value.trim();
+			const b2c = document.getElementById('bulkB2cPrice').value.trim();
+			const b2b = document.getElementById('bulkB2bPrice').value.trim();
+
+			state.selectedDates.forEach(date => {
+				if (!state.dataMap[date]) state.dataMap[date] = {};
+				if (seats) state.dataMap[date].availableSeats = seats;
+				if (b2c) state.dataMap[date].price = b2c;
+				if (b2b) state.dataMap[date].b2bPrice = b2b;
+			});
+
+			closeBulkEditModal();
+			renderModalTable();
+		}
+
+		function applyDailySalesChanges() {
+			const state = window.dailySalesState;
+			const panel = document.querySelector('.iljastar');
+			if (!state || !panel) return;
+
+			// Sync table inputs to dataMap before applying
+			document.querySelectorAll('#modalDailySalesTable tbody tr').forEach(tr => {
+				const date = tr.dataset.date;
+				if (!date) return;
+				const seatsInput = tr.querySelector('.modal-seats');
+				const b2cInput = tr.querySelector('.modal-b2c');
+				const b2bInput = tr.querySelector('.modal-b2b');
+				if (!state.dataMap[date]) state.dataMap[date] = {};
+				if (seatsInput) state.dataMap[date].availableSeats = seatsInput.value;
+				if (b2cInput) state.dataMap[date].price = b2cInput.value;
+				if (b2bInput) state.dataMap[date].b2bPrice = b2bInput.value;
+			});
+
+			// Store state on panel for save logic
+			panel.__activeDates = state.activeDates;
+			panel.__deletedDates = state.deletedDates;
+			panel.__dataMap = state.dataMap;
+
+			// Update count display
+			const countEl = document.getElementById('dailySalesCount');
+			if (countEl) {
+				countEl.textContent = `${state.activeDates.size} dates configured`;
+			}
+
+			closeDailySalesModal();
+		}
 	</script>
+
+	<!-- Daily Sales Adjustment Modal -->
+	<div id="dailySalesModal" class="modal" style="display:none;">
+		<div class="modal-content modal-large" style="max-width:1400px;">
+			<div class="modal-header">
+				<h3 data-lan-eng="Daily Sales Adjustment">Daily Sales Adjustment</h3>
+				<button type="button" class="modal-close" onclick="closeDailySalesModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<!-- Action buttons -->
+				<div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+					<button type="button" class="jw-button typeA" id="csvUploadBtn" onclick="document.getElementById('csvFileInput').click()">CSV Upload</button>
+					<button type="button" class="jw-button typeE" id="csvDownloadSampleBtn" onclick="downloadSampleCsv()">Sample Download</button>
+					<button type="button" class="jw-button typeA" id="bulkEditBtn" disabled onclick="openBulkEditModal()">Bulk Edit Selected</button>
+					<button type="button" class="jw-button typeD" id="deleteSelectedBtn" disabled onclick="deleteSelectedDates()">Delete Selected</button>
+				</div>
+				<input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCsvUpload(this.files[0])">
+
+				<!-- Calendar area -->
+				<div class="calendar-row" id="modalCalendarRow"></div>
+
+				<!-- Table area -->
+				<div class="tableA-scrollY jw-mgt16" style="height:350px;">
+					<table class="jw-tableA booking-detail" id="modalDailySalesTable">
+						<colgroup>
+							<col style="width:40px;">
+							<col class="col-60">
+							<col>
+							<col>
+							<col>
+							<col>
+							<col>
+							<col style="width:60px">
+						</colgroup>
+						<thead>
+							<tr>
+								<th style="width:40px;"><input type="checkbox" id="selectAllDates" onchange="toggleSelectAllDates(this.checked)"></th>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Date">Date</th>
+								<th data-lan-eng="Booked">Booked</th>
+								<th data-lan-eng="Max Seats">Max Seats</th>
+								<th data-lan-eng="B2C Price">B2C Price</th>
+								<th data-lan-eng="B2B Price">B2B Price</th>
+								<th data-lan-eng="Delete">Del</th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button typeB" id="applyDailySalesBtn" onclick="applyDailySalesChanges()" data-lan-eng="Apply">Apply</button>
+				<button type="button" class="jw-button typeD" onclick="closeDailySalesModal()" data-lan-eng="Cancel">Cancel</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Bulk Edit Sub-Modal -->
+	<div id="bulkEditModal" class="modal" style="display:none;">
+		<div class="modal-content modal-small" style="max-width:400px;">
+			<div class="modal-header">
+				<h3 data-lan-eng="Bulk Edit">Bulk Edit</h3>
+				<button type="button" class="modal-close" onclick="closeBulkEditModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<p id="bulkEditInfo" style="margin-bottom:16px; color:#666;"></p>
+				<div class="grid-wrap">
+					<div class="grid-item jw-mgt12">
+						<label>Max Seats</label>
+						<input type="text" id="bulkSeats" class="form-control" placeholder="Leave empty to keep current" inputmode="numeric">
+					</div>
+					<div class="grid-item jw-mgt12">
+						<label>B2C Price</label>
+						<input type="text" id="bulkB2cPrice" class="form-control" placeholder="Leave empty to keep current" inputmode="numeric">
+					</div>
+					<div class="grid-item jw-mgt12">
+						<label>B2B Price</label>
+						<input type="text" id="bulkB2bPrice" class="form-control" placeholder="Leave empty to keep current" inputmode="numeric">
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button typeB" id="applyBulkEditBtn" onclick="applyBulkEdit()">Apply</button>
+				<button type="button" class="jw-button typeD" onclick="closeBulkEditModal()">Cancel</button>
+			</div>
+		</div>
+	</div>
 
 </body>
 
