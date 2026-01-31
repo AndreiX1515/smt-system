@@ -358,8 +358,8 @@ try {
             updatePaymentInfo($conn, $input);
             break;
 
-        case 'deleteDraftReservation':
-            deleteDraftReservation($conn, $input);
+        case 'deleteIncompleteReservation':
+            deleteIncompleteReservation($conn, $input);
             break;
 
         case 'updateReservationStatus':
@@ -1252,9 +1252,6 @@ function getReservations($conn, $input) {
         $where[] = "b.agentId = ?";
         $params[] = (int)$agentAccountId;
         $types .= 'i';
-
-        // draft 상태 제외 (Step 2 완료 전 예약은 목록에 표시하지 않음)
-        $where[] = "(b.bookingStatus IS NULL OR b.bookingStatus != 'draft')";
 
         // 검색 조건(기본: All) + 검색 타입(퍼블리싱: Product Name / Reservation Name)
         if (!empty($input['search'])) {
@@ -2737,7 +2734,7 @@ function createReservation($conn, $input) {
                     adultPrice, childPrice, infantPrice, visaFee, flightOptionFee,
                     saleId, saleName, saleDiscountAmount,
                     createdAt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 'pending', ?, ?, ?, ?, ?{$customerColsValuesSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?{$customerColsValuesSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ";
 
             $insertStmt = $conn->prepare($insertSql);
@@ -10333,10 +10330,7 @@ function updatePaymentInfo($conn, $input) {
             }
         }
 
-        // bookingStatus를 draft에서 pending으로 변경 (예약 확정)
-        // Step 1에서 draft로 저장된 예약이 Step 2 완료 시 pending으로 전환됨
-
-        // UPDATE 쿼리 구성 (bookingStatus를 pending으로 변경)
+        // UPDATE 쿼리 구성 (결제 정보 업데이트)
         $updateFields = [
             'bookingStatus = ?',
             'paymentType = ?',
@@ -10350,7 +10344,7 @@ function updatePaymentInfo($conn, $input) {
             'fullPaymentDueDate = ?',
             'updatedAt = NOW()'
         ];
-        $newBookingStatus = 'pending'; // draft → pending (예약 확정)
+        $newBookingStatus = 'pending';
         $params = [
             $newBookingStatus,
             $paymentType,
@@ -10415,11 +10409,11 @@ function updatePaymentInfo($conn, $input) {
 }
 
 /**
- * Draft 예약 삭제
- * - Step 2 페이지에서 이탈 시 draft 상태의 예약을 삭제
- * - 좌석 반환을 위해 booking_travelers도 함께 삭제
+ * 미완료 예약 삭제
+ * - Step 2 (결제 페이지)에서 이탈 시 예약을 삭제
+ * - booking_travelers도 함께 삭제
  */
-function deleteDraftReservation($conn, $input) {
+function deleteIncompleteReservation($conn, $input) {
     try {
         // 세션 확인 (agent 로그인 확인)
         if (session_status() === PHP_SESSION_NONE) {
@@ -10454,12 +10448,6 @@ function deleteDraftReservation($conn, $input) {
             send_error_response('Unauthorized access to this booking', 403);
         }
 
-        // draft 상태인 경우에만 삭제
-        if (strtolower($booking['bookingStatus']) !== 'draft') {
-            send_success_response(['deleted' => false, 'reason' => 'Booking is not in draft status']);
-            return;
-        }
-
         // 트랜잭션 시작
         $conn->begin_transaction();
 
@@ -10471,7 +10459,7 @@ function deleteDraftReservation($conn, $input) {
             $deleteTravelersStmt->close();
 
             // bookings 삭제
-            $deleteBookingStmt = $conn->prepare("DELETE FROM bookings WHERE bookingId = ? AND bookingStatus = 'draft'");
+            $deleteBookingStmt = $conn->prepare("DELETE FROM bookings WHERE bookingId = ?");
             $deleteBookingStmt->bind_param('s', $bookingId);
             $deleteBookingStmt->execute();
             $deletedRows = $deleteBookingStmt->affected_rows;
@@ -10482,7 +10470,7 @@ function deleteDraftReservation($conn, $input) {
             send_success_response([
                 'deleted' => $deletedRows > 0,
                 'bookingId' => $bookingId
-            ], 'Draft reservation deleted successfully');
+            ], 'Incomplete reservation deleted successfully');
 
         } catch (Exception $e) {
             $conn->rollback();
@@ -10490,7 +10478,7 @@ function deleteDraftReservation($conn, $input) {
         }
 
     } catch (Exception $e) {
-        send_error_response('Failed to delete draft reservation: ' . $e->getMessage(), 500);
+        send_error_response('Failed to delete reservation: ' . $e->getMessage(), 500);
     }
 }
 

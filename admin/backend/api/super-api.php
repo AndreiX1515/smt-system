@@ -4268,6 +4268,28 @@ function getB2BBookings($conn, $input) {
             }
         }
 
+        // Date Booked (createdAt) 정렬
+        if (!empty($input['dateBookedSort'])) {
+            if ($input['dateBookedSort'] === 'asc') {
+                $orderBy = "b.createdAt ASC";
+            } elseif ($input['dateBookedSort'] === 'desc') {
+                $orderBy = "b.createdAt DESC";
+            }
+        }
+
+        // Last Modified (updatedAt) 정렬
+        $hasUpdatedAt = false;
+        $uRes = $conn->query("SHOW COLUMNS FROM bookings LIKE 'updatedAt'");
+        if ($uRes && $uRes->num_rows > 0) $hasUpdatedAt = true;
+
+        if (!empty($input['updatedAtSort']) && $hasUpdatedAt) {
+            if ($input['updatedAtSort'] === 'asc') {
+                $orderBy = "COALESCE(b.updatedAt, b.createdAt) ASC";
+            } elseif ($input['updatedAtSort'] === 'desc') {
+                $orderBy = "COALESCE(b.updatedAt, b.createdAt) DESC";
+            }
+        }
+
         $dataSql = "SELECT
             b.bookingId,
             b.transactNo as reservationNo,
@@ -4297,6 +4319,7 @@ function getB2BBookings($conn, $input) {
                 ''
             )) as agentName,
             b.createdAt,
+            b.updatedAt,
             COALESCE(a.accountType, '') as requestedByType
             " . ($hasDownPaymentFile ? ", COALESCE(b.downPaymentFile,'') as downPaymentFile" : ", '' as downPaymentFile") . "
         FROM bookings b

@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('saveBtn').addEventListener('click', handleSave);
     document.getElementById('backBtn').addEventListener('click', handleBack);
 
-    // 페이지 이탈 시 draft 예약 삭제
+    // 페이지 이탈 시 예약 삭제
     window.addEventListener('beforeunload', handlePageUnload);
     window.addEventListener('pagehide', handlePageUnload);
 });
@@ -403,9 +403,11 @@ function displayPaymentInfo(data) {
     if (payTotalEl) payTotalEl.value = formatCurrency(totalAmount);
     if (fullPayTotalEl) fullPayTotalEl.value = formatCurrency(totalAmount);
 
-    // 기존 결제 타입 설정
-    const existingPaymentType = data.paymentType || 'staged';
-    switchPaymentType(existingPaymentType);
+    // 출발일까지 남은 일수 계산
+    const daysUntilDeparture = getDaysUntilDeparture(data.departureDate);
+
+    // 결제 타입 제어 (출발일 기준)
+    applyPaymentTypeRestrictions(daysUntilDeparture, data.paymentType);
 
     // Staged Payment 금액 계산 (인원수, Visa Fee 전달)
     calculatePaymentAmounts(totalAmount, travelerCount, visaFee);
@@ -416,6 +418,70 @@ function displayPaymentInfo(data) {
 
     // 데드라인 계산
     calculatePaymentDeadlines(data.departureDate);
+}
+
+/**
+ * 출발일까지 남은 일수 계산
+ */
+function getDaysUntilDeparture(departureDate) {
+    if (!departureDate) return null;
+    const departure = new Date(departureDate);
+    departure.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * 결제 타입 제한 적용
+ * - 34일 이내: Full Payment Only (24시간 내)
+ * - 35~44일: Full Payment Only (3일 내)
+ * - 44일 초과: Staged/Full 선택 가능
+ */
+function applyPaymentTypeRestrictions(daysUntilDeparture, existingPaymentType) {
+    const stagedTabBtn = document.querySelector('[data-payment-type="staged"]');
+    const fullTabBtn = document.querySelector('[data-payment-type="full"]');
+    const warningBox = document.getElementById('payment-warning-box');
+
+    // Warning 메시지 업데이트
+    if (warningBox) {
+        if (daysUntilDeparture !== null && daysUntilDeparture <= 34) {
+            warningBox.innerHTML = `<strong>Warning:</strong> For products with less than 34 days until departure, all payments must be completed within <strong>24 hours</strong>. (Full Payment only)`;
+        } else if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+            warningBox.innerHTML = `<strong>Warning:</strong> For products with 35-44 days until departure, all payments must be completed within <strong>3 days</strong>. (Full Payment only)`;
+        } else {
+            warningBox.style.background = '#F0F7FF';
+            warningBox.style.borderColor = '#0050C8';
+            warningBox.style.color = '#0050C8';
+            warningBox.innerHTML = `<strong>Info:</strong> For products with more than 44 days until departure, you can choose between <strong>Staged Payment (3-Step)</strong> or <strong>Full Payment</strong>.`;
+        }
+    }
+
+    // 44일 이내: Full Payment만 가능
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+        // Staged 탭 비활성화
+        if (stagedTabBtn) {
+            stagedTabBtn.disabled = true;
+            stagedTabBtn.style.opacity = '0.5';
+            stagedTabBtn.style.cursor = 'not-allowed';
+            stagedTabBtn.title = daysUntilDeparture <= 34
+                ? 'Only Full Payment available (departure within 34 days)'
+                : 'Only Full Payment available (departure within 44 days)';
+        }
+        // Full Payment 강제 선택
+        switchPaymentType('full');
+    } else {
+        // 44일 초과: 선택 가능
+        if (stagedTabBtn) {
+            stagedTabBtn.disabled = false;
+            stagedTabBtn.style.opacity = '1';
+            stagedTabBtn.style.cursor = 'pointer';
+            stagedTabBtn.title = '';
+        }
+        // 기존 결제 타입 유지 또는 기본값
+        const paymentType = existingPaymentType || 'staged';
+        switchPaymentType(paymentType);
+    }
 }
 
 /**
@@ -440,12 +506,36 @@ function calculatePaymentAmounts(totalAmount, travelerCount, visaFee = 0) {
 
 /**
  * 결제 데드라인 계산
+ * 규칙:
+ * - 출발 34일 이내: Full Payment만, deadline = +1일 (24시간)
+ * - 출발 35~44일: Full Payment만, deadline = +3일
+ * - 출발 44일 초과: Staged Payment
  */
 function calculatePaymentDeadlines(departureDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Down Payment Deadline: 3일 이내
+    // 출발일까지 남은 일수 계산
+    let daysUntilDeparture = null;
+    if (departureDate) {
+        const departure = new Date(departureDate);
+        departure.setHours(0, 0, 0, 0);
+        daysUntilDeparture = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
+    }
+
+    // Full Payment Deadline 계산
+    let fullPaymentDeadline;
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 34) {
+        // 34일 이내: +1일 (24시간)
+        fullPaymentDeadline = new Date(today);
+        fullPaymentDeadline.setDate(fullPaymentDeadline.getDate() + 1);
+    } else {
+        // 35일 이상: +3일
+        fullPaymentDeadline = new Date(today);
+        fullPaymentDeadline.setDate(fullPaymentDeadline.getDate() + 3);
+    }
+
+    // Down Payment Deadline (Staged인 경우만 사용): +3일
     const downPaymentDeadline = new Date(today);
     downPaymentDeadline.setDate(downPaymentDeadline.getDate() + 3);
     const downPaymentDeadlineEl = document.getElementById('down_payment_deadline_display');
@@ -453,10 +543,10 @@ function calculatePaymentDeadlines(departureDate) {
         downPaymentDeadlineEl.textContent = `By ${formatDisplayDate(downPaymentDeadline.toISOString().split('T')[0])}`;
     }
 
-    // Full Payment Deadline: 3일 이내
+    // Full Payment Deadline 표시
     const fullPaymentDeadlineEl = document.getElementById('full_payment_deadline_display');
     if (fullPaymentDeadlineEl) {
-        fullPaymentDeadlineEl.textContent = `By ${formatDisplayDate(downPaymentDeadline.toISOString().split('T')[0])}`;
+        fullPaymentDeadlineEl.textContent = `By ${formatDisplayDate(fullPaymentDeadline.toISOString().split('T')[0])}`;
     }
 }
 
@@ -532,6 +622,12 @@ function initializeFileUpload() {
  * 결제 유형 탭 전환
  */
 function switchPaymentType(paymentType) {
+    // 비활성화된 탭 클릭 방지
+    const targetBtn = document.querySelector(`[data-payment-type="${paymentType}"]`);
+    if (targetBtn && targetBtn.disabled) {
+        return; // 비활성화된 탭은 전환하지 않음
+    }
+
     selectedPaymentType = paymentType;
 
     // Update hidden field
@@ -628,7 +724,7 @@ async function handleSave() {
             throw new Error(result.message || 'Failed to update payment info');
         }
 
-        // 성공 - 플래그 설정 (페이지 이탈 시 삭제 방지)
+        // 예약 완료 플래그 설정 (페이지 이탈 시 삭제 방지)
         isReservationCompleted = true;
 
         alert('Reservation completed successfully!');
@@ -649,8 +745,8 @@ async function handleSave() {
  */
 function handleBack() {
     if (confirm('Are you sure you want to go back? The reservation will be cancelled.')) {
-        // draft 예약 삭제 후 예약 생성 페이지로 이동
-        deleteDraftReservation().then(() => {
+        // 예약 삭제 후 예약 생성 페이지로 이동
+        deleteIncompleteReservation().then(() => {
             window.location.href = 'create-reservation.html';
         }).catch(() => {
             window.location.href = 'create-reservation.html';
@@ -659,7 +755,7 @@ function handleBack() {
 }
 
 /**
- * 페이지 이탈 시 draft 예약 삭제
+ * 페이지 이탈 시 미완료 예약 삭제
  */
 function handlePageUnload(event) {
     // 예약이 완료된 경우 삭제하지 않음
@@ -669,20 +765,18 @@ function handlePageUnload(event) {
 
     // navigator.sendBeacon을 사용하여 페이지 이탈 시에도 API 호출 보장
     const data = JSON.stringify({
-        action: 'deleteDraftReservation',
+        action: 'deleteIncompleteReservation',
         bookingId: currentBookingId
     });
 
-    // sendBeacon은 POST로 전송되며, Content-Type을 설정할 수 없음
-    // FormData나 Blob을 사용해야 함
     const blob = new Blob([data], { type: 'application/json' });
     navigator.sendBeacon('../backend/api/agent-api.php', blob);
 }
 
 /**
- * Draft 예약 삭제 API 호출
+ * 미완료 예약 삭제 API 호출
  */
-async function deleteDraftReservation() {
+async function deleteIncompleteReservation() {
     if (!currentBookingId) return;
 
     try {
@@ -691,13 +785,13 @@ async function deleteDraftReservation() {
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify({
-                action: 'deleteDraftReservation',
+                action: 'deleteIncompleteReservation',
                 bookingId: currentBookingId
             })
         });
         return await response.json();
     } catch (error) {
-        console.error('Error deleting draft reservation:', error);
+        console.error('Error deleting incomplete reservation:', error);
     }
 }
 

@@ -2538,10 +2538,12 @@ function renderPaymentInfo(booking, pricingOptions = []) {
 
 // === Payment Deadline 자동 계산 함수들 ===
 // 규칙:
-// - 출발 3일 이내 예약: 모두 당일
-// - Down Payment: 예약일 + 3일
-// - Second Payment: 출발 30일 이내면 예약일+3일, 아니면 예약일+30일
-// - Balance: 출발 30일 이내면 예약일+3일, 아니면 출발-30일 (Second보다 짧으면 Second와 동일)
+// - 출발 34일 이내: Full Payment만, deadline = 예약일 + 1일 (24시간)
+// - 출발 35~44일: Full Payment만, deadline = 예약일 + 3일
+// - 출발 44일 초과: Staged Payment
+//   - Down Payment: 예약일 + 3일
+//   - Second Payment: Down Payment + 30일
+//   - Balance: 출발일 - 30일
 
 function calculatePaymentDeadlinesFromBooking(reservationDate, departureDate) {
     if (!reservationDate || !departureDate) {
@@ -2555,36 +2557,27 @@ function calculatePaymentDeadlinesFromBooking(reservationDate, departureDate) {
 
     const daysUntilDeparture = Math.ceil((departure - resDate) / (1000 * 60 * 60 * 24));
 
-    // 특수 케이스: 출발 3일 이내 예약 → 모두 당일
-    if (daysUntilDeparture <= 3) {
+    // 44일 이내: Full Payment 강제 (Staged Payment 없음)
+    if (daysUntilDeparture <= 44) {
         return {
-            down: formatDateYMD(resDate),
-            second: formatDateYMD(resDate),
-            balance: formatDateYMD(resDate)
+            down: null,
+            second: null,
+            balance: null
         };
     }
 
+    // 44일 초과: Staged Payment
     // Down Payment: 예약일 + 3일
     const downDeadline = new Date(resDate);
     downDeadline.setDate(downDeadline.getDate() + 3);
 
-    // Second Payment: 출발 30일 이내면 예약일+3일, 아니면 예약일+30일
-    const secondDeadline = new Date(resDate);
-    if (daysUntilDeparture <= 30) {
-        secondDeadline.setDate(secondDeadline.getDate() + 3);
-    } else {
-        secondDeadline.setDate(secondDeadline.getDate() + 30);
-    }
+    // Second Payment: Down Payment + 30일
+    const secondDeadline = new Date(downDeadline);
+    secondDeadline.setDate(secondDeadline.getDate() + 30);
 
-    // Balance: 출발 30일 이내면 예약일+3일, 아니면 출발-30일
-    let balanceDeadline;
-    if (daysUntilDeparture <= 30) {
-        balanceDeadline = new Date(resDate);
-        balanceDeadline.setDate(balanceDeadline.getDate() + 3);
-    } else {
-        balanceDeadline = new Date(departure);
-        balanceDeadline.setDate(balanceDeadline.getDate() - 30);
-    }
+    // Balance: 출발일 - 30일
+    let balanceDeadline = new Date(departure);
+    balanceDeadline.setDate(balanceDeadline.getDate() - 30);
 
     // Balance가 Second보다 짧으면 Second와 동일하게
     if (balanceDeadline < secondDeadline) {

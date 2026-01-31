@@ -5739,9 +5739,9 @@ function formatDateForInput(date) {
 }
 
 // ========== 결제 Deadline 규칙 ==========
-// 규칙 1: 출발일까지 30일 이내 → Full Payment만, deadline +1일
-// 규칙 2: 출발일까지 44일 이내 → 모든 deadline +3일
-// 규칙 3: 출발일까지 44일 초과 → 일반 규칙
+// 규칙 1: 출발일까지 34일 이내 → Full Payment만, deadline +1일 (24시간)
+// 규칙 2: 출발일까지 44일 이내 (35~44일) → Full Payment만, deadline +3일
+// 규칙 3: 출발일까지 44일 초과 → Staged Payment
 //         - Down Payment: 예약일 + 3일
 //         - Second Payment: Down Payment deadline + 30일
 //         - Balance: 출발일 - 30일
@@ -5756,10 +5756,10 @@ function getDaysUntilDeparture(departureDate) {
     return Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
 }
 
-// Full Payment 강제 여부 (30일 이내)
+// Full Payment 강제 여부 (44일 이내)
 function isFullPaymentRequired(departureDate) {
     const days = getDaysUntilDeparture(departureDate);
-    return days !== null && days <= 30;
+    return days !== null && days <= 44;
 }
 
 // Down Payment 기한 계산
@@ -5769,12 +5769,12 @@ function calculateDownPaymentDeadline(reservationDate, departureDate) {
 
     const daysUntilDeparture = getDaysUntilDeparture(departureDate);
 
-    // 30일 이내: Full Payment 강제 (Down Payment 없음)
-    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
+    // 44일 이내: Full Payment 강제 (Down Payment 없음)
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
         return null;
     }
 
-    // 44일 이내 또는 초과: 예약일 + 3일
+    // 44일 초과: 예약일 + 3일
     const deadline = new Date(today);
     deadline.setDate(deadline.getDate() + 3);
     return deadline;
@@ -5786,18 +5786,9 @@ function calculateSecondPaymentDeadline(downPaymentDeadline, departureDate) {
 
     const daysUntilDeparture = getDaysUntilDeparture(departureDate);
 
-    // 30일 이내: Full Payment 강제 (Second Payment 없음)
-    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
-        return null;
-    }
-
-    // 44일 이내: 예약일 + 3일
+    // 44일 이내: Full Payment 강제 (Second Payment 없음)
     if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const deadline = new Date(today);
-        deadline.setDate(deadline.getDate() + 3);
-        return deadline;
+        return null;
     }
 
     // 44일 초과: Down Payment deadline + 30일
@@ -5821,18 +5812,9 @@ function calculateBalanceDeadline(secondPaymentDeadline, departureDate) {
 
     const daysUntilDeparture = getDaysUntilDeparture(departureDate);
 
-    // 30일 이내: Full Payment 강제 (Balance 없음)
-    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
-        return null;
-    }
-
-    // 44일 이내: 예약일 + 3일
+    // 44일 이내: Full Payment 강제 (Balance 없음)
     if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const deadline = new Date(today);
-        deadline.setDate(deadline.getDate() + 3);
-        return deadline;
+        return null;
     }
 
     // 44일 초과: 출발일 - 30일
@@ -5847,14 +5829,15 @@ function calculateFullPaymentDeadline(departureDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 30일 이내: +1일
-    if (daysUntilDeparture !== null && daysUntilDeparture <= 30) {
+    // 34일 이내: +1일 (24시간)
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 34) {
         const deadline = new Date(today);
         deadline.setDate(deadline.getDate() + 1);
         return deadline;
     }
 
-    // 그 외: +3일
+    // 35~44일: +3일
+    // 44일 초과는 Staged이므로 Full Payment 사용 안 함 (기본값 +3일)
     const deadline = new Date(today);
     deadline.setDate(deadline.getDate() + 3);
     return deadline;
