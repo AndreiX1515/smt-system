@@ -74,6 +74,23 @@ try {
 
                 $orders = [];
                 while ($row = $result->fetch_assoc()) {
+                    // 각 주문의 상품 목록 조회
+                    $itemStmt = $conn->prepare("
+                        SELECT oi.*, p.thumbnail,
+                               (SELECT COUNT(*) FROM shop_reviews r WHERE r.order_item_id = oi.id) as has_review
+                        FROM shop_order_items oi
+                        LEFT JOIN shop_products p ON oi.product_id = p.id
+                        WHERE oi.order_id = ?
+                    ");
+                    $itemStmt->bind_param('i', $row['id']);
+                    $itemStmt->execute();
+                    $itemResult = $itemStmt->get_result();
+
+                    $items = [];
+                    while ($item = $itemResult->fetch_assoc()) {
+                        $items[] = $item;
+                    }
+                    $row['items'] = $items;
                     $orders[] = $row;
                 }
 

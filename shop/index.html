@@ -9,7 +9,37 @@
         .shop-header { padding: 16px 20px; border-bottom: 1px solid #eee; }
         .shop-header h1 { font-size: 20px; font-weight: 600; margin: 0; }
 
-        .category-tabs { display: flex; gap: 8px; padding: 16px 20px; overflow-x: auto; }
+        .search-box {
+            padding: 12px 20px;
+            background: #fff;
+        }
+        .search-input-wrap {
+            display: flex;
+            align-items: center;
+            background: #f5f5f5;
+            border-radius: 24px;
+            padding: 0 16px;
+        }
+        .search-input-wrap img { width: 20px; opacity: 0.5; }
+        .search-input {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px;
+            font-size: 14px;
+            outline: none;
+        }
+        .search-input::placeholder { color: #999; }
+        .btn-search-clear {
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            display: none;
+        }
+        .btn-search-clear.show { display: block; }
+
+        .category-tabs { display: flex; gap: 8px; padding: 12px 20px; overflow-x: auto; }
         .category-tab {
             padding: 8px 16px;
             border-radius: 20px;
@@ -159,6 +189,7 @@
         .dropdown-menu a:hover {
             background: #f9f9f9;
         }
+        .header-type1 { position: sticky; top: 0; background: #fff; z-index: 100; }
     </style>
 </head>
 <body>
@@ -176,6 +207,14 @@
                 </div>
             </div>
         </header>
+
+        <div class="search-box">
+            <div class="search-input-wrap">
+                <img src="/images/ico_search_black.svg" alt="search">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search products...">
+                <button class="btn-search-clear" id="btnClear" onclick="clearSearch()">✕</button>
+            </div>
+        </div>
 
         <div class="category-tabs" id="categoryTabs">
             <button class="category-tab active" data-category="all" onclick="selectCategory('all')">All</button>
@@ -237,12 +276,21 @@
             loadProducts();
         }
 
+        let searchKeyword = '';
+
         // 상품 로드
         async function loadProducts() {
             try {
                 let url = `${API_BASE}/products.php`;
+                const params = [];
                 if (currentCategory !== 'all') {
-                    url += `?category=${currentCategory}`;
+                    params.push(`category=${currentCategory}`);
+                }
+                if (searchKeyword) {
+                    params.push(`keyword=${encodeURIComponent(searchKeyword)}`);
+                }
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
                 }
 
                 const res = await fetch(url);
@@ -297,6 +345,28 @@
             } catch (e) {
                 console.error('Failed to load cart:', e);
             }
+        }
+
+        // 검색 기능
+        const searchInput = document.getElementById('searchInput');
+        const btnClear = document.getElementById('btnClear');
+
+        searchInput.addEventListener('input', function() {
+            btnClear.classList.toggle('show', this.value.length > 0);
+        });
+
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchKeyword = this.value.trim();
+                loadProducts();
+            }
+        });
+
+        function clearSearch() {
+            searchInput.value = '';
+            searchKeyword = '';
+            btnClear.classList.remove('show');
+            loadProducts();
         }
 
         // 초기화

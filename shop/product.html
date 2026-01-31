@@ -70,12 +70,99 @@
         }
         .stock-info.low { color: #e74c3c; background: #fff5f5; }
 
+        /* 탭 */
+        .product-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 0;
+        }
+        .product-tab {
+            flex: 1;
+            padding: 14px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: #888;
+            background: none;
+            border: none;
+            cursor: pointer;
+            position: relative;
+        }
+        .product-tab.active {
+            color: #000;
+            font-weight: 600;
+        }
+        .product-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #000;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         .description {
             font-size: 15px;
             line-height: 1.7;
             color: #444;
-            padding: 20px 0;
-            border-top: 1px solid #eee;
+            padding: 20px;
+        }
+
+        /* 리뷰 섹션 */
+        .reviews-section { padding: 20px; }
+        .reviews-summary {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .reviews-avg {
+            text-align: center;
+        }
+        .reviews-avg-score {
+            font-size: 36px;
+            font-weight: 700;
+        }
+        .reviews-avg-stars {
+            color: #ffc107;
+            font-size: 16px;
+        }
+        .reviews-count {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .review-item {
+            padding: 16px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .review-item:last-child { border-bottom: none; }
+        .review-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .review-user { font-size: 13px; font-weight: 500; }
+        .review-rating { color: #ffc107; font-size: 14px; }
+        .review-date { margin-left: auto; }
+        .review-date { font-size: 12px; color: #999; }
+        .review-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .no-reviews {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
         }
 
         .quantity-box {
@@ -164,6 +251,7 @@
             z-index: 1000;
         }
         .toast.show { display: block; animation: fadeInOut 2s ease; }
+        .header-type1 { position: sticky; top: 0; background: #fff; z-index: 100; }
         @keyframes fadeInOut {
             0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
             15% { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -195,7 +283,33 @@
                         <button class="quantity-btn" id="btnPlus">+</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- 탭 -->
+            <div class="product-tabs">
+                <button class="product-tab active" data-tab="detail" onclick="switchTab('detail')">상품상세</button>
+                <button class="product-tab" data-tab="reviews" onclick="switchTab('reviews')">상품리뷰 <span id="reviewCount">(0)</span></button>
+            </div>
+
+            <!-- 상품상세 탭 -->
+            <div class="tab-content active" id="tabDetail">
                 <div class="description" id="productDesc">-</div>
+            </div>
+
+            <!-- 리뷰 탭 -->
+            <div class="tab-content" id="tabReviews">
+                <div class="reviews-section">
+                    <div class="reviews-summary" id="reviewsSummary" style="display:none;">
+                        <div class="reviews-avg">
+                            <div class="reviews-avg-score" id="avgScore">0</div>
+                            <div class="reviews-avg-stars" id="avgStars">★★★★★</div>
+                        </div>
+                        <div class="reviews-count" id="reviewsCountText">0 reviews</div>
+                    </div>
+                    <div id="reviewsList">
+                        <div class="no-reviews">No reviews yet</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -390,7 +504,67 @@
             }
         };
 
+        // 탭 전환
+        function switchTab(tab) {
+            document.querySelectorAll('.product-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            document.getElementById('tabDetail').classList.toggle('active', tab === 'detail');
+            document.getElementById('tabReviews').classList.toggle('active', tab === 'reviews');
+        }
+
+        // 사용자 이름 마스킹
+        function maskName(name) {
+            if (!name) return 'Anonymous';
+            const str = String(name).trim();
+            if (str.length <= 1) return str + '***';
+            if (str.length <= 3) return str[0] + '***';
+            return str.substring(0, 2) + '***';
+        }
+
+        // 리뷰 로드
+        async function loadReviews() {
+            try {
+                const res = await fetch(`${API_BASE}/reviews.php?product_id=${productId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('reviewCount').textContent = `(${data.count})`;
+
+                    if (data.count > 0) {
+                        // 요약 표시
+                        document.getElementById('reviewsSummary').style.display = 'flex';
+                        document.getElementById('avgScore').textContent = data.avg_rating;
+                        document.getElementById('avgStars').textContent = '★'.repeat(Math.round(data.avg_rating)) + '☆'.repeat(5 - Math.round(data.avg_rating));
+                        document.getElementById('reviewsCountText').textContent = `${data.count} reviews`;
+
+                        // 리뷰 목록
+                        document.getElementById('reviewsList').innerHTML = data.reviews.map(r => {
+                            const date = new Date(r.created_at);
+                            const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+                            return `
+                            <div class="review-item">
+                                <div class="review-header">
+                                    <span class="review-user">${maskName(r.username)}</span>
+                                    <span class="review-rating">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+                                    <span class="review-date">${dateStr}</span>
+                                </div>
+                                <div class="review-content">${r.content || ''}</div>
+                            </div>
+                            `;
+                        }).join('');
+                    } else {
+                        document.getElementById('reviewsSummary').style.display = 'none';
+                        document.getElementById('reviewsList').innerHTML = '<div class="no-reviews">No reviews yet</div>';
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
         loadProduct();
+        loadReviews();
     </script>
 </body>
 </html>

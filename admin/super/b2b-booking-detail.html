@@ -4266,6 +4266,7 @@
 
 		// Payment confirmation status
 		function updatePaymentSections(booking) {
+			console.log('updatePaymentSections called, paymentType:', booking.paymentType, 'balanceDueDate:', booking.balanceDueDate);
 			const paymentType = booking.paymentType || 'staged';
 
 			// Payment Type 표시
@@ -4377,6 +4378,7 @@
 			}
 			// 금액과 데드라인은 항상 표시
 			setValue('balanceAmount', balanceAmt > 0 ? formatNumber(balanceAmt) : '-');
+			console.log('balanceDueDate from API:', booking.balanceDueDate);
 			setValue('balanceDeadline', booking.balanceDueDate || '');
 
 			const balanceFields = document.getElementById('balanceFields');

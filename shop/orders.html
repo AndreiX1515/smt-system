@@ -6,6 +6,7 @@
     <title>My Orders | Shop</title>
     <link rel="stylesheet" href="/css/main.css">
     <style>
+        .header-type1 { position: sticky; top: 0; background: #fff; z-index: 100; }
         .orders-list { padding: 16px 20px; }
 
         .order-card {
@@ -40,11 +41,56 @@
 
         .order-body { padding: 16px; }
         .order-date { font-size: 12px; color: #888; margin-bottom: 12px; }
-        .order-items-preview { font-size: 14px; margin-bottom: 8px; }
+
+        .order-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .order-item:last-child { border-bottom: none; }
+        .order-item-img {
+            width: 60px;
+            height: 60px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        .order-item-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        .order-item-info { flex: 1; min-width: 0; }
+        .order-item-name { font-size: 14px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .order-item-price { font-size: 13px; color: #666; }
+        .order-item-actions { display: flex; align-items: center; }
+
+        .btn-review {
+            padding: 6px 12px;
+            background: #0065F8;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-review:disabled {
+            background: #ccc;
+            cursor: default;
+        }
+        .btn-review.done {
+            background: #f0f0f0;
+            color: #888;
+        }
+
         .order-total {
             font-size: 16px;
             font-weight: 600;
             text-align: right;
+            padding-top: 12px;
+            margin-top: 12px;
+            border-top: 1px solid #eee;
         }
 
         .empty-orders {
@@ -62,6 +108,91 @@
             text-decoration: none;
             border-radius: 8px;
         }
+
+        /* 리뷰 모달 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+        .modal-product {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .modal-product-img {
+            width: 50px;
+            height: 50px;
+            background: #eee;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-product-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .modal-product-name { font-size: 14px; font-weight: 500; }
+
+        .rating-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .rating-star {
+            font-size: 32px;
+            cursor: pointer;
+            color: #ddd;
+            transition: color 0.2s;
+        }
+        .rating-star.active { color: #ffc107; }
+        .rating-star:hover { color: #ffc107; }
+
+        .review-textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            box-sizing: border-box;
+        }
+        .review-textarea:focus { outline: none; border-color: #0065F8; }
+
+        .modal-btns {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .modal-btns button {
+            flex: 1;
+            height: 44px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-cancel { background: #f5f5f5; border: none; }
+        .btn-submit { background: #0065F8; color: #fff; border: none; }
     </style>
 </head>
 <body>
@@ -74,6 +205,29 @@
 
         <div class="orders-list" id="ordersList">
             <!-- 주문 목록 -->
+        </div>
+    </div>
+
+    <!-- 리뷰 작성 모달 -->
+    <div class="modal-overlay" id="reviewModal">
+        <div class="modal-box">
+            <div class="modal-title">Write a Review</div>
+            <div class="modal-product" id="modalProduct">
+                <div class="modal-product-img">📦</div>
+                <div class="modal-product-name">-</div>
+            </div>
+            <div class="rating-input" id="ratingInput">
+                <span class="rating-star active" data-rating="1">★</span>
+                <span class="rating-star active" data-rating="2">★</span>
+                <span class="rating-star active" data-rating="3">★</span>
+                <span class="rating-star active" data-rating="4">★</span>
+                <span class="rating-star active" data-rating="5">★</span>
+            </div>
+            <textarea class="review-textarea" id="reviewContent" placeholder="Share your experience with this product..."></textarea>
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closeReviewModal()">Cancel</button>
+                <button class="btn-submit" onclick="submitReview()">Submit</button>
+            </div>
         </div>
     </div>
 
@@ -90,6 +244,9 @@
             'cancelled': 'Cancelled',
             'refunded': 'Refunded'
         };
+
+        let currentReviewItem = null;
+        let selectedRating = 5;
 
         async function loadOrders() {
             if (!userId) {
@@ -128,6 +285,37 @@
                 const date = new Date(order.created_at);
                 const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 
+                const itemsHtml = (order.items || []).map(item => {
+                    const canReview = order.status === 'delivered' && !item.has_review;
+                    const hasReview = item.has_review > 0;
+
+                    return `
+                    <div class="order-item">
+                        <div class="order-item-img">
+                            ${item.thumbnail ? `<img src="${item.thumbnail}">` : '📦'}
+                        </div>
+                        <div class="order-item-info">
+                            <div class="order-item-name">${item.product_name}</div>
+                            <div class="order-item-price">₱${Number(item.price).toLocaleString()} × ${item.quantity}</div>
+                        </div>
+                        <div class="order-item-actions">
+                            ${order.status === 'delivered' ?
+                                (hasReview ?
+                                    `<button class="btn-review done" disabled>Reviewed</button>` :
+                                    `<button class="btn-review" onclick='openReviewModal(${JSON.stringify({
+                                        order_id: order.id,
+                                        order_item_id: item.id,
+                                        product_id: item.product_id,
+                                        product_name: item.product_name,
+                                        thumbnail: item.thumbnail
+                                    })})'>Write Review</button>`
+                                ) : ''
+                            }
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
                 return `
                 <div class="order-card">
                     <div class="order-header">
@@ -136,12 +324,90 @@
                     </div>
                     <div class="order-body">
                         <div class="order-date">${dateStr}</div>
-                        <div class="order-total">₱${Number(order.total_amount).toLocaleString()}</div>
+                        ${itemsHtml}
+                        <div class="order-total">Total: ₱${Number(order.total_amount).toLocaleString()}</div>
                     </div>
                 </div>
                 `;
             }).join('');
         }
+
+        function openReviewModal(item) {
+            currentReviewItem = item;
+            selectedRating = 5;
+
+            // 상품 정보 표시
+            const productEl = document.getElementById('modalProduct');
+            productEl.innerHTML = `
+                <div class="modal-product-img">
+                    ${item.thumbnail ? `<img src="${item.thumbnail}">` : '📦'}
+                </div>
+                <div class="modal-product-name">${item.product_name}</div>
+            `;
+
+            // 별점 초기화
+            updateStars(5);
+
+            // 내용 초기화
+            document.getElementById('reviewContent').value = '';
+
+            document.getElementById('reviewModal').classList.add('show');
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.remove('show');
+            currentReviewItem = null;
+        }
+
+        function updateStars(rating) {
+            selectedRating = rating;
+            document.querySelectorAll('.rating-star').forEach((star, i) => {
+                star.classList.toggle('active', i < rating);
+            });
+        }
+
+        // 별점 클릭 이벤트
+        document.querySelectorAll('.rating-star').forEach(star => {
+            star.onclick = () => updateStars(parseInt(star.dataset.rating));
+        });
+
+        async function submitReview() {
+            if (!currentReviewItem) return;
+
+            const content = document.getElementById('reviewContent').value.trim();
+
+            try {
+                const res = await fetch(`${API_BASE}/reviews.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: currentReviewItem.order_id,
+                        order_item_id: currentReviewItem.order_item_id,
+                        product_id: currentReviewItem.product_id,
+                        user_id: userId,
+                        rating: selectedRating,
+                        content: content
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Review submitted successfully!');
+                    closeReviewModal();
+                    loadOrders();
+                } else {
+                    alert(data.error || 'Failed to submit review');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('An error occurred');
+            }
+        }
+
+        // 모달 바깥 클릭 시 닫기
+        document.getElementById('reviewModal').onclick = (e) => {
+            if (e.target.id === 'reviewModal') closeReviewModal();
+        };
 
         loadOrders();
     </script>

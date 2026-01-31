@@ -12171,9 +12171,7 @@ function getB2BBookingDetail($conn, $input) {
             COALESCE(NULLIF(b.packageName,''), p.packageName) as packageName,
             COALESCE(p.meeting_time, p.meetingTime, NULL) as meetingTime,
             COALESCE(p.meeting_location, p.meetingPoint, NULL) as meetingLocation,
-            COALESCE(p.meeting_address, NULL) as meetingAddress,
-            " . ($hasBalanceDueDate ? "b.balanceDueDate" : "NULL") . " as balanceDueDate,
-            " . ($hasBalanceFile ? "COALESCE(b.balanceFile,'')" : "''") . " as balanceFile
+            COALESCE(p.meeting_address, NULL) as meetingAddress
         FROM bookings b
         LEFT JOIN accounts ba ON b.accountId = ba.accountId
         {$customerJoinSql}

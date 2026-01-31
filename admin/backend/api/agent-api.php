@@ -2436,6 +2436,9 @@ function createReservation($conn, $input) {
                             $childPrice = (float)$dateRow['b2b_child_price'];
                         } elseif (!empty($dateRow['childPrice'])) {
                             $childPrice = (float)$dateRow['childPrice'];
+                        } else {
+                            // 날짜별 childPrice가 없으면 업데이트된 adultPrice 기준 80%로 재계산
+                            $childPrice = $adultPrice * 0.8;
                         }
                         if (!empty($dateRow['b2b_infant_price'])) {
                             $infantPrice = (float)$dateRow['b2b_infant_price'];

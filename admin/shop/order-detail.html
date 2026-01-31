@@ -37,9 +37,22 @@
         .item-total { font-weight: 600; text-align: right; }
         .summary-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
         .summary-row.total { font-size: 18px; font-weight: 600; padding-top: 12px; border-top: 1px solid #eee; margin-top: 8px; }
-        .status-select { height: 40px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; margin-right: 8px; }
         .btn-update { height: 40px; padding: 0 20px; background: #0065F8; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-        .status-change { display: flex; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
+        .status-change { margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
+        .status-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .status-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .status-chip:hover { border-color: #0065F8; }
+        .status-chip.selected { background: #0065F8; color: #fff; border-color: #0065F8; }
+        .status-chip.current { background: #f0f0f0; color: #888; cursor: default; }
+        .status-chip.current::after { content: " (현재)"; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -70,15 +83,15 @@
                         <span class="info-value"><span class="status-badge" id="orderStatus">-</span></span>
                     </div>
                     <div class="status-change">
-                        <select class="status-select" id="newStatus">
-                            <option value="pending">결제대기</option>
-                            <option value="paid">결제완료</option>
-                            <option value="preparing">준비중</option>
-                            <option value="shipped">배송중</option>
-                            <option value="delivered">배송완료</option>
-                            <option value="cancelled">취소</option>
-                            <option value="refunded">환불</option>
-                        </select>
+                        <div class="status-chips" id="statusChips">
+                            <span class="status-chip" data-status="pending">결제대기</span>
+                            <span class="status-chip" data-status="paid">결제완료</span>
+                            <span class="status-chip" data-status="preparing">준비중</span>
+                            <span class="status-chip" data-status="shipped">배송중</span>
+                            <span class="status-chip" data-status="delivered">배송완료</span>
+                            <span class="status-chip" data-status="cancelled">취소</span>
+                            <span class="status-chip" data-status="refunded">환불</span>
+                        </div>
                         <button class="btn-update" onclick="updateStatus()">상태 변경</button>
                     </div>
                 </div>
@@ -187,7 +200,14 @@
             const statusEl = document.getElementById('orderStatus');
             statusEl.textContent = statusLabels[o.status] || o.status;
             statusEl.className = `status-badge status-${o.status}`;
-            document.getElementById('newStatus').value = o.status;
+
+            // 상태 칩 업데이트
+            document.querySelectorAll('.status-chip').forEach(chip => {
+                chip.classList.remove('selected', 'current');
+                if (chip.dataset.status === o.status) {
+                    chip.classList.add('current');
+                }
+            });
 
             document.getElementById('receiverName').textContent = o.receiver_name;
             document.getElementById('receiverPhone').textContent = o.receiver_phone;
@@ -216,16 +236,32 @@
             document.getElementById('totalAmount').textContent = '₱' + Number(o.total_amount).toLocaleString();
         }
 
+        let selectedStatus = null;
+
+        // 칩 클릭 이벤트
+        document.querySelectorAll('.status-chip').forEach(chip => {
+            chip.onclick = () => {
+                if (chip.classList.contains('current')) return;
+                document.querySelectorAll('.status-chip').forEach(c => c.classList.remove('selected'));
+                chip.classList.add('selected');
+                selectedStatus = chip.dataset.status;
+            };
+        });
+
         async function updateStatus() {
-            const newStatus = document.getElementById('newStatus').value;
             const currentStatusValue = currentOrder.status;
 
-            if (newStatus === currentStatusValue) {
+            if (!selectedStatus) {
+                alert('변경할 상태를 선택해주세요.');
+                return;
+            }
+
+            if (selectedStatus === currentStatusValue) {
                 alert('현재 상태와 동일합니다.');
                 return;
             }
 
-            if (!confirm(`주문 상태를 변경하시겠습니까?\n\n${statusLabels[currentStatusValue]} → ${statusLabels[newStatus]}`)) return;
+            if (!confirm(`주문 상태를 변경하시겠습니까?\n\n${statusLabels[currentStatusValue]} → ${statusLabels[selectedStatus]}`)) return;
 
             try {
                 const res = await fetch(`${API_BASE}/admin-orders.php`, {
@@ -233,13 +269,14 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         id: orderId,
-                        status: newStatus
+                        status: selectedStatus
                     })
                 });
                 const data = await res.json();
 
                 if (data.success) {
                     alert('상태가 변경되었습니다.');
+                    selectedStatus = null;
                     loadOrder();
                 } else {
                     alert(data.error || '변경 실패');
