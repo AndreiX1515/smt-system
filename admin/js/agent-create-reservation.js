@@ -2954,7 +2954,7 @@ async function searchProducts() {
                         <div class="product-item-content">
                             <div class="product-info">
                                 <div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}</div>
-                                <div class="product-price">₱${formatCurrency(pkg.packagePrice || 0)}</div>
+                                <div class="product-price">₱${formatCurrency(pkg.b2bPrice || pkg.packagePrice || 0)}</div>
                                 <div class="product-description">${escapeHtml(descText.substring(0, 100))}...</div>
                             </div>
                             <div class="product-actions">
