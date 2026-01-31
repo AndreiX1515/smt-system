@@ -11,10 +11,13 @@ function escapeHtml(text) {
 }
 
 function getHomeSalesTarget() {
-    // B2B/B2C 판별: accountType 기반
+    // B2B/B2C 판별: 로그인 상태 + accountType 기반
+    // - 로그인하지 않은 경우 항상 B2C
     // - accountType IN ('agent', 'admin_ph', 'admin_kr') → B2B
     // - accountType IN ('guest', 'guide', 'cs', '') → B2C
     try {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) return 'B2C';
         const at = String(localStorage.getItem('accountType') || '').toLowerCase();
         if (at === 'agent' || at === 'admin_ph' || at === 'admin_kr') return 'B2B';
     } catch (_) {}
