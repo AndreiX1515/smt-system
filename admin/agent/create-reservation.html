@@ -536,6 +536,16 @@
 			</button>
 		</div>
 		<div class="modal-body">
+			<!-- 뷰 전환 탭 -->
+			<div class="date-view-toggle">
+				<button type="button" class="view-tab active" data-view="calendar" onclick="switchDateView('calendar')">
+					<img src="../image/calendar-icon.svg" alt=""> Calendar
+				</button>
+				<button type="button" class="view-tab" data-view="table" onclick="switchDateView('table')">
+					<img src="../image/list-icon.svg" alt=""> List
+				</button>
+			</div>
+
 			<div id="calendar-container">
 				<div class="calendar-nav">
 					<button type="button" id="calendar-prev-month" class="calendar-nav-btn">
@@ -564,6 +574,29 @@
 				</table>
 				<div id="calendar-info" class="calendar-info"></div>
 			</div>
+
+			<!-- 테이블 뷰 컨테이너 -->
+			<div id="dates-table-container" style="display: none;">
+				<div class="table-sort-options">
+					<span>Sort by:</span>
+					<button type="button" class="sort-btn active" data-sort="date" onclick="sortDatesTable('date')">Date ↑</button>
+					<button type="button" class="sort-btn" data-sort="price" onclick="sortDatesTable('price')">Price ↑</button>
+				</div>
+				<div class="dates-table-wrapper">
+					<table class="dates-table">
+						<thead>
+							<tr>
+								<th>Date</th>
+								<th>Price</th>
+								<th>Discount</th>
+								<th>Seats</th>
+							</tr>
+						</thead>
+						<tbody id="dates-table-body">
+						</tbody>
+					</table>
+				</div>
+			</div>
 		</div>
 		<div class="modal-footer">
 			<button type="button" class="jw-button typeB" id="confirm-date-selection" data-lan-eng="Confirm">확인</button>
@@ -571,6 +604,115 @@
 		</div>
 	</div>
 </div>
+
+<style>
+/* 뷰 전환 탭 */
+#date-picker-modal .date-view-toggle {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 16px;
+	justify-content: center;
+}
+#date-picker-modal .view-tab {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 20px;
+	background: #f5f5f5;
+	border: 1px solid #E5E7EB;
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	color: #374151;
+}
+#date-picker-modal .view-tab:hover { background: #E5E7EB; }
+#date-picker-modal .view-tab.active {
+	background: #0065F8;
+	border-color: #0065F8;
+	color: #fff;
+}
+#date-picker-modal .view-tab img {
+	width: 16px;
+	height: 16px;
+	filter: brightness(0) saturate(100%) invert(25%) sepia(10%) saturate(500%) hue-rotate(180deg);
+}
+#date-picker-modal .view-tab.active img {
+	filter: brightness(0) invert(1);
+}
+
+/* 정렬 옵션 */
+#date-picker-modal .table-sort-options {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
+	font-size: 14px;
+	color: #6B7280;
+}
+#date-picker-modal .sort-btn {
+	padding: 6px 14px;
+	background: #f5f5f5;
+	border: 1px solid #E5E7EB;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+	color: #374151;
+}
+#date-picker-modal .sort-btn:hover { background: #E5E7EB; }
+#date-picker-modal .sort-btn.active {
+	background: #0065F8;
+	border-color: #0065F8;
+	color: #fff;
+}
+
+/* 테이블 스타일 */
+#date-picker-modal .dates-table-wrapper {
+	max-height: 400px;
+	overflow-y: auto;
+}
+#date-picker-modal .dates-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+#date-picker-modal .dates-table th {
+	padding: 12px;
+	text-align: left;
+	font-weight: 600;
+	font-size: 13px;
+	color: #6B7280;
+	border-bottom: 2px solid #E5E7EB;
+	background: #F9FAFB;
+	position: sticky;
+	top: 0;
+}
+#date-picker-modal .dates-table td {
+	padding: 12px;
+	font-size: 14px;
+	border-bottom: 1px solid #E5E7EB;
+}
+#date-picker-modal .dates-table tr {
+	cursor: pointer;
+	transition: background 0.2s;
+}
+#date-picker-modal .dates-table tbody tr:hover { background: #F3F4F6; }
+#date-picker-modal .dates-table tr.selected {
+	background: #EBF5FF;
+	border-left: 3px solid #0065F8;
+}
+#date-picker-modal .dates-table tr.on-sale td:nth-child(2) {
+	color: #DC2626;
+	font-weight: 600;
+}
+#date-picker-modal .dates-table .discount-badge {
+	background: #DC2626;
+	color: #fff;
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 600;
+}
+</style>
 
 <!-- 상품 검색 모달 -->
 <div id="product-search-modal" class="modal" style="display: none;">
@@ -582,6 +724,12 @@
 			</button>
 		</div>
 		<div class="modal-body">
+			<div class="category-filter-tabs">
+				<button type="button" class="category-tab active" data-category="" onclick="filterByCategory('')">All</button>
+				<button type="button" class="category-tab" data-category="private" onclick="filterByCategory('private')">LAND ONLY</button>
+				<button type="button" class="category-tab" data-category="season" onclick="filterByCategory('season')">Korea</button>
+				<button type="button" class="category-tab" data-category="us" onclick="filterByCategory('us')">Other Country</button>
+			</div>
 			<div class="search-box">
 				<input type="text" id="product-search-input" class="form-control" placeholder="상품명을 입력하세요" data-lan-eng-placeholder="Enter product name">
 				<button type="button" id="product-search-submit" class="jw-button typeA" data-lan-eng="Search">검색</button>
@@ -590,6 +738,31 @@
 				<!-- 검색 결과가 여기에 표시됩니다 -->
 			</div>
 			<style>
+				/* Category filter tabs */
+				#product-search-modal .category-filter-tabs {
+					display: flex;
+					gap: 8px;
+					margin-bottom: 16px;
+					flex-wrap: wrap;
+				}
+				#product-search-modal .category-tab {
+					padding: 10px 20px;
+					background: #f5f5f5;
+					border: 1px solid #E5E7EB;
+					border-radius: 8px;
+					cursor: pointer;
+					font-size: 14px;
+					font-weight: 500;
+					color: #374151;
+				}
+				#product-search-modal .category-tab:hover {
+					background: #E5E7EB;
+				}
+				#product-search-modal .category-tab.active {
+					background: #0065F8;
+					border-color: #0065F8;
+					color: #fff;
+				}
 				/* SMT (#164): Product Search modal UX fixes */
 				#product-search-modal .search-results {
 					max-height: 500px;

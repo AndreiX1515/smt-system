@@ -17,6 +17,11 @@ let calendarCurrentYear = new Date().getFullYear(); // 현재 캘린더 연도
 let selectedDateInCalendar = null; // 캘린더에서 선택한 날짜 (YYYY-MM-DD 형식)
 let availableDatesByMonth = {}; // 월별 가용 가능한 날짜 (캐싱용)
 
+// 날짜 선택 뷰 관련 전역 변수
+let currentDateView = 'calendar';  // 'calendar' 또는 'table'
+let currentDateSort = 'date';      // 'date' 또는 'price'
+let allAvailableDates = [];        // 테이블용 전체 날짜 목록
+
 // 항공 옵션 관련 전역 변수
 let currentAirlineName = ''; // 현재 선택된 항공사명
 let airlineOptionCategories = []; // 항공사 옵션 카테고리 및 옵션 목록
@@ -2865,11 +2870,28 @@ function openProductItinerary(packageId) {
     document.body.removeChild(link);
 }
 
+// 현재 선택된 상품 카테고리 (필터)
+let currentProductCategory = '';
+
+// 카테고리별 필터링
+function filterByCategory(category) {
+    currentProductCategory = category;
+    document.querySelectorAll('#product-search-modal .category-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.category === category);
+    });
+    searchProducts();
+}
+
 // 상품 검색 모달 열기
 function openProductSearchModal() {
     selectedProductInModal = null;
+    currentProductCategory = '';
     document.getElementById('product-search-input').value = '';
     document.getElementById('product-search-results').innerHTML = '';
+    // 카테고리 탭 초기화
+    document.querySelectorAll('#product-search-modal .category-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.category === '');
+    });
     // SMT (#164): disable confirm until a product is selected
     try {
         const btn = document.getElementById('product-search-confirm');
@@ -2891,9 +2913,10 @@ async function searchProducts() {
 
         // B2B 상품만
         const qs = new URLSearchParams();
-        qs.set('limit', '20');
+        qs.set('limit', '50');
         qs.set('salesTarget', 'B2B');
         if (searchTerm) qs.set('search', searchTerm);
+        if (currentProductCategory) qs.set('category', currentProductCategory);
         const apiUrl = `${window.location.origin}/backend/api/packages.php?${qs.toString()}`;
         const response = await fetch(apiUrl, { credentials: 'same-origin' });
         const responseText = await response.text();
@@ -2908,11 +2931,19 @@ async function searchProducts() {
         }
         
         if (result.success && result.data && result.data.length > 0) {
+            // 카테고리별 정렬: LAND ONLY(private) → Korea(season) → Other Country(us)
+            const categoryOrder = { 'private': 0, 'season': 1, 'us': 2 };
+            const sortedData = result.data.sort((a, b) => {
+                const orderA = categoryOrder[a.packageCategory] ?? 99;
+                const orderB = categoryOrder[b.packageCategory] ?? 99;
+                return orderA - orderB;
+            });
+
             // 검색 결과를 캐시에 저장
-            searchedProductsCache = result.data;
+            searchedProductsCache = sortedData;
 
             let html = '<div class="product-list">';
-            result.data.forEach(pkg => {
+            sortedData.forEach(pkg => {
                 const descText = htmlToPlainText(pkg.packageDescription || '');
                 const hasFlyer = pkg.flyer_file ? 'has-file' : 'no-file';
                 const hasDetail = pkg.detail_file ? 'has-file' : 'no-file';
@@ -3184,6 +3215,20 @@ async function openDatePickerModal() {
         return;
     }
 
+    // 뷰 상태 초기화
+    currentDateView = 'calendar';
+    currentDateSort = 'date';
+
+    // 뷰 탭 초기화
+    document.querySelectorAll('#date-picker-modal .view-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.view === 'calendar');
+    });
+
+    // 컨테이너 초기화
+    document.getElementById('calendar-container').style.display = 'block';
+    const tableContainer = document.getElementById('dates-table-container');
+    if (tableContainer) tableContainer.style.display = 'none';
+
     // 첫 번째 가용 날짜의 월 찾기
     const firstAvailable = await findFirstAvailableMonth(selectedPackage.packageId);
     calendarCurrentMonth = firstAvailable.month;
@@ -3195,6 +3240,165 @@ async function openDatePickerModal() {
     // 모달 열기
     openModal('date-picker-modal');
 }
+
+// 뷰 전환 함수
+window.switchDateView = function(view) {
+    currentDateView = view;
+
+    // 탭 활성화 상태 변경
+    document.querySelectorAll('#date-picker-modal .view-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.view === view);
+    });
+
+    // 뷰 전환
+    const calendarContainer = document.getElementById('calendar-container');
+    const tableContainer = document.getElementById('dates-table-container');
+
+    if (view === 'calendar') {
+        calendarContainer.style.display = 'block';
+        tableContainer.style.display = 'none';
+    } else {
+        calendarContainer.style.display = 'none';
+        tableContainer.style.display = 'block';
+        renderDatesTable();
+    }
+};
+
+// 테이블 뷰 렌더링
+async function renderDatesTable() {
+    const tbody = document.getElementById('dates-table-body');
+    if (!tbody || !selectedPackage) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" class="is-center">Loading...</td></tr>';
+
+    // 모든 가용 날짜 수집 (캐시된 모든 월)
+    allAvailableDates = [];
+    for (const [key, dates] of Object.entries(availableDatesByMonth)) {
+        allAvailableDates.push(...dates);
+    }
+
+    // 추가로 다음 6개월 로드
+    const today = new Date();
+    for (let i = 0; i < 6; i++) {
+        const targetDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth() + 1;
+        const cacheKey = `${year}-${month}`;
+
+        if (!availableDatesByMonth[cacheKey]) {
+            const dates = await loadAvailableDates(selectedPackage.packageId, year, month);
+            if (dates.length > 0) {
+                allAvailableDates.push(...dates.filter(d =>
+                    !allAvailableDates.some(existing => existing.availableDate === d.availableDate)
+                ));
+            }
+        }
+    }
+
+    // 과거 날짜 필터링
+    const todayStr = today.toISOString().split('T')[0];
+    allAvailableDates = allAvailableDates.filter(d => d.availableDate >= todayStr && d.remainingSeats > 0);
+
+    // 정렬 적용
+    sortDatesArray();
+
+    // 렌더링
+    renderDatesTableRows();
+}
+
+// 날짜 배열 정렬
+function sortDatesArray() {
+    if (currentDateSort === 'date') {
+        allAvailableDates.sort((a, b) => a.availableDate.localeCompare(b.availableDate));
+    } else if (currentDateSort === 'price') {
+        allAvailableDates.sort((a, b) => (a.price || 0) - (b.price || 0));
+    }
+}
+
+// 테이블 정렬
+window.sortDatesTable = function(sortBy) {
+    currentDateSort = sortBy;
+
+    // 버튼 활성화 상태
+    document.querySelectorAll('#date-picker-modal .sort-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === sortBy);
+        // 버튼 텍스트 업데이트
+        if (btn.dataset.sort === 'date') {
+            btn.textContent = 'Date ↑';
+        } else if (btn.dataset.sort === 'price') {
+            btn.textContent = 'Price ↑';
+        }
+    });
+
+    sortDatesArray();
+    renderDatesTableRows();
+};
+
+// 테이블 행 렌더링
+function renderDatesTableRows() {
+    const tbody = document.getElementById('dates-table-body');
+    if (!tbody) return;
+
+    if (allAvailableDates.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="is-center">No available dates</td></tr>';
+        return;
+    }
+
+    let html = '';
+    allAvailableDates.forEach(date => {
+        const dateObj = new Date(date.availableDate);
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const formattedDate = `${yyyy}-${mm}-${dd}`;
+        const price = formatCurrency(date.price || 0);
+        const isOnSale = date.isOnSale || date.discountAmount > 0;
+        const discountHtml = isOnSale && date.discountAmount > 0
+            ? `<span class="discount-badge">-₱${formatCurrency(date.discountAmount)}</span>`
+            : '-';
+        const selected = selectedDateInCalendar === date.availableDate ? 'selected' : '';
+        const saleClass = isOnSale ? 'on-sale' : '';
+
+        html += `
+            <tr class="${selected} ${saleClass}"
+                data-date="${date.availableDate}"
+                data-availability-id="${date.availabilityId}"
+                onclick="selectDateInTable('${date.availableDate}', ${date.availabilityId})">
+                <td>${formattedDate}</td>
+                <td>₱${price}</td>
+                <td>${discountHtml}</td>
+                <td>${date.remainingSeats} seats</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+// 테이블에서 날짜 선택
+window.selectDateInTable = function(dateStr, availabilityId) {
+    selectedDateInCalendar = dateStr;
+
+    // 테이블 행 선택 상태 업데이트
+    document.querySelectorAll('#dates-table-body tr').forEach(tr => {
+        tr.classList.remove('selected');
+    });
+    const selectedRow = document.querySelector(`#dates-table-body tr[data-date="${dateStr}"]`);
+    if (selectedRow) {
+        selectedRow.classList.add('selected');
+    }
+
+    // 선택된 날짜 정보 저장
+    selectedDateInfo = allAvailableDates.find(d => d.availableDate === dateStr);
+
+    // 캘린더의 월 업데이트 (뷰 전환 시 동기화)
+    const dateObj = new Date(dateStr);
+    calendarCurrentYear = dateObj.getFullYear();
+    calendarCurrentMonth = dateObj.getMonth() + 1;
+
+    // 정보 표시
+    updateCalendarInfo();
+};
 
 // 캘린더 렌더링
 async function renderCalendar() {
