@@ -2151,8 +2151,9 @@
 					Array.from(activeDates).sort().forEach(date => {
 						const data = dataMap[date] || {};
 						const seats = String(data.availableSeats || '0').replace(/[^0-9]/g, '');
-						const priceInt = parseInt(String(data.price || '0').replace(/[^0-9]/g, ''), 10) || 0;
-						const b2bPriceInt = parseInt(String(data.b2bPrice || '0').replace(/[^0-9]/g, ''), 10) || 0;
+						// 소수점 이하 제거 후 정수만 추출 (DB에서 "27000.00" 형태로 올 때 "2700000"이 되는 문제 방지)
+						const priceInt = parseInt(String(data.price || '0').split('.')[0].replace(/[^0-9]/g, ''), 10) || 0;
+						const b2bPriceInt = parseInt(String(data.b2bPrice || '0').split('.')[0].replace(/[^0-9]/g, ''), 10) || 0;
 
 						fd.append('availabilityDate[]', date);
 						fd.append('availabilitySeats[]', seats || '0');
