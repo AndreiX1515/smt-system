@@ -648,6 +648,21 @@
 		</div>
 	</div>
 
+	<!-- Status Change Reason Modal -->
+	<div id="statusChangeReasonModal" class="modal" style="display: none;">
+		<div class="modal-content" style="max-width: 500px; min-width: 400px; padding: 24px;">
+			<h3 style="margin-bottom: 16px; font-size: 18px;">Status Change Reason</h3>
+			<p style="margin-bottom: 12px; color: #666;">Please enter the reason for this status change:</p>
+			<textarea id="statusChangeReasonInput" rows="4"
+				style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; resize: vertical; font-size: 14px; box-sizing: border-box;"
+				placeholder="Enter the reason for status change..."></textarea>
+			<div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+				<button type="button" onclick="cancelStatusChange()" class="jw-button" style="padding: 10px 20px;">Cancel</button>
+				<button type="button" onclick="confirmStatusChange()" class="jw-button typeC" style="padding: 10px 20px;">Confirm</button>
+			</div>
+		</div>
+	</div>
+
 	<!-- 하단 고정 액션 바 -->
 	<div class="fixed-bottom-bar">
 		<!-- Pending 상태일 때 표시 -->
@@ -1449,6 +1464,32 @@
 			}
 		}
 
+		// 상태 변경 사유 입력 프롬프트 (Promise 반환)
+		function promptForStatusChangeReason() {
+			return new Promise((resolve) => {
+				const modal = document.getElementById('statusChangeReasonModal');
+				const input = document.getElementById('statusChangeReasonInput');
+				input.value = '';
+				modal.style.display = 'flex';
+				input.focus();
+
+				window.confirmStatusChange = () => {
+					const reason = input.value.trim();
+					if (!reason) {
+						alert('Please enter the reason for status change.');
+						return;
+					}
+					modal.style.display = 'none';
+					resolve(reason);
+				};
+
+				window.cancelStatusChange = () => {
+					modal.style.display = 'none';
+					resolve(null);
+				};
+			});
+		}
+
 		async function handleSave() {
 			try {
 				// Always re-resolve bookingId at save time to avoid accidental null/undefined issues.
@@ -1460,8 +1501,11 @@
 				}
 
 				const guideId = (document.getElementById('guideSelect')?.value || '').trim() || null;
-				const statusKey = (document.getElementById('reservationStatusSelect')?.value || 'pending').trim();
+				const statusKey = (document.getElementById('reservationStatusSelect')?.value || 'pending').trim().toLowerCase();
 				const balanceDueDate = (document.getElementById('balanceDeadline')?.value || '').trim() || null;
+
+				// 현재 상태 확인
+				const currentStatus = (lastLoadedBooking?.bookingStatus || '').toLowerCase();
 
 				// 환불 완료 상태로 저장된 이후에는 상태값 변경 불가 (UI 방지 + 서버에서도 재검증)
 				const isAlreadyRefunded = computeUiStatus(lastLoadedBooking || {}) === 'refunded';
@@ -1471,6 +1515,18 @@
 						alert('Refund Completed 상태에서는 예약 상태를 변경할 수 없습니다.');
 						return;
 					}
+				}
+
+				// pending_update 플로우 대상인지 확인 (cancelled ↔ 다른 상태)
+				const isPendingUpdateFlow =
+					(currentStatus === 'cancelled' && statusKey !== 'cancelled') ||
+					(currentStatus !== 'cancelled' && statusKey === 'cancelled');
+
+				// 직접 상태 변경 시 (pending_update가 아닌 경우) 사유 필수
+				let statusChangeReason = null;
+				if (statusKey !== currentStatus && !isPendingUpdateFlow) {
+					statusChangeReason = await promptForStatusChangeReason();
+					if (statusChangeReason === null) return; // 취소됨
 				}
 
 				// SMT 수정 시작 - 옵션 값 추가
@@ -1485,6 +1541,7 @@
 					guideId,
 					statusKey,
 					balanceDueDate,
+					statusChangeReason, // 상태 변경 사유 추가
 					// SMT 수정 시작 - 옵션 값 저장
 					cabinBaggage,
 					breakfastRequest,
@@ -1550,12 +1607,9 @@
 
 				if (result.success) {
 					alert('Saved.');
-					console.log('lastLoadedBooking:', lastLoadedBooking);
-					console.log('currentStatus:', lastLoadedBooking?.bookingStatus);
-					console.log('result.data:', result.data);
 					// pending_update로 변경되었거나, 현재 상태가 pending_update인 경우 목록으로 돌아가기
-					const currentStatus = lastLoadedBooking?.bookingStatus;
-					if ((result.data && result.data.newStatus === 'pending_update') || currentStatus === 'pending_update') {
+					const currentStatusCheck = lastLoadedBooking?.bookingStatus;
+					if ((result.data && result.data.newStatus === 'pending_update') || currentStatusCheck === 'pending_update') {
 						window.history.back();
 					} else {
 						window.location.reload();
@@ -1641,7 +1695,8 @@
 			});
 
 			listEl.innerHTML = pendingBanner + displayTravelers.map((t, idx) => {
-				const main = String(t.isMainTraveler || t.isMain || t.isPrimary || '0') === '1';
+				const isTruthyValue = (val) => val === '1' || val === 1 || val === true || val === 'true';
+				const main = isTruthyValue(t.isMainTraveler) || isTruthyValue(t.isMain) || isTruthyValue(t.isPrimary);
 				const travelerType = String(t.travelerType || '').toLowerCase();
 				const typeLabel = travelerType === 'child' ? 'Child' : travelerType === 'infant' ? 'Infant' : 'Adult';
 				const firstName = String(t.firstName || t.givenName || '');
@@ -1865,26 +1920,7 @@
 			const isPendingTravelerChange = currentChangeRequest && currentChangeRequest.changeType === 'travelers';
 			let originalTravelers = isPendingTravelerChange ? (currentChangeRequest.previousData?.originalTravelers || []) : [];
 
-			// originalTravelers에 flightOptions가 없으면 lastLoadedBooking.travelers에서 보완
-			if (isPendingTravelerChange && lastLoadedBooking && lastLoadedBooking.travelers) {
-				const dbTravelers = lastLoadedBooking.travelers || [];
-				// DB travelers를 passport/이름으로 매핑
-				const dbTravelerMap = new Map();
-				dbTravelers.forEach((dt, idx) => {
-					const key = String(dt.passportNumber || '').trim() || `${dt.firstName || ''}_${dt.lastName || ''}_${idx}`;
-					dbTravelerMap.set(key, dt);
-				});
-				originalTravelers = originalTravelers.map((ot, idx) => {
-					if (!ot.flightOptions || ot.flightOptions.length === 0) {
-						const key = String(ot.passportNumber || '').trim() || `${ot.firstName || ''}_${ot.lastName || ''}_${idx}`;
-						const dbT = dbTravelerMap.get(key);
-						if (dbT && dbT.flightOptions) {
-							return { ...ot, flightOptions: dbT.flightOptions, flightOptionPrices: dbT.flightOptionPrices || {} };
-						}
-					}
-					return ot;
-				});
-			}
+			// NOTE: flightOptions 보완 로직 제거됨 - booking_change_requests의 원본 데이터를 그대로 사용
 
 			// 원본 travelers를 passport 또는 이름으로 매핑
 			const originalMap = new Map();
@@ -1896,7 +1932,8 @@
 			countEl.textContent = allTravelers.length + ' Traveler' + (allTravelers.length !== 1 ? 's' : '');
 
 			container.innerHTML = allTravelers.map(function(t, idx) {
-				var main = String(t.isMainTraveler || t.isMain || t.isPrimary || '0') === '1';
+				var isTruthyVal = function(val) { return val === '1' || val === 1 || val === true || val === 'true'; };
+				var main = isTruthyVal(t.isMainTraveler) || isTruthyVal(t.isMain) || isTruthyVal(t.isPrimary);
 				var travelerType = String(t.travelerType || t.type || 'adult').toLowerCase();
 				var title = String(t.title || '').toUpperCase();
 				var gender = String(t.gender || '').toLowerCase();
@@ -1920,22 +1957,35 @@
 						changeStatus = 'new';
 					} else {
 						// 필드값 가져오기 (대체 필드명 고려)
+						const normalizeFilePath = (val) => {
+							// null, undefined, 'null', 'undefined' 처리
+							if (val === null || val === undefined || val === 'null' || val === 'undefined') return '';
+							let s = String(val).trim().toLowerCase();
+							// 앞의 / 제거하여 경로 정규화
+							if (s.startsWith('/')) s = s.substring(1);
+							return s;
+						};
 						const getFieldValue = (obj, field) => {
 							if (field === 'passportExpiry') return String(obj.passportExpiry || obj.passportExpiryDate || obj.passportExpireDate || '').trim().toLowerCase();
 							if (field === 'birthDate') return String(obj.birthDate || obj.dob || '').trim().toLowerCase();
 							if (field === 'firstName') return String(obj.firstName || obj.givenName || '').trim().toLowerCase();
 							if (field === 'lastName') return String(obj.lastName || obj.familyName || '').trim().toLowerCase();
+							if (field === 'profile_source') return String(obj.profile_source || obj.profileSource || '').trim().toLowerCase();
+							if (field === 'passportImage') return normalizeFilePath(obj.passportImage || obj.passportPhoto || obj.passportPhotoUrl || obj.passport_image || '');
+							if (field === 'visaDocument') return normalizeFilePath(obj.visaDocument || obj.visaDocumentUrl || obj.visa_document || '');
 							return String(obj[field] || '').trim().toLowerCase();
 						};
-						const fields = ['firstName', 'lastName', 'birthDate', 'gender', 'nationality', 'passportNumber', 'passportExpiry', 'passportIssueDate', 'travelerType', 'title'];
+						const fields = ['firstName', 'lastName', 'birthDate', 'gender', 'nationality', 'passportNumber', 'passportExpiry', 'passportIssueDate', 'travelerType', 'title', 'profile_source', 'visaType', 'passportImage', 'visaDocument'];
 						fields.forEach(f => {
 							const oldVal = getFieldValue(orig, f);
 							const newVal = getFieldValue(t, f);
 							if (oldVal !== newVal) changedFields.push(f);
 						});
-						// flightOptions 비교
-						const oldFlightOpts = (orig.flightOptions || []).map(Number).sort().join(',');
-						const newFlightOpts = (t.flightOptions || []).map(Number).sort().join(',');
+						// flightOptions 비교 (배열이 아닌 경우 빈 배열로 처리)
+						const origFlightArr = Array.isArray(orig.flightOptions) ? orig.flightOptions : [];
+						const newFlightArr = Array.isArray(t.flightOptions) ? t.flightOptions : [];
+						const oldFlightOpts = origFlightArr.map(Number).sort().join(',');
+						const newFlightOpts = newFlightArr.map(Number).sort().join(',');
 						if (oldFlightOpts !== newFlightOpts) changedFields.push('flightOptions');
 						if (changedFields.length > 0) changeStatus = 'modified';
 					}
@@ -1971,14 +2021,17 @@
 				var flightOptions = t.flightOptions || [];
 				// pending_update일 때 원본 flight options 가져오기
 				var originalFlightOptions = flightOptions; // 기본적으로 현재 값과 동일하게 설정
-				if (isPendingTravelerChange) {
+				if (isPendingTravelerChange && changeStatus !== 'new') {
 					const key = String(t.passportNumber || '').trim() || `${firstName}_${lastName}_${idx}`;
 					const orig = originalMap.get(key);
-					if (orig) {
-						originalFlightOptions = orig.flightOptions || [];
+					if (orig && Array.isArray(orig.flightOptions)) {
+						originalFlightOptions = orig.flightOptions;
+					} else {
+						// orig.flightOptions가 없으면 (이전 데이터) 현재 값을 원본으로 사용하여 NEW 표시 방지
+						originalFlightOptions = flightOptions;
 					}
 				}
-				var flightOptionsHtml = renderFlightOptionsInEdit(idx, flightOptions, originalFlightOptions, isPendingTravelerChange);
+				var flightOptionsHtml = renderFlightOptionsInEdit(idx, flightOptions, originalFlightOptions, isPendingTravelerChange, changeStatus === 'new');
 
 				// Build card HTML
 				var cardStyle = '';
@@ -2049,7 +2102,7 @@
 				html += '<input type="date" class="form-control" data-field="passportExpiry" value="' + escapeHtml(passportExpiry) + '" style="' + highlightStyle('passportExpiry') + readonlyStyle + '"' + disabledAttr + '></div>';
 
 				html += '<div class="form-group"><label>Visa Application</label>';
-				html += '<select class="form-control" data-field="visaType"' + disabledAttr + ' style="' + readonlyStyle + '"' + (isPendingTravelerChange ? '' : ' onchange="handleVisaTypeChangeInEdit(' + idx + ', this.value)"') + '>';
+				html += '<select class="form-control" data-field="visaType"' + disabledAttr + ' style="' + highlightStyle('visaType') + readonlyStyle + '"' + (isPendingTravelerChange ? '' : ' onchange="handleVisaTypeChangeInEdit(' + idx + ', this.value)"') + '>';
 				html += '<option value=""' + (!visaType ? ' selected' : '') + '>Select option</option>';
 				html += '<option value="with_visa"' + (visaType === 'with_visa' ? ' selected' : '') + '>With Visa</option>';
 				html += '<option value="group"' + (visaType === 'group' ? ' selected' : '') + '>Group Visa +₱1500</option>';
@@ -2058,7 +2111,9 @@
 				html += '</select></div>';
 
 				// Row 4: Passport Photo, Visa Document
-				html += '<div class="form-group"><label>Passport Photo</label>';
+				var passportPhotoHighlight = changedFields.includes('passportImage') ? 'background: #fef08a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
+				var passportPhotoNewBadge = changedFields.includes('passportImage') ? '<span style="background:#f59e0b; color:#fff; font-size:9px; padding:2px 5px; border-radius:3px; margin-left:6px;">CHANGED</span>' : '';
+				html += '<div class="form-group" style="' + passportPhotoHighlight + '"><label>Passport Photo' + passportPhotoNewBadge + '</label>';
 				html += '<div class="passport-photo-upload">';
 				if (!isPendingTravelerChange) {
 					html += '<input type="file" id="passport-photo-' + idx + '" accept="image/*" onchange="handlePassportPhotoUploadInEdit(' + idx + ', this)" style="display:none;">';
@@ -2074,8 +2129,10 @@
 				html += '</div></div></div>';
 
 				// Visa Document (shown when visaType === 'with_visa')
-				html += '<div class="form-group visa-upload-container" id="visa-upload-container-' + idx + '" style="display:' + (visaType === 'with_visa' ? 'block' : 'none') + ';">';
-				html += '<label>Visa Document</label>';
+				var visaDocHighlight = changedFields.includes('visaDocument') ? 'background: #fef08a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
+				var visaDocNewBadge = changedFields.includes('visaDocument') ? '<span style="background:#f59e0b; color:#fff; font-size:9px; padding:2px 5px; border-radius:3px; margin-left:6px;">CHANGED</span>' : '';
+				html += '<div class="form-group visa-upload-container" id="visa-upload-container-' + idx + '" style="display:' + (visaType === 'with_visa' ? 'block' : 'none') + ';' + visaDocHighlight + '">';
+				html += '<label>Visa Document' + visaDocNewBadge + '</label>';
 				html += '<div class="visa-document-upload">';
 				if (!isPendingTravelerChange) {
 					html += '<input type="file" id="visa-document-' + idx + '" accept="image/*,.pdf" onchange="handleVisaDocumentUploadInEdit(' + idx + ', this)" style="display:none;">';
@@ -2124,8 +2181,9 @@
 			}
 
 			let html = '';
+			const isTruthyValue = (val) => val === '1' || val === 1 || val === true || val === 'true';
 			allTravelers.forEach((t, index) => {
-				const isPrimary = String(t.isMainTraveler || t.isMain || t.isPrimary || '0') === '1';
+				const isPrimary = isTruthyValue(t.isMainTraveler) || isTruthyValue(t.isMain) || isTruthyValue(t.isPrimary);
 				const firstName = String(t.firstName || t.givenName || '');
 				const lastName = String(t.lastName || t.familyName || '');
 				const fullName = `${firstName} ${lastName}`.trim() || 'No Name';
@@ -2212,7 +2270,8 @@
 				alert('At least one traveler is required.');
 				return;
 			}
-			const wasPrimary = String(allTravelers[idx].isMainTraveler || allTravelers[idx].isMain || '0') === '1';
+			const isTruthyVal = (val) => val === '1' || val === 1 || val === true || val === 'true';
+			const wasPrimary = isTruthyVal(allTravelers[idx].isMainTraveler) || isTruthyVal(allTravelers[idx].isMain) || isTruthyVal(allTravelers[idx].isPrimary);
 			allTravelers.splice(idx, 1);
 			if (wasPrimary && allTravelers.length > 0) {
 				allTravelers[0].isMainTraveler = '1';
@@ -2230,28 +2289,51 @@
 			renderTravelerEditCards();
 		}
 
-		// 여권 사진 업로드 처리
-		function handlePassportPhotoUploadInEdit(idx, input) {
+		// 여권 사진 업로드 처리 - 즉시 서버 업로드
+		async function handlePassportPhotoUploadInEdit(idx, input) {
 			var file = input.files[0];
 			if (!file) return;
 
-			allTravelers[idx].passportPhotoFile = file;
-
-			// UI 업데이트 - 파일명 표시
+			// UI 업데이트 - 업로드 중 표시
 			var infoEl = document.getElementById('passport-photo-info-' + idx);
 			if (infoEl) {
 				infoEl.classList.remove('hidden');
 				var filenameEl = infoEl.querySelector('.photo-filename');
-				if (filenameEl) filenameEl.textContent = file.name;
+				if (filenameEl) filenameEl.textContent = 'Uploading...';
 			}
 
-			// Base64로 읽어서 저장
-			var reader = new FileReader();
-			reader.onload = function(e) {
-				allTravelers[idx].passportImage = e.target.result;
-				allTravelers[idx].passportPhoto = e.target.result;
-			};
-			reader.readAsDataURL(file);
+			try {
+				// 서버에 즉시 업로드 (DB 업데이트 없이 파일만 저장)
+				var fd = new FormData();
+				fd.append('action', 'uploadTravelerPassportImage');
+				fd.append('passportImage', file);
+				// Edit 모달에서는 bookingTravelerId를 전송하지 않음 (DB 업데이트 방지)
+				// 파일만 업로드하고 pendingTravelers에서 경로 사용
+
+				var res = await fetch('/admin/backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: fd
+				});
+				var json = await res.json();
+
+				if (!res.ok || !json.success) {
+					throw new Error(json.message || 'Upload failed');
+				}
+
+				// 업로드 성공 - URL 저장
+				var uploadedPath = json.data?.filePath || json.data?.path || json.filePath || json.path || '';
+				allTravelers[idx].passportImage = uploadedPath;
+				allTravelers[idx].passportPhoto = uploadedPath;
+				allTravelers[idx].passportPhotoFile = null; // File 객체는 더 이상 필요 없음
+
+				if (filenameEl) filenameEl.textContent = file.name;
+			} catch (e) {
+				alert('Failed to upload passport photo: ' + (e.message || 'Unknown error'));
+				// 실패 시 UI 복구
+				if (infoEl) infoEl.classList.add('hidden');
+				input.value = '';
+			}
 		}
 
 		// 여권 사진 제거
@@ -2280,31 +2362,58 @@
 			allTravelers[idx].visaType = visaType;
 		}
 
-		// Visa Document 업로드 처리
-		function handleVisaDocumentUploadInEdit(idx, input) {
+		// Visa Document 업로드 처리 - 즉시 서버 업로드
+		async function handleVisaDocumentUploadInEdit(idx, input) {
 			var file = input.files[0];
 			if (!file) return;
 
-			allTravelers[idx].visaDocumentFile = file;
-
+			// UI 업데이트 - 업로드 중 표시
 			var infoEl = document.getElementById('visa-document-info-' + idx);
 			if (infoEl) {
 				infoEl.classList.remove('hidden');
 				var filenameEl = infoEl.querySelector('.visa-filename');
-				if (filenameEl) filenameEl.textContent = file.name;
+				if (filenameEl) filenameEl.textContent = 'Uploading...';
 			}
 
-			var reader = new FileReader();
-			reader.onload = function(e) {
-				allTravelers[idx].visaDocument = e.target.result;
-			};
-			reader.readAsDataURL(file);
+			try {
+				// 서버에 즉시 업로드 (DB 업데이트 없이 파일만 저장)
+				var fd = new FormData();
+				fd.append('action', 'uploadTravelerVisaDocument');
+				fd.append('visaDocument', file);
+				// Edit 모달에서는 bookingTravelerId를 전송하지 않음 (DB 업데이트 방지)
+				// 파일만 업로드하고 pendingTravelers에서 경로 사용
+
+				var res = await fetch('/admin/backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: fd
+				});
+				var json = await res.json();
+
+				if (!res.ok || !json.success) {
+					throw new Error(json.message || 'Upload failed');
+				}
+
+				// 업로드 성공 - URL 저장
+				var uploadedPath = json.data?.filePath || json.data?.path || json.filePath || json.path || '';
+				allTravelers[idx].visaDocument = uploadedPath;
+				allTravelers[idx].visaDocumentUrl = uploadedPath;
+				allTravelers[idx].visaDocumentFile = null; // File 객체는 더 이상 필요 없음
+
+				if (filenameEl) filenameEl.textContent = file.name;
+			} catch (e) {
+				alert('Failed to upload visa document: ' + (e.message || 'Unknown error'));
+				// 실패 시 UI 복구
+				if (infoEl) infoEl.classList.add('hidden');
+				input.value = '';
+			}
 		}
 
 		// Visa Document 제거
 		function removeVisaDocumentInEdit(idx) {
 			allTravelers[idx].visaDocumentFile = null;
 			allTravelers[idx].visaDocument = '';
+			allTravelers[idx].visaDocumentUrl = '';
 
 			var infoEl = document.getElementById('visa-document-info-' + idx);
 			if (infoEl) {
@@ -2349,7 +2458,7 @@
 		}
 
 		// Flight Options 렌더링
-		function renderFlightOptionsInEdit(travelerIndex, selectedOptions, originalFlightOptions, isReadOnly) {
+		function renderFlightOptionsInEdit(travelerIndex, selectedOptions, originalFlightOptions, isReadOnly, isNewTraveler) {
 			if (!window.__flightOptionCategories || window.__flightOptionCategories.length === 0) {
 				return '';
 			}
@@ -2377,9 +2486,9 @@
 					var price = Number(opt.price || 0);
 					var priceText = price > 0 ? '+PHP ' + price.toLocaleString() : 'Free';
 
-					// 변경 여부 체크 (새로 추가됨 또는 제거됨)
-					var isAdded = isChecked && !wasChecked;
-					var isRemoved = !isChecked && wasChecked;
+					// 변경 여부 체크 (새로 추가됨 또는 제거됨) - 신규 여행자인 경우 하이라이트/배지 표시 안 함
+					var isAdded = !isNewTraveler && isChecked && !wasChecked;
+					var isRemoved = !isNewTraveler && !isChecked && wasChecked;
 					var changeStyle = '';
 					var changeBadge = '';
 					if (isAdded) {
@@ -3108,17 +3217,13 @@
 				var flightNumber = dep.flight_number || dep.flightNumber || '';
 
 				if (!flightNumber) {
-					console.log('No flight number found, skipping airline options load');
 					return;
 				}
 
 				var airlineName = getAirlineNameFromFlightNumber(flightNumber);
 				if (!airlineName) {
-					console.log('Could not determine airline from flight number:', flightNumber);
 					return;
 				}
-
-				console.log('Loading airline options for:', airlineName);
 
 				var response = await fetch('../backend/api/agent-api.php?action=getAirlineOptionsByName&airlineName=' + encodeURIComponent(airlineName), {
 					credentials: 'same-origin'
@@ -3128,7 +3233,6 @@
 				if (result.success) {
 					window.__currentAirlineName = airlineName;
 					window.__flightOptionCategories = (result.data && result.data.categories) ? result.data.categories : [];
-					console.log('Airline options loaded:', window.__flightOptionCategories);
 				}
 			} catch (error) {
 				console.error('Error loading airline options:', error);
@@ -3594,7 +3698,6 @@
 
 		// Payment confirmation status
 		function updatePaymentSections(booking) {
-			console.log('updatePaymentSections called, paymentType:', booking.paymentType, 'balanceDueDate:', booking.balanceDueDate);
 			const paymentType = booking.paymentType || 'staged';
 
 			// Payment Type 표시
@@ -3706,7 +3809,6 @@
 			}
 			// 금액과 데드라인은 항상 표시
 			setValue('balanceAmount', balanceAmt > 0 ? formatNumber(balanceAmt) : '-');
-			console.log('balanceDueDate from API:', booking.balanceDueDate);
 			setValue('balanceDeadline', booking.balanceDueDate || '');
 
 			const balanceFields = document.getElementById('balanceFields');
@@ -3851,11 +3953,7 @@
 					throw new Error(result.message || 'Failed to update deadline');
 				}
 
-				// 성공 시 간단한 피드백 (페이지 리로드 없이)
-				const typeLabel = type === 'down' ? 'Down Payment' : type === 'second' ? 'Second Payment' : type === 'full' ? 'Full Payment' : 'Balance';
-				console.log(`${typeLabel} deadline updated to ${value}`);
-			} catch (error) {
-				console.error('Update deadline error:', error);
+				} catch (error) {
 				alert(error?.message || 'An error occurred while updating deadline.');
 			}
 		}
@@ -4175,11 +4273,19 @@
 				amountEl.textContent = `₱${totalAmount.toLocaleString()}`;
 			}
 
-			// 인원 수 계산: allTravelers에서 Adult + Child (Infant 제외)
-			const totalBookingGuests = (allTravelers || []).filter(t => {
+			// 인원 수 계산: Adult + Child With Room (Child No Room, Infant 제외)
+			let debugAdults = 0, debugChildWithRoom = 0, debugChildNoRoom = 0, debugInfants = 0;
+			(allTravelers || []).forEach(t => {
 				const type = (t.type || t.travelerType || '').toLowerCase();
-				return type === 'adult' || type === 'child';
-			}).length;
+				if (type === 'adult') debugAdults++;
+				else if (type === 'child') {
+					const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || String(t.childRoom) === '1';
+					if (hasRoom) debugChildWithRoom++;
+					else debugChildNoRoom++;
+				}
+				else if (type === 'infant') debugInfants++;
+			});
+			const totalBookingGuests = debugAdults + debugChildWithRoom;
 
 			let totalCapacity = 0;
 			selectedRoomsInModal.forEach(room => {
@@ -4191,14 +4297,21 @@
 			}
 
 			if (confirmBtn) {
-				confirmBtn.disabled = (totalCapacity !== totalBookingGuests || selectedRoomsInModal.length === 0);
+				const shouldDisable = totalCapacity !== totalBookingGuests || selectedRoomsInModal.length === 0;
+				confirmBtn.disabled = shouldDisable;
 			}
 		}
 
 		async function confirmRoomSelection() {
+			// Adult + Child With Room (Child No Room, Infant 제외)
 			const totalBookingGuests = (allTravelers || []).filter(t => {
 				const type = (t.type || t.travelerType || '').toLowerCase();
-				return type === 'adult' || type === 'child';
+				if (type === 'adult') return true;
+				if (type === 'child') {
+					const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || String(t.childRoom) === '1';
+					return hasRoom;
+				}
+				return false;
 			}).length;
 
 			let totalCapacity = 0;
@@ -4212,11 +4325,29 @@
 			}
 
 			// sessionStorage에 임시 저장 (DB 저장 안함 - Summary 페이지에서 Submit 시 저장)
+			// base64 이미지 데이터 제외하여 용량 초과 방지
+			const stripLargeData = (travelers) => {
+				return (travelers || []).map(t => {
+					const cleaned = { ...t };
+					// base64 이미지 데이터 제거 (URL 경로만 유지)
+					if (cleaned.passportImage && cleaned.passportImage.startsWith('data:')) {
+						cleaned.passportImage = '';
+					}
+					if (cleaned.passportPhoto && cleaned.passportPhoto.startsWith('data:')) {
+						cleaned.passportPhoto = '';
+					}
+					if (cleaned.visaDocument && cleaned.visaDocument.startsWith('data:')) {
+						cleaned.visaDocument = '';
+					}
+					return cleaned;
+				});
+			};
+			const strippedTravelers = stripLargeData(allTravelers);
 			const pendingChanges = {
 				bookingId: bookingId,
-				travelers: allTravelers,
+				travelers: strippedTravelers,
 				selectedRooms: selectedRoomsInModal,
-				originalTravelers: lastLoadedBooking?.travelers || [],
+				originalTravelers: stripLargeData(lastLoadedBooking?.travelers || []),
 				originalRooms: lastLoadedBooking?.rooms || [],
 				bookingData: {
 					packageName: lastLoadedBooking?.packageName || '',
@@ -4228,7 +4359,13 @@
 					saleDiscountAmount: lastLoadedBooking?.saleDiscountAmount || 0
 				}
 			};
-			sessionStorage.setItem('pendingTravelerChanges', JSON.stringify(pendingChanges));
+			try {
+				sessionStorage.setItem('pendingTravelerChanges', JSON.stringify(pendingChanges));
+			} catch (e) {
+				console.error('sessionStorage quota exceeded, clearing old data and retrying...');
+				sessionStorage.removeItem('pendingTravelerChanges');
+				sessionStorage.setItem('pendingTravelerChanges', JSON.stringify(pendingChanges));
+			}
 
 			closeRoomOptionModal();
 			// Summary 페이지로 이동

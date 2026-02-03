@@ -474,13 +474,23 @@ function renderReservationDetail(data) {
         }
     }
 
-    // pending_update, check_reject 상태 배너 및 버튼 표시
+    // pending, pending_update, check_reject 상태 배너 및 버튼 표시
+    const pendingApprovalBanner = document.getElementById('pendingApprovalBanner');
     const pendingUpdateBanner = document.getElementById('pendingUpdateBanner');
     const editInProgressBanner = document.getElementById('editInProgressBanner');
     const checkRejectBanner = document.getElementById('checkRejectBanner');
     const saveBtn = document.getElementById('saveBtn');
     const acknowledgeRejectBtn = document.getElementById('acknowledgeRejectBtn');
     const bookingStatus = (booking.bookingStatus || '').toLowerCase();
+
+    // Pending Approval 배너 (신규 예약 승인 대기)
+    if (pendingApprovalBanner) {
+        if (bookingStatus === 'pending') {
+            pendingApprovalBanner.style.display = 'block';
+        } else {
+            pendingApprovalBanner.style.display = 'none';
+        }
+    }
 
     // pending_update 상태 + product_edit changeType + newData가 null인 경우: Edit in Progress
     const pendingChangeRequest = data.pendingChangeRequest || null;
@@ -1462,6 +1472,15 @@ function renderFlightOptionsInEdit(travelerIndex, selectedOptions) {
 
 // 여행자 수정 모달 열기
 function openTravelerEditModal() {
+    // pending 또는 pending_update 상태에서는 수정 불가
+    const bookingStatus = (currentBookingData?.booking?.bookingStatus || '').toLowerCase();
+    if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
+        alert(bookingStatus === 'pending'
+            ? 'Editing is not allowed while booking is pending approval.'
+            : 'This booking already has a pending change request.');
+        return;
+    }
+
     // 출발 한달 전이거나 Edit Allowed인 경우에만 수정 가능
     const canEdit = __canEditBeforeDeparture || isEditAllowed;
     if (!canEdit) {
@@ -3980,10 +3999,10 @@ let __canEditBeforeDeparture = false;
 function initEditButtonsIfWithin24Hours(booking) {
     const bookingStatus = (booking.bookingStatus || '').toLowerCase();
 
-    // pending_update 상태에서는 수정 불가
-    if (bookingStatus === 'pending_update') {
+    // pending 또는 pending_update 상태에서는 수정 불가
+    if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
         __canEditBeforeDeparture = false;
-        console.log(`[Edit Check] Editing disabled: booking is in pending_update status`);
+        console.log(`[Edit Check] Editing disabled: booking is in ${bookingStatus} status`);
 
         // 모든 수정 버튼 숨기기
         const customerEditBtns = document.getElementById('customerEditBtns');
@@ -4037,6 +4056,15 @@ function initEditButtonsIfWithin24Hours(booking) {
 // ===== Customer Info 수정 =====
 
 function startEditCustomer() {
+    // pending 또는 pending_update 상태에서는 수정 불가
+    const bookingStatus = (currentBookingData?.booking?.bookingStatus || '').toLowerCase();
+    if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
+        alert(bookingStatus === 'pending'
+            ? 'Editing is not allowed while booking is pending approval.'
+            : 'This booking already has a pending change request.');
+        return;
+    }
+
     // 현재 값 백업
     originalCustomerData = {
         name: document.getElementById('cust_name')?.value || '',
@@ -4189,9 +4217,12 @@ async function handleEditProductClick() {
         return;
     }
 
-    // 이미 pending_update 상태인지 확인
-    if (currentBookingData && currentBookingData.booking && currentBookingData.booking.bookingStatus === 'pending_update') {
-        alert('This booking already has a pending change request.');
+    // pending 또는 pending_update 상태에서는 수정 불가
+    const bookingStatus = (currentBookingData?.booking?.bookingStatus || '').toLowerCase();
+    if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
+        alert(bookingStatus === 'pending'
+            ? 'Editing is not allowed while booking is pending approval.'
+            : 'This booking already has a pending change request.');
         return;
     }
 

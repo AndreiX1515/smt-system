@@ -610,6 +610,9 @@ try {
         case 'deleteTravelerPassportImage':
             deleteTravelerPassportImage($conn, $input);
             break;
+        case 'uploadTravelerVisaDocument':
+            uploadTravelerVisaDocument($conn, $input);
+            break;
         case 'getB2BBookingDetail':
             getB2BBookingDetail($conn, $input);
             break;
@@ -6056,9 +6059,7 @@ function uploadTravelerPassportImage($conn, $input) {
 
         // multipart/form-data expected
         $bookingTravelerId = $_POST['bookingTravelerId'] ?? ($input['bookingTravelerId'] ?? $input['id'] ?? null);
-        if (empty($bookingTravelerId)) send_error_response('bookingTravelerId is required', 400);
-        $tid = intval($bookingTravelerId);
-        if ($tid <= 0) send_error_response('Invalid bookingTravelerId', 400);
+        $tid = !empty($bookingTravelerId) ? intval($bookingTravelerId) : 0;
 
         if (!isset($_FILES['passportImage']) || ($_FILES['passportImage']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             send_error_response('No passport image uploaded', 400);
@@ -6080,19 +6081,21 @@ function uploadTravelerPassportImage($conn, $input) {
             send_error_response('File size exceeds 10MB limit', 400);
         }
 
-        // delete old file if any
-        $oldRel = '';
-        $stmt = $conn->prepare("SELECT passportImage FROM booking_travelers WHERE bookingTravelerId = ? LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param('i', $tid);
-            $stmt->execute();
-            $row = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            $oldRel = (string)($row['passportImage'] ?? '');
-        }
-        if ($oldRel !== '' && str_starts_with($oldRel, '/uploads/')) {
-            $oldAbs = __DIR__ . '/../../../' . ltrim($oldRel, '/');
-            if (is_file($oldAbs)) @unlink($oldAbs);
+        // delete old file if any (only if bookingTravelerId exists)
+        if ($tid > 0) {
+            $oldRel = '';
+            $stmt = $conn->prepare("SELECT passportImage FROM booking_travelers WHERE bookingTravelerId = ? LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param('i', $tid);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                $oldRel = (string)($row['passportImage'] ?? '');
+            }
+            if ($oldRel !== '' && str_starts_with($oldRel, '/uploads/')) {
+                $oldAbs = __DIR__ . '/../../../' . ltrim($oldRel, '/');
+                if (is_file($oldAbs)) @unlink($oldAbs);
+            }
         }
 
         $uploadDir = __DIR__ . '/../../../uploads/passports/';
@@ -6107,7 +6110,9 @@ function uploadTravelerPassportImage($conn, $input) {
         if ($ext === '') {
             $ext = ($mimeType === 'image/png') ? 'png' : (($mimeType === 'image/gif') ? 'gif' : 'jpg');
         }
-        $fileName = 'traveler_passport_' . $tid . '_' . time() . '_' . uniqid() . '.' . $ext;
+        // 파일명: bookingTravelerId가 있으면 사용, 없으면 'new_' + timestamp
+        $prefix = ($tid > 0) ? 'traveler_passport_' . $tid : 'traveler_passport_new';
+        $fileName = $prefix . '_' . time() . '_' . uniqid() . '.' . $ext;
         $dest = $uploadDir . $fileName;
 
         if (!move_uploaded_file($file['tmp_name'], $dest)) {
@@ -6115,18 +6120,111 @@ function uploadTravelerPassportImage($conn, $input) {
         }
 
         $rel = '/uploads/passports/' . $fileName;
-        $up = $conn->prepare("UPDATE booking_travelers SET passportImage = ? WHERE bookingTravelerId = ?");
-        if (!$up) {
-            @unlink($dest);
-            send_error_response('Database error', 500);
-        }
-        $up->bind_param('si', $rel, $tid);
-        $up->execute();
-        $up->close();
 
-        send_success_response(['filePath' => $rel], 'Passport image uploaded');
+        // bookingTravelerId가 있으면 DB 업데이트
+        if ($tid > 0) {
+            $up = $conn->prepare("UPDATE booking_travelers SET passportImage = ? WHERE bookingTravelerId = ?");
+            if ($up) {
+                $up->bind_param('si', $rel, $tid);
+                $up->execute();
+                $up->close();
+            }
+        }
+
+        send_success_response(['filePath' => $rel, 'path' => $rel], 'Passport image uploaded');
     } catch (Exception $e) {
         send_error_response('Failed to upload passport image: ' . $e->getMessage(), 500);
+    }
+}
+
+// Visa Document 업로드 (Edit Traveler 모달에서 사용)
+function uploadTravelerVisaDocument($conn, $input) {
+    try {
+        // Super admin only
+        $isSuperAdmin = __is_super_admin($conn);
+        if (!$isSuperAdmin) send_error_response('Forbidden', 403);
+
+        // multipart/form-data expected
+        $bookingTravelerId = $_POST['bookingTravelerId'] ?? ($input['bookingTravelerId'] ?? $input['id'] ?? null);
+        $tid = !empty($bookingTravelerId) ? intval($bookingTravelerId) : 0;
+
+        if (!isset($_FILES['visaDocument']) || ($_FILES['visaDocument']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            send_error_response('No visa document uploaded', 400);
+        }
+
+        $file = $_FILES['visaDocument'];
+
+        // MIME validate (images + PDF)
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo ? finfo_file($finfo, $file['tmp_name']) : ($file['type'] ?? '');
+        if ($finfo) finfo_close($finfo);
+        if (!in_array($mimeType, $allowedTypes, true)) {
+            send_error_response('Invalid file type. Only JPG, PNG, GIF, PDF are allowed.', 400);
+        }
+
+        // size limit 10MB
+        if (($file['size'] ?? 0) > 10 * 1024 * 1024) {
+            send_error_response('File size exceeds 10MB limit', 400);
+        }
+
+        // delete old file if any (only if bookingTravelerId exists)
+        if ($tid > 0) {
+            $oldRel = '';
+            $stmt = $conn->prepare("SELECT visaDocument FROM booking_travelers WHERE bookingTravelerId = ? LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param('i', $tid);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                $oldRel = (string)($row['visaDocument'] ?? '');
+            }
+            if ($oldRel !== '' && str_starts_with($oldRel, '/uploads/')) {
+                $oldAbs = __DIR__ . '/../../../' . ltrim($oldRel, '/');
+                if (is_file($oldAbs)) @unlink($oldAbs);
+            }
+        }
+
+        $uploadDir = __DIR__ . '/../../../uploads/visa/';
+        if (!is_dir($uploadDir)) {
+            if (!@mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                send_error_response('Failed to create upload directory', 500);
+            }
+        }
+
+        $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+        $ext = preg_replace('/[^a-z0-9]/', '', $ext);
+        if ($ext === '') {
+            if ($mimeType === 'application/pdf') {
+                $ext = 'pdf';
+            } else {
+                $ext = ($mimeType === 'image/png') ? 'png' : (($mimeType === 'image/gif') ? 'gif' : 'jpg');
+            }
+        }
+        // 파일명: bookingTravelerId가 있으면 사용, 없으면 'new_' + timestamp
+        $prefix = ($tid > 0) ? 'traveler_visa_' . $tid : 'traveler_visa_new';
+        $fileName = $prefix . '_' . time() . '_' . uniqid() . '.' . $ext;
+        $dest = $uploadDir . $fileName;
+
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            send_error_response('Failed to save uploaded file', 500);
+        }
+
+        $rel = '/uploads/visa/' . $fileName;
+
+        // bookingTravelerId가 있으면 DB 업데이트
+        if ($tid > 0) {
+            $up = $conn->prepare("UPDATE booking_travelers SET visaDocument = ? WHERE bookingTravelerId = ?");
+            if ($up) {
+                $up->bind_param('si', $rel, $tid);
+                $up->execute();
+                $up->close();
+            }
+        }
+
+        send_success_response(['filePath' => $rel, 'path' => $rel], 'Visa document uploaded');
+    } catch (Exception $e) {
+        send_error_response('Failed to upload visa document: ' . $e->getMessage(), 500);
     }
 }
 
@@ -12671,6 +12769,8 @@ function updateB2BBooking($conn, $input) {
         // - cancelled: 예약 취소
         // - refunded: 환불 완료(예약 취소 + paymentStatus refunded)
         $statusKey = $input['statusKey'] ?? $input['bookingStatus'] ?? null;
+        $statusChangeReason = isset($input['statusChangeReason']) ? trim((string)$input['statusChangeReason']) : null;
+
         if ($statusKey !== null) {
             $k = strtolower(trim((string)$statusKey));
 
@@ -12681,8 +12781,16 @@ function updateB2BBooking($conn, $input) {
                 'waiting_balance', 'checking_balance', 'rejected'
             ];
 
-            // 상태 변경 시 pending_update 플로우 적용: cancelled → 다른 상태로 변경 시에만 적용
-            $shouldUsePendingUpdate = ($currentBook === 'cancelled') && ($k !== 'cancelled');
+            // 상태 변경 시 pending_update 플로우 적용: cancelled ↔ 다른 상태 양방향 적용
+            $shouldUsePendingUpdate = ($currentBook === 'cancelled' && $k !== 'cancelled')
+                                   || ($currentBook !== 'cancelled' && $k === 'cancelled');
+
+            // 직접 상태 변경 시 (pending_update가 아닌 경우) 사유 필수
+            if ($currentBook !== $k && !$shouldUsePendingUpdate) {
+                if (empty($statusChangeReason)) {
+                    send_error_response('Status change reason is required', 400);
+                }
+            }
 
             if ($shouldUsePendingUpdate) {
                 $changedToPendingUpdate = true; // 응답에서 사용
@@ -12799,7 +12907,7 @@ function updateB2BBooking($conn, $input) {
             $newStatus = strtolower(trim((string)$statusKey));
             $oldStatus = $currentBook;
             if ($newStatus !== $oldStatus) {
-                __log_booking_status_change($conn, $bookingId, $oldStatus, $newStatus);
+                __log_booking_status_change($conn, $bookingId, $oldStatus, $newStatus, null, null, $statusChangeReason);
             }
         }
 
@@ -12875,133 +12983,102 @@ function updateB2BBooking($conn, $input) {
             else $effectiveStatusKey = 'pending';
         }
 
-        // Customer info 저장: bookings.contactEmail/contactPhone(있으면) + selectedOptions.customerInfo 업데이트
-        if ($hasCustomerInfo) {
-            $ci = $input['customerInfo'];
-            $name = trim((string)($ci['name'] ?? ''));
-            $email = trim((string)($ci['email'] ?? ''));
-            $phone = trim((string)($ci['phone'] ?? ''));
+        // Customer Info 또는 Traveler 변경 시 pending_update 플로우 적용 (통합 처리)
+        $hasCustomerOrTravelerChanges = $hasCustomerInfo || $hasTravelers;
 
-            $bUpd = [];
-            $bVals = [];
-            $bTypes = '';
-
-            if (__table_has_column($conn, 'bookings', 'contactEmail')) {
-                $bUpd[] = "contactEmail = ?";
-                $bVals[] = ($email !== '' ? $email : null);
-                $bTypes .= 's';
-            }
-            if (__table_has_column($conn, 'bookings', 'contactPhone')) {
-                $bUpd[] = "contactPhone = ?";
-                $bVals[] = ($phone !== '' ? $phone : null);
-                $bTypes .= 's';
-            }
-            if (__table_has_column($conn, 'bookings', 'contactName')) {
-                $bUpd[] = "contactName = ?";
-                $bVals[] = ($name !== '' ? $name : null);
-                $bTypes .= 's';
-            }
-
-            if (!empty($bUpd)) {
-                $bVals[] = $bookingId;
-                $bTypes .= 's';
-                $st = $conn->prepare("UPDATE bookings SET " . implode(', ', $bUpd) . " WHERE bookingId = ?");
-                if ($st) {
-                    mysqli_bind_params_by_ref($st, $bTypes, $bVals);
-                    $st->execute();
-                    $st->close();
+        if ($hasCustomerOrTravelerChanges) {
+            // transactNo 조회 (traveler 조회용)
+            $travelerKeyForPending = $bookingId;
+            try {
+                $tkStmt = $conn->prepare("SELECT COALESCE(NULLIF(transactNo,''), bookingId) as tk FROM bookings WHERE bookingId = ? LIMIT 1");
+                if ($tkStmt) {
+                    $tkStmt->bind_param('s', $bookingId);
+                    $tkStmt->execute();
+                    $tkRes = $tkStmt->get_result();
+                    if ($tkRes && $tkRow = $tkRes->fetch_assoc()) {
+                        $travelerKeyForPending = $tkRow['tk'];
+                    }
+                    $tkStmt->close();
                 }
-            }
+            } catch (Throwable $e) { /* ignore */ }
 
-            // selectedOptions.customerInfo
-            // SMT 수정 시작 - DB에서 최신 selectedOptions 값을 읽어서 덮어쓰기 방지
+            // 현재 Customer Info 조회
+            $currentCustomerInfo = null;
             try {
                 $soRaw = '';
-                $stRead = $conn->prepare("SELECT selectedOptions FROM bookings WHERE bookingId = ? LIMIT 1");
+                $stRead = $conn->prepare("SELECT contactName, contactEmail, contactPhone, selectedOptions FROM bookings WHERE bookingId = ? LIMIT 1");
                 if ($stRead) {
                     $stRead->bind_param('s', $bookingId);
                     $stRead->execute();
                     $readRes = $stRead->get_result();
                     if ($readRes && $readRow = $readRes->fetch_assoc()) {
                         $soRaw = (string)($readRow['selectedOptions'] ?? '');
+                        $soObj = json_decode($soRaw, true);
+                        $currentCustomerInfo = $soObj['customerInfo'] ?? [
+                            'name' => $readRow['contactName'] ?? '',
+                            'email' => $readRow['contactEmail'] ?? '',
+                            'phone' => $readRow['contactPhone'] ?? ''
+                        ];
                     }
                     $stRead->close();
                 }
-                $soObj = null;
-                if ($soRaw !== '') {
-                    $tmp = json_decode($soRaw, true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) $soObj = $tmp;
-                }
-                if (!is_array($soObj)) $soObj = [];
-                $soObj['customerInfo'] = [
-                    'name' => $name,
-                    'email' => $email,
-                    'phone' => $phone
-                ];
-                $newRaw = json_encode($soObj, JSON_UNESCAPED_UNICODE);
-                if (__table_has_column($conn, 'bookings', 'selectedOptions')) {
-                    $st = $conn->prepare("UPDATE bookings SET selectedOptions = ? WHERE bookingId = ?");
-                    if ($st) {
-                        $st->bind_param('ss', $newRaw, $bookingId);
-                        $st->execute();
-                        $st->close();
+            } catch (Throwable $e) { /* ignore */ }
+
+            // 현재 Travelers 데이터 조회
+            $currentTravelers = [];
+            try {
+                __ensure_booking_travelers_status_columns($conn);
+                $travStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
+                if ($travStmt) {
+                    $travStmt->bind_param('s', $travelerKeyForPending);
+                    $travStmt->execute();
+                    $travResult = $travStmt->get_result();
+                    while ($travRow = $travResult->fetch_assoc()) {
+                        $currentTravelers[] = $travRow;
                     }
+                    $travStmt->close();
                 }
             } catch (Throwable $e) { /* ignore */ }
-            // SMT 수정 완료
+
+            // booking_change_requests 테이블에 통합 저장 (changeType = 'travelers' 유지)
+            $previousDataJson = json_encode([
+                'originalCustomerInfo' => $currentCustomerInfo,
+                'originalTravelers' => $currentTravelers
+            ], JSON_UNESCAPED_UNICODE);
+
+            $newDataJson = json_encode([
+                'pendingCustomerInfo' => $hasCustomerInfo ? $input['customerInfo'] : null,
+                'pendingTravelers' => $hasTravelers ? $input['travelers'] : null
+            ], JSON_UNESCAPED_UNICODE);
+
+            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
+            $changeRequestStmt = $conn->prepare($changeRequestSql);
+            if ($changeRequestStmt) {
+                $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+                $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
+                $changeRequestStmt->execute();
+                $changeRequestStmt->close();
+            }
+
+            // bookingStatus를 pending_update로 변경
+            $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
+            if ($pendingStmt) {
+                $pendingStmt->bind_param('s', $bookingId);
+                $pendingStmt->execute();
+                $pendingStmt->close();
+            }
+
+            // 여기서 바로 성공 응답 반환 (실제 수정은 승인 시 실행)
+            send_success_response(['pendingUpdate' => true, 'newStatus' => 'pending_update'], 'Changes saved for approval');
         }
 
         // Travelers 저장(인원옵션 travelerType은 read-only)
-        // pending_update 플로우: 변경 사항을 바로 저장하지 않고 승인 대기
+        // 주의: hasCustomerOrTravelerChanges가 true면 위에서 이미 응답했으므로 이 아래 코드는 실행되지 않음
         if ($hasTravelers) {
             __ensure_booking_travelers_status_columns($conn);
 
             // 허용 상태
             $allowedStatus = ['pending','partial','confirmed','completed','cancelled','refunded','rejected','waiting_down_payment','checking_down_payment','waiting_second_payment','checking_second_payment','waiting_balance','checking_balance','waiting_full_payment','checking_full_payment'];
-
-            // 관리자는 항상 직접 저장 (pending_update 없음)
-            $skipPendingUpdateForTravelers = true;
-
-            if (!$skipPendingUpdateForTravelers) {
-                // 현재 travelers 데이터 조회
-                $currentTravelers = [];
-                try {
-                    $travStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
-                    if ($travStmt) {
-                        $travStmt->bind_param('s', $travelerKey);
-                        $travStmt->execute();
-                        $travResult = $travStmt->get_result();
-                        while ($travRow = $travResult->fetch_assoc()) {
-                            $currentTravelers[] = $travRow;
-                        }
-                        $travStmt->close();
-                    }
-                } catch (Throwable $e) { /* ignore */ }
-
-                // booking_change_requests 테이블에 traveler 변경 요청 저장
-                $previousDataJson = json_encode(['originalTravelers' => $currentTravelers], JSON_UNESCAPED_UNICODE);
-                $newDataJson = json_encode(['pendingTravelers' => $input['travelers']], JSON_UNESCAPED_UNICODE);
-
-                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
-                $changeRequestStmt = $conn->prepare($changeRequestSql);
-                if ($changeRequestStmt) {
-                    $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                    $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
-                    $changeRequestStmt->execute();
-                    $changeRequestStmt->close();
-                }
-
-                // bookingStatus를 pending_update로 변경
-                $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
-                if ($pendingStmt) {
-                    $pendingStmt->bind_param('s', $bookingId);
-                    $pendingStmt->execute();
-                    $pendingStmt->close();
-                }
-
-                // 여기서 바로 성공 응답 반환 (실제 traveler 수정은 승인 시 실행)
-                send_success_response(['pendingUpdate' => true, 'newStatus' => 'pending_update'], 'Traveler changes saved for approval');
-            }
 
             // 아래 코드는 pending/pending_update/check_reject 상태일 때만 실행됨 (직접 저장)
 
@@ -13259,8 +13336,8 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
         $currentPay = strtolower((string)($booking['paymentStatus'] ?? ''));
         $travelerKey = (string)($booking['transactKey'] ?? $bookingId);
 
-        // 관리자는 항상 직접 저장 (pending_update 없음)
-        $skipPendingUpdate = true;
+        // 관리자도 pending_update 프로세스를 거침
+        $skipPendingUpdate = false;
 
         if (!$skipPendingUpdate) {
             // 현재 travelers 데이터 조회
@@ -13275,6 +13352,38 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
                         $currentTravelers[] = $travRow;
                     }
                     $travStmt->close();
+                }
+
+                // flightOptions도 함께 조회하여 각 traveler에 추가
+                $foptStmt = $conn->prepare("SELECT traveler_index, option_id, price FROM booking_traveler_options WHERE booking_id = ?");
+                if ($foptStmt) {
+                    $foptStmt->bind_param('s', $bookingId);
+                    $foptStmt->execute();
+                    $foptResult = $foptStmt->get_result();
+                    $travelerFlightOpts = [];
+                    while ($frow = $foptResult->fetch_assoc()) {
+                        $tidx = (int)$frow['traveler_index'];
+                        if (!isset($travelerFlightOpts[$tidx])) {
+                            $travelerFlightOpts[$tidx] = ['flightOptions' => [], 'flightOptionPrices' => []];
+                        }
+                        $optId = (int)$frow['option_id'];
+                        $optPrice = (float)$frow['price'];
+                        $travelerFlightOpts[$tidx]['flightOptions'][] = $optId;
+                        $travelerFlightOpts[$tidx]['flightOptionPrices'][$optId] = $optPrice;
+                    }
+                    $foptStmt->close();
+
+                    // currentTravelers에 flightOptions 추가
+                    foreach ($currentTravelers as $idx => &$trav) {
+                        if (isset($travelerFlightOpts[$idx])) {
+                            $trav['flightOptions'] = $travelerFlightOpts[$idx]['flightOptions'];
+                            $trav['flightOptionPrices'] = $travelerFlightOpts[$idx]['flightOptionPrices'];
+                        } else {
+                            $trav['flightOptions'] = [];
+                            $trav['flightOptionPrices'] = [];
+                        }
+                    }
+                    unset($trav);
                 }
             } catch (Throwable $e) { /* ignore */ }
 
@@ -13315,6 +13424,9 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
                 $pendingStmt->execute();
                 $pendingStmt->close();
             }
+
+            // 상태 변경 히스토리 기록
+            __log_booking_status_change($conn, $bookingId, $currentBook, 'pending_update', null, null, 'Traveler/Room changes submitted for approval');
 
             // 성공 응답 반환 (실제 traveler/room 수정은 승인 시 실행)
             send_success_response([
@@ -13422,11 +13534,20 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
                     'visaRequired' => 'i', 'childRoom' => 'i', 'isMainTraveler' => 'i'
                 ];
 
+                // 날짜 필드 목록 (빈 문자열을 NULL로 변환)
+                $dateFields = ['birthDate', 'passportIssueDate', 'passportExpiry'];
+
                 foreach ($fieldMap as $field => $type) {
                     if (array_key_exists($field, $tr)) {
-                        $fields[] = "$field = ?";
                         $val = $tr[$field];
-                        if ($type === 'i') $val = intval($val);
+                        if ($type === 'i') {
+                            $val = intval($val);
+                        } elseif (in_array($field, $dateFields)) {
+                            // 날짜 필드: 빈 문자열이나 0000-00-00은 NULL로 처리
+                            $val = trim((string)$val);
+                            $val = ($val !== '' && $val !== '0000-00-00') ? $val : null;
+                        }
+                        $fields[] = "$field = ?";
                         $vals[] = $val;
                         $types .= $type;
                     }
@@ -13780,6 +13901,9 @@ function approveB2BBooking($conn, $input) {
             $stmt->execute();
             $stmt->close();
 
+            // 상태 변경 히스토리 저장
+            __log_booking_status_change($conn, $bookingId, 'pending', $newStatus, null, null, 'New booking approved');
+
             send_success_response([], 'Booking approved successfully');
         } else if ($booking['bookingStatus'] === 'pending_update') {
             // booking_change_requests 테이블에서 변경 요청 조회
@@ -13821,17 +13945,117 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
 
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Status change request approved');
+
                 send_success_response([], 'Status change approved successfully');
 
             } else if ($changeRequest['changeType'] === 'travelers') {
-                // Traveler 변경 요청 승인: pendingTravelers 적용
+                // Traveler/Customer Info 변경 요청 승인: pendingTravelers + pendingCustomerInfo 적용
                 $newData = json_decode($changeRequest['newData'], true);
                 $previousData = json_decode($changeRequest['previousData'], true);
                 $pendingTravelers = $newData['pendingTravelers'] ?? [];
                 $pendingRooms = $newData['pendingRooms'] ?? [];
+                $pendingCustomerInfo = $newData['pendingCustomerInfo'] ?? null;
                 $originalTravelers = $previousData['originalTravelers'] ?? [];
                 $originalRooms = $previousData['originalRooms'] ?? [];
                 $newStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+
+                // Customer Info 적용 (있는 경우)
+                if ($pendingCustomerInfo && is_array($pendingCustomerInfo)) {
+                    $ciName = trim((string)($pendingCustomerInfo['name'] ?? ''));
+                    $ciEmail = trim((string)($pendingCustomerInfo['email'] ?? ''));
+                    $ciPhone = trim((string)($pendingCustomerInfo['phone'] ?? ''));
+
+                    // bookings 테이블 업데이트 (contactName, contactEmail, contactPhone)
+                    $ciUpdates = [];
+                    $ciValues = [];
+                    $ciTypes = '';
+
+                    if (__table_has_column($conn, 'bookings', 'contactEmail')) {
+                        $ciUpdates[] = "contactEmail = ?";
+                        $ciValues[] = ($ciEmail !== '' ? $ciEmail : null);
+                        $ciTypes .= 's';
+                    }
+                    if (__table_has_column($conn, 'bookings', 'contactPhone')) {
+                        $ciUpdates[] = "contactPhone = ?";
+                        $ciValues[] = ($ciPhone !== '' ? $ciPhone : null);
+                        $ciTypes .= 's';
+                    }
+                    if (__table_has_column($conn, 'bookings', 'contactName')) {
+                        $ciUpdates[] = "contactName = ?";
+                        $ciValues[] = ($ciName !== '' ? $ciName : null);
+                        $ciTypes .= 's';
+                    }
+
+                    if (!empty($ciUpdates)) {
+                        $ciValues[] = $bookingId;
+                        $ciTypes .= 's';
+                        $ciSt = $conn->prepare("UPDATE bookings SET " . implode(', ', $ciUpdates) . " WHERE bookingId = ?");
+                        if ($ciSt) {
+                            mysqli_bind_params_by_ref($ciSt, $ciTypes, $ciValues);
+                            $ciSt->execute();
+                            $ciSt->close();
+                        }
+                    }
+
+                    // selectedOptions.customerInfo 업데이트
+                    try {
+                        $soRaw = '';
+                        $stRead = $conn->prepare("SELECT selectedOptions FROM bookings WHERE bookingId = ? LIMIT 1");
+                        if ($stRead) {
+                            $stRead->bind_param('s', $bookingId);
+                            $stRead->execute();
+                            $readRes = $stRead->get_result();
+                            if ($readRes && $readRow = $readRes->fetch_assoc()) {
+                                $soRaw = (string)($readRow['selectedOptions'] ?? '');
+                            }
+                            $stRead->close();
+                        }
+                        $soObj = null;
+                        if ($soRaw !== '') {
+                            $tmp = json_decode($soRaw, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) $soObj = $tmp;
+                        }
+                        if (!is_array($soObj)) $soObj = [];
+                        $soObj['customerInfo'] = [
+                            'name' => $ciName,
+                            'email' => $ciEmail,
+                            'phone' => $ciPhone
+                        ];
+                        $newRaw = json_encode($soObj, JSON_UNESCAPED_UNICODE);
+                        if (__table_has_column($conn, 'bookings', 'selectedOptions')) {
+                            $st = $conn->prepare("UPDATE bookings SET selectedOptions = ? WHERE bookingId = ?");
+                            if ($st) {
+                                $st->bind_param('ss', $newRaw, $bookingId);
+                                $st->execute();
+                                $st->close();
+                            }
+                        }
+                    } catch (Throwable $e) { /* ignore */ }
+                }
+
+                // pendingTravelers가 비어있으면 Traveler 처리 스킵 (Customer Info만 변경된 경우)
+                if (empty($pendingTravelers)) {
+                    // bookingStatus를 원래 상태로 복원
+                    $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('ss', $newStatus, $bookingId);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    // 변경 요청 승인 처리
+                    $updateReqSql = "UPDATE booking_change_requests SET status = 'approved', processedBy = ?, processedAt = NOW() WHERE id = ?";
+                    $updateReqStmt = $conn->prepare($updateReqSql);
+                    $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
+                    $updateReqStmt->execute();
+                    $updateReqStmt->close();
+
+                    // 상태 변경 히스토리 저장
+                    __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Customer info change approved');
+
+                    send_success_response([], 'Customer info change approved successfully');
+                }
 
                 // 금액 재계산을 위한 가격 정보 조회
                 $priceStmt = $conn->prepare("SELECT totalAmount, adultPrice, childPrice, infantPrice FROM bookings WHERE bookingId = ? LIMIT 1");
@@ -13950,7 +14174,11 @@ function approveB2BBooking($conn, $input) {
                         $passportNumber = trim((string)($tr['passportNumber'] ?? ''));
                         $passportIssueDate = trim((string)($tr['passportIssueDate'] ?? ''));
                         $passportExpiry = trim((string)($tr['passportExpiry'] ?? ''));
-                        $isMainTraveler = intval($tr['isMainTraveler'] ?? $tr['isMain'] ?? 0);
+                        $isMainTraveler = intval($tr['isMainTraveler'] ?? $tr['isMain'] ?? $tr['isPrimary'] ?? 0);
+                        $profileSource = trim((string)($tr['profile_source'] ?? $tr['profileSource'] ?? ''));
+                        $visaType = strtolower(trim((string)($tr['visaType'] ?? '')));
+                        $passportImage = trim((string)($tr['passportImage'] ?? $tr['passportPhoto'] ?? ''));
+                        $childRoom = $tr['childRoom'];
 
                         // ENUM 필드 처리
                         $titleVal = in_array($title, ['MR','MRS','MS','DR']) ? $title : null;
@@ -13958,11 +14186,44 @@ function approveB2BBooking($conn, $input) {
                         $birthDateVal = ($birthDate !== '' && $birthDate !== '0000-00-00') ? $birthDate : null;
                         $passportIssueDateVal = ($passportIssueDate !== '' && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
                         $passportExpiryVal = ($passportExpiry !== '' && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
+                        $profileSourceVal = ($profileSource !== '') ? $profileSource : null;
+                        $visaTypeVal = in_array($visaType, ['with_visa', 'group', 'individual', 'foreign']) ? $visaType : null;
+                        // passportImage: base64는 저장하지 않고 URL 경로만 저장
+                        $passportImageVal = ($passportImage !== '' && !str_starts_with($passportImage, 'data:')) ? $passportImage : null;
+                        // childRoom: 'yes', '1', true 등을 1로 변환
+                        $childRoomVal = ($childRoom === 'yes' || $childRoom === 'Yes' || $childRoom === '1' || $childRoom === 1 || $childRoom === true) ? 1 : 0;
 
-                        $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, isMainTraveler, reservationStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        // 동적으로 INSERT 쿼리 구성
+                        $columns = ['transactNo', 'travelerType', 'title', 'firstName', 'lastName', 'birthDate', 'gender', 'nationality', 'passportNumber', 'passportIssueDate', 'passportExpiry', 'isMainTraveler', 'reservationStatus'];
+                        $values = [$travelerKey, $travelerType, $titleVal, $firstName, $lastName, $birthDateVal, $genderVal, $nationality, $passportNumber, $passportIssueDateVal, $passportExpiryVal, $isMainTraveler, $newStatus];
+                        $types = 'sssssssssssis';
+
+                        if (__table_has_column($conn, 'booking_travelers', 'profile_source')) {
+                            $columns[] = 'profile_source';
+                            $values[] = $profileSourceVal;
+                            $types .= 's';
+                        }
+                        if (__table_has_column($conn, 'booking_travelers', 'visaType')) {
+                            $columns[] = 'visaType';
+                            $values[] = $visaTypeVal;
+                            $types .= 's';
+                        }
+                        if (__table_has_column($conn, 'booking_travelers', 'passportImage') && $passportImageVal) {
+                            $columns[] = 'passportImage';
+                            $values[] = $passportImageVal;
+                            $types .= 's';
+                        }
+                        if (__table_has_column($conn, 'booking_travelers', 'childRoom')) {
+                            $columns[] = 'childRoom';
+                            $values[] = $childRoomVal;
+                            $types .= 'i';
+                        }
+
+                        $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+                        $insertSql = "INSERT INTO booking_travelers (" . implode(', ', $columns) . ") VALUES ($placeholders)";
                         $stInsert = $conn->prepare($insertSql);
                         if ($stInsert) {
-                            $stInsert->bind_param('sssssssssssis', $travelerKey, $travelerType, $titleVal, $firstName, $lastName, $birthDateVal, $genderVal, $nationality, $passportNumber, $passportIssueDateVal, $passportExpiryVal, $isMainTraveler, $newStatus);
+                            mysqli_bind_params_by_ref($stInsert, $types, $values);
                             $stInsert->execute();
                             $stInsert->close();
                         }
@@ -14067,6 +14328,9 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
+
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Traveler changes approved');
 
                 // 금액 변동 정보를 응답에 포함
                 $adjustmentInfo = [
@@ -14235,6 +14499,10 @@ function approveB2BBooking($conn, $input) {
                 __addBookingHistory($conn, $bookingId, 'Product edit approved - old booking cancelled');
                 __addBookingHistory($conn, $newBookingId, 'Created from product edit approval (original: ' . $bookingId . ')');
 
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', 'cancelled', null, null, 'Product edit approved - old booking cancelled');
+                __log_booking_status_change($conn, $newBookingId, 'pending', $newStatus, null, null, 'New booking created from product edit approval');
+
                 send_success_response([
                     'oldBookingId' => $bookingId,
                     'newBookingId' => $newBookingId
@@ -14289,6 +14557,9 @@ function approveB2BBooking($conn, $input) {
                 $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' change approved: ' . $newDeadline;
                 __addBookingHistory($conn, $bookingId, $historyMsg);
 
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, $historyMsg);
+
                 send_success_response([], 'Deadline change approved successfully. New deadline: ' . $newDeadline);
 
             } else {
@@ -14307,6 +14578,9 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
+
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Booking update approved');
 
                 send_success_response([], 'Booking update approved successfully');
             }
@@ -14352,18 +14626,21 @@ function rejectB2BBooking($conn, $input) {
         }
 
         if ($booking['bookingStatus'] === 'pending') {
-            // 신규 예약 거절: pending → rejected
+            // 신규 예약 거절: pending → cancelled (rejected 대신 cancelled 사용)
             if ($hasRemarks && !empty($reason)) {
-                $sql = "UPDATE bookings SET bookingStatus = 'rejected', remarks = CONCAT(COALESCE(remarks, ''), '\n[Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                $sql = "UPDATE bookings SET bookingStatus = 'cancelled', remarks = CONCAT(COALESCE(remarks, ''), '\n[Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
                 $stmt = $conn->prepare($sql);
                 $stmt->bind_param('ss', $reason, $bookingId);
             } else {
-                $sql = "UPDATE bookings SET bookingStatus = 'rejected', updatedAt = NOW() WHERE bookingId = ?";
+                $sql = "UPDATE bookings SET bookingStatus = 'cancelled', updatedAt = NOW() WHERE bookingId = ?";
                 $stmt = $conn->prepare($sql);
                 $stmt->bind_param('s', $bookingId);
             }
             $stmt->execute();
             $stmt->close();
+
+            // 상태 변경 히스토리 저장
+            __log_booking_status_change($conn, $bookingId, 'pending', 'cancelled', null, null, $reason ?: 'Booking rejected');
 
             // Send rejection notification email
             if (function_exists('send_rejection_notification_email')) {
@@ -14427,6 +14704,9 @@ function rejectB2BBooking($conn, $input) {
                     send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
                 }
 
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', $originalStatus, null, null, 'Status change rejected' . (!empty($reason) ? ': ' . $reason : ''));
+
                 send_success_response([], 'Status change rejected successfully');
 
             } else if ($changeRequest['changeType'] === 'travelers') {
@@ -14454,6 +14734,9 @@ function rejectB2BBooking($conn, $input) {
                 if (function_exists('send_rejection_notification_email')) {
                     send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
                 }
+
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', 'check_reject', null, null, 'Traveler change rejected' . (!empty($reason) ? ': ' . $reason : ''));
 
                 send_success_response([], 'Traveler change rejected successfully');
 
@@ -14483,6 +14766,9 @@ function rejectB2BBooking($conn, $input) {
                     send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
                 }
 
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', 'check_reject', null, null, 'Product edit rejected' . (!empty($reason) ? ': ' . $reason : ''));
+
                 send_success_response([], 'Product edit rejected successfully');
 
             } else if ($changeRequest['changeType'] === 'deadline') {
@@ -14508,6 +14794,9 @@ function rejectB2BBooking($conn, $input) {
 
                 // 이력 추가
                 __addBookingHistory($conn, $bookingId, 'Deadline change rejected' . (!empty($reason) ? ': ' . $reason : ''));
+
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', $originalStatus, null, null, 'Deadline change rejected' . (!empty($reason) ? ': ' . $reason : ''));
 
                 send_success_response([], 'Deadline change rejected successfully');
 
@@ -14536,6 +14825,9 @@ function rejectB2BBooking($conn, $input) {
                 if (function_exists('send_rejection_notification_email')) {
                     send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
                 }
+
+                // 상태 변경 히스토리 저장
+                __log_booking_status_change($conn, $bookingId, 'pending_update', 'check_reject', null, null, 'Booking update rejected' . (!empty($reason) ? ': ' . $reason : ''));
 
                 send_success_response([], 'Booking update rejected successfully');
             }
@@ -17111,8 +17403,9 @@ function __ensure_booking_status_history_table($conn) {
  * 상태 변경 로그 저장
  * @param $overrideChangedBy - 지정 시 세션 대신 이 값 사용 (자동취소 등)
  * @param $overrideChangedByType - 지정 시 세션 대신 이 값 사용
+ * @param $changeReason - 상태 변경 사유 (선택사항)
  */
-function __log_booking_status_change($conn, $bookingId, $previousStatus, $newStatus, $overrideChangedBy = null, $overrideChangedByType = null) {
+function __log_booking_status_change($conn, $bookingId, $previousStatus, $newStatus, $overrideChangedBy = null, $overrideChangedByType = null, $changeReason = null) {
     __ensure_booking_status_history_table($conn);
 
     try {
@@ -17162,14 +17455,28 @@ function __log_booking_status_change($conn, $bookingId, $previousStatus, $newSta
         $phpTime = new DateTime('now', new DateTimeZone('Asia/Manila'));
         $changedAt = $phpTime->format('Y-m-d H:i:s');
 
-        $stmt = $conn->prepare("
-            INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        if ($stmt) {
-            $stmt->bind_param('ssssss', $bookingId, $previousStatus, $newStatus, $changedBy, $changedByType, $changedAt);
-            $stmt->execute();
-            $stmt->close();
+        // changeReason 컬럼 존재 여부 확인 후 INSERT
+        $hasChangeReason = __table_has_column($conn, 'booking_status_history', 'changeReason');
+        if ($hasChangeReason) {
+            $stmt = $conn->prepare("
+                INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changeReason, changedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            if ($stmt) {
+                $stmt->bind_param('sssssss', $bookingId, $previousStatus, $newStatus, $changedBy, $changedByType, $changeReason, $changedAt);
+                $stmt->execute();
+                $stmt->close();
+            }
+        } else {
+            $stmt = $conn->prepare("
+                INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            if ($stmt) {
+                $stmt->bind_param('ssssss', $bookingId, $previousStatus, $newStatus, $changedBy, $changedByType, $changedAt);
+                $stmt->execute();
+                $stmt->close();
+            }
         }
     } catch (Throwable $e) {
         // ignore - 로깅 실패가 메인 기능에 영향을 주지 않도록
@@ -17257,6 +17564,7 @@ function getBookingStatusHistory($conn, $input) {
                 h.newStatus,
                 h.changedBy,
                 h.changedByType,
+                h.changeReason,
                 h.changedAt,
                 b.packageName as productName,
                 b.departureDate as travelDate
@@ -17310,7 +17618,9 @@ function getBookingStatusHistory($conn, $input) {
  */
 function __get_status_label($status) {
     $labels = [
-        'pending' => 'Waiting for Down Payment',
+        'pending' => 'Pending',
+        'pending_update' => 'Pending Update',
+        'check_reject' => 'Check Reject',
         'waiting_down_payment' => 'Waiting for Down Payment',
         'checking_down_payment' => 'Checking Down Payment',
         'waiting_second_payment' => 'Waiting for Second Payment',
