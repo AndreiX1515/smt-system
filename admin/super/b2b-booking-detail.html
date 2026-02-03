@@ -1461,7 +1461,7 @@
 
 				const guideId = (document.getElementById('guideSelect')?.value || '').trim() || null;
 				const statusKey = (document.getElementById('reservationStatusSelect')?.value || 'pending').trim();
-				const balanceDueDate = (document.getElementById('travelStartDate')?.value || '').trim() || null;
+				const balanceDueDate = (document.getElementById('balanceDeadline')?.value || '').trim() || null;
 
 				// 환불 완료 상태로 저장된 이후에는 상태값 변경 불가 (UI 방지 + 서버에서도 재검증)
 				const isAlreadyRefunded = computeUiStatus(lastLoadedBooking || {}) === 'refunded';
