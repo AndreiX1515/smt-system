@@ -3154,7 +3154,7 @@
 		function setHtml(id, v) {
 			const el = document.getElementById(id);
 			if (!el) return;
-			el.textContent = String(v ?? '');
+			el.innerHTML = String(v ?? '');
 		}
 
 		function formatTravelersSummary(travelers) {
@@ -3364,10 +3364,10 @@
 			packageTotal += childrenNoRoom * childPrice;
 			packageTotal += infants * infantPrice;
 
-			// 할인 대상 인원
+			// 할인 대상 인원 (새 travelers 기준)
 			const discountableCount = adults + childrenWithRoom;
-			// Sale 할인 금액 (DB에 총 할인금액이 저장되어 있음)
-			const totalDiscount = saleDiscountAmount;
+			// Sale 할인 금액 (인당 할인액 × 새 할인대상 인원수)
+			const totalDiscount = perPersonDiscount * discountableCount;
 
 			// 총액 계산
 			const total = packageTotal - totalDiscount + visaFeeTotal + flightOptionsTotal;
