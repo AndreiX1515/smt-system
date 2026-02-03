@@ -1,14 +1,19 @@
 <?php
-// 쇼핑몰 장바구니 API
+// 쇼핑몰 장바구니 API (로그인 필수)
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+$origin = $_SERVER['HTTP_ORIGIN'] ?? 'https://smpoc.site';
+header("Access-Control-Allow-Origin: $origin");
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+// 세션 시작
+require_once __DIR__ . '/../../config/session.php';
 
 $conn = new mysqli("localhost", "root", "cloud1234", "smarttravel");
 if ($conn->connect_error) {
@@ -17,18 +22,16 @@ if ($conn->connect_error) {
 }
 $conn->set_charset("utf8mb4");
 
-// 사용자 ID (실제로는 세션/토큰에서 가져와야 함)
-$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
-$input = json_decode(file_get_contents('php://input'), true);
-if (!$user_id && isset($input['user_id'])) {
-    $user_id = intval($input['user_id']);
-}
+// 세션에서 사용자 ID 확인 (로그인 필수)
+$user_id = $_SESSION['user_id'] ?? $_SESSION['accountId'] ?? null;
 
 if (!$user_id) {
     http_response_code(401);
-    echo json_encode(['error' => '로그인이 필요합니다.']);
+    echo json_encode(['success' => false, 'error' => '로그인이 필요합니다.', 'requireLogin' => true]);
     exit();
 }
+
+$input = json_decode(file_get_contents('php://input'), true);
 
 $method = $_SERVER['REQUEST_METHOD'];
 

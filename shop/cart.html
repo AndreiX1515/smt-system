@@ -160,16 +160,35 @@
         const API_BASE = '/backend/api/shop';
 
         let cartItems = [];
-        let userId = localStorage.getItem('userId');
+        let isLoggedIn = false;
+
+        // 로그인 상태 확인
+        async function checkLogin() {
+            try {
+                const res = await fetch('/backend/api/check-session.php', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                isLoggedIn = data.isLoggedIn === true;
+                return isLoggedIn;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
 
         async function loadCart() {
-            if (!userId) {
-                showEmpty();
+            const loggedIn = await checkLogin();
+
+            if (!loggedIn) {
+                showLoginRequired();
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}`);
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    credentials: 'include'
+                });
                 const data = await res.json();
 
                 if (data.success) {
@@ -179,10 +198,23 @@
                     } else {
                         showEmpty();
                     }
+                } else if (data.requireLogin) {
+                    showLoginRequired();
                 }
             } catch (e) {
                 console.error(e);
             }
+        }
+
+        function showLoginRequired() {
+            document.getElementById('cartList').innerHTML = `
+                <div class="empty-cart">
+                    <div class="empty-cart-icon">🔒</div>
+                    <div>Please log in to view your cart</div>
+                    <a href="/user/login.html?redirect=${encodeURIComponent(location.href)}">Login</a>
+                </div>
+            `;
+            document.getElementById('cartSummary').style.display = 'none';
         }
 
         function showEmpty() {
@@ -253,8 +285,8 @@
                 const res = await fetch(`${API_BASE}/cart.php`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
-                        user_id: userId,
                         cart_id: cartId,
                         quantity: newQty
                     })
@@ -275,8 +307,9 @@
             if (!confirm('Remove this item?')) return;
 
             try {
-                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}&cart_id=${cartId}`, {
-                    method: 'DELETE'
+                const res = await fetch(`${API_BASE}/cart.php?cart_id=${cartId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
                 });
                 const data = await res.json();
 

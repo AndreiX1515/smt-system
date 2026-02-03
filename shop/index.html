@@ -76,6 +76,26 @@
         }
         .product-img img { width: 100%; height: 100%; object-fit: cover; }
         .product-img { position: relative; }
+        .btn-wish {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+            transition: transform 0.2s;
+        }
+        .btn-wish:hover { transform: scale(1.1); }
+        .btn-wish.active { color: #e74c3c; }
         .badge-featured {
             position: absolute;
             top: 8px;
@@ -100,6 +120,87 @@
             font-weight: 400;
         }
         .product-price .sale { color: #e74c3c; }
+
+        /* 빠른 장바구니 추가 UI */
+        .quick-cart {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-top: 1px solid #f0f0f0;
+            background: #fafafa;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qty-btn:hover { background: #f5f5f5; }
+        .qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .qty-value {
+            min-width: 24px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-add-cart {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #000;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-add-cart:hover { background: #333; }
+        .btn-add-cart:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-add-cart img {
+            width: 18px;
+            height: 18px;
+            filter: invert(1);
+        }
+        .out-of-stock {
+            font-size: 12px;
+            color: #e74c3c;
+            text-align: center;
+            padding: 10px;
+            background: #fff5f5;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.show { display: block; animation: fadeInOut 2s ease; }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
 
         .empty-state {
             text-align: center;
@@ -204,6 +305,7 @@
                 <div class="dropdown-menu" id="dropdownMenu">
                     <a href="cart.html">Cart</a>
                     <a href="orders.html">My Orders</a>
+                    <a href="wishlist.html">Wishlist</a>
                 </div>
             </div>
         </header>
@@ -228,11 +330,46 @@
             <img src="/images/ico_cart.svg">
             <span class="badge" id="cartBadge">0</span>
         </a>
+
+        <div class="toast" id="toast"></div>
     </div>
 
     <script>
         const API_BASE = '/backend/api/shop';
         let currentCategory = 'all';
+        let productQuantities = {}; // 상품별 수량 관리
+        let wishedProducts = new Set(); // 찜한 상품 ID 목록
+        let isLoggedIn = false;
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // 로그인 상태 확인
+        async function checkLogin() {
+            try {
+                const res = await fetch('/backend/api/check-session.php', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                isLoggedIn = data.isLoggedIn === true;
+                return isLoggedIn;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
+
+        // 로그인 필요 알림
+        function requireLogin() {
+            if (confirm('Login required. Go to login page?')) {
+                location.href = `/user/login.html?redirect=${encodeURIComponent(location.href)}`;
+            }
+            return false;
+        }
 
         // 메뉴 토글
         function toggleMenu() {
@@ -299,10 +436,23 @@
                 const grid = document.getElementById('productsGrid');
 
                 if (data.success && data.products.length > 0) {
+                    // 수량 초기화
+                    data.products.forEach(p => {
+                        if (!productQuantities[p.id]) {
+                            productQuantities[p.id] = 1;
+                        }
+                    });
+
                     grid.innerHTML = data.products.map(p => `
-                        <div class="product-card">
+                        <div class="product-card" data-product-id="${p.id}" data-stock="${p.stock}">
                             <a href="product.html?id=${p.id}">
                                 <div class="product-img">
+                                    <button class="btn-wish ${wishedProducts.has(p.id) ? 'active' : ''}"
+                                            id="wish-${p.id}"
+                                            onclick="toggleWish(${p.id}, event)"
+                                            title="Add to Wishlist">
+                                        ${wishedProducts.has(p.id) ? '♥' : '♡'}
+                                    </button>
                                     ${p.is_featured == 1 ? '<span class="badge-featured">추천</span>' : ''}
                                     ${p.thumbnail
                                         ? `<img src="${p.thumbnail}" alt="${p.name}">`
@@ -319,6 +469,18 @@
                                     </div>
                                 </div>
                             </a>
+                            ${p.stock > 0 ? `
+                            <div class="quick-cart">
+                                <div class="quantity-controls">
+                                    <button class="qty-btn" onclick="changeQty(${p.id}, -1, ${p.stock}, event)">−</button>
+                                    <span class="qty-value" id="qty-${p.id}">${productQuantities[p.id] || 1}</span>
+                                    <button class="qty-btn" onclick="changeQty(${p.id}, 1, ${p.stock}, event)">+</button>
+                                </div>
+                                <button class="btn-add-cart" onclick="addToCart(${p.id}, event)" title="Add to Cart">
+                                    <img src="/images/ico_cart.svg" alt="cart">
+                                </button>
+                            </div>
+                            ` : `<div class="out-of-stock">Out of Stock</div>`}
                         </div>
                     `).join('');
                 } else {
@@ -331,19 +493,134 @@
 
         // 장바구니 개수 로드
         async function loadCartCount() {
-            const userId = localStorage.getItem('userId');
-            if (!userId) return;
+            if (!isLoggedIn) return;
 
             try {
-                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}`);
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    credentials: 'include'
+                });
                 const data = await res.json();
 
                 if (data.success && data.count > 0) {
                     document.getElementById('cartFloat').style.display = 'flex';
                     document.getElementById('cartBadge').textContent = data.count;
+                } else {
+                    document.getElementById('cartFloat').style.display = 'none';
                 }
             } catch (e) {
                 console.error('Failed to load cart:', e);
+            }
+        }
+
+        // 찜 목록 로드
+        async function loadWishlist() {
+            if (!isLoggedIn) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/wishlist.php`, {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    wishedProducts.clear();
+                    data.items.forEach(item => {
+                        wishedProducts.add(item.product_id);
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load wishlist:', e);
+            }
+        }
+
+        // 찜 토글
+        async function toggleWish(productId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (!isLoggedIn) {
+                return requireLogin();
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/wishlist.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ product_id: productId })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const btn = document.getElementById(`wish-${productId}`);
+                    if (data.isWished) {
+                        wishedProducts.add(productId);
+                        btn.classList.add('active');
+                        btn.textContent = '♥';
+                        showToast('Added to wishlist');
+                    } else {
+                        wishedProducts.delete(productId);
+                        btn.classList.remove('active');
+                        btn.textContent = '♡';
+                        showToast('Removed from wishlist');
+                    }
+                } else if (data.requireLogin) {
+                    requireLogin();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // 수량 변경
+        function changeQty(productId, delta, maxStock, event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            let qty = productQuantities[productId] || 1;
+            qty += delta;
+
+            if (qty < 1) qty = 1;
+            if (qty > maxStock) qty = maxStock;
+
+            productQuantities[productId] = qty;
+            document.getElementById(`qty-${productId}`).textContent = qty;
+        }
+
+        // 장바구니 추가
+        async function addToCart(productId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (!isLoggedIn) {
+                return requireLogin();
+            }
+
+            const quantity = productQuantities[productId] || 1;
+
+            try {
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        product_id: productId,
+                        quantity: quantity
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Added to cart');
+                    loadCartCount();
+                } else if (data.requireLogin) {
+                    requireLogin();
+                } else {
+                    alert(data.error || 'Failed to add to cart');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('An error occurred.');
             }
         }
 
@@ -370,9 +647,16 @@
         }
 
         // 초기화
-        loadCategories();
-        loadProducts();
-        loadCartCount();
+        async function init() {
+            await checkLogin();
+            loadCategories();
+            if (isLoggedIn) {
+                await loadWishlist();
+            }
+            loadProducts();
+            loadCartCount();
+        }
+        init();
     </script>
 </body>
 </html>

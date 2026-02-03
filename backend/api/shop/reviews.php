@@ -1,14 +1,19 @@
 <?php
 // 쇼핑몰 리뷰 API
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+$origin = $_SERVER['HTTP_ORIGIN'] ?? 'https://smpoc.site';
+header("Access-Control-Allow-Origin: $origin");
 header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+// 세션 시작 (POST/DELETE 요청 시 로그인 필수)
+require_once __DIR__ . '/../../config/session.php';
 
 $conn = new mysqli("localhost", "root", "cloud1234", "smarttravel");
 if ($conn->connect_error) {
@@ -18,6 +23,16 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 $method = $_SERVER['REQUEST_METHOD'];
+
+// POST/DELETE는 로그인 필수
+if ($method !== 'GET') {
+    $session_user_id = $_SESSION['user_id'] ?? $_SESSION['accountId'] ?? null;
+    if (!$session_user_id) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => '로그인이 필요합니다.', 'requireLogin' => true]);
+        exit();
+    }
+}
 
 try {
     switch ($method) {
@@ -79,11 +94,11 @@ try {
             $order_id = intval($input['order_id'] ?? 0);
             $order_item_id = intval($input['order_item_id'] ?? 0);
             $product_id = intval($input['product_id'] ?? 0);
-            $user_id = $input['user_id'] ?? '';
+            $user_id = $session_user_id; // 세션에서 가져옴
             $rating = intval($input['rating'] ?? 5);
             $content = trim($input['content'] ?? '');
 
-            if (!$order_id || !$order_item_id || !$product_id || !$user_id) {
+            if (!$order_id || !$order_item_id || !$product_id) {
                 http_response_code(400);
                 echo json_encode(['error' => '필수 항목이 누락되었습니다.']);
                 exit();

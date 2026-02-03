@@ -233,7 +233,7 @@
 
     <script>
         const API_BASE = '/backend/api/shop';
-        const userId = localStorage.getItem('userId');
+        let isLoggedIn = false;
 
         const statusLabels = {
             'pending': 'Pending',
@@ -248,18 +248,39 @@
         let currentReviewItem = null;
         let selectedRating = 5;
 
+        // 로그인 상태 확인
+        async function checkLogin() {
+            try {
+                const res = await fetch('/backend/api/check-session.php', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                isLoggedIn = data.isLoggedIn === true;
+                return isLoggedIn;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
+
         async function loadOrders() {
-            if (!userId) {
-                showEmpty();
+            const loggedIn = await checkLogin();
+
+            if (!loggedIn) {
+                showLoginRequired();
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/orders.php?user_id=${userId}`);
+                const res = await fetch(`${API_BASE}/orders.php`, {
+                    credentials: 'include'
+                });
                 const data = await res.json();
 
                 if (data.success && data.orders.length > 0) {
                     renderOrders(data.orders);
+                } else if (data.requireLogin) {
+                    showLoginRequired();
                 } else {
                     showEmpty();
                 }
@@ -267,6 +288,16 @@
                 console.error(e);
                 showEmpty();
             }
+        }
+
+        function showLoginRequired() {
+            document.getElementById('ordersList').innerHTML = `
+                <div class="empty-orders">
+                    <div class="empty-orders-icon">🔒</div>
+                    <div>Please log in to view your orders</div>
+                    <a href="/user/login.html?redirect=${encodeURIComponent(location.href)}">Login</a>
+                </div>
+            `;
         }
 
         function showEmpty() {
@@ -380,11 +411,11 @@
                 const res = await fetch(`${API_BASE}/reviews.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
                         order_id: currentReviewItem.order_id,
                         order_item_id: currentReviewItem.order_item_id,
                         product_id: currentReviewItem.product_id,
-                        user_id: userId,
                         rating: selectedRating,
                         content: content
                     })

@@ -14,8 +14,29 @@
             align-items: center;
             justify-content: center;
             font-size: 80px;
+            position: relative;
         }
         .product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .btn-wish {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: rgba(255,255,255,0.95);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            transition: transform 0.2s;
+        }
+        .btn-wish:hover { transform: scale(1.1); }
+        .btn-wish.active { color: #e74c3c; }
 
         .product-detail { padding: 20px; }
         .product-category {
@@ -269,7 +290,10 @@
         </header>
 
         <div id="productContent">
-            <div class="product-image" id="productImage">📦</div>
+            <div class="product-image" id="productImage">
+                <button class="btn-wish" id="btnWish" onclick="toggleWish()" title="Add to Wishlist">♡</button>
+                📦
+            </div>
             <div class="product-detail">
                 <div class="product-category" id="productCategory">-</div>
                 <h1 class="product-name" id="productName">-</h1>
@@ -326,6 +350,8 @@
 
         let product = null;
         let quantity = 1;
+        let isLoggedIn = false;
+        let isWished = false;
 
         const urlParams = new URLSearchParams(window.location.search);
         const productId = urlParams.get('id');
@@ -335,6 +361,87 @@
             toast.textContent = msg;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // 로그인 상태 확인
+        async function checkLogin() {
+            try {
+                const res = await fetch('/backend/api/check-session.php', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                isLoggedIn = data.isLoggedIn === true;
+                return isLoggedIn;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
+
+        // 로그인 필요 알림
+        function requireLogin() {
+            if (confirm('Login required. Go to login page?')) {
+                location.href = `/user/login.html?redirect=${encodeURIComponent(location.href)}`;
+            }
+            return false;
+        }
+
+        // 찜 상태 확인
+        async function checkWishStatus() {
+            if (!isLoggedIn || !productId) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/wishlist.php?product_id=${productId}`, {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    isWished = data.isWished;
+                    updateWishButton();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // 찜 버튼 상태 업데이트
+        function updateWishButton() {
+            const btn = document.getElementById('btnWish');
+            if (isWished) {
+                btn.classList.add('active');
+                btn.textContent = '♥';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '♡';
+            }
+        }
+
+        // 찜 토글
+        async function toggleWish() {
+            if (!isLoggedIn) {
+                return requireLogin();
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/wishlist.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ product_id: parseInt(productId) })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    isWished = data.isWished;
+                    updateWishButton();
+                    showToast(data.isWished ? 'Added to wishlist' : 'Removed from wishlist');
+                } else if (data.requireLogin) {
+                    requireLogin();
+                }
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         async function loadProduct() {
@@ -369,9 +476,19 @@
             // 이미지
             const imgEl = document.getElementById('productImage');
             if (product.thumbnail) {
-                imgEl.innerHTML = `<img src="${product.thumbnail}" alt="${name}">`;
+                imgEl.innerHTML = `
+                    <button class="btn-wish ${isWished ? 'active' : ''}" id="btnWish" onclick="toggleWish()" title="Add to Wishlist">
+                        ${isWished ? '♥' : '♡'}
+                    </button>
+                    <img src="${product.thumbnail}" alt="${name}">
+                `;
             } else {
-                imgEl.textContent = '📦';
+                imgEl.innerHTML = `
+                    <button class="btn-wish ${isWished ? 'active' : ''}" id="btnWish" onclick="toggleWish()" title="Add to Wishlist">
+                        ${isWished ? '♥' : '♡'}
+                    </button>
+                    📦
+                `;
             }
 
             // 카테고리
@@ -443,18 +560,16 @@
 
         // 장바구니 추가
         document.getElementById('btnCart').onclick = async () => {
-            let userId = localStorage.getItem('userId');
-            if (!userId) {
-                userId = 'guest_' + Date.now();
-                localStorage.setItem('userId', userId);
+            if (!isLoggedIn) {
+                return requireLogin();
             }
 
             try {
                 const res = await fetch(`${API_BASE}/cart.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
-                        user_id: userId,
                         product_id: product.id,
                         quantity: quantity
                     })
@@ -463,6 +578,8 @@
 
                 if (data.success) {
                     showToast('Added to cart');
+                } else if (data.requireLogin) {
+                    requireLogin();
                 } else {
                     alert(data.error || 'Failed to add to cart');
                 }
@@ -474,19 +591,16 @@
 
         // 바로 구매
         document.getElementById('btnBuy').onclick = async () => {
-            // 먼저 장바구니에 추가 후 checkout으로 이동
-            let userId = localStorage.getItem('userId');
-            if (!userId) {
-                userId = 'guest_' + Date.now();
-                localStorage.setItem('userId', userId);
+            if (!isLoggedIn) {
+                return requireLogin();
             }
 
             try {
                 const res = await fetch(`${API_BASE}/cart.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
-                        user_id: userId,
                         product_id: product.id,
                         quantity: quantity
                     })
@@ -495,12 +609,14 @@
 
                 if (data.success) {
                     location.href = 'checkout.html';
+                } else if (data.requireLogin) {
+                    requireLogin();
                 } else {
-                    alert(data.error || '오류가 발생했습니다.');
+                    alert(data.error || 'Failed to add to cart.');
                 }
             } catch (e) {
                 console.error(e);
-                alert('오류가 발생했습니다.');
+                alert('An error occurred.');
             }
         };
 
@@ -563,8 +679,16 @@
             }
         }
 
-        loadProduct();
-        loadReviews();
+        // 초기화
+        async function init() {
+            await checkLogin();
+            await loadProduct();
+            if (isLoggedIn) {
+                await checkWishStatus();
+            }
+            loadReviews();
+        }
+        init();
     </script>
 </body>
 </html>

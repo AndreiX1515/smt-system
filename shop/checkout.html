@@ -229,17 +229,36 @@
         let cartItems = [];
         let subtotal = 0;
         let shippingFee = 0;
-        const userId = localStorage.getItem('userId');
+        let isLoggedIn = false;
+
+        // 로그인 상태 확인
+        async function checkLogin() {
+            try {
+                const res = await fetch('/backend/api/check-session.php', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                isLoggedIn = data.isLoggedIn === true;
+                return isLoggedIn;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
 
         async function loadCart() {
-            if (!userId) {
+            const loggedIn = await checkLogin();
+
+            if (!loggedIn) {
                 alert('Please sign in to continue.');
-                location.href = 'index.html';
+                location.href = `/user/login.html?redirect=${encodeURIComponent(location.href)}`;
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/cart.php?user_id=${userId}`);
+                const res = await fetch(`${API_BASE}/cart.php`, {
+                    credentials: 'include'
+                });
                 const data = await res.json();
 
                 if (data.success && data.items.length > 0) {
@@ -316,8 +335,8 @@
                 const res = await fetch(`${API_BASE}/orders.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
-                        user_id: userId,
                         receiver_name: receiverName,
                         receiver_phone: receiverPhone,
                         receiver_address: receiverAddress,
