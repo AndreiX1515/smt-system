@@ -7473,6 +7473,7 @@ function getPackageFlights($conn, $input) {
 }
 
 // 입금 기한 설정 (3단계 결제: down, second, balance)
+// 변경 시 pending_update 상태로 전환되며 Super Admin 승인 필요
 function setPaymentDeadline($conn, $input) {
     try {
         $bookingId = $input['bookingId'] ?? '';
@@ -7492,10 +7493,10 @@ function setPaymentDeadline($conn, $input) {
         ];
 
         $historyLabels = [
-            'down' => 'Down Payment deadline set: ',
-            'second' => 'Second Payment deadline set: ',
-            'balance' => 'Balance deadline set: ',
-            'deposit' => 'Down Payment deadline set: '
+            'down' => 'Down Payment deadline',
+            'second' => 'Second Payment deadline',
+            'balance' => 'Balance deadline',
+            'deposit' => 'Down Payment deadline'
         ];
 
         if (!isset($columnMap[$type])) {
@@ -7524,22 +7525,58 @@ function setPaymentDeadline($conn, $input) {
             send_error_response('Agent login required', 401);
         }
 
-        // deadline을 DATE 형식으로 변환 (YYYY-MM-DD HH:MM -> YYYY-MM-DD)
-        $deadlineDate = substr(trim($deadline), 0, 10);
+        // 예약 존재 및 권한 확인
+        $checkSql = "SELECT bookingId, bookingStatus, $columnName as currentDeadline FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param("si", $bookingId, $agentAccountId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $booking = $result->fetch_assoc();
+        $checkStmt->close();
 
-        $sql = "UPDATE bookings SET $columnName = ? WHERE bookingId = ? AND accountId = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssi", $deadlineDate, $bookingId, $agentAccountId);
-        $stmt->execute();
-
-        if ($stmt->affected_rows === 0) {
+        if (!$booking) {
             send_error_response('Booking not found or no permission', 404);
         }
 
-        // 예약 이력 추가
-        addReservationHistory($conn, $bookingId, $historyLabels[$type] . $deadline);
+        // deadline을 DATE 형식으로 변환 (YYYY-MM-DD HH:MM -> YYYY-MM-DD)
+        $deadlineDate = substr(trim($deadline), 0, 10);
+        $currentDeadline = $booking['currentDeadline'] ?? null;
+        $originalStatus = $booking['bookingStatus'];
 
-        send_success_response([], 'Payment deadline set successfully');
+        // previousData와 newData 구성
+        $previousData = json_encode([
+            'type' => $type,
+            'deadline' => $currentDeadline,
+            'fieldName' => $columnName
+        ]);
+
+        $newData = json_encode([
+            'type' => $type,
+            'deadline' => $deadlineDate,
+            'fieldName' => $columnName
+        ]);
+
+        // booking_change_requests 레코드 생성
+        $insertReqSql = "INSERT INTO booking_change_requests
+            (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
+            VALUES (?, 'deadline', ?, ?, ?, ?, 'agent', 'pending')";
+        $insertReqStmt = $conn->prepare($insertReqSql);
+        $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $agentAccountId);
+        $insertReqStmt->execute();
+        $insertReqStmt->close();
+
+        // bookingStatus를 pending_update로 변경
+        $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
+        $updateStmt = $conn->prepare($updateSql);
+        $updateStmt->bind_param("s", $bookingId);
+        $updateStmt->execute();
+        $updateStmt->close();
+
+        // 예약 이력 추가
+        $historyMsg = $historyLabels[$type] . ' change requested: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
+        addReservationHistory($conn, $bookingId, $historyMsg);
+
+        send_success_response([], 'Payment deadline change request submitted. Waiting for admin approval.');
     } catch (Exception $e) {
         send_error_response('Failed to set payment deadline: ' . $e->getMessage());
     }
