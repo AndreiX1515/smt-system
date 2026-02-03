@@ -1076,7 +1076,12 @@
 				setHtml('summary_trip_range', formatPeriod(booking.departureDate, booking.returnDate) || '-');
 				setHtml('summary_travelers', formatTravelersSummary(allTravelers));
 				// Amount Breakdown 계산 (Visa Fee, Flight Options 포함)
-				const breakdown = renderAmountBreakdown(booking, result?.data?.selectedOptions, allTravelers);
+				// selectedRooms가 별도로 있으면 selectedOptions에 병합
+				const mergedOptions = { ...(result?.data?.selectedOptions || {}) };
+				if (result?.data?.selectedRooms) {
+					mergedOptions.selectedRooms = result.data.selectedRooms;
+				}
+				const breakdown = renderAmountBreakdown(booking, mergedOptions, allTravelers);
 				const displayTotal = breakdown.total || booking.totalAmount || 0;
 
 				// pending_update + travelers 변경일 때 변경 후 예상 금액 계산
@@ -2586,7 +2591,8 @@
 			const beforeTravelers = currentChangeRequest.previousData?.originalTravelers || [];
 			const afterTravelers = currentChangeRequest.newData?.pendingTravelers || [];
 			const beforeRooms = currentChangeRequest.previousData?.originalRooms || [];
-			const afterRooms = currentChangeRequest.newData?.pendingRooms || [];
+			// Agent API는 selectedRooms로, Super Admin API는 pendingRooms로 저장함
+			const afterRooms = currentChangeRequest.newData?.pendingRooms || currentChangeRequest.newData?.selectedRooms || [];
 
 			// Before Travelers
 			document.getElementById('summary-before-travelers').textContent = `${beforeTravelers.length} person(s)`;
@@ -3346,15 +3352,31 @@
 				items.push({ label: 'Infant x ' + infants, amount: infants * infantPrice });
 			}
 
-			// 옵션 금액
+			// 옵션 금액 (Room Options)
 			if (selectedOptions) {
-				const opts = selectedOptions.selectedOptions || selectedOptions;
-				if (opts.roomOptions && Array.isArray(opts.roomOptions)) {
-					opts.roomOptions.forEach(room => {
-						const roomPrice = parseFloat(room.price || 0);
-						const roomQty = parseInt(room.quantity || room.qty || 1);
-						if (roomPrice > 0) {
-							items.push({ label: (room.roomName || room.name || 'Room') + ' x ' + roomQty, amount: roomPrice * roomQty });
+				// selectedRooms를 여러 위치에서 찾기 (우선순위대로)
+				let roomsArray = [];
+				if (Array.isArray(selectedOptions.selectedRooms) && selectedOptions.selectedRooms.length > 0) {
+					// 최상위 selectedRooms
+					roomsArray = selectedOptions.selectedRooms;
+				} else if (Array.isArray(selectedOptions.roomOptions) && selectedOptions.roomOptions.length > 0) {
+					// 최상위 roomOptions
+					roomsArray = selectedOptions.roomOptions;
+				} else if (selectedOptions.selectedOptions && typeof selectedOptions.selectedOptions === 'object' && !Array.isArray(selectedOptions.selectedOptions)) {
+					// nested selectedOptions 내의 selectedRooms
+					roomsArray = selectedOptions.selectedOptions.selectedRooms || selectedOptions.selectedOptions.roomOptions || [];
+				}
+
+				if (Array.isArray(roomsArray)) {
+					roomsArray.forEach(room => {
+						// price / roomPrice 둘 다 지원
+						const roomPrice = parseFloat(room.price || room.roomPrice || 0);
+						// quantity / qty / count 모두 지원
+						const roomQty = parseInt(room.quantity || room.qty || room.count || 1);
+						if (roomPrice > 0 && roomQty > 0) {
+							// roomName / name / roomType 모두 지원
+							const roomLabel = room.roomName || room.name || room.roomType || 'Room';
+							items.push({ label: roomLabel + ' x ' + roomQty, amount: roomPrice * roomQty });
 						}
 					});
 				}

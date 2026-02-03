@@ -1745,7 +1745,10 @@ function getReservationDetail($conn, $input) {
         // selectedOptions 파싱
         $selectedOptions = [];
         if (!empty($booking['selectedOptions'])) {
-            $selectedOptions = json_decode($booking['selectedOptions'], true);
+            $decoded = json_decode($booking['selectedOptions'], true);
+            if (is_array($decoded)) {
+                $selectedOptions = $decoded;
+            }
         }
 
         // 상품 인원 옵션 라벨(가격옵션) 제공: Reservation Information의 Number of Guests 표시용
@@ -9632,6 +9635,9 @@ function updateTravelerInfo($conn, $input) {
             send_error_response('Travelers data is required', 400);
         }
 
+        // selectedRooms 받기 (Agent가 room option도 함께 변경하는 경우)
+        $selectedRooms = $input['selectedRooms'] ?? null;
+
         // 예약 정보 조회 및 소유권 확인 (비자 신청용 추가 필드 포함)
         $checkSql = "SELECT b.bookingId, b.accountId, b.agentId, b.createdAt, b.packageId, b.departureDate,
                             b.bookingStatus, b.paymentStatus, COALESCE(b.edit_allowed, 0) as edit_allowed,
@@ -9686,10 +9692,46 @@ function updateTravelerInfo($conn, $input) {
             }
             $currentTravelersStmt->close();
 
-            // previousData 구성
-            $previousData = json_encode(['originalTravelers' => $currentTravelers], JSON_UNESCAPED_UNICODE);
-            // newData 구성
-            $newData = json_encode(['pendingTravelers' => $travelers], JSON_UNESCAPED_UNICODE);
+            // 현재 room 정보 조회 (selectedOptions 또는 selectedRooms 컬럼에서)
+            $currentRooms = [];
+            try {
+                $roomStmt = $conn->prepare("SELECT selectedOptions, selectedRooms FROM bookings WHERE bookingId = ?");
+                if ($roomStmt) {
+                    $roomStmt->bind_param('s', $bookingId);
+                    $roomStmt->execute();
+                    $roomResult = $roomStmt->get_result();
+                    $roomRow = $roomResult->fetch_assoc();
+                    $roomStmt->close();
+
+                    if ($roomRow) {
+                        // selectedRooms 컬럼 우선, 없으면 selectedOptions 내의 selectedRooms 사용
+                        $srRaw = $roomRow['selectedRooms'] ?? '';
+                        if (!empty($srRaw)) {
+                            $tmp = json_decode($srRaw, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
+                                $currentRooms = $tmp;
+                            }
+                        }
+                        if (empty($currentRooms) && !empty($roomRow['selectedOptions'])) {
+                            $soObj = json_decode($roomRow['selectedOptions'], true);
+                            if (json_last_error() === JSON_ERROR_NONE && isset($soObj['selectedRooms'])) {
+                                $currentRooms = $soObj['selectedRooms'];
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable $e) { /* ignore */ }
+
+            // previousData 구성 (originalTravelers + originalRooms)
+            $previousDataArray = ['originalTravelers' => $currentTravelers, 'originalRooms' => $currentRooms];
+            $previousData = json_encode($previousDataArray, JSON_UNESCAPED_UNICODE);
+
+            // newData 구성 (pendingTravelers + selectedRooms)
+            $newDataArray = ['pendingTravelers' => $travelers];
+            if ($selectedRooms !== null) {
+                $newDataArray['selectedRooms'] = $selectedRooms;
+            }
+            $newData = json_encode($newDataArray, JSON_UNESCAPED_UNICODE);
 
             // booking_change_requests에 변경 요청 저장
             $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';

@@ -12333,16 +12333,19 @@ function getB2BBookingDetail($conn, $input) {
             }
         } catch (Throwable $e) { }
 
+        // selectedOptions 파싱 (응답에서 사용하기 위해 try 블록 밖에서 초기화)
+        $selectedOptionsObj = null;
+        $soRaw = $booking['selectedOptions'] ?? '';
+        if (is_string($soRaw) && $soRaw !== '') {
+            $tmp = json_decode($soRaw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) $selectedOptionsObj = $tmp;
+        }
+
         // 예약 고객 정보 보정:
         // - selectedOptions.customerInfo가 있으면 그것을 우선 사용
         // - 주의: 고객정보가 없다고 agent 계정(username/email)으로 fallback 하면 안 됨
         try {
-            $soRaw = $booking['selectedOptions'] ?? '';
-            $so = null;
-            if (is_string($soRaw) && $soRaw !== '') {
-                $tmp = json_decode($soRaw, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) $so = $tmp;
-            }
+            $so = $selectedOptionsObj;
             $ci = (is_array($so) && isset($so['customerInfo']) && is_array($so['customerInfo'])) ? $so['customerInfo'] : null;
             $ciName = '';
             if (is_array($ci)) {
@@ -12697,7 +12700,7 @@ function getB2BBookingDetail($conn, $input) {
             }
         } catch (Throwable $e) { /* ignore */ }
 
-        send_success_response(['booking' => $booking, 'roomSummary' => $roomSummary, 'changeRequest' => $changeRequest, 'rejectedRequest' => $rejectedRequest]);
+        send_success_response(['booking' => $booking, 'roomSummary' => $roomSummary, 'selectedOptions' => $selectedOptionsObj, 'selectedRooms' => $selectedRoomsObj, 'changeRequest' => $changeRequest, 'rejectedRequest' => $rejectedRequest]);
     } catch (Exception $e) {
         send_error_response('Failed to get B2B booking detail: ' . $e->getMessage());
     }
@@ -13955,7 +13958,8 @@ function approveB2BBooking($conn, $input) {
                 $newData = json_decode($changeRequest['newData'], true);
                 $previousData = json_decode($changeRequest['previousData'], true);
                 $pendingTravelers = $newData['pendingTravelers'] ?? [];
-                $pendingRooms = $newData['pendingRooms'] ?? [];
+                // Agent API는 selectedRooms로, Super Admin API는 pendingRooms로 저장함
+                $pendingRooms = $newData['pendingRooms'] ?? $newData['selectedRooms'] ?? [];
                 $pendingCustomerInfo = $newData['pendingCustomerInfo'] ?? null;
                 $originalTravelers = $previousData['originalTravelers'] ?? [];
                 $originalRooms = $previousData['originalRooms'] ?? [];

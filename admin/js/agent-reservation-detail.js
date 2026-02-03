@@ -768,13 +768,26 @@ function renderReservationDetail(data) {
 
             // 룸 옵션 금액
             if (selectedOptions) {
-                const opts = selectedOptions.selectedOptions || selectedOptions;
-                if (opts.roomOptions && Array.isArray(opts.roomOptions)) {
-                    opts.roomOptions.forEach(room => {
-                        const roomPrice = parseFloat(room.price || 0);
-                        const roomQty = parseInt(room.quantity || room.qty || 1);
-                        if (roomPrice > 0) {
-                            items.push({ label: (room.roomName || room.name || 'Room') + ' x ' + roomQty, amount: roomPrice * roomQty });
+                // selectedRooms를 여러 위치에서 찾기 (우선순위대로)
+                let roomsArray = [];
+                if (Array.isArray(selectedOptions.selectedRooms) && selectedOptions.selectedRooms.length > 0) {
+                    roomsArray = selectedOptions.selectedRooms;
+                } else if (Array.isArray(selectedOptions.roomOptions) && selectedOptions.roomOptions.length > 0) {
+                    roomsArray = selectedOptions.roomOptions;
+                } else if (selectedOptions.selectedOptions && typeof selectedOptions.selectedOptions === 'object' && !Array.isArray(selectedOptions.selectedOptions)) {
+                    roomsArray = selectedOptions.selectedOptions.selectedRooms || selectedOptions.selectedOptions.roomOptions || [];
+                }
+
+                if (Array.isArray(roomsArray)) {
+                    roomsArray.forEach(room => {
+                        // price / roomPrice 둘 다 지원
+                        const roomPrice = parseFloat(room.price || room.roomPrice || 0);
+                        // quantity / qty / count 모두 지원
+                        const roomQty = parseInt(room.quantity || room.qty || room.count || 1);
+                        if (roomPrice > 0 && roomQty > 0) {
+                            // roomName / name / roomType 모두 지원
+                            const roomLabel = room.roomName || room.name || room.roomType || 'Room';
+                            items.push({ label: roomLabel + ' x ' + roomQty, amount: roomPrice * roomQty });
                         }
                     });
                 }
@@ -924,7 +937,7 @@ function renderReservationDetail(data) {
                     if (room && (room.count > 0 || room.quantity > 0)) {
                         const count = room.count || room.quantity || 1;
                         const name = room.roomType || room.name || room.roomName || '룸';
-                        roomParts.push(`${name}x${count}`);
+                        roomParts.push(`${name} x${count}`);
                     }
                 });
             } else {
@@ -933,7 +946,7 @@ function renderReservationDetail(data) {
                     if (room && (room.count > 0 || room.quantity > 0)) {
                         const count = room.count || room.quantity || 1;
                         const name = room.roomType || room.name || room.roomName || '룸';
-                        roomParts.push(`${name}x${count}`);
+                        roomParts.push(`${name} x${count}`);
                     }
                 });
             }
@@ -5298,6 +5311,8 @@ async function submitChanges() {
     try {
         // Step 1: Travelers 저장 (pendingTravelers가 있는 경우)
         if (__pendingTravelers && __pendingTravelers.length > 0) {
+            // selectedRooms도 함께 전송 (pending_update 시 review changes 모달에서 표시하기 위해)
+            const roomsToSubmit = selectedRoomsInModal.filter(r => r.count > 0);
             const travelerResponse = await fetch('../backend/api/agent-api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -5305,7 +5320,8 @@ async function submitChanges() {
                 body: JSON.stringify({
                     action: 'updateTravelerInfo',
                     bookingId: currentBookingId,
-                    travelers: __pendingTravelers
+                    travelers: __pendingTravelers,
+                    selectedRooms: roomsToSubmit
                 })
             });
 
