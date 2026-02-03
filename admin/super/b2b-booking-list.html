@@ -641,6 +641,9 @@
 					}
 				} catch (_) { }
 
+				// sessionStorage에서 필터 상태 복원
+				restoreFiltersFromSession();
+
 				await loadAllBookings();
 				setupDownload();
 			} catch (error) {
@@ -650,7 +653,7 @@
 			}
 		});
 
-		function switchTab(tab) {
+		function switchTab(tab, skipSave = false) {
 			currentTab = tab;
 			// 모든 탭 버튼 비활성화
 			document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -661,6 +664,8 @@
 			const activeContent = document.getElementById('tab-' + tab);
 			if (activeBtn) activeBtn.classList.add('active');
 			if (activeContent) activeContent.classList.add('active');
+			// 탭 변경 시 필터 저장 (복원 중이 아닐 때만)
+			if (!skipSave) saveFiltersToSession();
 		}
 
 		function applyFilters() {
@@ -685,7 +690,70 @@
 				}
 			}
 
+			// 필터 상태를 sessionStorage에 저장
+			saveFiltersToSession();
+
 			loadAllBookings();
+		}
+
+		// 필터 상태를 sessionStorage에 저장
+		function saveFiltersToSession() {
+			const filterState = {
+				...currentFilters,
+				currentTab: currentTab,
+				travelStartDateDisplay: document.getElementById('travelStartDate')?.value || ''
+			};
+			sessionStorage.setItem('b2bBookingListFilters', JSON.stringify(filterState));
+		}
+
+		// sessionStorage에서 필터 상태 복원
+		function restoreFiltersFromSession() {
+			try {
+				const saved = sessionStorage.getItem('b2bBookingListFilters');
+				if (!saved) return false;
+
+				const filterState = JSON.parse(saved);
+
+				// currentFilters 복원
+				currentFilters.search = filterState.search || '';
+				currentFilters.travelStartDate = filterState.travelStartDate || '';
+				currentFilters.searchType = filterState.searchType || 'all';
+				currentFilters.status = filterState.status || '';
+				currentFilters.travelStartDateSort = filterState.travelStartDateSort || '';
+				currentFilters.dateBookedSort = filterState.dateBookedSort || '';
+				currentFilters.updatedAtSort = filterState.updatedAtSort || '';
+
+				// UI 복원
+				const searchInput = document.getElementById('searchInput');
+				if (searchInput) searchInput.value = currentFilters.search;
+
+				const searchType = document.getElementById('searchType');
+				if (searchType) searchType.value = currentFilters.searchType;
+
+				const statusFilter = document.getElementById('statusFilter');
+				if (statusFilter) statusFilter.value = currentFilters.status;
+
+				const travelStartDate = document.getElementById('travelStartDate');
+				if (travelStartDate && filterState.travelStartDateDisplay) {
+					travelStartDate.value = filterState.travelStartDateDisplay;
+				}
+
+				// 탭 복원
+				if (filterState.currentTab) {
+					currentTab = filterState.currentTab;
+					switchTab(currentTab, true); // skipSave = true
+				}
+
+				// 정렬 UI 복원
+				if (typeof updateSortUI === 'function') {
+					updateSortUI();
+				}
+
+				return true;
+			} catch (e) {
+				console.error('Error restoring filters:', e);
+				return false;
+			}
 		}
 
 		function getSectionForStatus(statusKey) {
@@ -986,6 +1054,7 @@
 				currentFilters.travelStartDateSort = '';
 			}
 			updateSortUI();
+			saveFiltersToSession();
 			loadAllBookings();
 		}
 
@@ -1000,6 +1069,7 @@
 				currentFilters.dateBookedSort = '';
 			}
 			updateSortUI();
+			saveFiltersToSession();
 			loadAllBookings();
 		}
 
@@ -1014,6 +1084,7 @@
 				currentFilters.updatedAtSort = '';
 			}
 			updateSortUI();
+			saveFiltersToSession();
 			loadAllBookings();
 		}
 
@@ -1023,6 +1094,7 @@
 			currentFilters.dateBookedSort = '';
 			currentFilters.updatedAtSort = '';
 			updateSortUI();
+			saveFiltersToSession();
 			loadAllBookings();
 		}
 
