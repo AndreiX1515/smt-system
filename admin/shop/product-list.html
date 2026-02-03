@@ -32,7 +32,16 @@
         .tab { padding: 10px 20px; background: #f5f5f5; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
         .tab.active { background: #0065F8; color: #fff; }
         .badge-featured { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+        .btn-save-order { height: 44px; padding: 0 24px; background: #22c55e; color: #fff; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; margin-left: 12px; }
+        .btn-save-order:disabled { background: #ccc; cursor: not-allowed; }
+        .drag-handle { cursor: grab; padding: 4px; color: #999; font-size: 16px; }
+        .drag-handle:active { cursor: grabbing; }
+        #productList tr { transition: background 0.2s; }
+        #productList tr.sortable-ghost { background: #e0f2fe; opacity: 0.8; }
+        #productList tr.sortable-chosen { background: #f0f9ff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .order-changed { background: #fffbeb !important; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
     <header class="layout-header"></header>
@@ -44,7 +53,10 @@
             <div class="shop-admin">
                 <div class="page-header">
                     <h1 class="page-title">상품 관리</h1>
-                    <button class="btn-add" onclick="location.href='product-form.html'">+ 상품 등록</button>
+                    <div>
+                        <button class="btn-save-order" id="btnSaveOrder" onclick="saveOrder()" disabled>순서 저장</button>
+                        <button class="btn-add" onclick="location.href='product-form.html'">+ 상품 등록</button>
+                    </div>
                 </div>
 
                 <div class="tabs">
@@ -64,7 +76,7 @@
                 <table class="jw-tableA">
                     <thead>
                         <tr>
-                            <th class="col-60">No</th>
+                            <th style="width:46px">순서</th>
                             <th class="col-80">이미지</th>
                             <th class="col-200">상품명</th>
                             <th class="col-150">카테고리</th>
@@ -118,11 +130,17 @@
         }
 
         let currentCategory = null;
+        let originalOrder = []; // 원래 순서 저장
+        let hasChanges = false;
+        let sortable = null;
 
         async function loadProducts() {
-
             const status = document.getElementById('filterStatus').value;
             const keyword = document.getElementById('searchKeyword').value.trim();
+
+            // 순서 변경 초기화
+            hasChanges = false;
+            updateSaveButton();
 
             try {
                 let url = `${API_BASE}/products.php?limit=100&admin=1`;
@@ -135,9 +153,12 @@
 
                 const tbody = document.getElementById('productList');
                 if (data.success && data.products.length > 0) {
+                    // 원래 순서 저장
+                    originalOrder = data.products.map(p => p.id);
+
                     tbody.innerHTML = data.products.map((p, i) => `
-                        <tr>
-                            <td class="is-center">${i + 1}</td>
+                        <tr data-id="${p.id}">
+                            <td class="is-center"><span class="drag-handle">☰</span></td>
                             <td>
                                 <div class="product-thumb">
                                     ${p.thumbnail ? `<img src="${p.thumbnail}">` : '📦'}
@@ -166,11 +187,80 @@
                             </td>
                         </tr>
                     `).join('');
+
+                    // Sortable 초기화
+                    initSortable();
                 } else {
                     tbody.innerHTML = '<tr><td colspan="9" class="is-center">상품이 없습니다.</td></tr>';
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        function initSortable() {
+            const tbody = document.getElementById('productList');
+            if (sortable) sortable.destroy();
+
+            sortable = new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function() {
+                    checkChanges();
+                }
+            });
+        }
+
+        function checkChanges() {
+            const rows = document.querySelectorAll('#productList tr[data-id]');
+            const currentOrder = Array.from(rows).map(row => parseInt(row.dataset.id));
+
+            hasChanges = JSON.stringify(originalOrder) !== JSON.stringify(currentOrder);
+
+            // 변경된 행 표시
+            rows.forEach((row, i) => {
+                if (originalOrder[i] !== currentOrder[i]) {
+                    row.classList.add('order-changed');
+                } else {
+                    row.classList.remove('order-changed');
+                }
+            });
+
+            updateSaveButton();
+        }
+
+        function updateSaveButton() {
+            const btn = document.getElementById('btnSaveOrder');
+            btn.disabled = !hasChanges;
+            btn.textContent = hasChanges ? '순서 저장 ✓' : '순서 저장';
+        }
+
+        async function saveOrder() {
+            if (!hasChanges) return;
+
+            const rows = document.querySelectorAll('#productList tr[data-id]');
+            const newOrder = Array.from(rows).map((row, i) => ({
+                id: parseInt(row.dataset.id),
+                sort_order: i + 1
+            }));
+
+            try {
+                const promises = newOrder.map(item => {
+                    return fetch(`${API_BASE}/products.php`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item)
+                    });
+                });
+
+                await Promise.all(promises);
+                alert('순서가 저장되었습니다.');
+                loadProducts();
+            } catch (e) {
+                console.error(e);
+                alert('저장 중 오류가 발생했습니다.');
             }
         }
 

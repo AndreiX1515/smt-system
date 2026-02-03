@@ -95,7 +95,7 @@ try {
                     FROM shop_products p
                     LEFT JOIN shop_categories c ON p.category_id = c.id
                     WHERE $whereClause
-                    ORDER BY p.is_featured DESC, p.created_at DESC
+                    ORDER BY p.is_featured DESC, p.sort_order ASC, p.created_at DESC
                     LIMIT ? OFFSET ?";
 
                 $params[] = $limit;
@@ -213,6 +213,11 @@ try {
             if (isset($input['is_featured'])) {
                 $updates[] = "is_featured = ?";
                 $params[] = intval($input['is_featured']);
+                $types .= "i";
+            }
+            if (isset($input['sort_order'])) {
+                $updates[] = "sort_order = ?";
+                $params[] = intval($input['sort_order']);
                 $types .= "i";
             }
 
