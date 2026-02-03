@@ -1641,7 +1641,7 @@
 			});
 
 			listEl.innerHTML = pendingBanner + displayTravelers.map((t, idx) => {
-				const main = String(t.isMainTraveler || t.isMain || '0') === '1';
+				const main = String(t.isMainTraveler || t.isMain || t.isPrimary || '0') === '1';
 				const travelerType = String(t.travelerType || '').toLowerCase();
 				const typeLabel = travelerType === 'child' ? 'Child' : travelerType === 'infant' ? 'Infant' : 'Adult';
 				const firstName = String(t.firstName || t.givenName || '');
@@ -1896,7 +1896,7 @@
 			countEl.textContent = allTravelers.length + ' Traveler' + (allTravelers.length !== 1 ? 's' : '');
 
 			container.innerHTML = allTravelers.map(function(t, idx) {
-				var main = String(t.isMainTraveler || t.isMain || '0') === '1';
+				var main = String(t.isMainTraveler || t.isMain || t.isPrimary || '0') === '1';
 				var travelerType = String(t.travelerType || t.type || 'adult').toLowerCase();
 				var title = String(t.title || '').toUpperCase();
 				var gender = String(t.gender || '').toLowerCase();
@@ -2125,7 +2125,7 @@
 
 			let html = '';
 			allTravelers.forEach((t, index) => {
-				const isPrimary = String(t.isMainTraveler || t.isMain || '0') === '1';
+				const isPrimary = String(t.isMainTraveler || t.isMain || t.isPrimary || '0') === '1';
 				const firstName = String(t.firstName || t.givenName || '');
 				const lastName = String(t.lastName || t.familyName || '');
 				const fullName = `${firstName} ${lastName}`.trim() || 'No Name';
@@ -2417,6 +2417,13 @@
 				const pendingTravelers = currentChangeRequest.newData?.pendingTravelers || [];
 				if (pendingTravelers.length > 0) {
 					allTravelers = JSON.parse(JSON.stringify(pendingTravelers)); // deep copy
+					// isPrimary를 isMainTraveler로 정규화
+					allTravelers.forEach(t => {
+						if (t.isPrimary && !t.isMainTraveler) {
+							t.isMainTraveler = t.isPrimary ? '1' : '0';
+							t.isMain = t.isPrimary ? '1' : '0';
+						}
+					});
 				}
 			}
 			renderTravelerEditCards();

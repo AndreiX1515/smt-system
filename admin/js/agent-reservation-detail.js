@@ -2211,7 +2211,8 @@ async function saveAllTravelers() {
             childRoom: childRoom,
             flightOptions: flightOptions,
             flightOptionPrices: flightOptionPrices,
-            isPrimary: original.isMainTraveler == 1
+            isPrimary: original.isMainTraveler == 1,
+            isMainTraveler: original.isMainTraveler == 1 ? 1 : 0
         });
     }
 
