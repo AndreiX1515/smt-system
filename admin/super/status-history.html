@@ -46,6 +46,9 @@
 								<label class="filter-label" data-lan-eng="New Status">New Status</label>
 								<select class="filter-select" id="statusFilter">
 									<option value="">All Status</option>
+									<option value="pending">Pending</option>
+									<option value="pending_update">Pending Update</option>
+									<option value="check_reject">Check Reject</option>
 									<option value="waiting_down_payment">Waiting for Down Payment</option>
 									<option value="checking_down_payment">Checking Down Payment</option>
 									<option value="waiting_second_payment">Waiting for Second Payment</option>
@@ -97,10 +100,10 @@
 						<colgroup>
 							<col style="width:50px;"> <!-- No -->
 							<col style="width:140px;"> <!-- Booking ID -->
-							<col style="width:180px;"> <!-- Product Name -->
 							<col style="width:100px;"> <!-- Travel Date -->
 							<col style="width:140px;"> <!-- Previous Status -->
 							<col style="width:140px;"> <!-- New Status -->
+							<col style="width:200px;"> <!-- Change Reason -->
 							<col style="width:150px;"> <!-- Changed By -->
 							<col style="width:140px;"> <!-- Changed At -->
 						</colgroup>
@@ -108,10 +111,10 @@
 							<tr>
 								<th class="is-center">No</th>
 								<th class="is-center" data-lan-eng="Booking ID">Booking ID</th>
-								<th class="is-center" data-lan-eng="Product Name">Product Name</th>
 								<th class="is-center" data-lan-eng="Travel Date">Travel Date</th>
 								<th class="is-center" data-lan-eng="Previous Status">Previous Status</th>
 								<th class="is-center" data-lan-eng="New Status">New Status</th>
+								<th class="is-center" data-lan-eng="Change Reason">Change Reason</th>
 								<th class="is-center" data-lan-eng="Changed By">Changed By</th>
 								<th class="is-center" data-lan-eng="Changed At">Changed At</th>
 							</tr>
@@ -276,10 +279,10 @@
 									<tr>
 										<td class="is-center">${item.rowNum}</td>
 										<td class="is-center">${bookingLink}</td>
-										<td title="${escapeHtml(item.productName || '')}">${escapeHtml(truncateText(item.productName, 25) || '-')}</td>
 										<td class="is-center">${escapeHtml(item.travelDate || '-')}</td>
 										<td class="is-center">${getStatusBadge(item.previousStatus, item.previousStatusLabel)}</td>
 										<td class="is-center">${getStatusBadge(item.newStatus, item.newStatusLabel)}</td>
+										<td title="${escapeHtml(item.changeReason || '')}">${escapeHtml(truncateText(item.changeReason, 30) || '-')}</td>
 										<td class="is-center" title="${escapeHtml(item.changedBy || '')}">${escapeHtml(item.changedBy || '-')}<br><small class="text-muted">(${escapeHtml(item.changedByType || '')})</small></td>
 										<td class="is-center">${formatDateTime(item.changedAt)}</td>
 									</tr>
@@ -308,7 +311,9 @@
 			if (!status) return '<span class="badge badge-secondary">-</span>';
 
 			const statusColors = {
-				'pending': 'badge-wait-down',
+				'pending': 'badge-pending',
+				'pending_update': 'badge-pending-update',
+				'check_reject': 'badge-check-reject',
 				'waiting_down_payment': 'badge-wait-down',
 				'checking_down_payment': 'badge-check-down',
 				'waiting_second_payment': 'badge-wait-second',
@@ -597,6 +602,9 @@
 			color: #4B5563;
 		}
 		/* 11단계 상태값 Badge 스타일 - b2b-booking-list.html과 동일 */
+		.badge-pending { background-color: #FFF8E1; color: #F57C00; }        /* Pending - 노랑 */
+		.badge-pending-update { background-color: #E8EAF6; color: #3949AB; } /* Pending Update - 인디고 */
+		.badge-check-reject { background-color: #FFF3E0; color: #E65100; border: 1px solid #E65100; } /* Check Reject - 주황 테두리 */
 		.badge-wait-down { background-color: #E3F2FD; color: #1565C0; }      /* Down Payment 대기 - 연한 파랑 */
 		.badge-check-down { background-color: #BBDEFB; color: #0D47A1; }     /* Down Payment 확인중 - 파랑 */
 		.badge-wait-second { background-color: #FFF3E0; color: #E65100; }    /* Second Payment 대기 - 연한 주황 */

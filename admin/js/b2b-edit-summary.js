@@ -224,6 +224,21 @@ function renderAmountBreakdown() {
 		});
 	}
 
+	// Flight Options (각 traveler별로 계산)
+	let totalFlightOptionAmount = 0;
+	travelers.forEach(t => {
+		const flightOptions = t.flightOptions || [];
+		const flightOptionPrices = t.flightOptionPrices || {};
+		flightOptions.forEach(optId => {
+			const price = parseFloat(flightOptionPrices[optId] || 0);
+			totalFlightOptionAmount += price;
+		});
+	});
+	if (totalFlightOptionAmount > 0) {
+		subtotal += totalFlightOptionAmount;
+		items.push({ label: `Flight Options`, amount: totalFlightOptionAmount });
+	}
+
 	// Visa Fee
 	let groupVisaCount = 0, individualVisaCount = 0;
 	travelers.forEach(t => {
