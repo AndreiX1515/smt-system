@@ -191,7 +191,12 @@
       "Bash(systemctl list-units:*)",
       "Bash(/usr/bin/ps:*)",
       "Bash(sudo apt-get install:*)",
-      "Bash(sudo a2enmod:*)"
+      "Bash(sudo a2enmod:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix B2B price showing for logged-out users on home page\n\n- Update getHomeSalesTarget\\(\\) to check isLoggedIn status first\n- Logged-out users now always see B2C prices\n- Prevents stale accountType in localStorage from affecting price display\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)"
     ]
   }
 }

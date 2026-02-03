@@ -2019,7 +2019,8 @@ function getReservationDetail($conn, $input) {
                 'visaType' => $visaType,
                 'visaStatus' => $traveler['visaStatus'] ?? 'not_required',
                 'isMainTraveler' => isset($traveler['isMainTraveler']) ? (int)$traveler['isMainTraveler'] : 0,
-                'specialRequests' => $traveler['specialRequests'] ?? ''
+                'specialRequests' => $traveler['specialRequests'] ?? '',
+                'profile_source' => $traveler['profile_source'] ?? ''
             ];
         }
 
@@ -3182,6 +3183,14 @@ function createReservation($conn, $input) {
                     $travelerFields[] = 'childRoom';
                     $travelerValues[] = $childRoom;
                     $travelerTypes .= 'i';
+                }
+
+                // profile_source
+                if (in_array('profile_source', $travelerColumns)) {
+                    $profileSource = $traveler['profile_source'] ?? $traveler['profileSource'] ?? '';
+                    $travelerFields[] = 'profile_source';
+                    $travelerValues[] = $profileSource;
+                    $travelerTypes .= 's';
                 }
 
                 // specialRequests 또는 remarks
@@ -8155,11 +8164,11 @@ function uploadPaymentProofFile($conn, $input) {
         // 예약 확인 및 권한 체크
         if ($isAdmin) {
             // 관리자는 모든 예약에 접근 가능
-            $chk = $conn->prepare("SELECT bookingId, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? LIMIT 1");
+            $chk = $conn->prepare("SELECT bookingId, bookingStatus, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? LIMIT 1");
             $chk->bind_param("s", $bookingId);
         } else {
             // 에이전트는 자신이 담당하는 예약에만 접근 가능 (accountId 또는 agentId 매칭)
-            $chk = $conn->prepare("SELECT bookingId, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?)) LIMIT 1");
+            $chk = $conn->prepare("SELECT bookingId, bookingStatus, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?)) LIMIT 1");
             $chk->bind_param("sii", $bookingId, $agentAccountId, $agentAccountId);
         }
         $chk->execute();
@@ -8168,6 +8177,11 @@ function uploadPaymentProofFile($conn, $input) {
 
         if (!$row) {
             send_error_response('Reservation not found or access denied', 404);
+        }
+
+        // 취소된 예약은 파일 업로드 차단
+        if (($row['bookingStatus'] ?? '') === 'cancelled') {
+            send_error_response('Cannot upload payment proof for cancelled reservation', 403);
         }
 
         // 단계별 검증: Second는 Down 확인 후, Balance는 Second 확인 후
@@ -10075,21 +10089,22 @@ function acknowledgeRejectionAgent($conn, $input) {
                     $isMainTraveler = (int)($tr['isMainTraveler'] ?? 0);
                     $reservationStatus = $tr['reservationStatus'] ?? null;
                     $childRoom = (int)($tr['childRoom'] ?? 0);
+                    $profileSource = $tr['profile_source'] ?? $tr['profileSource'] ?? '';
 
                     // null 또는 빈 날짜 값 처리
                     $birthDateVal = (!empty($birthDate) && $birthDate !== '0000-00-00') ? $birthDate : null;
                     $passportIssueDateVal = (!empty($passportIssueDate) && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
                     $passportExpiryVal = (!empty($passportExpiry) && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
 
-                    $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, visaStatus, visaType, specialRequests, isMainTraveler, reservationStatus, childRoom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, visaStatus, visaType, specialRequests, isMainTraveler, reservationStatus, childRoom, profile_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     $insertStmt = $conn->prepare($insertSql);
                     if ($insertStmt) {
-                        $insertStmt->bind_param('ssssssssssssssssssi',
+                        $insertStmt->bind_param('ssssssssssssssssssss',
                             $bookingId, $travelerType, $title, $firstName, $lastName,
                             $birthDateVal, $gender, $nationality, $passportNumber,
                             $passportIssueDateVal, $passportExpiryVal, $passportImage,
                             $visaDocument, $visaStatus, $visaType, $specialRequests,
-                            $isMainTraveler, $reservationStatus, $childRoom
+                            $isMainTraveler, $reservationStatus, $childRoom, $profileSource
                         );
                         $insertStmt->execute();
                         $insertStmt->close();

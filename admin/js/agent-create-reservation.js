@@ -804,6 +804,7 @@ async function loadExistingReservation(bookingId) {
                 visaRequired: t.visaRequired || false,
                 visaType: t.visaType || 'with_visa',
                 childRoom: t.childRoom || false,
+                profile_source: t.profile_source || t.profileSource || '',
                 remarks: t.specialRequests || '',
                 flightOptions: t.flightOptions || [],
                 flightOptionPrices: t.flightOptionPrices || {}
@@ -935,6 +936,7 @@ async function loadEditReservationData() {
                 visaType: t.visaType || t.visa_type || 'with_visa',
                 visaDocumentUrl: t.visaDocument || t.visa_document || '',
                 childRoom: t.childRoom || t.child_room || false,
+                profile_source: t.profile_source || t.profileSource || '',
                 remarks: t.specialRequests || t.special_requests || '',
                 flightOptions: t.flightOptions || t.flight_options || [],
                 flightOptionPrices: t.flightOptionPrices || t.flight_option_prices || {}
@@ -1093,6 +1095,7 @@ async function loadEditReservationDataFromAPI(bookingId) {
                 visaType: t.visaType || t.visa_type || 'with_visa',
                 visaDocumentUrl: t.visaDocument || t.visa_document || '',
                 childRoom: t.childRoom || t.child_room || false,
+                profile_source: t.profile_source || t.profileSource || '',
                 remarks: t.specialRequests || t.special_requests || '',
                 flightOptions: t.flightOptions || t.flight_options || [],
                 flightOptionPrices: t.flightOptionPrices || t.flight_option_prices || {}
@@ -1739,6 +1742,7 @@ function convertToModalFormat(t) {
         passportPhotoUrl: t.passportImage || t.passportPhotoUrl || '',
         isPrimary: t.isMainTraveler || t.isPrimary || false,
         childRoom: t.childRoom || false,
+        profile_source: t.profile_source || t.profileSource || '',
         flightOptions: t.flightOptions || [],
         flightOptionPrices: t.flightOptionPrices || {}
     };
@@ -1767,6 +1771,7 @@ function convertToTravelersFormat(t) {
         visaDocument: t.visaDocumentUrl || t.visaDocument || '',
         isMainTraveler: t.isPrimary || t.isMainTraveler || false,
         childRoom: t.childRoom || false,
+        profile_source: t.profile_source || t.profileSource || '',
         flightOptions: t.flightOptions || [],
         flightOptionPrices: t.flightOptionPrices || {}
     };
@@ -1902,6 +1907,7 @@ function createTravelerFromContactPerson(contactPerson) {
         visaDocumentUrl: customer.visaDocument || '',
         isPrimary: true,
         childRoom: false,
+        profile_source: '',
         // Contact Person 연동 정보
         fromContactPerson: true,
         contactEmail: contactPerson.email || customer.accountEmail || customer.emailAddress || '',
@@ -2106,6 +2112,10 @@ function renderTravelerCards() {
                             <option value="no" ${!traveler.childRoom ? 'selected' : ''}>No</option>
                             <option value="yes" ${traveler.childRoom ? 'selected' : ''}>Yes</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Profile/Source</label>
+                        <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
                     </div>
                 </div>
                 ${renderFlightOptionsForTraveler(index)}
@@ -2643,7 +2653,8 @@ function addTravelerCard() {
         visaDocumentFile: null,
         visaDocumentUrl: null,
         isPrimary: travelerModalData.length === 0,
-        childRoom: false
+        childRoom: false,
+        profile_source: ''
     };
     travelerModalData.push(newTraveler);
     renderTravelerCards();
@@ -6174,6 +6185,7 @@ async function handleSave() {
                 visaType: t.visaType || '',
                 isMainTraveler: t.isMainTraveler,
                 childRoom: t.childRoom || false,
+                profile_source: t.profile_source || '',
                 remarks: t.remarks || '',
                 // passportPhotoKey는 FormData 파일 필드명과 매칭(backend가 업로드 후 passportImage로 저장)
                 passportPhotoKey: null,

@@ -362,8 +362,9 @@ function createTraveler($conn, $input) {
     $visaStatus = $visaRequired ? 'applied' : 'not_required';
     $specialRequests = $input['special_requests'] ?? '';
     $isMainTraveler = ($sequence === 1 && strtolower($type) === 'adult') ? 1 : 0;
-    
-    //   
+    $profileSource = $input['profile_source'] ?? $input['profileSource'] ?? '';
+
+    //
     $passportImage = null;
     if (!empty($input['passport_image'])) {
         $passportImage = $input['passport_image'];
@@ -435,14 +436,14 @@ function createTraveler($conn, $input) {
     //  
     $stmt = $conn->prepare("
         INSERT INTO booking_travelers (
-            transactNo, travelerType, title, firstName, lastName, 
-            birthDate, gender, nationality, passportNumber, 
-            passportIssueDate, passportExpiry, passportImage, 
-            visaStatus, specialRequests, isMainTraveler
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            transactNo, travelerType, title, firstName, lastName,
+            birthDate, gender, nationality, passportNumber,
+            passportIssueDate, passportExpiry, passportImage,
+            visaStatus, specialRequests, isMainTraveler, profile_source
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    
-    $stmt->bind_param('ssssssssssssssi',
+
+    $stmt->bind_param('ssssssssssssssis',
         $bookingId,
         $dbType,
         $title,
@@ -457,7 +458,8 @@ function createTraveler($conn, $input) {
         $passportImage,
         $visaStatus,
         $specialRequests,
-        $isMainTraveler
+        $isMainTraveler,
+        $profileSource
     );
     
     if ($stmt->execute()) {
@@ -506,6 +508,7 @@ function updateTravelerById($conn, $travelerId, $input, $passportImage = null) {
         $visaStatus = $visaRequired ? 'applied' : 'not_required';
     }
     $specialRequests = $input['special_requests'] ?? null;
+    $profileSource = $input['profile_source'] ?? $input['profileSource'] ?? null;
 
     //  (visa_required=1)     
     if ($visaRequired !== null && (int)$visaRequired === 1) {
@@ -604,7 +607,12 @@ function updateTravelerById($conn, $travelerId, $input, $passportImage = null) {
         $params[] = $specialRequests;
         $types .= 's';
     }
-    
+    if ($profileSource !== null) {
+        $setParts[] = "profile_source = ?";
+        $params[] = $profileSource;
+        $types .= 's';
+    }
+
     if (empty($setParts)) {
         send_json_response(['success' => false, 'message' => '  .'], 400);
     }

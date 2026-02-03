@@ -12394,6 +12394,7 @@ function getB2BBookingDetail($conn, $input) {
                 if (__table_has_column($conn, 'booking_travelers', 'visaType')) $cols .= ", visaType";
                 if (__table_has_column($conn, 'booking_travelers', 'visaDocument')) $cols .= ", visaDocument";
                 if (__table_has_column($conn, 'booking_travelers', 'childRoom')) $cols .= ", childRoom";
+                if (__table_has_column($conn, 'booking_travelers', 'profile_source')) $cols .= ", profile_source";
 
                 $ts = $conn->prepare("SELECT {$cols}
                                       FROM booking_travelers

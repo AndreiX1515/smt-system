@@ -1537,6 +1537,10 @@ function syncTravelerFormData() {
         // Child Room
         const childRoomEl = document.getElementById(`edit_childroom_${i}`);
         if (childRoomEl) traveler.childRoom = (childRoomEl.value === 'yes');
+
+        // Profile/Source
+        const profileSourceEl = document.getElementById(`edit_profile_source_${i}`);
+        if (profileSourceEl) traveler.profile_source = profileSourceEl.value;
     }
 }
 
@@ -1596,7 +1600,7 @@ function setPrimaryTravelerInEdit(index) {
 
 // 여행자 수정 카드 렌더링 - create-reservation 스타일
 function renderTravelerEditCards() {
-    const container = document.getElementById('traveler-cards-container');
+    const container = document.getElementById('traveler-edit-cards-container');
     const countEl = document.getElementById('traveler-edit-count');
     const sidebarNav = document.getElementById('traveler-edit-sidebar-nav');
 
@@ -1649,6 +1653,7 @@ function renderTravelerEditCards() {
 
         const hasPassportPhoto = passportImage && passportImage.trim() !== '';
         const photoFileName = hasPassportPhoto ? passportImage.split('/').pop() : '';
+        const profileSource = traveler.profile_source || traveler.profileSource || '';
 
         // Passport date warning
         const showDateWarning = passportIssueDate && passportExpiry &&
@@ -1791,6 +1796,10 @@ function renderTravelerEditCards() {
                             <option value="no" ${!traveler.childRoom ? 'selected' : ''}>No</option>
                             <option value="yes" ${traveler.childRoom ? 'selected' : ''}>Yes</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Profile/Source</label>
+                        <input type="text" id="edit_profile_source_${index}" value="${escapeHtml(profileSource)}" placeholder="Profile/Source">
                     </div>
                 </div>
                 ${renderFlightOptionsInEdit(index, traveler.flightOptions || [])}

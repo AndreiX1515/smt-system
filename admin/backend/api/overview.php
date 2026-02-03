@@ -362,7 +362,7 @@ function applyB2BAutoCancellation($conn) {
 try {
     $data = [];
     ensurePackageViewsTable($conn);
-    // applyB2BAutoCancellation($conn); // 자동취소 임시 비활성화
+    applyB2BAutoCancellation($conn); // 자동취소 활성화
 
     // 1. 예약 현황: bookingStatus 컬럼 값 기준 카운트 (단순화)
     // - 빈 bookingStatus는 제외
