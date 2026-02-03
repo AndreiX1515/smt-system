@@ -996,6 +996,10 @@ try {
             getPackagesForSale($conn, $input);
             break;
 
+        case 'getMonthlyInvoiceData':
+            getMonthlyInvoiceData($conn, $input);
+            break;
+
         default:
             send_error_response('Invalid action: ' . $action, 400);
     }
@@ -17966,5 +17970,262 @@ function getPackagesForSale($conn, $input) {
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to get packages for sale: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 월별 인보이스 데이터 조회 (B2B + B2C 통합)
+ */
+function getMonthlyInvoiceData($conn, $input) {
+    try {
+        // 날짜 범위 파라미터 (startDate/endDate 우선, 없으면 year/month 사용)
+        if (!empty($input['startDate']) && !empty($input['endDate'])) {
+            $startDate = $input['startDate'];
+            $endDate = $input['endDate'];
+            // year/month는 endDate 기준으로 설정
+            $year = intval(date('Y', strtotime($endDate)));
+            $month = intval(date('m', strtotime($endDate)));
+        } else {
+            $year = isset($input['year']) ? intval($input['year']) : intval(date('Y'));
+            $month = isset($input['month']) ? intval($input['month']) : intval(date('m'));
+            $startDate = sprintf('%04d-%02d-01', $year, $month);
+            $endDate = date('Y-m-t', strtotime($startDate)); // 해당 월의 마지막 날
+        }
+        $statusFilter = $input['statusFilter'] ?? '';
+
+        // 동적 컬럼 확인
+        $hasSelectedOptions = false;
+        $hasContactName = false;
+        $hasCustomerAccountId = false;
+        $customerAccountIdCol = null;
+
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM bookings LIKE 'selectedOptions'");
+            $hasSelectedOptions = $col && $col->num_rows > 0;
+
+            $col = $conn->query("SHOW COLUMNS FROM bookings LIKE 'contactName'");
+            $hasContactName = $col && $col->num_rows > 0;
+
+            // customerAccountId 컬럼명 확인
+            $bookingColumns = [];
+            $cr = $conn->query("SHOW COLUMNS FROM bookings");
+            while ($cr && ($c = $cr->fetch_assoc())) {
+                $bookingColumns[] = strtolower((string)$c['Field']);
+            }
+            if (in_array('customeraccountid', $bookingColumns, true)) $customerAccountIdCol = 'customerAccountId';
+            else if (in_array('customer_account_id', $bookingColumns, true)) $customerAccountIdCol = 'customer_account_id';
+            $hasCustomerAccountId = !empty($customerAccountIdCol);
+        } catch (Throwable $e) { /* ignore */ }
+
+        // 기본 쿼리 구성 (B2B 인보이스용 확장 필드 포함)
+        $selectFields = "
+            b.bookingId,
+            b.transactNo,
+            b.packageId,
+            b.packageName,
+            COALESCE(b.packageName, p.packageName) as productName,
+            b.departureDate,
+            b.totalAmount,
+            b.adults,
+            b.children,
+            b.infants,
+            (COALESCE(b.adults, 0) + COALESCE(b.children, 0) + COALESCE(b.infants, 0)) as numberOfPeople,
+            b.bookingStatus,
+            b.paymentStatus,
+            b.contactEmail,
+            b.contactPhone,
+            b.createdAt,
+            b.price_tier,
+            b.agentId,
+            COALESCE(b.packagePrice, p.packagePrice, 0) as packagePrice,
+            COALESCE(p.b2b_price, b.packagePrice, p.packagePrice, 0) as basePrice,
+            COALESCE(b.visaFee, 0) as visaFee,
+            COALESCE(b.flightOptionFee, 0) as flightOptionFee,
+            b.saleId,
+            b.saleName,
+            COALESCE(b.saleDiscountAmount, 0) as saleDiscountAmount,
+            COALESCE(p.b2b_price, 0) as b2b_price,
+            COALESCE(p.b2b_child_price, 0) as b2b_child_price,
+            COALESCE(p.b2b_infant_price, 0) as b2b_infant_price,
+            COALESCE(b.downPaymentFile, '') as downPaymentFile,
+            COALESCE(b.downPaymentAmount, 0) as downPaymentAmount,
+            COALESCE(b.advancePaymentFile, '') as advancePaymentFile,
+            COALESCE(b.advancePaymentAmount, 0) as advancePaymentAmount,
+            COALESCE(b.balanceFile, '') as balanceFile,
+            COALESCE(b.balanceAmount, 0) as balanceAmount,
+            COALESCE(b.fullPaymentFile, '') as fullPaymentFile,
+            COALESCE(b.fullPaymentAmount, 0) as fullPaymentAmount
+        ";
+
+        // contactName 필드 추가
+        if ($hasContactName) {
+            $selectFields .= ", b.contactName";
+        }
+
+        // selectedOptions 필드 추가
+        if ($hasSelectedOptions) {
+            $selectFields .= ", b.selectedOptions";
+        }
+
+        // 고객명 조회를 위한 JOIN 및 필드
+        $customerJoin = "";
+        $customerNameExpr = "";
+        if ($hasCustomerAccountId) {
+            $customerJoin = "LEFT JOIN client cu ON b.`{$customerAccountIdCol}` = cu.accountId";
+            $customerNameExpr = "COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(cu.fName,''), ' ', COALESCE(cu.lName,''))), ''),
+                NULLIF(TRIM(CONCAT(COALESCE(c.fName,''), ' ', COALESCE(c.lName,''))), ''),
+                a.username,
+                ''
+            ) as customerName";
+        } else {
+            $customerNameExpr = "COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(c.fName,''), ' ', COALESCE(c.lName,''))), ''),
+                a.username,
+                ''
+            ) as customerName";
+        }
+
+        // 에이전트/회사명 (확장: 연락처, 담당자)
+        $agentNameExpr = "COALESCE(
+            NULLIF(ag.agencyName, ''),
+            a.username,
+            ''
+        ) as agentName,
+        COALESCE(ag.agencyName, '') as companyName,
+        COALESCE(ag.contactNo, '') as agencyPhone,
+        COALESCE(ag.personInCharge, '') as agencyContactPerson";
+
+        // WHERE 조건 구성 (B2B 전용)
+        $whereConditions = [];
+        $params = [];
+        $types = '';
+
+        // 출발일 기준 필터링
+        $whereConditions[] = "b.departureDate >= ?";
+        $whereConditions[] = "b.departureDate <= ?";
+        $params[] = $startDate;
+        $params[] = $endDate;
+        $types .= 'ss';
+
+        // 빈 상태 제외
+        $whereConditions[] = "COALESCE(b.bookingStatus, '') != ''";
+
+        // B2B 전용 (에이전트 예약만)
+        $whereConditions[] = "(a.accountType = 'agent' OR b.price_tier = 'B2B' OR b.agentId IS NOT NULL)";
+
+        // packageId = 19 항상 제외
+        $whereConditions[] = "(b.packageId IS NULL OR b.packageId != 19)";
+
+        // cancelled 예약 항상 제외
+        $whereConditions[] = "b.bookingStatus != 'cancelled'";
+
+        // 상태 필터
+        if (!empty($statusFilter)) {
+            $statuses = explode(',', $statusFilter);
+            $statusPlaceholders = [];
+            foreach ($statuses as $status) {
+                $statusPlaceholders[] = '?';
+                $params[] = trim($status);
+                $types .= 's';
+            }
+            $whereConditions[] = "b.bookingStatus IN (" . implode(',', $statusPlaceholders) . ")";
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
+        // 최종 쿼리
+        $sql = "
+            SELECT
+                {$selectFields},
+                {$customerNameExpr},
+                {$agentNameExpr}
+            FROM bookings b
+            LEFT JOIN packages p ON b.packageId = p.packageId
+            LEFT JOIN accounts a ON b.accountId = a.accountId
+            LEFT JOIN client c ON b.accountId = c.accountId
+            LEFT JOIN agent ag ON b.agentId = ag.agentId
+            {$customerJoin}
+            {$whereClause}
+            ORDER BY b.departureDate ASC, b.createdAt ASC
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Failed to prepare statement: " . $conn->error);
+        }
+
+        if (!empty($types)) {
+            mysqli_bind_params_by_ref($stmt, $types, $params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            // selectedOptions에서 customerInfo 추출
+            if ($hasSelectedOptions) {
+                try {
+                    $soRaw = $row['selectedOptions'] ?? '';
+                    if (!empty($soRaw)) {
+                        $so = json_decode($soRaw, true);
+                        if (json_last_error() === JSON_ERROR_NONE && isset($so['customerInfo'])) {
+                            $ci = $so['customerInfo'];
+                            if (empty($row['customerName']) && !empty($ci['name'])) {
+                                $row['customerName'] = $ci['name'];
+                            }
+                            if (empty($row['contactEmail']) && !empty($ci['email'])) {
+                                $row['contactEmail'] = $ci['email'];
+                            }
+                            if (empty($row['contactPhone']) && !empty($ci['phone'])) {
+                                $row['contactPhone'] = $ci['phone'];
+                            }
+                        }
+                    }
+                } catch (Throwable $e) { /* ignore */ }
+            }
+
+            // contactName 우선 적용
+            if ($hasContactName && !empty($row['contactName']) && empty($row['customerName'])) {
+                $row['customerName'] = $row['contactName'];
+            }
+
+            // 패키지명 정리
+            $row['packageName'] = $row['productName'] ?: $row['packageName'];
+
+            // 인원 수 계산
+            $adults = intval($row['adults'] ?? 0);
+            $children = intval($row['children'] ?? 0);
+            $infants = intval($row['infants'] ?? 0);
+            $numPeople = intval($row['numberOfPeople'] ?? 0);
+
+            if ($numPeople === 0 && ($adults + $children + $infants) > 0) {
+                $row['numberOfPeople'] = $adults + $children + $infants;
+            } else if ($numPeople > 0 && $adults === 0) {
+                $row['adults'] = $numPeople;
+            }
+
+            $bookings[] = $row;
+        }
+
+        $stmt->close();
+
+        send_json_response([
+            'success' => true,
+            'data' => [
+                'bookings' => $bookings,
+                'year' => $year,
+                'month' => $month,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'bookingType' => 'b2b',
+                'totalCount' => count($bookings)
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        error_log("getMonthlyInvoiceData error: " . $e->getMessage());
+        send_error_response('Failed to get monthly invoice data: ' . $e->getMessage());
     }
 }
