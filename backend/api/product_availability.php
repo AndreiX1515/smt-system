@@ -227,16 +227,15 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
                     $discountAmount = $saleDiscount ? $saleDiscount['discountAmount'] : 0;
                     $saleName = $saleDiscount ? $saleDiscount['saleName'] : null;
 
-                    // 원본 가격
+                    // 원본 가격 (B2C는 price, B2B는 b2b_price)
+                    // 서버/클라이언트 판단 불일치 방지: price는 항상 B2C, b2bPrice는 항상 B2B로 분리 반환
                     $originalPrice = floatval($r['price'] ?? 0);
                     $originalB2bPrice = isset($r['b2b_price']) && $r['b2b_price'] !== null ? floatval($r['b2b_price']) : null;
 
-                    // 할인 적용 가격 계산
-                    $finalPrice = $isB2B
-                        ? floatval($r['b2b_price'] ?? $r['price'] ?? 0) - $discountAmount
-                        : floatval($r['price'] ?? 0) - $discountAmount;
-                    $finalPrice = max($finalPrice, 0); // 음수 방지
+                    // 할인 적용 가격 계산 - B2C 가격 (price 필드는 항상 B2C용)
+                    $finalPrice = max(floatval($r['price'] ?? 0) - $discountAmount, 0);
 
+                    // B2B 가격 할인 적용
                     $finalB2bPrice = $originalB2bPrice !== null
                         ? max($originalB2bPrice - $discountAmount, 0)
                         : null;
