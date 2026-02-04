@@ -12,6 +12,9 @@ if (file_exists($email_service_file)) {
     require_once $email_service_file;
 }
 
+// Booking payments helper library
+require_once __DIR__ . '/../../../backend/lib/booking_payments.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
@@ -264,12 +267,65 @@ function logAutoCancellation($conn, $bookingId, $previousStatus) {
  */
 function applyB2BAutoCancellation($conn) {
     try {
+        // Check for overdue payments from new booking_payments table
+        $overduePayments = getOverduePayments($conn, null, 500);
+
+        $hasPackages = false;
+        $hasSalesTarget = false;
+        $pt = $conn->query("SHOW TABLES LIKE 'packages'");
+        $hasPackages = ($pt && $pt->num_rows > 0);
+        if ($hasPackages) {
+            $st = $conn->query("SHOW COLUMNS FROM packages LIKE 'sales_target'");
+            if ($st && $st->num_rows > 0) $hasSalesTarget = true;
+        }
+
+        // Process overdue payments from new table
+        $processedBookingIds = [];
+        foreach ($overduePayments as $overduePayment) {
+            $bookingId = $overduePayment['bookingId'];
+
+            // Skip if already processed
+            if (in_array($bookingId, $processedBookingIds)) {
+                continue;
+            }
+
+            // Check B2B condition if applicable
+            if ($hasSalesTarget) {
+                $pkgStmt = $conn->prepare("SELECT p.sales_target FROM bookings b LEFT JOIN packages p ON b.packageId = p.packageId WHERE b.bookingId = ?");
+                $pkgStmt->bind_param('s', $bookingId);
+                $pkgStmt->execute();
+                $pkgResult = $pkgStmt->get_result()->fetch_assoc();
+                $pkgStmt->close();
+
+                if ($pkgResult && $pkgResult['sales_target'] !== 'B2B') {
+                    continue; // Skip non-B2B bookings
+                }
+            }
+
+            // Log and send notification
+            logAutoCancellation($conn, $bookingId, $overduePayment['bookingStatus'] ?? '');
+
+            if (function_exists('send_rejection_notification_email')) {
+                $reason = 'Payment deadline has passed without payment proof submission.';
+                send_rejection_notification_email($conn, $bookingId, 'auto_cancellation', $reason);
+            }
+
+            // Cancel the booking
+            $cancelStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'cancelled', paymentStatus = 'failed' WHERE bookingId = ?");
+            $cancelStmt->bind_param('s', $bookingId);
+            $cancelStmt->execute();
+            $cancelStmt->close();
+
+            $processedBookingIds[] = $bookingId;
+        }
+
+        // Also check legacy columns for bookings not yet in new table
         $bookingsColumnsCheck = $conn->query("SHOW COLUMNS FROM bookings");
         $cols = [];
         if ($bookingsColumnsCheck) {
             while ($c = $bookingsColumnsCheck->fetch_assoc()) $cols[] = strtolower($c['Field']);
         }
-        // Payment columns (통일: downPayment*, advancePayment*, balanceFile, fullPayment* 사용)
+
         $hasDownPaymentDueDate = in_array('downpaymentduedate', $cols, true);
         $hasDownPaymentFile = in_array('downpaymentfile', $cols, true);
         $hasAdvancePaymentDueDate = in_array('advancepaymentduedate', $cols, true);
@@ -285,15 +341,6 @@ function applyB2BAutoCancellation($conn) {
             || ($hasFullPaymentDueDate && $hasFullPaymentFile);
         if (!$hasAnyCancellationCondition) return;
 
-        $hasPackages = false;
-        $hasSalesTarget = false;
-        $pt = $conn->query("SHOW TABLES LIKE 'packages'");
-        $hasPackages = ($pt && $pt->num_rows > 0);
-        if ($hasPackages) {
-            $st = $conn->query("SHOW COLUMNS FROM packages LIKE 'sales_target'");
-            if ($st && $st->num_rows > 0) $hasSalesTarget = true;
-        }
-
         $dateExpr = function ($col) {
             return "(CASE
                 WHEN CAST($col AS CHAR) REGEXP '^[0-9]{8}$' THEN STR_TO_DATE(CAST($col AS CHAR), '%Y%m%d')
@@ -305,55 +352,73 @@ function applyB2BAutoCancellation($conn) {
         $b2bCond = ($hasPackages && $hasSalesTarget) ? "AND COALESCE(p.sales_target,'') = 'B2B'" : "";
 
         $conds = [];
-        // downPaymentDueDate + downPaymentFile
         if ($hasDownPaymentDueDate && $hasDownPaymentFile) {
             $conds[] = "(" . $dateExpr('b.downPaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.downPaymentDueDate') . " < CURDATE() AND COALESCE(b.downPaymentFile,'') = '')";
         }
-        // advancePaymentDueDate + advancePaymentFile (secondPayment)
         if ($hasAdvancePaymentDueDate && $hasAdvancePaymentFile) {
             $conds[] = "(" . $dateExpr('b.advancePaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.advancePaymentDueDate') . " < CURDATE() AND COALESCE(b.advancePaymentFile,'') = '')";
         }
-        // balanceDueDate + balanceFile
         if ($hasBalanceDueDate && $hasBalanceFile) {
             $conds[] = "(" . $dateExpr('b.balanceDueDate') . " IS NOT NULL AND " . $dateExpr('b.balanceDueDate') . " < CURDATE() AND COALESCE(b.balanceFile,'') = '')";
         }
-        // fullPaymentDueDate + fullPaymentFile
         if ($hasFullPaymentDueDate && $hasFullPaymentFile) {
             $conds[] = "(" . $dateExpr('b.fullPaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.fullPaymentDueDate') . " < CURDATE() AND COALESCE(b.fullPaymentFile,'') = '')";
         }
         if (empty($conds)) return;
 
-        // 먼저 취소될 예약들을 SELECT하여 히스토리 기록
+        // Exclude already processed bookings
+        $excludeCond = "";
+        if (!empty($processedBookingIds)) {
+            $placeholders = implode(',', array_fill(0, count($processedBookingIds), '?'));
+            $excludeCond = "AND b.bookingId NOT IN ($placeholders)";
+        }
+
         $selectSql = "SELECT b.bookingId, b.bookingStatus
                 FROM bookings b
                 $join
                 WHERE COALESCE(b.paymentStatus,'') = 'pending'
                   AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
                   $b2bCond
+                  $excludeCond
                   AND (" . implode(' OR ', $conds) . ")";
-        $result = $conn->query($selectSql);
+
+        $stmt = $conn->prepare($selectSql);
+        if (!empty($processedBookingIds)) {
+            $types = str_repeat('s', count($processedBookingIds));
+            $stmt->bind_param($types, ...$processedBookingIds);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
         if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
-                // 각 예약에 대해 히스토리 기록
                 logAutoCancellation($conn, $row['bookingId'], $row['bookingStatus'] ?? '');
 
-                // Send auto-cancellation notification email
                 if (function_exists('send_rejection_notification_email')) {
                     $reason = 'Payment deadline has passed without payment proof submission.';
                     send_rejection_notification_email($conn, $row['bookingId'], 'auto_cancellation', $reason);
                 }
             }
         }
+        $stmt->close();
 
-        // UPDATE 실행
-        $sql = "UPDATE bookings b
+        // UPDATE legacy bookings
+        $updateSql = "UPDATE bookings b
                 $join
                 SET b.bookingStatus='cancelled', b.paymentStatus='failed'
                 WHERE COALESCE(b.paymentStatus,'') = 'pending'
                   AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
                   $b2bCond
+                  $excludeCond
                   AND (" . implode(' OR ', $conds) . ")";
-        $conn->query($sql);
+
+        $updateStmt = $conn->prepare($updateSql);
+        if (!empty($processedBookingIds)) {
+            $types = str_repeat('s', count($processedBookingIds));
+            $updateStmt->bind_param($types, ...$processedBookingIds);
+        }
+        $updateStmt->execute();
+        $updateStmt->close();
     } catch (Throwable $e) {
         // ignore
     }

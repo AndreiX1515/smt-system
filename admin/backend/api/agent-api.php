@@ -54,6 +54,9 @@ if (!isset($conn) || !$conn) {
 // Email notification service for booking confirmations
 require_once __DIR__ . '/../../../backend/services/email_notification_service.php';
 
+// Booking payments helper library
+require_once __DIR__ . '/../../../backend/lib/booking_payments.php';
+
 // JSON 응답 헬퍼 함수 (conn.php에 이미 정의되어 있을 수 있으므로 확인)
 if (!function_exists('send_json_response')) {
     function send_json_response($data, $status_code = 200) {
@@ -2199,6 +2202,19 @@ function getReservationDetail($conn, $input) {
             } catch (Throwable $e) { /* ignore */ }
         }
 
+        // Get payment data from new booking_payments table
+        $paymentData = getPaymentsWithLegacyFormat($conn, $bookingId);
+        $payments = $paymentData['payments'];
+        $legacyPayments = $paymentData['legacy'];
+
+        // Merge legacy payment data into booking for backward compatibility
+        foreach ($legacyPayments as $key => $value) {
+            // Only set if not already present or empty
+            if (!isset($booking[$key]) || $booking[$key] === null || $booking[$key] === '') {
+                $booking[$key] = $value;
+            }
+        }
+
         send_success_response([
             'booking' => $booking,
             'selectedOptions' => $selectedOptions,
@@ -2207,7 +2223,8 @@ function getReservationDetail($conn, $input) {
             'pricingLabels' => $pricingLabels,
             'pricingOptions' => $pricingOptions,
             'rejectedRequest' => $rejectedRequest,
-            'pendingChangeRequest' => $pendingChangeRequest
+            'pendingChangeRequest' => $pendingChangeRequest,
+            'payments' => $payments  // New normalized payments array
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to get reservation detail: ' . $e->getMessage());
@@ -8276,9 +8293,21 @@ function uploadPaymentProofFile($conn, $input) {
             'full' => 'checking_full_payment'
         ];
         $newStatus = $statusMap[$paymentType];
-        $updateSql = "UPDATE bookings SET {$cols['file']} = ?, {$cols['fileName']} = ?, bookingStatus = ? WHERE bookingId = ?";
+
+        // Update new booking_payments table
+        $now = date('Y-m-d H:i:s');
+        upsertPayment($conn, $bookingId, $paymentType, [
+            'filePath' => $filePath,
+            'fileName' => $originalFileName,
+            'uploadedAt' => $now,
+            'status' => 'uploaded'
+        ]);
+
+        // Update legacy bookings columns for backward compatibility
+        $uploadedAtCol = str_replace('File', 'UploadedAt', $cols['file']);
+        $updateSql = "UPDATE bookings SET {$cols['file']} = ?, {$cols['fileName']} = ?, {$uploadedAtCol} = ?, bookingStatus = ? WHERE bookingId = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param("ssss", $filePath, $originalFileName, $newStatus, $bookingId);
+        $stmt->bind_param("sssss", $filePath, $originalFileName, $now, $newStatus, $bookingId);
         $stmt->execute();
         $stmt->close();
 
@@ -8318,20 +8347,13 @@ function downloadPaymentProofFile($conn, $input) {
             send_error_response('Login required', 401);
         }
 
-        $columnMap = [
-            'down' => 'downPaymentFile',
-            'second' => 'advancePaymentFile',
-            'balance' => 'balanceFile',
-            'full' => 'fullPaymentFile'
-        ];
-        $fileColumn = $columnMap[$paymentType];
-
+        // First check access rights
         if ($isAdmin) {
-            $sql = "SELECT $fileColumn FROM bookings WHERE bookingId = ?";
+            $sql = "SELECT bookingId FROM bookings WHERE bookingId = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("s", $bookingId);
         } else {
-            $sql = "SELECT $fileColumn FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
+            $sql = "SELECT bookingId FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("sii", $bookingId, $agentAccountId, $agentAccountId);
         }
@@ -8340,11 +8362,41 @@ function downloadPaymentProofFile($conn, $input) {
         $row = $result->fetch_assoc();
         $stmt->close();
 
-        if (!$row || empty($row[$fileColumn])) {
-            send_error_response('File not found', 404);
+        if (!$row) {
+            send_error_response('Reservation not found or access denied', 404);
         }
 
-        $filePath = $row[$fileColumn];
+        // Try to get file from new booking_payments table first
+        $payment = getPaymentByStep($conn, $bookingId, $paymentType);
+        $filePath = null;
+
+        if ($payment && !empty($payment['filePath'])) {
+            $filePath = $payment['filePath'];
+        } else {
+            // Fallback to legacy columns
+            $columnMap = [
+                'down' => 'downPaymentFile',
+                'second' => 'advancePaymentFile',
+                'balance' => 'balanceFile',
+                'full' => 'fullPaymentFile'
+            ];
+            $fileColumn = $columnMap[$paymentType];
+
+            $legacyStmt = $conn->prepare("SELECT $fileColumn FROM bookings WHERE bookingId = ?");
+            $legacyStmt->bind_param("s", $bookingId);
+            $legacyStmt->execute();
+            $legacyResult = $legacyStmt->get_result();
+            $legacyRow = $legacyResult->fetch_assoc();
+            $legacyStmt->close();
+
+            if ($legacyRow && !empty($legacyRow[$fileColumn])) {
+                $filePath = $legacyRow[$fileColumn];
+            }
+        }
+
+        if (empty($filePath)) {
+            send_error_response('File not found', 404);
+        }
         $absolutePath = __DIR__ . '/../../../' . ltrim($filePath, '/');
 
         if (!file_exists($absolutePath)) {
@@ -8400,11 +8452,11 @@ function deletePaymentProofFile($conn, $input) {
 
         // 예약 확인
         if ($isAdmin) {
-            $sql = "SELECT {$cols['file']}, {$cols['confirmedAt']} FROM bookings WHERE bookingId = ?";
+            $sql = "SELECT bookingId FROM bookings WHERE bookingId = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("s", $bookingId);
         } else {
-            $sql = "SELECT {$cols['file']}, {$cols['confirmedAt']} FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
+            $sql = "SELECT bookingId FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("sii", $bookingId, $agentAccountId, $agentAccountId);
         }
@@ -8417,12 +8469,34 @@ function deletePaymentProofFile($conn, $input) {
             send_error_response('Reservation not found or access denied', 404);
         }
 
+        // Check from new booking_payments table first
+        $payment = getPaymentByStep($conn, $bookingId, $paymentType);
+        $filePath = null;
+        $isConfirmed = false;
+
+        if ($payment) {
+            $filePath = $payment['filePath'];
+            $isConfirmed = ($payment['status'] === 'confirmed');
+        } else {
+            // Fallback to legacy columns
+            $legacyStmt = $conn->prepare("SELECT {$cols['file']}, {$cols['confirmedAt']} FROM bookings WHERE bookingId = ?");
+            $legacyStmt->bind_param("s", $bookingId);
+            $legacyStmt->execute();
+            $legacyResult = $legacyStmt->get_result();
+            $legacyRow = $legacyResult->fetch_assoc();
+            $legacyStmt->close();
+
+            if ($legacyRow) {
+                $filePath = $legacyRow[$cols['file']];
+                $isConfirmed = !empty($legacyRow[$cols['confirmedAt']]);
+            }
+        }
+
         // 이미 확인된 결제는 파일 삭제 불가
-        if (!empty($row[$cols['confirmedAt']])) {
+        if ($isConfirmed) {
             send_error_response('Cannot delete file after payment is confirmed', 403);
         }
 
-        $filePath = $row[$cols['file']];
         if (!empty($filePath)) {
             $absolutePath = __DIR__ . '/../../../' . ltrim($filePath, '/');
             if (file_exists($absolutePath)) {
@@ -8430,8 +8504,17 @@ function deletePaymentProofFile($conn, $input) {
             }
         }
 
-        // DB 업데이트
-        $updateSql = "UPDATE bookings SET {$cols['file']} = NULL, {$cols['fileName']} = NULL WHERE bookingId = ?";
+        // Update new booking_payments table
+        upsertPayment($conn, $bookingId, $paymentType, [
+            'filePath' => null,
+            'fileName' => null,
+            'uploadedAt' => null,
+            'status' => 'pending'
+        ]);
+
+        // Update legacy bookings columns for backward compatibility
+        $uploadedAtCol = str_replace('File', 'UploadedAt', $cols['file']);
+        $updateSql = "UPDATE bookings SET {$cols['file']} = NULL, {$cols['fileName']} = NULL, {$uploadedAtCol} = NULL WHERE bookingId = ?";
         $stmt = $conn->prepare($updateSql);
         $stmt->bind_param("s", $bookingId);
         $stmt->execute();
@@ -10325,14 +10408,20 @@ function updatePaymentInfo($conn, $input) {
         }
 
         // ========== 결제 규칙 ==========
-        // 규칙 1: 출발일까지 30일 이내 → Full Payment만, deadline 1일
-        // 규칙 2: 출발일까지 44일 이내 → 모든 deadline 3일
-        // 규칙 3: 출발일까지 44일 초과 → 일반 규칙
+        // 규칙 1: 출발일까지 34일 이내 → Full Payment만, deadline 1일 (24시간)
+        // 규칙 2: 출발일까지 35~44일 → Middle Payment (기본) 또는 Full Payment
+        //         - Middle Payment: deadline +3일, Balance: 출발 -30일
+        //         - Full Payment: deadline +3일
+        // 규칙 3: 출발일까지 44일 초과 → Staged Payment 또는 Full Payment
 
-        $userRequestedPaymentType = (isset($input['paymentType']) && $input['paymentType'] === 'full') ? 'full' : 'staged';
+        $userRequestedPaymentType = $input['paymentType'] ?? 'staged';
+        // 유효한 타입인지 확인
+        if (!in_array($userRequestedPaymentType, ['staged', 'middle', 'full'])) {
+            $userRequestedPaymentType = 'staged';
+        }
 
-        if ($daysUntilDeparture !== null && $daysUntilDeparture <= 30) {
-            // 규칙 1: 30일 이내 → Full Payment 강제
+        if ($daysUntilDeparture !== null && $daysUntilDeparture <= 34) {
+            // 규칙 1: 34일 이내 → Full Payment 강제 (24시간)
             $paymentType = 'full';
             $downPaymentAmount = 0;
             $downPaymentDueDate = null;
@@ -10343,8 +10432,13 @@ function updatePaymentInfo($conn, $input) {
             $fullPaymentAmount = $totalAmount;
             $fullPaymentDueDate = date('Y-m-d', strtotime('+1 day'));
         } else if ($daysUntilDeparture !== null && $daysUntilDeparture <= 44) {
-            // 규칙 2: 44일 이내 → 모든 deadline 3일
+            // 규칙 2: 35~44일 → Middle Payment (기본) 또는 Full Payment
+            // staged는 이 구간에서 사용 불가 → middle로 변환
+            if ($userRequestedPaymentType === 'staged') {
+                $userRequestedPaymentType = 'middle';
+            }
             $paymentType = $userRequestedPaymentType;
+
             if ($paymentType === 'full') {
                 $downPaymentAmount = 0;
                 $downPaymentDueDate = null;
@@ -10355,18 +10449,31 @@ function updatePaymentInfo($conn, $input) {
                 $fullPaymentAmount = $totalAmount;
                 $fullPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
             } else {
-                $downPaymentAmount = isset($input['downPaymentAmount']) ? (float)$input['downPaymentAmount'] : 5000 * ($adults + $children);
+                // Middle Payment: Down + Second를 합쳐서 1차 결제, 나머지가 Balance
+                $travelerCount = $adults + $children;
+                $downPaymentAmount = 5000 * $travelerCount;
+                $secondPaymentAmount = 10000 * $travelerCount; // Visa Fee는 프론트에서 계산해서 전달
+                if (isset($input['advancePaymentAmount'])) {
+                    $secondPaymentAmount = (float)$input['advancePaymentAmount'];
+                }
+                // Middle Payment = Down + Second (advancePaymentAmount 필드에 저장)
+                $advancePaymentAmount = $downPaymentAmount + $secondPaymentAmount;
+                $downPaymentAmount = $advancePaymentAmount; // downPaymentAmount에 Middle Payment 금액 저장
                 $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                $advancePaymentAmount = isset($input['advancePaymentAmount']) ? (float)$input['advancePaymentAmount'] : null;
-                $advancePaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                $balanceAmount = isset($input['balanceAmount']) ? (float)$input['balanceAmount'] : null;
-                $balanceDueDate = date('Y-m-d', strtotime('+3 days'));
+                $advancePaymentDueDate = null; // Middle에서는 Second가 없음
+                // Balance = Total - Middle Payment
+                $balanceAmount = $totalAmount - $advancePaymentAmount;
+                $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -30 days')) : null;
                 $fullPaymentAmount = null;
                 $fullPaymentDueDate = null;
             }
         } else {
-            // 규칙 3: 44일 초과 → 일반 규칙
+            // 규칙 3: 44일 초과 → Staged 또는 Full (middle은 이 구간에서 사용 불가 → staged로 변환)
+            if ($userRequestedPaymentType === 'middle') {
+                $userRequestedPaymentType = 'staged';
+            }
             $paymentType = $userRequestedPaymentType;
+
             if ($paymentType === 'full') {
                 $downPaymentAmount = 0;
                 $downPaymentDueDate = null;
@@ -10393,6 +10500,7 @@ function updatePaymentInfo($conn, $input) {
         // 파일 업로드 처리
         $downPaymentFilePath = null;
         $fullPaymentFilePath = null;
+        $middlePaymentFilePath = null;
 
         if ($paymentType === 'staged' && isset($files['downPaymentFile']) && $files['downPaymentFile']['error'] === UPLOAD_ERR_OK) {
             $uploadDir = __DIR__ . '/../../../uploads/payment/down/';
@@ -10424,7 +10532,62 @@ function updatePaymentInfo($conn, $input) {
             }
         }
 
-        // UPDATE 쿼리 구성 (결제 정보 업데이트)
+        // Middle Payment 파일 업로드 (downPaymentFilePath 필드에 저장)
+        if ($paymentType === 'middle' && isset($files['middlePaymentFile']) && $files['middlePaymentFile']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = __DIR__ . '/../../../uploads/payment/middle/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $extension = strtolower(pathinfo($files['middlePaymentFile']['name'], PATHINFO_EXTENSION));
+            $extension = preg_replace('/[^a-z0-9]/', '', $extension);
+            $extension = $extension ? '.' . $extension : '';
+            $fileName = 'middlePayment_' . $bookingId . '_' . time() . '_' . uniqid() . $extension;
+            $uploadPath = $uploadDir . $fileName;
+            if (move_uploaded_file($files['middlePaymentFile']['tmp_name'], $uploadPath)) {
+                $middlePaymentFilePath = 'uploads/payment/middle/' . $fileName;
+                // Middle Payment 파일은 downPaymentFilePath에 저장
+                $downPaymentFilePath = $middlePaymentFilePath;
+            }
+        }
+
+        // Create payment records in new booking_payments table
+        $amounts = [];
+        $dueDates = [];
+
+        switch ($paymentType) {
+            case 'staged':
+                $amounts = [
+                    'down' => $downPaymentAmount,
+                    'second' => $advancePaymentAmount,
+                    'balance' => $balanceAmount
+                ];
+                $dueDates = [
+                    'down' => $downPaymentDueDate,
+                    'second' => $advancePaymentDueDate,
+                    'balance' => $balanceDueDate
+                ];
+                break;
+            case 'middle':
+                $amounts = [
+                    'middle' => $downPaymentAmount,  // Middle payment stored in downPaymentAmount
+                    'middle_balance' => $balanceAmount
+                ];
+                $dueDates = [
+                    'middle' => $downPaymentDueDate,
+                    'middle_balance' => $balanceDueDate
+                ];
+                break;
+            case 'full':
+                $amounts = ['full' => $fullPaymentAmount];
+                $dueDates = ['full' => $fullPaymentDueDate];
+                break;
+        }
+
+        // Delete existing payments and create new ones
+        deletePaymentsForBooking($conn, $bookingId);
+        createPaymentsForBooking($conn, $bookingId, $paymentType, $amounts, $dueDates);
+
+        // UPDATE 쿼리 구성 (결제 정보 업데이트) - Legacy columns for backward compatibility
         $updateFields = [
             'bookingStatus = ?',
             'paymentType = ?',
@@ -10455,12 +10618,12 @@ function updatePaymentInfo($conn, $input) {
 
         // 파일 경로 추가
         if ($downPaymentFilePath) {
-            $updateFields[] = 'downPaymentFilePath = ?';
+            $updateFields[] = 'downPaymentFile = ?';
             $params[] = $downPaymentFilePath;
             $types .= 's';
         }
         if ($fullPaymentFilePath) {
-            $updateFields[] = 'fullPaymentFilePath = ?';
+            $updateFields[] = 'fullPaymentFile = ?';
             $params[] = $fullPaymentFilePath;
             $types .= 's';
         }

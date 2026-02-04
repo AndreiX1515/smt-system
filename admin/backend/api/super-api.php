@@ -108,6 +108,9 @@ if (file_exists($email_service_file)) {
     require_once $email_service_file;
 }
 
+// Booking payments helper library
+require_once __DIR__ . '/../../../backend/lib/booking_payments.php';
+
 if (!function_exists('send_json_response')) {
     function send_json_response($data, $status_code = 200) {
         while (ob_get_level() > 0) {
@@ -12700,7 +12703,27 @@ function getB2BBookingDetail($conn, $input) {
             }
         } catch (Throwable $e) { /* ignore */ }
 
-        send_success_response(['booking' => $booking, 'roomSummary' => $roomSummary, 'selectedOptions' => $selectedOptionsObj, 'selectedRooms' => $selectedRoomsObj, 'changeRequest' => $changeRequest, 'rejectedRequest' => $rejectedRequest]);
+        // Get payment data from new booking_payments table
+        $paymentData = getPaymentsWithLegacyFormat($conn, $bookingId);
+        $payments = $paymentData['payments'];
+        $legacyPayments = $paymentData['legacy'];
+
+        // Merge legacy payment data into booking for backward compatibility
+        foreach ($legacyPayments as $key => $value) {
+            if (!isset($booking[$key]) || $booking[$key] === null || $booking[$key] === '') {
+                $booking[$key] = $value;
+            }
+        }
+
+        send_success_response([
+            'booking' => $booking,
+            'roomSummary' => $roomSummary,
+            'selectedOptions' => $selectedOptionsObj,
+            'selectedRooms' => $selectedRoomsObj,
+            'changeRequest' => $changeRequest,
+            'rejectedRequest' => $rejectedRequest,
+            'payments' => $payments  // New normalized payments array
+        ]);
     } catch (Exception $e) {
         send_error_response('Failed to get B2B booking detail: ' . $e->getMessage());
     }
@@ -13658,15 +13681,24 @@ function uploadDepositProof($conn, $input) {
 
         $relativePath = 'uploads/deposits/' . $fileName;
         $originalFileName = $file['name']; // 원본 파일명 저장
+        $now = date('Y-m-d H:i:s');
 
-        // DB 업데이트 (원본 파일명도 저장) - 통일: downPaymentFile 사용
-        $stmt = $conn->prepare("UPDATE bookings SET downPaymentFile = ?, downPaymentFileName = ? WHERE bookingId = ?");
+        // Update new booking_payments table
+        upsertPayment($conn, $bookingId, 'down', [
+            'filePath' => $relativePath,
+            'fileName' => $originalFileName,
+            'uploadedAt' => $now,
+            'status' => 'uploaded'
+        ]);
+
+        // DB 업데이트 (원본 파일명도 저장) - 통일: downPaymentFile 사용 - Legacy columns
+        $stmt = $conn->prepare("UPDATE bookings SET downPaymentFile = ?, downPaymentFileName = ?, downPaymentUploadedAt = ? WHERE bookingId = ?");
         if (!$stmt) {
             // 업로드된 파일 삭제
             @unlink($uploadPath);
             send_error_response('Database error');
         }
-        $stmt->bind_param('sss', $relativePath, $originalFileName, $bookingId);
+        $stmt->bind_param('ssss', $relativePath, $originalFileName, $now, $bookingId);
         if (!$stmt->execute()) {
             @unlink($uploadPath);
             send_error_response('Failed to update booking');
@@ -13697,16 +13729,44 @@ function confirmPayment($conn, $input) {
             send_error_response('Valid payment type is required (down, second, balance, full)');
         }
 
-        // 현재 예약 정보 확인
-        $checkSql = "SELECT downPaymentFile, downPaymentConfirmedAt, advancePaymentFile, advancePaymentConfirmedAt, balanceFile, balanceConfirmedAt, fullPaymentFile, fullPaymentConfirmedAt FROM bookings WHERE bookingId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('s', $bookingId);
-        $checkStmt->execute();
-        $booking = $checkStmt->get_result()->fetch_assoc();
-        $checkStmt->close();
+        // Get admin account ID for confirmedBy
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $adminAccountId = $_SESSION['admin_accountId'] ?? null;
 
-        if (!$booking) {
-            send_error_response('Booking not found');
+        // Check from new booking_payments table first
+        $payment = getPaymentByStep($conn, $bookingId, $paymentType);
+
+        // Fallback to legacy columns if no record in new table
+        if (!$payment) {
+            $checkSql = "SELECT downPaymentFile, downPaymentConfirmedAt, advancePaymentFile, advancePaymentConfirmedAt, balanceFile, balanceConfirmedAt, fullPaymentFile, fullPaymentConfirmedAt FROM bookings WHERE bookingId = ?";
+            $checkStmt = $conn->prepare($checkSql);
+            $checkStmt->bind_param('s', $bookingId);
+            $checkStmt->execute();
+            $booking = $checkStmt->get_result()->fetch_assoc();
+            $checkStmt->close();
+
+            if (!$booking) {
+                send_error_response('Booking not found');
+            }
+        } else {
+            // Check file exists in new table
+            if (empty($payment['filePath'])) {
+                send_error_response('No ' . ucfirst($paymentType) . ' Payment proof file uploaded');
+            }
+            // Build compatible booking array from payment
+            $booking = [
+                'downPaymentFile' => $paymentType === 'down' ? $payment['filePath'] : null,
+                'advancePaymentFile' => $paymentType === 'second' ? $payment['filePath'] : null,
+                'balanceFile' => $paymentType === 'balance' ? $payment['filePath'] : null,
+                'fullPaymentFile' => $paymentType === 'full' ? $payment['filePath'] : null
+            ];
+            // Get confirmation status from related payments
+            $downPayment = getPaymentByStep($conn, $bookingId, 'down');
+            $secondPayment = getPaymentByStep($conn, $bookingId, 'second');
+            $booking['downPaymentConfirmedAt'] = $downPayment ? $downPayment['confirmedAt'] : null;
+            $booking['advancePaymentConfirmedAt'] = $secondPayment ? $secondPayment['confirmedAt'] : null;
         }
 
         $now = date('Y-m-d H:i:s');
@@ -13754,6 +13814,13 @@ function confirmPayment($conn, $input) {
                 break;
         }
 
+        // Update new booking_payments table
+        updatePaymentStatus($conn, $bookingId, $paymentType, 'confirmed', [
+            'confirmedAt' => $now,
+            'confirmedBy' => $adminAccountId
+        ]);
+
+        // Update legacy columns
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ss', $now, $bookingId);
 
@@ -13781,42 +13848,60 @@ function rejectPayment($conn, $input) {
             send_error_response('Valid payment type is required (down, second, balance, full)');
         }
 
-        // 현재 예약 정보 확인
-        $checkSql = "SELECT downPaymentFile, advancePaymentFile, balanceFile, fullPaymentFile FROM bookings WHERE bookingId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('s', $bookingId);
-        $checkStmt->execute();
-        $booking = $checkStmt->get_result()->fetch_assoc();
-        $checkStmt->close();
+        $now = date('Y-m-d H:i:s');
 
-        if (!$booking) {
-            send_error_response('Booking not found');
+        // Check from new booking_payments table first
+        $payment = getPaymentByStep($conn, $bookingId, $paymentType);
+        $filePath = null;
+
+        if ($payment && !empty($payment['filePath'])) {
+            $filePath = $payment['filePath'];
+        } else {
+            // Fallback to legacy columns
+            $checkSql = "SELECT downPaymentFile, advancePaymentFile, balanceFile, fullPaymentFile FROM bookings WHERE bookingId = ?";
+            $checkStmt = $conn->prepare($checkSql);
+            $checkStmt->bind_param('s', $bookingId);
+            $checkStmt->execute();
+            $booking = $checkStmt->get_result()->fetch_assoc();
+            $checkStmt->close();
+
+            if (!$booking) {
+                send_error_response('Booking not found');
+            }
+
+            // Get file path from legacy columns
+            switch ($paymentType) {
+                case 'down':
+                    $filePath = $booking['downPaymentFile'];
+                    break;
+                case 'second':
+                    $filePath = $booking['advancePaymentFile'];
+                    break;
+                case 'balance':
+                    $filePath = $booking['balanceFile'];
+                    break;
+                case 'full':
+                    $filePath = $booking['fullPaymentFile'];
+                    break;
+            }
         }
 
-        // 결제 타입별 파일 삭제 및 DB 업데이트 (이전 waiting 상태로 복원 - 재고 유지)
+        // 결제 타입별 DB 업데이트 (이전 waiting 상태로 복원 - 재고 유지)
         switch ($paymentType) {
             case 'down':
-                $filePath = $booking['downPaymentFile'];
                 $sql = "UPDATE bookings SET downPaymentFile = NULL, downPaymentFileName = NULL, downPaymentUploadedAt = NULL, downPaymentRejectedAt = NOW(), downPaymentRejectionReason = ?, bookingStatus = 'waiting_down_payment' WHERE bookingId = ?";
-                $uploadDir = 'down';
                 break;
 
             case 'second':
-                $filePath = $booking['advancePaymentFile'];
                 $sql = "UPDATE bookings SET advancePaymentFile = NULL, advancePaymentFileName = NULL, advancePaymentUploadedAt = NULL, advancePaymentRejectedAt = NOW(), advancePaymentRejectionReason = ?, bookingStatus = 'waiting_second_payment' WHERE bookingId = ?";
-                $uploadDir = 'second';
                 break;
 
             case 'balance':
-                $filePath = $booking['balanceFile'];
                 $sql = "UPDATE bookings SET balanceFile = NULL, balanceFileName = NULL, balanceUploadedAt = NULL, balanceRejectedAt = NOW(), balanceRejectionReason = ?, bookingStatus = 'waiting_balance' WHERE bookingId = ?";
-                $uploadDir = 'balance';
                 break;
 
             case 'full':
-                $filePath = $booking['fullPaymentFile'];
                 $sql = "UPDATE bookings SET fullPaymentFile = NULL, fullPaymentFileName = NULL, fullPaymentUploadedAt = NULL, fullPaymentRejectedAt = NOW(), fullPaymentRejectionReason = ?, bookingStatus = 'waiting_full_payment' WHERE bookingId = ?";
-                $uploadDir = 'full';
                 break;
         }
 
@@ -13828,6 +13913,16 @@ function rejectPayment($conn, $input) {
             }
         }
 
+        // Update new booking_payments table
+        updatePaymentStatus($conn, $bookingId, $paymentType, 'rejected', [
+            'rejectedAt' => $now,
+            'rejectionReason' => $reason,
+            'filePath' => null,
+            'fileName' => null,
+            'uploadedAt' => null
+        ]);
+
+        // Update legacy columns
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ss', $reason, $bookingId);
 

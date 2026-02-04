@@ -14,6 +14,7 @@
 require_once __DIR__ . '/../config/email_config.php';
 require_once __DIR__ . '/../lib/mailer.php';
 require_once __DIR__ . '/../lib/email_templates.php';
+require_once __DIR__ . '/../lib/booking_payments.php';
 
 class EmailNotificationService {
     private $conn;
@@ -192,17 +193,76 @@ class EmailNotificationService {
         $booking = $result->fetch_assoc();
         $stmt->close();
 
-        return $booking ?: null;
+        if (!$booking) {
+            return null;
+        }
+
+        // Get payment data from new booking_payments table
+        $paymentData = getPaymentsWithLegacyFormat($this->conn, $bookingId);
+        $legacyPayments = $paymentData['legacy'];
+
+        // Merge legacy payment data into booking
+        foreach ($legacyPayments as $key => $value) {
+            if (!isset($booking[$key]) || $booking[$key] === null || $booking[$key] === '') {
+                $booking[$key] = $value;
+            }
+        }
+
+        // Add payments array for new format
+        $booking['payments'] = $paymentData['payments'];
+
+        return $booking;
     }
 
     /**
-     * Get all pending payment reminders (7 days and 1 day before due date)
+     * Get all pending payment reminders (3 days and 1 day before due date)
      */
     private function getPendingPaymentReminders(): array {
         $reminders = [];
+
+        // First, get reminders from the new booking_payments table
+        $newTableReminders = getPendingPaymentReminders($this->conn, 3);
+
+        foreach ($newTableReminders as $row) {
+            $daysRemaining = 0;
+            if (!empty($row['dueDate'])) {
+                $dueDateTime = new DateTime($row['dueDate']);
+                $today = new DateTime('today');
+                $diff = $today->diff($dueDateTime);
+                $daysRemaining = $diff->invert ? -$diff->days : $diff->days;
+            }
+
+            // Map paymentStep to paymentType
+            $stepToType = [
+                'down' => 'down_payment',
+                'second' => 'advance_payment',
+                'balance' => 'balance',
+                'full' => 'full_payment',
+                'middle' => 'middle_payment',
+                'middle_balance' => 'middle_balance'
+            ];
+            $paymentType = $stepToType[$row['paymentStep']] ?? $row['paymentStep'];
+
+            $notificationType = $paymentType . '_' . ($daysRemaining == 1 ? '1day' : '3day');
+
+            $reminders[] = [
+                'bookingId' => $row['bookingId'],
+                'packageName' => $row['packageName'],
+                'departureDate' => $row['departureDate'],
+                'totalAmount' => $row['totalAmount'],
+                'paymentType' => $paymentType,
+                'paymentAmount' => $row['amount'],
+                'dueDate' => $row['dueDate'],
+                'daysRemaining' => $daysRemaining,
+                'agentEmail' => $row['agentEmail'] ?? '',
+                'agentName' => trim($row['agentName'] ?? ''),
+                'notificationType' => $notificationType,
+            ];
+        }
+
+        // Also check legacy columns for bookings not yet in new table
         $today = date('Y-m-d');
 
-        // Define payment types and their corresponding columns
         $paymentTypes = [
             'down_payment' => [
                 'amountCol' => 'downPaymentAmount',
@@ -224,13 +284,15 @@ class EmailNotificationService {
             ],
         ];
 
+        // Collect booking IDs already processed from new table
+        $processedIds = array_column($reminders, 'bookingId');
+
         foreach ($paymentTypes as $paymentType => $config) {
             $amountCol = $config['amountCol'];
             $dueDateCol = $config['dueDateCol'];
             $confirmedCol = $config['confirmedCol'];
             $statusList = "'" . implode("','", $config['statuses']) . "'";
 
-            // Query for 7-day and 1-day reminders
             $sql = "
                 SELECT
                     b.bookingId,
@@ -261,6 +323,11 @@ class EmailNotificationService {
             $result = $stmt->get_result();
 
             while ($row = $result->fetch_assoc()) {
+                // Skip if already processed from new table
+                if (in_array($row['bookingId'], $processedIds)) {
+                    continue;
+                }
+
                 $daysRemaining = (int)$row['daysRemaining'];
                 $notificationType = $paymentType . '_' . ($daysRemaining == 1 ? '1day' : '3day');
 
