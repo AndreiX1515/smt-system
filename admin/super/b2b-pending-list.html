@@ -638,14 +638,16 @@
 					const pendingCount = (cr.newData?.pendingTravelers || []).length;
 					changes.push(`Travelers: ${originalCount}명 → ${pendingCount}명`);
 				} else if (cr.changeType === 'deadline') {
-					const deadlineData = cr.newData || {};
-					const typeLabels = { down: 'Down Payment', deposit: 'Down Payment', second: 'Second Payment', advance: 'Second Payment', balance: 'Balance', full: 'Full Payment' };
-					const label = typeLabels[deadlineData.type] || 'Payment';
-					changes.push(`${label} Deadline: ${cr.previousData?.deadline || 'N/A'} → ${deadlineData.deadline || 'N/A'}`);
+					const deadlineLabels = { down: 'Down Payment', second: 'Second Payment', balance: 'Balance', full: 'Full Payment' };
+					const dtype = cr.newData?.type || 'balance';
+					const label = deadlineLabels[dtype] || 'Payment';
+					const prev = cr.previousData?.deadline || 'none';
+					const next = cr.newData?.deadline || '-';
+					changes.push(`${label} Deadline: ${prev} → ${next}`);
 				} else if (cr.changeType === 'product_edit') {
-					changes.push('Product Edit');
+					changes.push('Product/Date change');
 				} else {
-					changes.push(`${cr.changeType || 'Other'} changes`);
+					changes.push('Other changes');
 				}
 				return changes.join(', ');
 			}
@@ -730,15 +732,15 @@
 				}
 
 				if (cr.changeType === 'deadline') {
-					const deadlineData = cr.newData || {};
-					const typeLabels = { down: 'Down Payment', deposit: 'Down Payment', second: 'Second Payment', advance: 'Second Payment', balance: 'Balance', full: 'Full Payment' };
-					const label = typeLabels[deadlineData.type] || 'Payment';
-					const prevDeadline = cr.previousData?.deadline || 'N/A';
-					const newDeadline = deadlineData.deadline || 'N/A';
+					const deadlineLabels = { down: 'Down Payment', second: 'Second Payment', balance: 'Balance', full: 'Full Payment' };
+					const dtype = cr.newData?.type || 'balance';
+					const label = deadlineLabels[dtype] || 'Payment';
+					const prev = cr.previousData?.deadline || 'none';
+					const next = cr.newData?.deadline || '-';
 					return `
 						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#f59e0b; border-radius:4px;">📅 ${escapeHtml(label)} Deadline</span>
-							<span style="font-size:10px; color:#6b7280;">${escapeHtml(prevDeadline)} → ${escapeHtml(newDeadline)}</span>
+							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#f59e0b; border-radius:4px;">${escapeHtml(label)} Deadline</span>
+							<span style="font-size:10px; color:#6b7280;">${escapeHtml(prev)} → ${escapeHtml(next)}</span>
 						</div>
 					`;
 				}
@@ -746,13 +748,14 @@
 				if (cr.changeType === 'product_edit') {
 					return `
 						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#ec4899; border-radius:4px;">📦 Product 변경</span>
+							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#ec4899; border-radius:4px;">Product/Date</span>
+							<span style="font-size:10px; color:#6b7280;">변경 요청</span>
 						</div>
 					`;
 				}
 
 				// 기타 변경 요청
-				return `<span class="changed-field" style="cursor:help;">${escapeHtml(cr.changeType || 'Other')} changes</span>`;
+				return `<span class="changed-field" style="cursor:help;">Other changes</span>`;
 			}
 
 			// Fallback to previousData (하위 호환)

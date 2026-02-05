@@ -243,7 +243,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="downPaymentDeadline" onchange="updateDeadline('down', this.value)">
+						<input type="date" class="form-control" id="downPaymentDeadline">
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Proof File</label>
@@ -290,7 +290,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="secondPaymentDeadline" onchange="updateDeadline('second', this.value)">
+						<input type="date" class="form-control" id="secondPaymentDeadline">
 					</div>
 					<div class="grid-item" id="secondPaymentFields">
 						<label class="label-name">Proof File</label>
@@ -337,7 +337,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="balanceDeadline" onchange="updateDeadline('balance', this.value)">
+						<input type="date" class="form-control" id="balanceDeadline">
 					</div>
 					<div class="grid-item" id="balanceFields">
 						<label class="label-name">Proof File</label>
@@ -387,7 +387,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="middlePaymentDeadline" onchange="updateDeadline('down', this.value)">
+						<input type="date" class="form-control" id="middlePaymentDeadline">
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Proof File</label>
@@ -434,7 +434,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="middleBalanceDeadline" onchange="updateDeadline('balance', this.value)">
+						<input type="date" class="form-control" id="middleBalanceDeadline">
 					</div>
 					<div class="grid-item" id="middleBalanceFields">
 						<label class="label-name">Proof File</label>
@@ -482,7 +482,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="fullPaymentDeadline" onchange="updateDeadline('full', this.value)">
+						<input type="date" class="form-control" id="fullPaymentDeadline">
 					</div>
 					<div class="grid-item" id="fullPaymentFields">
 						<label class="label-name">Proof File</label>
@@ -1623,7 +1623,6 @@
 
 				const guideId = (document.getElementById('guideSelect')?.value || '').trim() || null;
 				const statusKey = (document.getElementById('reservationStatusSelect')?.value || 'pending').trim().toLowerCase();
-				const balanceDueDate = (document.getElementById('balanceDeadline')?.value || '').trim() || null;
 
 				// 현재 상태 확인
 				const currentStatus = (lastLoadedBooking?.bookingStatus || '').toLowerCase();
@@ -1661,7 +1660,6 @@
 					bookingId: resolvedBookingId,
 					guideId,
 					statusKey,
-					balanceDueDate,
 					statusChangeReason, // 상태 변경 사유 추가
 					// SMT 수정 시작 - 옵션 값 저장
 					cabinBaggage,
@@ -1727,10 +1725,31 @@
 				}
 
 				if (result.success) {
-					alert('Saved.');
+					// Save 후 변경된 deadline 처리
+					const deadlineMap = [
+						{ id: 'downPaymentDeadline', type: 'down', field: 'downPaymentDueDate' },
+						{ id: 'secondPaymentDeadline', type: 'second', field: 'advancePaymentDueDate' },
+						{ id: 'balanceDeadline', type: 'balance', field: 'balanceDueDate' },
+						{ id: 'fullPaymentDeadline', type: 'full', field: 'fullPaymentDueDate' }
+					];
+					let deadlineChanged = false;
+					for (const dl of deadlineMap) {
+						const newVal = (document.getElementById(dl.id)?.value || '').trim();
+						const origVal = (lastLoadedBooking?.[dl.field] || '').trim().substring(0, 10);
+						if (newVal && newVal !== origVal) {
+							await updateDeadline(dl.type, newVal);
+							deadlineChanged = true;
+						}
+					}
+
+					if (deadlineChanged) {
+						alert('Saved. Deadline change request submitted.');
+					} else {
+						alert('Saved.');
+					}
 					// pending_update로 변경되었거나, 현재 상태가 pending_update인 경우 목록으로 돌아가기
 					const currentStatusCheck = lastLoadedBooking?.bookingStatus;
-					if ((result.data && result.data.newStatus === 'pending_update') || currentStatusCheck === 'pending_update') {
+					if (deadlineChanged || (result.data && result.data.newStatus === 'pending_update') || currentStatusCheck === 'pending_update') {
 						window.history.back();
 					} else {
 						window.location.reload();
@@ -4157,12 +4176,9 @@
 				if (!response.ok || !result.success) {
 					throw new Error(result.message || 'Failed to update deadline');
 				}
-
-				alert(result.message || 'Deadline change request submitted.');
-				// 상태가 pending_update로 변경되므로 페이지 데이터 새로고침
-				await loadBookingDetail();
 			} catch (error) {
 				alert(error?.message || 'An error occurred while updating deadline.');
+				throw error; // handleSave에서 감지할 수 있도록 re-throw
 			}
 		}
 

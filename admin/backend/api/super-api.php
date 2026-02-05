@@ -14704,8 +14704,8 @@ function approveB2BBooking($conn, $input) {
 
             } else if ($changeRequest['changeType'] === 'deadline') {
                 // Deadline 변경 요청 승인: admin_kr만 승인 가능
-                $currentAdminId = $_SESSION['super_accountId'] ?? '';
-                if ($currentAdminId !== 'admin_kr') {
+                $currentAdminType = $_SESSION['admin_userType'] ?? '';
+                if ($currentAdminType !== 'admin_kr') {
                     send_error_response('Only admin_kr can approve deadline changes');
                 }
 
@@ -15293,7 +15293,7 @@ function setPaymentDeadline($conn, $input) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $requestedBy = $_SESSION['super_accountId'] ?? $_SESSION['admin_username'] ?? 'admin';
+        $requestedBy = $_SESSION['admin_userType'] ?? $_SESSION['admin_accountId'] ?? 'admin';
 
         // previousData와 newData 구성
         $previousData = json_encode([
@@ -15342,6 +15342,11 @@ function setPaymentDeadline($conn, $input) {
         // 예약 이력 추가
         $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' change requested: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
         __addBookingHistory($conn, $bookingId, $historyMsg);
+
+        // 상태 변경 이력 (booking_status_history) 기록
+        if ($originalStatus !== 'pending_update') {
+            __log_booking_status_change($conn, $bookingId, $originalStatus, 'pending_update', null, null, $historyMsg);
+        }
 
         send_success_response([], 'Payment deadline change request submitted. Waiting for admin_kr approval.');
     } catch (Exception $e) {
