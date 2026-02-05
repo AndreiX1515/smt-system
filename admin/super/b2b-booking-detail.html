@@ -1968,7 +1968,7 @@
 				// 변경된 필드 하이라이트
 				const highlightField = (field, value) => {
 					if (changedFields.includes(field)) {
-						return `<span style="background:#fef08a; padding:1px 4px; border-radius:3px;">${escapeHtml(value)}</span>`;
+						return `<span style="background:#fde68a; padding:2px 6px; border-radius:4px; border:1px solid #f59e0b; font-weight:600;">${escapeHtml(value)}</span>`;
 					}
 					return escapeHtml(value);
 				};
@@ -1983,7 +1983,7 @@
 						<div class="traveler-summary-info">
 							${main ? '<span class="badge-primary">Primary</span>' : ''}
 							<span class="badge-type">${escapeHtml(typeLabel)}</span>
-							<span class="traveler-summary-name">${changedFields.includes('firstName') || changedFields.includes('lastName') ? `<span style="background:#fef08a; padding:1px 4px; border-radius:3px;">${escapeHtml(fullName)}</span>` : escapeHtml(fullName)}</span>
+							<span class="traveler-summary-name">${changedFields.includes('firstName') || changedFields.includes('lastName') ? `<span style="background:#fde68a; padding:2px 6px; border-radius:4px; border:1px solid #f59e0b; font-weight:600;">${escapeHtml(fullName)}</span>` : escapeHtml(fullName)}</span>
 							${badge}${flightOptionsBadge}
 						</div>
 						<div class="traveler-summary-details">
@@ -2206,7 +2206,7 @@
 				}
 
 				// 하이라이트 스타일 함수
-				const highlightStyle = (field) => changedFields.includes(field) ? 'background: #fef08a !important; border-color: #f59e0b !important;' : '';
+				const highlightStyle = (field) => changedFields.includes(field) ? 'background: #fde68a !important; border: 2px solid #f59e0b !important; box-shadow: 0 0 0 2px rgba(245,158,11,0.2);' : '';
 				// pending_update일 때 필드 비활성화
 				const disabledAttr = isPendingTravelerChange ? ' disabled' : '';
 				const readonlyStyle = isPendingTravelerChange ? 'background: #f3f4f6 !important; pointer-events: none;' : '';
@@ -2241,8 +2241,8 @@
 					if (orig && Array.isArray(orig.flightOptions)) {
 						originalFlightOptions = orig.flightOptions;
 					} else {
-						// orig.flightOptions가 없으면 (이전 데이터) 현재 값을 원본으로 사용하여 NEW 표시 방지
-						originalFlightOptions = flightOptions;
+						// orig.flightOptions가 없으면 원본에 선택된 옵션이 없었던 것
+						originalFlightOptions = [];
 					}
 				}
 				var flightOptionsHtml = renderFlightOptionsInEdit(idx, flightOptions, originalFlightOptions, isPendingTravelerChange, changeStatus === 'new');
@@ -2325,7 +2325,7 @@
 				html += '</select></div>';
 
 				// Row 4: Passport Photo, Visa Document
-				var passportPhotoHighlight = changedFields.includes('passportImage') ? 'background: #fef08a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
+				var passportPhotoHighlight = changedFields.includes('passportImage') ? 'background: #fde68a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
 				var passportPhotoNewBadge = changedFields.includes('passportImage') ? '<span style="background:#f59e0b; color:#fff; font-size:9px; padding:2px 5px; border-radius:3px; margin-left:6px;">CHANGED</span>' : '';
 				html += '<div class="form-group" style="' + passportPhotoHighlight + '"><label>Passport Photo' + passportPhotoNewBadge + '</label>';
 				html += '<div class="passport-photo-upload">';
@@ -2343,7 +2343,7 @@
 				html += '</div></div></div>';
 
 				// Visa Document (shown when visaType === 'with_visa')
-				var visaDocHighlight = changedFields.includes('visaDocument') ? 'background: #fef08a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
+				var visaDocHighlight = changedFields.includes('visaDocument') ? 'background: #fde68a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
 				var visaDocNewBadge = changedFields.includes('visaDocument') ? '<span style="background:#f59e0b; color:#fff; font-size:9px; padding:2px 5px; border-radius:3px; margin-left:6px;">CHANGED</span>' : '';
 				html += '<div class="form-group visa-upload-container" id="visa-upload-container-' + idx + '" style="display:' + (visaType === 'with_visa' ? 'block' : 'none') + ';' + visaDocHighlight + '">';
 				html += '<label>Visa Document' + visaDocNewBadge + '</label>';
@@ -2386,7 +2386,7 @@
 
 		// 여행자 사이드바 네비게이션 렌더링
 		function renderTravelerSidebar() {
-			const sidebarNav = document.getElementById('traveler-sidebar-nav');
+			const sidebarNav = document.getElementById('traveler-edit-sidebar-nav');
 			if (!sidebarNav) return;
 
 			if (allTravelers.length === 0) {
@@ -2444,7 +2444,7 @@
 
 		// 사이드바 active 상태 업데이트
 		function updateSidebarActiveInEdit(activeIndex) {
-			const sidebarNav = document.getElementById('traveler-sidebar-nav');
+			const sidebarNav = document.getElementById('traveler-edit-sidebar-nav');
 			if (!sidebarNav) return;
 
 			const items = sidebarNav.querySelectorAll('.sidebar-nav-item');
