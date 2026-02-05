@@ -1343,6 +1343,7 @@
 			const isPending = currentStatus === 'pending';
 			const isPendingUpdate = currentStatus === 'pending_update';
 			const isCheckReject = currentStatus === 'check_reject';
+			const isLocked = isPending || isPendingUpdate;
 
 			const statusSel = document.getElementById('reservationStatusSelect');
 			const saveBtn = document.getElementById('saveBtn');
@@ -1350,10 +1351,49 @@
 			const acknowledgeRejectBtn = document.getElementById('acknowledgeRejectBtn');
 
 			// Refunded 상태: 상태 변경 불가
-			if (statusSel) statusSel.disabled = isRefunded || isPending || isPendingUpdate || isCheckReject;
+			if (statusSel) {
+				statusSel.disabled = isRefunded || isPending || isPendingUpdate || isCheckReject;
+				refreshJwSelect(statusSel);
+			}
+
+			// Pending / Pending Update: 모든 수정 기능 비활성화
+			const guideSel = document.getElementById('guideSelect');
+			if (guideSel) {
+				guideSel.disabled = isLocked;
+				refreshJwSelect(guideSel);
+			}
+
+			// Deadline 입력 비활성화
+			['downPaymentDeadline', 'secondPaymentDeadline', 'balanceDeadline',
+			 'middlePaymentDeadline', 'middleBalanceDeadline', 'fullPaymentDeadline'].forEach(id => {
+				const el = document.getElementById(id);
+				if (el) el.disabled = isLocked;
+			});
+
+			// Toggle Edit Allowed 버튼 비활성화
+			const toggleEditBtn = document.getElementById('toggleEditAllowedBtn');
+			if (toggleEditBtn) {
+				toggleEditBtn.disabled = isLocked;
+				toggleEditBtn.style.opacity = isLocked ? '0.5' : '';
+				toggleEditBtn.style.cursor = isLocked ? 'not-allowed' : '';
+			}
+
+			// Customer Edit 버튼 숨기기
+			const editCustomerBtn = document.getElementById('editCustomerBtn');
+			if (editCustomerBtn) editCustomerBtn.style.display = isLocked ? 'none' : '';
+
+			// Traveler Edit 버튼: pending이면 숨기고, pending_update면 리뷰용으로 유지
+			const editTravelerBtn = document.getElementById('editTravelerBtn');
+			if (editTravelerBtn) {
+				if (isPending) {
+					editTravelerBtn.style.display = 'none';
+				} else if (isPendingUpdate && __isSuperAdmin) {
+					editTravelerBtn.style.display = 'inline-block';
+				}
+			}
 
 			// Pending 또는 Pending Update 상태: Save 버튼 숨기고 Approve/Reject 버튼 표시
-			if (isPending || isPendingUpdate) {
+			if (isLocked) {
 				if (saveBtn) saveBtn.style.display = 'none';
 				if (pendingActions) pendingActions.style.display = 'flex';
 				if (acknowledgeRejectBtn) acknowledgeRejectBtn.style.display = 'none';
@@ -1525,6 +1565,10 @@
 
 		// Edit Allowed 토글 핸들러
 		async function handleToggleEditAllowed() {
+			// pending/pending_update 상태에서는 변경 불가
+			const lockStatus = computeUiStatus(lastLoadedBooking || {});
+			if (lockStatus === 'pending' || lockStatus === 'pending_update') return;
+
 			if (!bookingId) {
 				alert('Booking ID is missing.');
 				return;
@@ -1613,6 +1657,13 @@
 
 		async function handleSave() {
 			try {
+				// pending/pending_update 상태에서는 저장 불가
+				const lockStatus = computeUiStatus(lastLoadedBooking || {});
+				if (lockStatus === 'pending' || lockStatus === 'pending_update') {
+					alert('This booking is in pending status and cannot be modified.');
+					return;
+				}
+
 				// Always re-resolve bookingId at save time to avoid accidental null/undefined issues.
 				const qp = new URLSearchParams(window.location.search);
 				const resolvedBookingId = bookingId || qp.get('id') || qp.get('bookingId') || '';
@@ -3044,6 +3095,10 @@
 
 			if (editBtn) {
 				editBtn.addEventListener('click', () => {
+					// pending/pending_update 상태에서는 수정 불가
+					const cs = computeUiStatus(lastLoadedBooking || {});
+					if (cs === 'pending' || cs === 'pending_update') return;
+
 					// 원본 데이터 백업
 					originalCustomerData = {
 						name: document.getElementById('cust_name')?.value || '',
@@ -3140,6 +3195,9 @@
 			}
 
 			editBtn.addEventListener('click', () => {
+				// pending 상태에서는 수정 불가
+				const cs = computeUiStatus(lastLoadedBooking || {});
+				if (cs === 'pending') return;
 				openTravelerEditModal();
 			});
 		}
