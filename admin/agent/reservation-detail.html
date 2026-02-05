@@ -453,6 +453,114 @@
 			</div>
 			</div><!-- End of stagedPaymentSections -->
 
+			<!-- Middle Payment Sections (2-Step) -->
+			<div id="middlePaymentSections" style="display: none;">
+			<!-- Middle Payment (Down + Second combined) -->
+			<div class="card-panel jw-mgt16" id="middlePaymentSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Middle Payment (Down + Second)</h3>
+					<div id="middlePaymentStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<!-- Rejection Reason Alert -->
+				<div id="middlePaymentRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div id="middlePaymentRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div id="middlePaymentRejectedAt" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Middle Payment (₱)</label>
+						<input type="text" class="form-control" id="middlePaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="text" class="form-control" id="middlePaymentDeadline" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div id="middle_file_display" class="field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="middle_file_name"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="viewMiddleFileBtn" title="View"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="downloadMiddleFileBtn" title="Download"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteMiddleFileBtn" title="Delete"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div id="middle_file_upload">
+								<input type="file" id="middle_file_input" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;">
+								<button type="button" class="jw-button typeA" id="uploadMiddleFileBtn">Upload File</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div style="margin-top: 12px; padding: 8px 12px; background: #FFF5F5; border: 1px solid #F87171; border-radius: 6px; color: #DC2626; font-size: 12px;">
+					<strong>⚠ Notice:</strong> Middle payment is non-refundable.
+				</div>
+			</div>
+
+			<!-- Balance (for Middle Payment) -->
+			<div class="card-panel jw-mgt16" id="middleBalanceSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Balance</h3>
+					<div id="middleBalancePaymentStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<!-- Rejection Reason Alert -->
+				<div id="middleBalanceRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div id="middleBalanceRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div id="middleBalanceRejectedAt" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Balance (₱)</label>
+						<input type="text" class="form-control" id="middleBalanceAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="text" class="form-control" id="middleBalanceDeadline" placeholder="-" disabled>
+					</div>
+					<div class="grid-item" id="middleBalancePaymentFields">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div id="middle_balance_file_display" class="field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="middle_balance_file_name"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="viewMiddleBalanceFileBtn" title="View"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="downloadMiddleBalanceFileBtn" title="Download"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteMiddleBalanceFileBtn" title="Delete"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div id="middle_balance_file_upload">
+								<input type="file" id="middle_balance_file_input" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;">
+								<button type="button" class="jw-button typeA" id="uploadMiddleBalanceFileBtn">Upload File</button>
+							</div>
+							<!-- 비활성화 안내 -->
+							<div id="middleBalanceDisabledNotice" style="padding: 8px; background: #F5F5F5; border-radius: 6px; margin-top: 8px; text-align: center; color: #666; font-size: 12px;">
+								Upload available after Middle Payment is confirmed.
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			</div><!-- End of middlePaymentSections -->
+
 			<!-- Full Payment Section -->
 			<div id="fullPaymentSection" style="display: none;">
 				<div class="card-panel jw-mgt16">

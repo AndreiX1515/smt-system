@@ -12581,10 +12581,13 @@ function getB2BBookingDetail($conn, $input) {
 
         $booking['travelers'] = $travelers;
 
-        // (5) 금액 파생값
-        $total = floatval($booking['totalAmount'] ?? 0);
-        $deposit = floatval($booking['depositAmount'] ?? 0);
-        $booking['balanceAmount'] = max($total - $deposit, 0);
+        // (5) 금액 파생값 - staged/middle/full은 DB에 정확한 balanceAmount가 있으므로 덮어쓰지 않음
+        $paymentType = $booking['paymentType'] ?? '';
+        if (!in_array($paymentType, ['staged', 'middle', 'full'], true)) {
+            $total = floatval($booking['totalAmount'] ?? 0);
+            $deposit = floatval($booking['depositAmount'] ?? 0);
+            $booking['balanceAmount'] = max($total - $deposit, 0);
+        }
         $booking['autoCancelled'] = $autoCancelled;
 
         // (6) roomSummary 계산: selectedOptions 내의 selectedRooms 기반
@@ -15305,14 +15308,29 @@ function setPaymentDeadline($conn, $input) {
             'fieldName' => $fieldName
         ]);
 
-        // booking_change_requests 레코드 생성
-        $insertReqSql = "INSERT INTO booking_change_requests
-            (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
-            VALUES (?, 'deadline', ?, ?, ?, ?, 'employee', 'pending')";
-        $insertReqStmt = $conn->prepare($insertReqSql);
-        $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $requestedBy);
-        $insertReqStmt->execute();
-        $insertReqStmt->close();
+        // 기존 pending deadline 변경 요청이 있으면 업데이트, 없으면 신규 생성
+        $existingReq = null;
+        $existStmt = $conn->prepare("SELECT id FROM booking_change_requests WHERE bookingId = ? AND changeType = 'deadline' AND status = 'pending' LIMIT 1");
+        $existStmt->bind_param("s", $bookingId);
+        $existStmt->execute();
+        $existingReq = $existStmt->get_result()->fetch_assoc();
+        $existStmt->close();
+
+        if ($existingReq) {
+            // 기존 pending 요청의 newData만 업데이트
+            $updateReqStmt = $conn->prepare("UPDATE booking_change_requests SET newData = ?, requestedBy = ?, requestedAt = NOW() WHERE id = ?");
+            $updateReqStmt->bind_param("ssi", $newData, $requestedBy, $existingReq['id']);
+            $updateReqStmt->execute();
+            $updateReqStmt->close();
+        } else {
+            $insertReqSql = "INSERT INTO booking_change_requests
+                (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
+                VALUES (?, 'deadline', ?, ?, ?, ?, 'employee', 'pending')";
+            $insertReqStmt = $conn->prepare($insertReqSql);
+            $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $requestedBy);
+            $insertReqStmt->execute();
+            $insertReqStmt->close();
+        }
 
         // bookingStatus를 pending_update로 변경
         $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";

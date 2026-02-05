@@ -371,6 +371,103 @@
 			</div>
 			</div><!-- End Staged Payment Sections -->
 
+			<!-- Middle Payment Sections (2-Step) -->
+			<div id="middlePaymentSections" style="display: none;">
+			<!-- Middle Payment (Down + Second combined) -->
+			<div class="card-panel jw-mgt16" id="middlePaymentSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Middle Payment (Down + Second)</h3>
+					<div id="middlePaymentStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="grid-wrap jw-mgt16" style="grid-template-columns: 1fr 1fr 1fr auto;">
+					<div class="grid-item">
+						<label class="label-name">Middle Payment (₱)</label>
+						<input type="text" class="form-control" id="middlePaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="date" class="form-control" id="middlePaymentDeadline" onchange="updateDeadline('down', this.value)">
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="field-row jw-center">
+								<div class="jw-center jw-gap10" id="middlePaymentProofInfo">-</div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="middlePaymentViewBtn" aria-label="View" disabled title="View">
+										<img src="../image/eye.svg" alt="">
+									</button>
+									<button type="button" class="jw-button typeF" id="middlePaymentDownloadBtn" aria-label="Download" disabled title="Download">
+										<img src="../image/buttun-download.svg" alt="">
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- Accept/Reject 버튼 -->
+					<div class="grid-item" id="middlePaymentActions" style="display: none;">
+						<label class="label-name" style="visibility: hidden;">Action</label>
+						<div style="display: flex; gap: 8px;">
+							<button type="button" class="jw-button typeC" onclick="rejectPayment('down')" style="background: #DC3545; color: white; padding: 8px 16px;">
+								<span>Reject</span>
+							</button>
+							<button type="button" class="jw-button typeB" onclick="confirmPayment('down')" style="background: #28A745; color: white; padding: 8px 16px;">
+								<span>Accept</span>
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Balance (for Middle Payment) -->
+			<div class="card-panel jw-mgt16" id="middleBalanceSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Balance</h3>
+					<div id="middleBalanceStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="grid-wrap jw-mgt16" style="grid-template-columns: 1fr 1fr 1fr auto;">
+					<div class="grid-item">
+						<label class="label-name">Balance (₱)</label>
+						<input type="text" class="form-control" id="middleBalanceAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="date" class="form-control" id="middleBalanceDeadline" onchange="updateDeadline('balance', this.value)">
+					</div>
+					<div class="grid-item" id="middleBalanceFields">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="field-row jw-center">
+								<div class="jw-center jw-gap10" id="middleBalanceProofInfo">-</div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="middleBalanceViewBtn" aria-label="View" disabled title="View">
+										<img src="../image/eye.svg" alt="">
+									</button>
+									<button type="button" class="jw-button typeF" id="middleBalanceDownloadBtn" aria-label="Download" disabled title="Download">
+										<img src="../image/buttun-download.svg" alt="">
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- Accept/Reject 버튼 -->
+					<div class="grid-item" id="middleBalanceActions" style="display: none;">
+						<label class="label-name" style="visibility: hidden;">Action</label>
+						<div style="display: flex; gap: 8px;">
+							<button type="button" class="jw-button typeC" onclick="rejectPayment('balance')" style="background: #DC3545; color: white; padding: 8px 16px;">
+								<span>Reject</span>
+							</button>
+							<button type="button" class="jw-button typeB" onclick="confirmPayment('balance')" style="background: #28A745; color: white; padding: 8px 16px;">
+								<span>Accept</span>
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			</div><!-- End Middle Payment Sections -->
+
 			<!-- Full Payment Section -->
 			<div class="card-panel jw-mgt16" id="fullPaymentSection" style="display: none;">
 				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -3750,23 +3847,30 @@
 			// Payment Type 표시
 			const paymentTypeDisplay = document.getElementById('paymentTypeDisplay');
 			if (paymentTypeDisplay) {
-				paymentTypeDisplay.value = paymentType === 'full' ? 'Full Payment (전액 결제)' : 'Staged Payment (3단계 결제)';
+				const labels = { full: 'Full Payment (전액 결제)', middle: 'Middle Payment (2단계 결제)', staged: 'Staged Payment (3단계 결제)' };
+				paymentTypeDisplay.value = labels[paymentType] || labels.staged;
 			}
 
 			// 결제 유형에 따라 섹션 표시/숨기기
 			const stagedSections = document.getElementById('stagedPaymentSections');
+			const middleSections = document.getElementById('middlePaymentSections');
 			const fullSection = document.getElementById('fullPaymentSection');
 
+			if (stagedSections) stagedSections.style.display = 'none';
+			if (middleSections) middleSections.style.display = 'none';
+			if (fullSection) fullSection.style.display = 'none';
+
 			if (paymentType === 'full') {
-				// Full Payment
-				if (stagedSections) stagedSections.style.display = 'none';
 				if (fullSection) fullSection.style.display = 'block';
 				updateFullPaymentSection(booking);
+				return;
+			} else if (paymentType === 'middle') {
+				if (middleSections) middleSections.style.display = 'block';
+				updateMiddlePaymentSections(booking);
 				return;
 			} else {
 				// Staged Payment
 				if (stagedSections) stagedSections.style.display = 'block';
-				if (fullSection) fullSection.style.display = 'none';
 			}
 
 			const downConfirmed = !!(booking.downPaymentConfirmedAt && booking.downPaymentConfirmedAt !== '0000-00-00 00:00:00');
@@ -3914,20 +4018,73 @@
 			}
 		}
 
+		// Middle Payment (2-Step) section update
+		function updateMiddlePaymentSections(booking) {
+			const middleConfirmed = !!(booking.downPaymentConfirmedAt && booking.downPaymentConfirmedAt !== '0000-00-00 00:00:00');
+			const balanceConfirmed = !!(booking.balanceConfirmedAt && booking.balanceConfirmedAt !== '0000-00-00 00:00:00');
+			const orderAmount = Number(booking._calculatedTotal || booking.totalAmount || booking.orderAmount || 0);
+
+			// Middle Payment 금액 (DB: downPaymentAmount)
+			const middleAmount = Number(booking.downPaymentAmount || 0);
+			setValue('middlePaymentAmount', middleAmount > 0 ? formatNumber(middleAmount) : '-');
+			setValue('middlePaymentDeadline', booking.downPaymentDueDate || '');
+			applyPaymentProofUi('middlePayment', booking.downPaymentFile || '', booking.downPaymentFileName || '');
+
+			// Middle Payment 상태
+			const middleStatus = document.getElementById('middlePaymentStatus');
+			if (middleStatus) {
+				if (middleConfirmed) {
+					middleStatus.innerHTML = '<span style="color: #28A745; font-weight: 500;">✓ Confirmed</span>';
+				} else if (booking.downPaymentFile) {
+					middleStatus.innerHTML = '<span style="color: #FFC107; font-weight: 500;">Pending Review</span>';
+				} else {
+					middleStatus.innerHTML = '<span style="color: #6c757d;">Awaiting Upload</span>';
+				}
+			}
+			const middleActions = document.getElementById('middlePaymentActions');
+			if (middleActions) {
+				middleActions.style.display = (booking.downPaymentFile && !middleConfirmed) ? 'flex' : 'none';
+			}
+
+			// Balance 금액 (DB: balanceAmount)
+			const balanceAmt = Number(booking.balanceAmount || 0) || (orderAmount - middleAmount);
+			setValue('middleBalanceAmount', balanceAmt > 0 ? formatNumber(balanceAmt) : '-');
+			setValue('middleBalanceDeadline', booking.balanceDueDate || '');
+			applyPaymentProofUi('middleBalance', booking.balanceFile || '', booking.balanceFileName || '');
+
+			// Balance 상태
+			const mBalanceStatus = document.getElementById('middleBalanceStatus');
+			if (mBalanceStatus) {
+				if (balanceConfirmed) {
+					mBalanceStatus.innerHTML = '<span style="color: #28A745; font-weight: 500;">✓ Confirmed</span>';
+				} else if (booking.balanceFile) {
+					mBalanceStatus.innerHTML = '<span style="color: #FFC107; font-weight: 500;">Pending Review</span>';
+				} else if (!middleConfirmed) {
+					mBalanceStatus.innerHTML = '<span style="color: #6c757d;">Waiting for Middle Payment</span>';
+				} else {
+					mBalanceStatus.innerHTML = '<span style="color: #6c757d;">Awaiting Upload</span>';
+				}
+			}
+			const mBalanceActions = document.getElementById('middleBalanceActions');
+			if (mBalanceActions) {
+				mBalanceActions.style.display = (booking.balanceFile && !balanceConfirmed) ? 'flex' : 'none';
+			}
+		}
+
 		// Payment proof file UI helper
 		function applyPaymentProofUi(type, filePath, originalFileName) {
-			const infoId = type === 'down' ? 'downPaymentProofInfo'
-				: type === 'second' ? 'secondPaymentProofInfo'
-				: type === 'full' ? 'fullPaymentProofInfo'
-				: 'balanceProofInfo';
-			const downloadBtnId = type === 'down' ? 'downPaymentDownloadBtn'
-				: type === 'second' ? 'secondPaymentDownloadBtn'
-				: type === 'full' ? 'fullPaymentDownloadBtn'
-				: 'balanceDownloadBtn';
-			const viewBtnId = type === 'down' ? 'downPaymentViewBtn'
-				: type === 'second' ? 'secondPaymentViewBtn'
-				: type === 'full' ? 'fullPaymentViewBtn'
-				: 'balanceViewBtn';
+			const idMap = {
+				down:          { info: 'downPaymentProofInfo',    download: 'downPaymentDownloadBtn',    view: 'downPaymentViewBtn' },
+				second:        { info: 'secondPaymentProofInfo',  download: 'secondPaymentDownloadBtn',  view: 'secondPaymentViewBtn' },
+				full:          { info: 'fullPaymentProofInfo',    download: 'fullPaymentDownloadBtn',    view: 'fullPaymentViewBtn' },
+				balance:       { info: 'balanceProofInfo',        download: 'balanceDownloadBtn',        view: 'balanceViewBtn' },
+				middlePayment: { info: 'middlePaymentProofInfo',  download: 'middlePaymentDownloadBtn',  view: 'middlePaymentViewBtn' },
+				middleBalance: { info: 'middleBalanceProofInfo',  download: 'middleBalanceDownloadBtn',  view: 'middleBalanceViewBtn' }
+			};
+			const ids = idMap[type] || idMap.balance;
+			const infoId = ids.info;
+			const downloadBtnId = ids.download;
+			const viewBtnId = ids.view;
 
 			const infoEl = document.getElementById(infoId);
 			const downloadBtn = document.getElementById(downloadBtnId);
@@ -3951,7 +4108,8 @@
 			} catch (_) { }
 
 			const displayName = originalFileName ? String(originalFileName).trim() : (path.split('/').pop() || 'file');
-			const typeLabel = type === 'down' ? 'Down Payment' : type === 'second' ? 'Second Payment' : type === 'full' ? 'Full Payment' : 'Balance';
+			const typeLabelMap = { down: 'Down Payment', second: 'Second Payment', full: 'Full Payment', balance: 'Balance', middlePayment: 'Middle Payment', middleBalance: 'Balance' };
+			const typeLabel = typeLabelMap[type] || 'Payment';
 
 			if (infoEl) {
 				infoEl.innerHTML = `<img src="../image/file.svg" alt=""> ${escapeHtml(displayName)}`;
@@ -4000,7 +4158,10 @@
 					throw new Error(result.message || 'Failed to update deadline');
 				}
 
-				} catch (error) {
+				alert(result.message || 'Deadline change request submitted.');
+				// 상태가 pending_update로 변경되므로 페이지 데이터 새로고침
+				await loadBookingDetail();
+			} catch (error) {
 				alert(error?.message || 'An error occurred while updating deadline.');
 			}
 		}

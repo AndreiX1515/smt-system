@@ -223,6 +223,44 @@ function initializePage() {
         });
     }
 
+    // Middle Payment (2-Step) 파일 이벤트
+    const uploadMiddleFileBtn = document.getElementById('uploadMiddleFileBtn');
+    const middleFileInput = document.getElementById('middle_file_input');
+    if (uploadMiddleFileBtn && middleFileInput) {
+        uploadMiddleFileBtn.addEventListener('click', () => middleFileInput.click());
+        middleFileInput.addEventListener('change', (e) => handlePaymentFileUpload(e, 'down')); // middle uses 'down' column
+    }
+    const uploadMiddleBalanceFileBtn = document.getElementById('uploadMiddleBalanceFileBtn');
+    const middleBalanceFileInput = document.getElementById('middle_balance_file_input');
+    if (uploadMiddleBalanceFileBtn && middleBalanceFileInput) {
+        uploadMiddleBalanceFileBtn.addEventListener('click', () => middleBalanceFileInput.click());
+        middleBalanceFileInput.addEventListener('change', (e) => handlePaymentFileUpload(e, 'balance'));
+    }
+    const downloadMiddleFileBtn = document.getElementById('downloadMiddleFileBtn');
+    const deleteMiddleFileBtn = document.getElementById('deleteMiddleFileBtn');
+    if (downloadMiddleFileBtn) {
+        downloadMiddleFileBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); downloadPaymentFile('down'); });
+    }
+    if (deleteMiddleFileBtn) {
+        deleteMiddleFileBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); deletePaymentFile('down'); });
+    }
+    const downloadMiddleBalanceFileBtn = document.getElementById('downloadMiddleBalanceFileBtn');
+    const deleteMiddleBalanceFileBtn = document.getElementById('deleteMiddleBalanceFileBtn');
+    if (downloadMiddleBalanceFileBtn) {
+        downloadMiddleBalanceFileBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); downloadPaymentFile('balance'); });
+    }
+    if (deleteMiddleBalanceFileBtn) {
+        deleteMiddleBalanceFileBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); deletePaymentFile('balance'); });
+    }
+    const viewMiddleFileBtn = document.getElementById('viewMiddleFileBtn');
+    if (viewMiddleFileBtn) {
+        viewMiddleFileBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); viewPaymentFile('down'); });
+    }
+    const viewMiddleBalanceFileBtn = document.getElementById('viewMiddleBalanceFileBtn');
+    if (viewMiddleBalanceFileBtn) {
+        viewMiddleBalanceFileBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); viewPaymentFile('balance'); });
+    }
+
     // Full Payment View
     const viewFullFileBtn = document.getElementById('viewFullFileBtn');
     if (viewFullFileBtn) {
@@ -2467,24 +2505,31 @@ function renderPaymentInfo(booking, pricingOptions = []) {
     const paymentType = booking.paymentType || 'staged';
     const paymentTypeDisplay = document.getElementById('paymentTypeDisplay');
     const stagedPaymentSections = document.getElementById('stagedPaymentSections');
+    const middlePaymentSections = document.getElementById('middlePaymentSections');
     const fullPaymentSection = document.getElementById('fullPaymentSection');
 
     if (paymentTypeDisplay) {
-        paymentTypeDisplay.textContent = paymentType === 'full' ? 'Full Payment' : 'Staged Payment (3-Step)';
-        paymentTypeDisplay.style.color = paymentType === 'full' ? '#2E7D32' : '#1565C0';
+        const labels = { full: 'Full Payment', middle: 'Middle Payment (2-Step)', staged: 'Staged Payment (3-Step)' };
+        const colors = { full: '#2E7D32', middle: '#E65100', staged: '#1565C0' };
+        paymentTypeDisplay.textContent = labels[paymentType] || labels.staged;
+        paymentTypeDisplay.style.color = colors[paymentType] || colors.staged;
     }
 
     // paymentType에 따라 섹션 표시/숨김
-    if (paymentType === 'full') {
-        if (stagedPaymentSections) stagedPaymentSections.style.display = 'none';
-        if (fullPaymentSection) fullPaymentSection.style.display = 'block';
+    if (stagedPaymentSections) stagedPaymentSections.style.display = 'none';
+    if (middlePaymentSections) middlePaymentSections.style.display = 'none';
+    if (fullPaymentSection) fullPaymentSection.style.display = 'none';
 
-        // Full Payment 정보 렌더링
+    if (paymentType === 'full') {
+        if (fullPaymentSection) fullPaymentSection.style.display = 'block';
         renderFullPaymentInfo(booking, orderAmount);
-        return; // Full Payment인 경우 여기서 종료
+        return;
+    } else if (paymentType === 'middle') {
+        if (middlePaymentSections) middlePaymentSections.style.display = 'block';
+        renderMiddlePaymentInfo(booking, orderAmount);
+        return;
     } else {
         if (stagedPaymentSections) stagedPaymentSections.style.display = 'block';
-        if (fullPaymentSection) fullPaymentSection.style.display = 'none';
     }
 
     // 출발일 기준으로 deadline 자동 계산 (DB에 값이 없을 경우)
@@ -2859,15 +2904,17 @@ function updatePaymentSections(booking) {
 
 // Rejection Alert 표시 함수
 function displayRejectionAlert(type, reason, rejectedAt) {
-    const alertId = type === 'down' ? 'downPaymentRejectionAlert'
-                  : type === 'second' ? 'secondPaymentRejectionAlert'
-                  : 'balanceRejectionAlert';
-    const reasonId = type === 'down' ? 'downPaymentRejectionReason'
-                   : type === 'second' ? 'secondPaymentRejectionReason'
-                   : 'balanceRejectionReason';
-    const dateId = type === 'down' ? 'downPaymentRejectedAt'
-                 : type === 'second' ? 'secondPaymentRejectedAt'
-                 : 'balanceRejectedAt';
+    const idMap = {
+        down:          { alert: 'downPaymentRejectionAlert',    reason: 'downPaymentRejectionReason',    date: 'downPaymentRejectedAt' },
+        second:        { alert: 'secondPaymentRejectionAlert',  reason: 'secondPaymentRejectionReason',  date: 'secondPaymentRejectedAt' },
+        balance:       { alert: 'balanceRejectionAlert',        reason: 'balanceRejectionReason',        date: 'balanceRejectedAt' },
+        middlePayment: { alert: 'middlePaymentRejectionAlert',  reason: 'middlePaymentRejectionReason',  date: 'middlePaymentRejectedAt' },
+        middleBalance: { alert: 'middleBalanceRejectionAlert',  reason: 'middleBalanceRejectionReason',  date: 'middleBalanceRejectedAt' }
+    };
+    const ids = idMap[type] || idMap.balance;
+    const alertId = ids.alert;
+    const reasonId = ids.reason;
+    const dateId = ids.date;
 
     const alertEl = document.getElementById(alertId);
     const reasonEl = document.getElementById(reasonId);
@@ -4732,6 +4779,132 @@ function initializeFullPaymentFileHandlers(bookingId) {
             }
         };
     }
+}
+
+// ============================================
+// Middle Payment (2-Step) 렌더링
+// ============================================
+
+/**
+ * Middle Payment (2-Step) 정보 렌더링
+ * DB 매핑: middle payment → downPayment* columns, balance → balance* columns
+ */
+function renderMiddlePaymentInfo(booking, orderAmount) {
+    // Middle Payment Amount (DB: downPaymentAmount)
+    const middlePaymentAmountInput = document.getElementById('middlePaymentAmount');
+    const middlePaymentAmount = parseFloat(booking.downPaymentAmount) || 0;
+    if (middlePaymentAmountInput) {
+        middlePaymentAmountInput.value = middlePaymentAmount > 0 ? formatPriceNumber(middlePaymentAmount) : '-';
+    }
+
+    // Middle Payment Deadline (DB: downPaymentDueDate)
+    const middlePaymentDeadlineInput = document.getElementById('middlePaymentDeadline');
+    if (middlePaymentDeadlineInput) {
+        middlePaymentDeadlineInput.value = booking.downPaymentDueDate || '-';
+    }
+
+    // Balance Amount (DB: balanceAmount)
+    const middleBalanceAmountInput = document.getElementById('middleBalanceAmount');
+    const balanceAmount = parseFloat(booking.balanceAmount) || (orderAmount - middlePaymentAmount);
+    if (middleBalanceAmountInput) {
+        middleBalanceAmountInput.value = balanceAmount > 0 ? formatPriceNumber(balanceAmount) : '-';
+    }
+
+    // Balance Deadline (DB: balanceDueDate)
+    const middleBalanceDeadlineInput = document.getElementById('middleBalanceDeadline');
+    if (middleBalanceDeadlineInput) {
+        middleBalanceDeadlineInput.value = booking.balanceDueDate || '-';
+    }
+
+    // === Middle Payment 섹션 UI 상태 ===
+    const middlePaymentConfirmed = !!(booking.downPaymentConfirmedAt);
+    const balanceConfirmed = !!(booking.balanceConfirmedAt);
+    const bookingStatus = (booking.bookingStatus || '').toLowerCase();
+
+    // Middle Payment 파일 (DB: downPaymentFile)
+    const middleFile = booking.downPaymentFile || '';
+    const middleFileName = booking.downPaymentFileName || extractFileName(middleFile);
+    const middleFileDisplay = document.getElementById('middle_file_display');
+    const middleFileUpload = document.getElementById('middle_file_upload');
+    const middleFileNameEl = document.getElementById('middle_file_name');
+    const downloadMiddleBtn = document.getElementById('downloadMiddleFileBtn');
+    const viewMiddleBtn = document.getElementById('viewMiddleFileBtn');
+    const deleteMiddleBtn = document.getElementById('deleteMiddleFileBtn');
+    const middlePaymentStatus = document.getElementById('middlePaymentStatus');
+
+    if (middlePaymentConfirmed) {
+        if (middlePaymentStatus) middlePaymentStatus.innerHTML = '<span style="background:#4CAF50;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Confirmed</span>';
+        if (middleFileDisplay) middleFileDisplay.style.display = middleFile ? 'flex' : 'none';
+        if (middleFileUpload) middleFileUpload.style.display = 'none';
+        if (middleFileNameEl) middleFileNameEl.textContent = middleFileName || 'File';
+        if (downloadMiddleBtn) downloadMiddleBtn.disabled = !middleFile;
+        if (viewMiddleBtn) viewMiddleBtn.disabled = !middleFile;
+        if (deleteMiddleBtn) deleteMiddleBtn.style.display = 'none';
+    } else if (middleFile) {
+        if (middlePaymentStatus) middlePaymentStatus.innerHTML = '<span style="background:#FF9800;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Pending Confirmation</span>';
+        if (middleFileDisplay) middleFileDisplay.style.display = 'flex';
+        if (middleFileUpload) middleFileUpload.style.display = 'none';
+        if (middleFileNameEl) middleFileNameEl.textContent = middleFileName || 'File';
+        if (downloadMiddleBtn) downloadMiddleBtn.disabled = false;
+        if (viewMiddleBtn) viewMiddleBtn.disabled = false;
+        if (deleteMiddleBtn) { deleteMiddleBtn.style.display = ''; deleteMiddleBtn.disabled = false; }
+    } else {
+        if (middlePaymentStatus) middlePaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+        if (middleFileDisplay) middleFileDisplay.style.display = 'none';
+        if (middleFileUpload) middleFileUpload.style.display = 'block';
+    }
+
+    // === Balance 섹션 UI 상태 ===
+    const balFile = booking.balanceFile || '';
+    const balFileName = booking.balanceFileName || extractFileName(balFile);
+    const middleBalanceDisabledNotice = document.getElementById('middleBalanceDisabledNotice');
+    const middleBalancePaymentFields = document.getElementById('middleBalancePaymentFields');
+    const middleBalFileDisplay = document.getElementById('middle_balance_file_display');
+    const middleBalFileUpload = document.getElementById('middle_balance_file_upload');
+    const middleBalFileNameEl = document.getElementById('middle_balance_file_name');
+    const downloadMiddleBalBtn = document.getElementById('downloadMiddleBalanceFileBtn');
+    const viewMiddleBalBtn = document.getElementById('viewMiddleBalanceFileBtn');
+    const deleteMiddleBalBtn = document.getElementById('deleteMiddleBalanceFileBtn');
+    const middleBalancePaymentStatus = document.getElementById('middleBalancePaymentStatus');
+
+    const isBalanceStage = ['waiting_balance', 'checking_balance'].includes(bookingStatus);
+
+    if (!middlePaymentConfirmed && !isBalanceStage) {
+        // Middle Payment 미확인 → Balance 비활성화
+        if (middleBalanceDisabledNotice) middleBalanceDisabledNotice.style.display = 'block';
+        if (middleBalancePaymentFields) middleBalancePaymentFields.style.display = 'none';
+        if (middleBalancePaymentStatus) middleBalancePaymentStatus.innerHTML = '';
+    } else if (balanceConfirmed) {
+        if (middleBalanceDisabledNotice) middleBalanceDisabledNotice.style.display = 'none';
+        if (middleBalancePaymentFields) middleBalancePaymentFields.style.display = 'grid';
+        if (middleBalancePaymentStatus) middleBalancePaymentStatus.innerHTML = '<span style="background:#4CAF50;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Confirmed</span>';
+        if (middleBalFileDisplay) middleBalFileDisplay.style.display = balFile ? 'flex' : 'none';
+        if (middleBalFileUpload) middleBalFileUpload.style.display = 'none';
+        if (middleBalFileNameEl) middleBalFileNameEl.textContent = balFileName || 'File';
+        if (downloadMiddleBalBtn) downloadMiddleBalBtn.disabled = !balFile;
+        if (viewMiddleBalBtn) viewMiddleBalBtn.disabled = !balFile;
+        if (deleteMiddleBalBtn) deleteMiddleBalBtn.style.display = 'none';
+    } else if (balFile) {
+        if (middleBalanceDisabledNotice) middleBalanceDisabledNotice.style.display = 'none';
+        if (middleBalancePaymentFields) middleBalancePaymentFields.style.display = 'grid';
+        if (middleBalancePaymentStatus) middleBalancePaymentStatus.innerHTML = '<span style="background:#FF9800;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Pending Confirmation</span>';
+        if (middleBalFileDisplay) middleBalFileDisplay.style.display = 'flex';
+        if (middleBalFileUpload) middleBalFileUpload.style.display = 'none';
+        if (middleBalFileNameEl) middleBalFileNameEl.textContent = balFileName || 'File';
+        if (downloadMiddleBalBtn) downloadMiddleBalBtn.disabled = false;
+        if (viewMiddleBalBtn) viewMiddleBalBtn.disabled = false;
+        if (deleteMiddleBalBtn) { deleteMiddleBalBtn.style.display = ''; deleteMiddleBalBtn.disabled = false; }
+    } else {
+        if (middleBalanceDisabledNotice) middleBalanceDisabledNotice.style.display = 'none';
+        if (middleBalancePaymentFields) middleBalancePaymentFields.style.display = 'grid';
+        if (middleBalancePaymentStatus) middleBalancePaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+        if (middleBalFileDisplay) middleBalFileDisplay.style.display = 'none';
+        if (middleBalFileUpload) middleBalFileUpload.style.display = 'block';
+    }
+
+    // Rejection Alert 표시
+    displayRejectionAlert('middlePayment', booking.downPaymentRejectionReason, booking.downPaymentRejectedAt);
+    displayRejectionAlert('middleBalance', booking.balanceRejectionReason, booking.balanceRejectedAt);
 }
 
 // ============================================
