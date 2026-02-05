@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- calendar (for edit mode) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들어올 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="reservation-list.html" class="jw-button jw-button-back" aria-label="목록으로 돌아가기">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">목록으로 돌아가기</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<select class="select" id="reservationStatusSelect" disabled>
+						<option value="pending">Pending Approval</option>
+						<option value="waiting_down_payment">Waiting for Down Payment</option>
+						<option value="checking_down_payment">Checking Down Payment</option>
+						<option value="waiting_second_payment">Waiting for Second Payment</option>
+						<option value="checking_second_payment">Checking Second Payment</option>
+						<option value="waiting_balance">Waiting for Balance</option>
+						<option value="checking_balance">Checking Balance</option>
+						<option value="rejected">Booking Rejected</option>
+						<option value="confirmed">Reservation Confirmed</option>
+						<option value="completed">Trip Completed</option>
+						<option value="cancelled">Reservation Cancelled</option>
+						<option value="refunded">Refund Completed</option>
+					</select>
+					
+					<button type="button" class="jw-button typeB" id="saveBtn">저장</button>
+					<button type="button" class="jw-button typeA" id="cancelReservationBtn" style="display:none;">예약 취소</button>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Reservation Details">예약 상세</h1>
+			
+			<div class="tab-wrap jw-mgt32">
+				<p data-lan-eng="Product and Reservation Information">상품 및 예약 정보</p>
+				<a href="../common/reservation-location.html" target="_blank" id="meetingLocationLink"><span data-lan-eng="Meeting location">집합 위치</span><img src="../image/linkout.svg" alt=""></a>
+				<a href="../common/reservation-notices.html" target="_blank" id="announcementsLink"><span data-lan-eng="Announcements">공지사항</span><img src="../image/linkout.svg" alt=""></a>
+			</div>
+
+			<!-- 예약 거절 사유 알림 -->
+			<div id="bookingRejectionAlert" style="display: none; margin-top: 24px; padding: 16px 20px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+				<div style="display: flex; align-items: flex-start; gap: 12px;">
+					<svg width="24" height="24" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+					</svg>
+					<div style="flex: 1;">
+						<div style="font-weight: 600; color: #DC2626; font-size: 16px; margin-bottom: 6px;" data-lan-eng="Booking Rejected">예약이 거절되었습니다</div>
+						<div id="bookingRejectionReason" style="color: #7F1D1D; font-size: 14px; line-height: 1.6;"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="jw-cols jw-between jw-mgt32">
+				<h2 class="section-title" data-lan-eng="Product Information">상품 정보</h2>
+				<div class="product-edit-btns" id="productEditBtns">
+					<button type="button" id="editProductBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
+					<button type="button" id="saveProductBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
+					<button type="button" id="cancelProductBtn" class="jw-button typeD" style="display:none;" data-lan-eng="Cancel">Cancel</button>
+				</div>
+			</div>
+			<div class="card-panel jw-mgt16" id="productInfoCard">
+				<div class="grid-wrap">
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="product_name" data-lan-eng="Product Name">상품명</label>
+						<div class="jw-center jw-gap20">
+							<input id="product_name" type="text" class="form-control jw-wf" value="" disabled>
+							<button type="button" id="product_search_btn" class="jw-button typeA" style="display:none;"><img src="../image/search2.svg" alt=""><span data-lan-eng="Search">검색</span></button>
+						</div>
+						<input type="hidden" id="package_id">
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="trip_range" data-lan-eng="Travel Period">여행 기간</label>
+						<div class="field-row">
+							<input id="trip_range" type="text" class="form-control" value="" disabled readonly>
+							<button type="button" id="trip_range_btn" class="btn-icon calendar" style="display:none;" aria-label="달력 열기">
+								<img src="../image/calendar.svg" alt="">
+							</button>
+						</div>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="meet_time" data-lan-eng="Meeting Time">미팅 시간</label>
+						<input id="meet_time" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="meet_place" data-lan-eng="Meeting Place">미팅 장소</label>
+						<input id="meet_place" type="text" class="form-control" value="" disabled>
+					</div>
+
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Information">예약 정보</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+
+					<div class="grid-item">
+						<label class="label-name" for="res_no" data-lan-eng="Reservation No.">예약 번호</label>
+						<input id="res_no" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="res_datetime" data-lan-eng="Reservation Date">예약일시</label>
+						<input id="res_datetime" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="res_modified_date" data-lan-eng="Last Modified">수정일시</label>
+						<input id="res_modified_date" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="res_people" data-lan-eng="Number of Guests">예약 인원</label>
+						<input id="res_people" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Room Option">룸 옵션</label>
+						<div class="room-option-display" style="display:flex; align-items:center; gap:8px;">
+							<input id="room_opt_text" type="text" class="form-control" value="-" disabled style="flex:1;">
+							<button type="button" id="room_option_btn" class="jw-button typeA" style="display:none; white-space:nowrap;" data-lan-eng="Change">변경</button>
+						</div>
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="etc_req" data-lan-eng="Other Requests">기타 요청사항</label>
+						<div class="editor-box-wrap">
+							<textarea id="etc_req" rows="6" placeholder="내용을 입력해주세요" disabled></textarea>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Payment Information">결제 정보</h2>
+
+			<!-- 계좌 정보 박스 -->
+			<div class="card-panel jw-mgt16" style="background: #F0F7FF; border: 1px solid #0050C8;">
+				<div style="font-weight: 600; margin-bottom: 12px; color: #0050C8;">Please deposit to the account below:</div>
+				<div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; font-size: 14px;">
+					<span style="color: #666;">Bank:</span><span style="font-weight: 500;">BDO Bank</span>
+					<span style="color: #666;">Account No.:</span><span style="font-weight: 500;">004920342791</span>
+					<span style="color: #666;">Account Name:</span><span style="font-weight: 500;">TRAVEL ESCAPE TRAVEL AND TOURS</span>
+				</div>
+				<div style="margin-top: 12px; padding: 10px 12px; background: #FFF5F5; border: 1px solid #F87171; border-radius: 8px; font-size: 13px; color: #DC2626;">
+					<strong>⚠ Notice:</strong> For products with less than 30 days until departure from the reservation date, all payments must be completed within 3 days.
+				</div>
+			</div>
+
+			<!-- Total Amount -->
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" for="order_amount" data-lan-eng="Total Amount (₱)">Total Amount (₱)</label>
+						<input id="order_amount" type="text" class="form-control" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Payment Type">Payment Type</label>
+						<div id="paymentTypeDisplay" class="form-control" style="background: #F5F5F5; display: flex; align-items: center; font-weight: 500;"></div>
+					</div>
+					<div class="grid-item"></div>
+				</div>
+			</div>
+
+			<!-- Staged Payment Sections (3-Step) -->
+			<div id="stagedPaymentSections">
+			<!-- Down Payment -->
+			<div class="card-panel jw-mgt16" id="downPaymentSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Down Payment</h3>
+					<div id="downPaymentStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<!-- Rejection Reason Alert -->
+				<div id="downPaymentRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div id="downPaymentRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div id="downPaymentRejectedAt" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Down Payment (₱)</label>
+						<input type="text" class="form-control" id="downPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="text" class="form-control" id="downPaymentDeadline" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div id="down_file_display" class="field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="down_file_name"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="downloadDownFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteDownFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div id="down_file_upload">
+								<input type="file" id="down_file_input" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;">
+								<button type="button" class="jw-button typeA" id="uploadDownFileBtn">Upload File</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div style="margin-top: 12px; padding: 8px 12px; background: #FFF5F5; border: 1px solid #F87171; border-radius: 6px; color: #DC2626; font-size: 12px;">
+					<strong>⚠ Notice:</strong> Down payment is non-refundable.
+				</div>
+			</div>
+
+			<!-- Second Payment -->
+			<div class="card-panel jw-mgt16" id="secondPaymentSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Second Payment</h3>
+					<div id="secondPaymentStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<!-- Rejection Reason Alert -->
+				<div id="secondPaymentRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div id="secondPaymentRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div id="secondPaymentRejectedAt" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Second Payment (₱)</label>
+						<input type="text" class="form-control" id="secondPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="text" class="form-control" id="secondPaymentDeadline" placeholder="-" disabled>
+					</div>
+					<div class="grid-item" id="secondPaymentFields">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div id="second_file_display" class="field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="second_file_name"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="downloadSecondFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteSecondFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div id="second_file_upload">
+								<input type="file" id="second_file_input" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;">
+								<button type="button" class="jw-button typeA" id="uploadSecondFileBtn">Upload File</button>
+							</div>
+							<!-- 비활성화 안내 -->
+							<div id="secondPaymentDisabledNotice" style="padding: 8px; background: #F5F5F5; border-radius: 6px; margin-top: 8px; text-align: center; color: #666; font-size: 12px;">
+								Upload available after Down Payment is confirmed.
+							</div>
+						</div>
+					</div>
+				</div>
+				<div style="margin-top: 12px; padding: 8px 12px; background: #FFF5F5; border: 1px solid #F87171; border-radius: 6px; color: #DC2626; font-size: 12px;">
+					<strong>⚠ Notice:</strong> Second payment is non-refundable.
+				</div>
+			</div>
+
+			<!-- Balance -->
+			<div class="card-panel jw-mgt16" id="balanceSection">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Balance</h3>
+					<div id="balancePaymentStatus" class="payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<!-- Rejection Reason Alert -->
+				<div id="balanceRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div id="balanceRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div id="balanceRejectedAt" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Balance (₱)</label>
+						<input type="text" class="form-control" id="balanceAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Deadline</label>
+						<input type="text" class="form-control" id="balanceDeadline" placeholder="-" disabled>
+					</div>
+					<div class="grid-item" id="balancePaymentFields">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div id="balance_file_display" class="field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="balance_file_name"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" id="downloadBalanceFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" id="deleteBalanceFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div id="balance_file_upload">
+								<input type="file" id="balance_file_input" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;">
+								<button type="button" class="jw-button typeA" id="uploadBalanceFileBtn">Upload File</button>
+							</div>
+							<!-- 비활성화 안내 -->
+							<div id="balanceDisabledNotice" style="padding: 8px; background: #F5F5F5; border-radius: 6px; margin-top: 8px; text-align: center; color: #666; font-size: 12px;">
+								Upload available after Second Payment is confirmed.
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			</div><!-- End of stagedPaymentSections -->
+
+			<!-- Full Payment Section -->
+			<div id="fullPaymentSection" style="display: none;">
+				<div class="card-panel jw-mgt16">
+					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+						<h3 class="card-panel-title" style="margin: 0;" data-lan-eng="Full Payment">Full Payment</h3>
+						<div id="fullPaymentStatus" class="payment-status"></div>
+					</div>
+					<div class="card-panel-divider"></div>
+					<!-- Rejection Reason Alert -->
+					<div id="fullPaymentRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+						<div style="display: flex; align-items: flex-start; gap: 10px;">
+							<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+							</svg>
+							<div style="flex: 1;">
+								<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+								<div id="fullPaymentRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+								<div id="fullPaymentRejectedAt" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+							</div>
+						</div>
+					</div>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Full Payment Amount (₱)">Full Payment Amount (₱)</label>
+							<input type="text" class="form-control" id="fullPaymentAmount" placeholder="-" disabled>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Deadline">Deadline</label>
+							<input type="text" class="form-control" id="fullPaymentDeadline" placeholder="-" disabled>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Proof File">Proof File</label>
+							<div class="cell">
+								<div id="full_file_display" class="field-row jw-center" style="display:none;">
+									<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span id="full_file_name"></span></div>
+									<div class="jw-center jw-gap10">
+										<button type="button" class="jw-button typeF" id="downloadFullFileBtn"><img src="../image/buttun-download.svg" alt=""></button>
+										<button type="button" class="jw-button typeF" id="deleteFullFileBtn"><img src="../image/button-close2.svg" alt=""></button>
+									</div>
+								</div>
+								<div id="full_file_upload">
+									<input type="file" id="full_file_input" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;">
+									<button type="button" class="jw-button typeA" id="uploadFullFileBtn">Upload File</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div style="margin-top: 16px; padding: 12px 16px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; color: #2E7D32; font-size: 13px;">
+						<strong>Full Payment:</strong> Complete your payment in one transaction for a simplified booking process.
+					</div>
+				</div>
+			</div><!-- End of fullPaymentSection -->
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Agent Notes">에이전트 전달사항</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="agent_memo" data-lan-eng="Memo">메모</label>
+						<div class="editor-box-wrap">
+							<textarea id="agent_memo" rows="6" placeholder="내용을 입력해주세요" disabled></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Flight Information">항공편 정보</h2>
+			<div class="card-panel jw-mgt16">
+				<h3 class="grid-wrap-title" data-lan-eng="Departure Flight">출국편</h3>
+
+				<div class="grid-wrap jw-mgt12">
+					<div class="grid-item">
+						<label class="label-name" for="out_flight_no" data-lan-eng="Flight Name">항공편명</label>
+						<input id="out_flight_no" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="out_depart_dt" data-lan-eng="Departure Date/Time">출발일시</label>
+						<input id="out_depart_dt" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="out_arrive_dt" data-lan-eng="Arrival Date/Time">도착일시</label>
+						<input id="out_arrive_dt" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="out_depart_airport" data-lan-eng="Departure">출발지</label>
+						<input id="out_depart_airport" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="out_arrive_airport" data-lan-eng="Destination">도착지</label>
+						<input id="out_arrive_airport" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item"></div>
+				</div>
+			</div>
+			
+			<div class="card-panel jw-mgt16">
+				<h3 class="grid-wrap-title" data-lan-eng="Return Flight">귀국편</h3>
+
+				<div class="grid-wrap jw-mgt12">
+					<div class="grid-item">
+						<label class="label-name" for="in_flight_no" data-lan-eng="Flight Name">항공편명</label>
+						<input id="in_flight_no" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="in_depart_dt" data-lan-eng="Departure Date/Time">출발일시</label>
+						<input id="in_depart_dt" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="in_arrive_dt" data-lan-eng="Arrival Date/Time">도착일시</label>
+						<input id="in_arrive_dt" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="in_depart_airport" data-lan-eng="Departure">출발지</label>
+						<input id="in_depart_airport" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="in_arrive_airport" data-lan-eng="Destination">도착지</label>
+						<input id="in_arrive_airport" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item"></div>
+				</div>
+			</div>
+
+
+			<div class="jw-cols jw-between jw-mgt32">
+				<h2 class="section-title" data-lan-eng="Reservation Customer Information">예약 고객 정보</h2>
+				<div class="customer-edit-btns" id="customerEditBtns" style="display:none;">
+					<button type="button" id="editCustomerBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
+					<button type="button" id="saveCustomerBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
+					<button type="button" id="cancelCustomerBtn" class="jw-button typeD" style="display:none;" data-lan-eng="Cancel">Cancel</button>
+				</div>
+			</div>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+
+					<div class="grid-item">
+						<label class="label-name" for="cust_name" data-lan-eng="Name">이름</label>
+						<input id="cust_name" type="text" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="cust_email" data-lan-eng="Email">이메일</label>
+						<input id="cust_email" type="email" class="form-control" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" for="cust_phone" data-lan-eng="Contact">연락처</label>
+						<input id="cust_phone" type="text" class="form-control" value="" disabled>
+					</div>
+
+				</div>
+			</div>
+
+
+			<div class="jw-cols jw-between jw-mgt32">
+				<h2 class="section-title" data-lan-eng="Traveler Information">여행 고객 정보</h2>
+			</div>
+			<div class="card-panel jw-mgt16">
+				<div class="traveler-summary-section">
+					<div class="traveler-summary-header">
+						<span class="traveler-summary-count" id="traveler-summary-count">0 Travelers</span>
+						<button type="button" id="editTravelerBtn" class="jw-button typeA" style="display:none;" data-lan-eng="Edit">Edit</button>
+					</div>
+					<div class="traveler-summary-list" id="traveler-summary-list">
+						<p class="no-traveler-message" data-lan-eng="No travelers information.">여행자 정보가 없습니다.</p>
+					</div>
+				</div>
+			</div>
+			<style>
+				.traveler-summary-section {
+					padding: 8px 0;
+				}
+				.traveler-summary-header {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					margin-bottom: 16px;
+				}
+				.traveler-summary-count {
+					font-size: 16px;
+					font-weight: 600;
+					color: #374151;
+				}
+				.traveler-summary-list {
+					display: flex;
+					flex-direction: column;
+					gap: 8px;
+					min-height: 72px;
+				}
+				.traveler-summary-item {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					padding: 12px 16px;
+					background: #F9FAFB;
+					border-radius: 8px;
+					border: 1px solid #E5E7EB;
+					cursor: pointer;
+					transition: all 0.2s;
+				}
+				.traveler-summary-item:hover {
+					background: #F3F4F6;
+				}
+				.traveler-summary-item.is-primary {
+					background: #F7FAFF;
+					border-color: #0050C8;
+				}
+				.traveler-summary-info {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+				}
+				.traveler-summary-info .badge-primary {
+					background: #0050C8;
+					color: #fff;
+					padding: 2px 8px;
+					border-radius: 4px;
+					font-size: 11px;
+					font-weight: 500;
+				}
+				.traveler-summary-info .badge-type {
+					background: #E5E7EB;
+					color: #374151;
+					padding: 2px 8px;
+					border-radius: 4px;
+					font-size: 11px;
+					font-weight: 500;
+				}
+				.traveler-summary-name {
+					font-weight: 500;
+					color: #111827;
+				}
+				.traveler-summary-details {
+					color: #6B7280;
+					font-size: 13px;
+					display: flex;
+					gap: 16px;
+				}
+				.traveler-summary-details span {
+					display: flex;
+					align-items: center;
+					gap: 4px;
+				}
+				.no-traveler-message {
+					text-align: center;
+					padding: 24px;
+					color: #9CA3AF;
+				}
+				.traveler-detail-btn {
+					color: #6B7280;
+					font-size: 13px;
+					display: flex;
+					align-items: center;
+					gap: 4px;
+				}
+				.traveler-detail-btn:hover {
+					color: #0050C8;
+				}
+			</style>
+
+			<!-- Traveler Detail Modal (View Only) - create-reservation 스타일 -->
+			<div id="travelerDetailModal" class="modal" style="display:none;">
+				<div class="modal-content modal-traveler-view">
+					<div class="modal-header">
+						<h3 data-lan-eng="Traveler Information">Traveler Information</h3>
+						<button type="button" class="modal-close" onclick="closeTravelerModal()">
+							<img src="../image/button-close2.svg" alt="">
+						</button>
+					</div>
+					<div class="modal-body traveler-view-modal-body">
+						<!-- 왼쪽: 여행자 카드 영역 -->
+						<div class="traveler-view-modal-main">
+							<div class="traveler-cards-header">
+								<span class="traveler-count" id="traveler-view-count">0 Travelers</span>
+							</div>
+							<div class="traveler-cards-container" id="traveler-view-cards-container">
+								<!-- 여행자 카드가 여기에 동적으로 추가됩니다 -->
+							</div>
+						</div>
+						<!-- 오른쪽: 네비게이션 사이드바 -->
+						<div class="traveler-view-modal-sidebar" id="traveler-view-modal-sidebar">
+							<div class="sidebar-title" data-lan-eng="Travelers">Travelers</div>
+							<div class="sidebar-nav-list" id="traveler-view-sidebar-nav">
+								<!-- 여행자 네비게이션 아이템이 여기에 추가됩니다 -->
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="jw-button typeD" onclick="closeTravelerModal()" data-lan-eng="Close">Close</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Traveler Edit Modal (All Travelers) - create-reservation 스타일 -->
+			<div id="travelerEditAllModal" class="modal" style="display:none;">
+				<div class="modal-content modal-traveler">
+					<div class="modal-header">
+						<h3 data-lan-eng="Edit Travelers">Edit Travelers</h3>
+						<button type="button" class="modal-close" onclick="closeTravelerEditModal()">
+							<img src="../image/button-close2.svg" alt="">
+						</button>
+					</div>
+					<div class="modal-body traveler-modal-body">
+						<div class="traveler-cards-header">
+							<span class="traveler-count" id="traveler-edit-count">0 Travelers</span>
+							<div class="traveler-cards-actions">
+								<button type="button" class="jw-button typeA" onclick="addTravelerCardInEdit()">+ Add Traveler</button>
+							</div>
+						</div>
+						<div class="traveler-cards-container" id="traveler-cards-container">
+							<!-- 여행자 카드가 여기에 동적으로 추가됩니다 -->
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="jw-button typeB" onclick="saveAllTravelers()" data-lan-eng="Save">Save</button>
+						<button type="button" class="jw-button typeD" onclick="closeTravelerEditModal()" data-lan-eng="Cancel">Cancel</button>
+					</div>
+				</div>
+			</div>
+
+			<style>
+				/* 여행자 View 모달 스타일 - create-reservation 형식 */
+				.modal-content.modal-traveler-view {
+					max-width: 1400px;
+					width: 95%;
+					max-height: 90vh;
+					display: flex;
+					flex-direction: column;
+				}
+				.traveler-view-modal-body {
+					flex: 1;
+					overflow: hidden;
+					padding: 0;
+					display: flex;
+					gap: 0;
+				}
+				/* 왼쪽 메인 영역 */
+				.traveler-view-modal-main {
+					flex: 1;
+					overflow-y: auto;
+					padding: 24px 32px;
+					min-width: 0;
+				}
+				/* 오른쪽 사이드바 */
+				.traveler-view-modal-sidebar {
+					width: 220px;
+					flex-shrink: 0;
+					background: #F9FAFB;
+					border-left: 1px solid #E5E7EB;
+					display: flex;
+					flex-direction: column;
+					overflow: hidden;
+				}
+				.traveler-view-modal-sidebar .sidebar-title {
+					padding: 16px 20px;
+					font-size: 14px;
+					font-weight: 600;
+					color: #374151;
+					border-bottom: 1px solid #E5E7EB;
+					background: #fff;
+				}
+				.traveler-view-modal-sidebar .sidebar-nav-list {
+					flex: 1;
+					overflow-y: auto;
+					padding: 12px;
+				}
+				.traveler-view-modal-sidebar .sidebar-nav-item {
+					display: flex;
+					align-items: center;
+					gap: 10px;
+					padding: 12px 14px;
+					margin-bottom: 6px;
+					border-radius: 8px;
+					cursor: pointer;
+					transition: all 0.15s;
+					border: 1px solid transparent;
+				}
+				.traveler-view-modal-sidebar .sidebar-nav-item:hover {
+					background: #fff;
+					border-color: #E5E7EB;
+				}
+				.traveler-view-modal-sidebar .sidebar-nav-item.active {
+					background: #EFF6FF;
+					border-color: #0050C8;
+				}
+				.traveler-view-modal-sidebar .sidebar-nav-item.is-primary {
+					background: #F0F9FF;
+				}
+				.traveler-view-modal-sidebar .nav-item-number {
+					width: 24px;
+					height: 24px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					background: #E5E7EB;
+					border-radius: 50%;
+					font-size: 12px;
+					font-weight: 600;
+					color: #374151;
+					flex-shrink: 0;
+				}
+				.traveler-view-modal-sidebar .sidebar-nav-item.is-primary .nav-item-number {
+					background: #0050C8;
+					color: #fff;
+				}
+				.traveler-view-modal-sidebar .nav-item-info {
+					flex: 1;
+					min-width: 0;
+					overflow: hidden;
+				}
+				.traveler-view-modal-sidebar .nav-item-name {
+					font-size: 13px;
+					font-weight: 500;
+					color: #111827;
+					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+				.traveler-view-modal-sidebar .nav-item-type {
+					font-size: 11px;
+					color: #6B7280;
+					margin-top: 2px;
+				}
+				.traveler-view-modal-sidebar .nav-item-badge {
+					font-size: 9px;
+					padding: 2px 6px;
+					background: #0050C8;
+					color: #fff;
+					border-radius: 3px;
+					flex-shrink: 0;
+				}
+				/* View-only 카드 스타일 */
+				.traveler-card-view {
+					border: 1px solid #E5E7EB;
+					border-radius: 12px;
+					padding: 20px;
+					background: #fff;
+					margin-bottom: 16px;
+				}
+				.traveler-card-view.is-primary {
+					border-color: #0050C8;
+					background: #F7FAFF;
+				}
+				.traveler-card-view .traveler-card-header {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					margin-bottom: 16px;
+					padding-bottom: 12px;
+					border-bottom: 1px solid #E5E7EB;
+				}
+				.traveler-card-view .traveler-card-title {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+				}
+				.traveler-card-view .traveler-card-title span {
+					font-size: 16px;
+					font-weight: 600;
+					color: #111827;
+				}
+				.traveler-card-view .traveler-card-title .badge-primary {
+					background: #0050C8;
+					color: #fff;
+					padding: 2px 8px;
+					border-radius: 4px;
+					font-size: 12px;
+					font-weight: 500;
+				}
+				.traveler-card-view .traveler-card-body {
+					display: grid;
+					grid-template-columns: repeat(4, 1fr);
+					gap: 14px;
+				}
+				.traveler-card-view .form-group {
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+				}
+				.traveler-card-view .form-group label {
+					font-size: 12px;
+					font-weight: 500;
+					color: #374151;
+				}
+				.traveler-card-view .form-group .form-value {
+					padding: 8px 10px;
+					background: #F9FAFB;
+					border: 1px solid #E5E7EB;
+					border-radius: 8px;
+					font-size: 13px;
+					color: #111827;
+					min-height: 38px;
+					display: flex;
+					align-items: center;
+				}
+				.traveler-card-view .form-group.col-span-2 {
+					grid-column: span 2;
+				}
+				@media (max-width: 768px) {
+					.traveler-view-modal-body {
+						flex-direction: column;
+					}
+					.traveler-view-modal-sidebar {
+						width: 100%;
+						border-left: none;
+						border-top: 1px solid #E5E7EB;
+					}
+					.traveler-card-view .traveler-card-body {
+						grid-template-columns: repeat(2, 1fr);
+					}
+				}
+
+				/* 여행자 Edit 모달 스타일 - create-reservation 형식 */
+				.modal-content.modal-traveler {
+					max-width: 1100px;
+					width: 95%;
+					max-height: 90vh;
+					display: flex;
+					flex-direction: column;
+				}
+				.traveler-modal-body {
+					flex: 1;
+					overflow-y: auto;
+					padding: 24px 32px;
+				}
+				.traveler-cards-header {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					margin-bottom: 20px;
+				}
+				.traveler-cards-actions {
+					display: flex;
+					gap: 8px;
+				}
+				.traveler-count {
+					font-size: 16px;
+					font-weight: 600;
+					color: #374151;
+				}
+				.traveler-cards-container {
+					display: flex;
+					flex-direction: column;
+					gap: 16px;
+				}
+				.traveler-card {
+					border: 1px solid #E5E7EB;
+					border-radius: 12px;
+					padding: 20px;
+					background: #fff;
+					position: relative;
+				}
+				.traveler-card.is-primary {
+					border-color: #0050C8;
+					background: #F7FAFF;
+				}
+				.traveler-card-header {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					margin-bottom: 16px;
+					padding-bottom: 12px;
+					border-bottom: 1px solid #E5E7EB;
+				}
+				.traveler-card-title {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+				}
+				.traveler-card-title span {
+					font-size: 16px;
+					font-weight: 600;
+					color: #111827;
+				}
+				.traveler-card-title .badge-primary {
+					background: #0050C8;
+					color: #fff;
+					padding: 2px 8px;
+					border-radius: 4px;
+					font-size: 12px;
+				}
+				.traveler-card-actions {
+					display: flex;
+					gap: 8px;
+				}
+				.btn-set-primary {
+					padding: 6px 12px;
+					border: 1px solid #D1D5DB;
+					border-radius: 6px;
+					background: #fff;
+					color: #374151;
+					font-size: 12px;
+					cursor: pointer;
+				}
+				.btn-set-primary:hover {
+					background: #F3F4F6;
+				}
+				.btn-delete-traveler {
+					padding: 6px 10px;
+					border: 1px solid #FCA5A5;
+					border-radius: 6px;
+					background: #FEF2F2;
+					color: #DC2626;
+					font-size: 12px;
+					cursor: pointer;
+				}
+				.btn-delete-traveler:hover {
+					background: #FEE2E2;
+				}
+				.traveler-card-body {
+					display: grid;
+					grid-template-columns: repeat(4, 1fr);
+					gap: 14px;
+				}
+				.traveler-card-body .form-group {
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+					min-width: 0;
+					overflow: hidden;
+				}
+				.traveler-card-body .form-group label {
+					font-size: 12px;
+					font-weight: 500;
+					color: #374151;
+				}
+				.traveler-card-body .form-group input,
+				.traveler-card-body .form-group select {
+					width: 100%;
+					padding: 8px 10px;
+					border: 1px solid #D1D5DB;
+					border-radius: 8px;
+					font-size: 13px;
+					box-sizing: border-box;
+					background-color: #fff;
+				}
+				.traveler-card-body .form-group select {
+					display: block !important;
+					appearance: auto !important;
+					cursor: pointer;
+					-webkit-appearance: menulist !important;
+				}
+				.traveler-card-body .form-group input:focus,
+				.traveler-card-body .form-group select:focus {
+					outline: none;
+					border-color: #0050C8;
+				}
+				.traveler-card-body .form-group input.readonly-field {
+					background-color: #F3F4F6;
+					color: #6B7280;
+				}
+				.traveler-card-body .form-group.col-span-2 {
+					grid-column: span 2;
+				}
+				.traveler-card-body .form-group.col-span-3 {
+					grid-column: span 3;
+				}
+				.traveler-card-body .form-group.col-span-4 {
+					grid-column: span 4;
+				}
+				.no-travelers-message {
+					text-align: center;
+					padding: 40px;
+					color: #6B7280;
+				}
+				/* 여권 사진 업로드 스타일 */
+				.passport-photo-upload {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+				}
+				.btn-upload-photo {
+					display: flex;
+					align-items: center;
+					gap: 6px;
+					padding: 8px 14px;
+					border: 1px solid #D1D5DB;
+					border-radius: 8px;
+					background: #fff;
+					color: #374151;
+					font-size: 13px;
+					cursor: pointer;
+					transition: all 0.2s;
+				}
+				.btn-upload-photo:hover {
+					background: #F3F4F6;
+				}
+				.passport-photo-info {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					padding: 6px 10px;
+					background: #F3F4F6;
+					border-radius: 6px;
+				}
+				.passport-photo-info.hidden {
+					display: none;
+				}
+				.photo-filename {
+					font-size: 12px;
+					color: #374151;
+					max-width: 150px;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+				.btn-remove-photo {
+					padding: 4px;
+					border: none;
+					background: transparent;
+					cursor: pointer;
+					opacity: 0.6;
+				}
+				.btn-remove-photo:hover {
+					opacity: 1;
+				}
+				/* Visa Document Upload Styles */
+				.visa-document-upload {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+				}
+				.visa-document-info {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					padding: 6px 12px;
+					background: #F0FDF4;
+					border: 1px solid #86EFAC;
+					border-radius: 6px;
+				}
+				.visa-document-info.hidden {
+					display: none;
+				}
+				.visa-filename {
+					font-size: 13px;
+					color: #166534;
+					max-width: 200px;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+				.visa-upload-container {
+					margin-top: 8px;
+				}
+				.passport-date-warning {
+					color: #DC2626;
+					font-size: 12px;
+				}
+				@media (max-width: 768px) {
+					.traveler-card-body {
+						grid-template-columns: repeat(2, 1fr);
+					}
+					.traveler-card-body .form-group.col-span-3,
+					.traveler-card-body .form-group.col-span-4 {
+						grid-column: span 2;
+					}
+				}
+			</style>
+
+			<!-- 더미 테이블 (JS 호환용 - 숨김) -->
+			<div style="display:none;">
+				<table class="jw-tableA booking-detail">
+					<tbody></tbody>
+				</table>
+			</div>
+
+		</section>
+
+
+	</main>
+
+	<!-- 기한 설정 모달 -->
+	<div id="deadlineModal" class="modal" style="display:none;">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3 id="deadlineModalTitle">입금 기한 설정</h3>
+				<button type="button" class="modal-close" onclick="closeModal('deadlineModal')">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name">날짜</label>
+						<input type="date" id="deadlineDate" class="form-control">
+					</div>
+					<div class="grid-item">
+						<label class="label-name">시간</label>
+						<input type="time" id="deadlineTime" class="form-control">
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button typeB" id="confirmDeadlineBtn">확인</button>
+				<button type="button" class="jw-button typeD" onclick="closeModal('deadlineModal')">취소</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- 상품 검색 모달 -->
+	<div id="product-search-modal" class="modal" style="display: none;">
+		<div class="modal-content modal-large">
+			<div class="modal-header">
+				<h3 data-lan-eng="Product Search">상품 검색</h3>
+				<button type="button" class="modal-close" onclick="closeModal('product-search-modal')">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="search-box">
+					<input type="text" id="product-search-input" class="form-control" placeholder="상품명을 입력하세요" data-lan-eng-placeholder="Enter product name">
+					<button type="button" id="product-search-submit" class="jw-button typeA" data-lan-eng="Search">검색</button>
+				</div>
+				<div class="search-results" id="product-search-results">
+					<!-- 검색 결과가 여기에 표시됩니다 -->
+				</div>
+				<style>
+					#product-search-modal .search-results {
+						max-height: 500px;
+						overflow-y: auto;
+						padding-right: 6px;
+					}
+					#product-search-modal .product-item {
+						cursor: pointer;
+						border: 1px solid #E5E7EB;
+						border-radius: 10px;
+						padding: 12px;
+						margin-top: 10px;
+						background: #fff;
+					}
+					#product-search-modal .product-item:hover {
+						border-color: #9CA3AF;
+						background: #F9FAFB;
+					}
+					#product-search-modal .product-item.selected {
+						border: 2px solid #0050C8;
+						box-shadow: 0 0 0 3px rgba(0, 80, 200, 0.12);
+						background: #F7FAFF;
+					}
+					#product-search-modal .product-item-content {
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						gap: 16px;
+					}
+					#product-search-modal .product-info {
+						flex: 1;
+						min-width: 0;
+					}
+					#product-search-modal .product-name { font-weight: 600; }
+					#product-search-modal .product-price { margin-top: 6px; color: #111827; }
+					#product-search-modal .product-days { margin-top: 6px; color: #6B7280; font-size: 13px; }
+				</style>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button typeB" id="product-search-confirm" data-lan-eng="Select">선택</button>
+				<button type="button" class="jw-button typeD" onclick="closeModal('product-search-modal')" data-lan-eng="Cancel">취소</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- 룸 옵션 선택 모달 -->
+	<div id="room-option-modal" class="modal" style="display: none;">
+		<div class="modal-content modal-room-option">
+			<div class="modal-body room-option-modal-body">
+				<h2 class="room-option-title" data-lan-eng="Select Room Options">Select Room Options</h2>
+
+				<div id="room-combination-banner" class="room-combination-banner">
+					<div class="room-combination-text">
+						<span data-lan-eng="Current Room Combination">Current Room Combination</span>
+						<span id="room-combination-count">(0/0<span data-lan-eng="People">명</span>)</span>
+					</div>
+					<div class="room-combination-note" data-lan-eng="*Adults and Children with 'Child Room=Yes' are counted. (Infants excluded)">
+						*Adults and Children with 'Child Room=Yes' are counted. (Infants excluded)
+					</div>
+				</div>
+
+				<div class="room-option-notice" style="margin-bottom: 16px; padding: 12px 16px; background: #FFF8E6; border: 1px solid #FFE082; border-radius: 8px; color: #8B6914; font-size: 13px;">
+					* All rooms are based on double occupancy. If a customer wants a private room or is traveling alone, Single Supplement Surcharge will be applied.
+				</div>
+
+				<div class="room-option-container">
+					<div class="room-option-left">
+						<div id="room-option-list">
+							<!-- 룸 옵션 목록이 여기에 표시됩니다 -->
+						</div>
+					</div>
+					<div class="room-option-right">
+						<div id="order-summary-list" class="order-summary-list">
+							<!-- 주문 요약이 여기에 표시됩니다 -->
+						</div>
+						<div class="order-amount-divider"></div>
+						<div class="order-amount-row">
+							<span class="order-amount-label" data-lan-eng="Order Amount">Order Amount</span>
+							<span class="order-amount-value" id="order-amount-value">0(₱)</span>
+						</div>
+					</div>
+				</div>
+
+				<button type="button" id="confirm-room-selection-btn" class="room-option-submit-btn" onclick="confirmRoomSelectionEdit()" data-lan-eng="Selection complete" disabled>Selection complete</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- 예약 취소 확인 모달 -->
+	<div id="cancelReservationModal" class="modal" style="display:none;">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3>예약 취소</h3>
+				<button type="button" class="modal-close" onclick="closeModal('cancelReservationModal')">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<p>정말로 예약을 취소하시겠습니까?</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button typeB" id="confirmCancelBtn">확인</button>
+				<button type="button" class="jw-button typeD" onclick="closeModal('cancelReservationModal')">취소</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- 기본 스크립트 -->
+	<script src="../js/default.js"></script>
+	<script src="../js/agent.js"></script>
+	<script src="../js/agent-reservation-detail.js?v=20260121005"></script>
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_agent.html'
+		});
+	</script>
+	<script>
+		(function () {
+			try {
+				const p = new URLSearchParams(window.location.search);
+				const bookingId = p.get('bookingId') || p.get('id') || '';
+				if (!bookingId) return;
+				const loc = document.getElementById('meetingLocationLink');
+				const noti = document.getElementById('announcementsLink');
+				if (loc) loc.href = `../common/reservation-location.html?bookingId=${encodeURIComponent(bookingId)}`;
+				if (noti) noti.href = `../common/reservation-notices.html?bookingId=${encodeURIComponent(bookingId)}`;
+			} catch (_) {}
+		})();
+	</script>
+</body>
+
+</html>

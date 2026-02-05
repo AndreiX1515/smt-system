@@ -3431,7 +3431,8 @@ function updateReservation($conn, $input) {
             $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';
             $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'other', ?, ?, ?, ?, ?, 'agent', 'pending')";
             $changeRequestStmt = $conn->prepare($changeRequestSql);
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBooking['bookingStatus'], $currentBooking['paymentStatus'], $previousData, $newData, $requestedBy);
+            $trueOriginalStatus = __get_true_original_status_agent($conn, $bookingId, $currentBooking['bookingStatus']);
+            $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentBooking['paymentStatus'], $previousData, $newData, $requestedBy);
             $changeRequestStmt->execute();
             $changeRequestStmt->close();
 
@@ -7561,7 +7562,7 @@ function setPaymentDeadline($conn, $input) {
         // deadline을 DATE 형식으로 변환 (YYYY-MM-DD HH:MM -> YYYY-MM-DD)
         $deadlineDate = substr(trim($deadline), 0, 10);
         $currentDeadline = $booking['currentDeadline'] ?? null;
-        $originalStatus = $booking['bookingStatus'];
+        $originalStatus = __get_true_original_status_agent($conn, $bookingId, $booking['bookingStatus']);
 
         // previousData와 newData 구성
         $previousData = json_encode([
@@ -7728,8 +7729,8 @@ function requestProductEdit($conn, $input) {
             'customerAccountId' => $booking['customerAccountId'] ?? null
         ], JSON_UNESCAPED_UNICODE);
 
-        // 현재 상태 저장
-        $originalStatus = $booking['bookingStatus'];
+        // 현재 상태 저장 (pending_update 오염 방지)
+        $originalStatus = __get_true_original_status_agent($conn, $bookingId, $booking['bookingStatus']);
         $originalPaymentStatus = $booking['paymentStatus'] ?? 'pending';
 
         // Agent 정보 가져오기
@@ -7906,8 +7907,8 @@ function cancelProductEdit($conn, $input) {
         $updateStmt->execute();
         $updateStmt->close();
 
-        // booking_change_requests 레코드 상태를 cancelled로 변경
-        $cancelSql = "UPDATE booking_change_requests SET status = 'cancelled', processedAt = NOW() WHERE id = ?";
+        // booking_change_requests 레코드 상태를 rejected로 변경 (product edit 취소)
+        $cancelSql = "UPDATE booking_change_requests SET status = 'rejected', processedAt = NOW(), rejectReason = 'Cancelled by agent' WHERE id = ?";
         $cancelStmt = $conn->prepare($cancelSql);
         $cancelStmt->bind_param('i', $changeRequest['id']);
         $cancelStmt->execute();
@@ -8528,6 +8529,41 @@ function deletePaymentProofFile($conn, $input) {
     } catch (Exception $e) {
         send_error_response('Failed to delete file: ' . $e->getMessage());
     }
+}
+
+/**
+ * pending_update 상태에서 변경 요청 생성 시, 올바른 originalStatus를 조회
+ */
+function __get_true_original_status_agent($conn, $bookingId, $currentStatus) {
+    if (!in_array($currentStatus, ['pending_update', 'check_reject'])) {
+        return $currentStatus;
+    }
+
+    $stmt = $conn->prepare("SELECT originalStatus FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' AND originalStatus IS NOT NULL AND originalStatus NOT IN ('pending_update', 'check_reject') ORDER BY requestedAt ASC LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+        if ($row && !empty($row['originalStatus'])) {
+            return $row['originalStatus'];
+        }
+    }
+
+    $stmt2 = $conn->prepare("SELECT originalStatus FROM booking_change_requests WHERE bookingId = ? AND originalStatus IS NOT NULL AND originalStatus NOT IN ('pending_update', 'check_reject') ORDER BY requestedAt DESC LIMIT 1");
+    if ($stmt2) {
+        $stmt2->bind_param('s', $bookingId);
+        $stmt2->execute();
+        $result2 = $stmt2->get_result();
+        $row2 = $result2->fetch_assoc();
+        $stmt2->close();
+        if ($row2 && !empty($row2['originalStatus'])) {
+            return $row2['originalStatus'];
+        }
+    }
+
+    return 'confirmed';
 }
 
 // 예약 이력 추가 헬퍼 함수
@@ -9590,9 +9626,10 @@ function updateProductInfo($conn, $input) {
 
             // booking_change_requests에 변경 요청 저장
             $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';
+            $trueOriginalStatus = __get_true_original_status_agent($conn, $bookingId, $currentBooking['bookingStatus']);
             $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'other', ?, ?, ?, ?, ?, 'agent', 'pending')";
             $changeRequestStmt = $conn->prepare($changeRequestSql);
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBooking['bookingStatus'], $currentBooking['paymentStatus'], $previousData, $newData, $requestedBy);
+            $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentBooking['paymentStatus'], $previousData, $newData, $requestedBy);
             $changeRequestStmt->execute();
             $changeRequestStmt->close();
 
@@ -9818,9 +9855,10 @@ function updateTravelerInfo($conn, $input) {
 
             // booking_change_requests에 변경 요청 저장
             $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';
+            $trueOriginalStatus = __get_true_original_status_agent($conn, $bookingId, $booking['bookingStatus']);
             $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'agent', 'pending')";
             $changeRequestStmt = $conn->prepare($changeRequestSql);
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $booking['bookingStatus'], $booking['paymentStatus'], $previousData, $newData, $requestedBy);
+            $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $booking['paymentStatus'], $previousData, $newData, $requestedBy);
             $changeRequestStmt->execute();
             $changeRequestStmt->close();
 
@@ -10202,8 +10240,12 @@ function acknowledgeRejectionAgent($conn, $input) {
             send_error_response('No rejected change request found for this booking');
         }
 
-        // 원래 상태로 복원
-        $originalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+        // 원래 상태로 복원 (pending_update/check_reject 오염 방지)
+        $rawOriginalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+        $originalStatus = $rawOriginalStatus;
+        if (in_array($originalStatus, ['pending_update', 'check_reject'])) {
+            $originalStatus = __get_true_original_status_agent($conn, $bookingId, $originalStatus);
+        }
         $originalPaymentStatus = $changeRequest['originalPaymentStatus'];
 
         if ($originalPaymentStatus !== null) {

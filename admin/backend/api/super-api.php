@@ -12837,11 +12837,12 @@ function updateB2BBooking($conn, $input) {
                 }
 
                 // booking_change_requests 테이블에 변경 요청 저장
+                $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
                 $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, targetStatus, targetPaymentStatus, requestedBy, requestedByType, status) VALUES (?, 'status', ?, ?, ?, ?, ?, 'employee', 'pending')";
                 $changeRequestStmt = $conn->prepare($changeRequestSql);
                 if ($changeRequestStmt) {
                     $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                    $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $targetStatus, $targetPaymentStatus, $requestedBy);
+                    $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $targetStatus, $targetPaymentStatus, $requestedBy);
                     $changeRequestStmt->execute();
                     $changeRequestStmt->close();
                 }
@@ -13142,11 +13143,12 @@ function updateB2BBooking($conn, $input) {
                 'pendingTravelers' => $hasTravelers ? $input['travelers'] : null
             ], JSON_UNESCAPED_UNICODE);
 
+            $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
             $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
             $changeRequestStmt = $conn->prepare($changeRequestSql);
             if ($changeRequestStmt) {
                 $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
+                $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
                 $changeRequestStmt->execute();
                 $changeRequestStmt->close();
             }
@@ -13499,11 +13501,12 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
                 'pendingRooms' => $selectedRooms
             ], JSON_UNESCAPED_UNICODE);
 
+            $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
             $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
             $changeRequestStmt = $conn->prepare($changeRequestSql);
             if ($changeRequestStmt) {
                 $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                $changeRequestStmt->bind_param('ssssss', $bookingId, $currentBook, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
+                $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
                 $changeRequestStmt->execute();
                 $changeRequestStmt->close();
             }
@@ -14123,7 +14126,7 @@ function approveB2BBooking($conn, $input) {
                 $pendingCustomerInfo = $newData['pendingCustomerInfo'] ?? null;
                 $originalTravelers = $previousData['originalTravelers'] ?? [];
                 $originalRooms = $previousData['originalRooms'] ?? [];
-                $newStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+                $newStatus = __resolve_post_approval_status($conn, $bookingId, $changeRequest['id'], $changeRequest['originalStatus'] ?? 'confirmed');
 
                 // Customer Info 적용 (있는 경우)
                 if ($pendingCustomerInfo && is_array($pendingCustomerInfo)) {
@@ -14674,8 +14677,8 @@ function approveB2BBooking($conn, $input) {
 
             } else if ($changeRequest['changeType'] === 'deadline') {
                 // Deadline 변경 요청 승인: admin_kr만 승인 가능
-                $currentAdminType = $_SESSION['admin_userType'] ?? '';
-                if ($currentAdminType !== 'admin_kr') {
+                $currentAdminId = $_SESSION['super_accountId'] ?? '';
+                if ($currentAdminId !== 'admin_kr') {
                     send_error_response('Only admin_kr can approve deadline changes');
                 }
 
@@ -14694,7 +14697,7 @@ function approveB2BBooking($conn, $input) {
                 }
 
                 // 원래 상태로 복원하면서 deadline 업데이트
-                $newStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+                $newStatus = __resolve_post_approval_status($conn, $bookingId, $changeRequest['id'], $changeRequest['originalStatus'] ?? 'confirmed');
 
                 $sql = "UPDATE bookings SET bookingStatus = ?, $fieldName = ?, updatedAt = NOW() WHERE bookingId = ?";
                 $stmt = $conn->prepare($sql);
@@ -14728,7 +14731,7 @@ function approveB2BBooking($conn, $input) {
 
             } else {
                 // 기타 데이터 수정 요청 승인
-                $newStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+                $newStatus = __resolve_post_approval_status($conn, $bookingId, $changeRequest['id'], $changeRequest['originalStatus'] ?? 'confirmed');
 
                 $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
                 $stmt = $conn->prepare($sql);
@@ -14827,7 +14830,7 @@ function rejectB2BBooking($conn, $input) {
             }
 
             $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-            $originalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+            $originalStatus = __resolve_post_approval_status($conn, $bookingId, $changeRequest['id'], $changeRequest['originalStatus'] ?? 'confirmed');
             $originalPaymentStatus = $changeRequest['originalPaymentStatus'] ?? null;
 
             if ($changeRequest['changeType'] === 'status') {
@@ -15119,8 +15122,8 @@ function acknowledgeRejection($conn, $input) {
             send_error_response('No rejected change request found for this booking');
         }
 
-        // 원래 상태로 복원
-        $originalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
+        // 원래 상태로 복원 (pending_update/check_reject 오염 방지)
+        $originalStatus = __resolve_post_approval_status($conn, $bookingId, $changeRequest['id'], $changeRequest['originalStatus'] ?? 'confirmed');
         $originalPaymentStatus = $changeRequest['originalPaymentStatus'];
 
         if ($originalPaymentStatus !== null) {
@@ -15257,13 +15260,13 @@ function setPaymentDeadline($conn, $input) {
         // deadline을 DATE 형식으로 변환 (YYYY-MM-DD HH:MM -> YYYY-MM-DD)
         $deadlineDate = substr(trim($deadline), 0, 10);
         $currentDeadline = $booking['currentDeadline'] ?? null;
-        $originalStatus = $booking['bookingStatus'];
+        $originalStatus = __get_true_original_status($conn, $bookingId, $booking['bookingStatus']);
 
         // 세션에서 요청자 정보 가져오기
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $requestedBy = $_SESSION['admin_emailAddress'] ?? $_SESSION['admin_username'] ?? 'admin';
+        $requestedBy = $_SESSION['super_accountId'] ?? $_SESSION['admin_username'] ?? 'admin';
 
         // previousData와 newData 구성
         $previousData = json_encode([
@@ -17530,6 +17533,71 @@ function deleteAirlineOption($conn, $input) {
 // ========================================
 // 예약 상태 변경 히스토리 관련 함수들
 // ========================================
+
+/**
+ * pending_update 상태에서 변경 요청 생성 시, 올바른 originalStatus를 조회
+ * pending_update/check_reject이 아닌 실제 의미 있는 상태를 반환
+ */
+function __get_true_original_status($conn, $bookingId, $currentStatus) {
+    if (!in_array($currentStatus, ['pending_update', 'check_reject'])) {
+        return $currentStatus;
+    }
+
+    // 가장 오래된 pending 요청 중 유효한 originalStatus 조회
+    $stmt = $conn->prepare("SELECT originalStatus FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' AND originalStatus IS NOT NULL AND originalStatus NOT IN ('pending_update', 'check_reject') ORDER BY requestedAt ASC LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+        if ($row && !empty($row['originalStatus'])) {
+            return $row['originalStatus'];
+        }
+    }
+
+    // pending 요청에 없으면, 최근 approved/rejected 요청에서 조회
+    $stmt2 = $conn->prepare("SELECT originalStatus FROM booking_change_requests WHERE bookingId = ? AND originalStatus IS NOT NULL AND originalStatus NOT IN ('pending_update', 'check_reject') ORDER BY requestedAt DESC LIMIT 1");
+    if ($stmt2) {
+        $stmt2->bind_param('s', $bookingId);
+        $stmt2->execute();
+        $result2 = $stmt2->get_result();
+        $row2 = $result2->fetch_assoc();
+        $stmt2->close();
+        if ($row2 && !empty($row2['originalStatus'])) {
+            return $row2['originalStatus'];
+        }
+    }
+
+    return 'confirmed'; // 최종 fallback
+}
+
+/**
+ * 승인 후 복원할 상태를 결정
+ * - originalStatus가 pending_update/check_reject이면 올바른 상태 조회
+ * - 현재 승인하는 요청 외에 남은 pending 요청이 있으면 pending_update 유지
+ */
+function __resolve_post_approval_status($conn, $bookingId, $changeRequestId, $originalStatus) {
+    $resolvedStatus = $originalStatus;
+    if (in_array($resolvedStatus, ['pending_update', 'check_reject'])) {
+        $resolvedStatus = __get_true_original_status($conn, $bookingId, $resolvedStatus);
+    }
+
+    // 현재 승인하는 요청 외에 남은 pending 요청 확인
+    $remainingStmt = $conn->prepare("SELECT COUNT(*) as cnt FROM booking_change_requests WHERE bookingId = ? AND status = 'pending' AND id != ?");
+    if ($remainingStmt) {
+        $remainingStmt->bind_param('si', $bookingId, $changeRequestId);
+        $remainingStmt->execute();
+        $remainingResult = $remainingStmt->get_result();
+        $remainingRow = $remainingResult->fetch_assoc();
+        $remainingStmt->close();
+        if (($remainingRow['cnt'] ?? 0) > 0) {
+            return 'pending_update';
+        }
+    }
+
+    return $resolvedStatus;
+}
 
 /**
  * 상태 변경 히스토리 테이블 확인 및 생성

@@ -637,8 +637,15 @@
 					const originalCount = (cr.previousData?.originalTravelers || []).length;
 					const pendingCount = (cr.newData?.pendingTravelers || []).length;
 					changes.push(`Travelers: ${originalCount}명 → ${pendingCount}명`);
+				} else if (cr.changeType === 'deadline') {
+					const deadlineData = cr.newData || {};
+					const typeLabels = { down: 'Down Payment', deposit: 'Down Payment', second: 'Second Payment', advance: 'Second Payment', balance: 'Balance', full: 'Full Payment' };
+					const label = typeLabels[deadlineData.type] || 'Payment';
+					changes.push(`${label} Deadline: ${cr.previousData?.deadline || 'N/A'} → ${deadlineData.deadline || 'N/A'}`);
+				} else if (cr.changeType === 'product_edit') {
+					changes.push('Product Edit');
 				} else {
-					changes.push('Other changes');
+					changes.push(`${cr.changeType || 'Other'} changes`);
 				}
 				return changes.join(', ');
 			}
@@ -722,8 +729,30 @@
 					`;
 				}
 
+				if (cr.changeType === 'deadline') {
+					const deadlineData = cr.newData || {};
+					const typeLabels = { down: 'Down Payment', deposit: 'Down Payment', second: 'Second Payment', advance: 'Second Payment', balance: 'Balance', full: 'Full Payment' };
+					const label = typeLabels[deadlineData.type] || 'Payment';
+					const prevDeadline = cr.previousData?.deadline || 'N/A';
+					const newDeadline = deadlineData.deadline || 'N/A';
+					return `
+						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#f59e0b; border-radius:4px;">📅 ${escapeHtml(label)} Deadline</span>
+							<span style="font-size:10px; color:#6b7280;">${escapeHtml(prevDeadline)} → ${escapeHtml(newDeadline)}</span>
+						</div>
+					`;
+				}
+
+				if (cr.changeType === 'product_edit') {
+					return `
+						<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+							<span style="font-size:11px; color:#fff; padding:2px 8px; background:#ec4899; border-radius:4px;">📦 Product 변경</span>
+						</div>
+					`;
+				}
+
 				// 기타 변경 요청
-				return `<span class="changed-field" style="cursor:help;">Other changes</span>`;
+				return `<span class="changed-field" style="cursor:help;">${escapeHtml(cr.changeType || 'Other')} changes</span>`;
 			}
 
 			// Fallback to previousData (하위 호환)

@@ -63,16 +63,8 @@ if (defined('DEBUG_MODE') && DEBUG_MODE) {
 // ini_set('display_errors', 1); // 서버 설정 사용 // 연결 에러 확인을 위해 활성화
 ini_set('log_errors', 0); // 로그 파일 사용 안 함
 
-// 세션 설정
+// 세션 설정 및 시작 (session.php에서 처리)
 require_once __DIR__ . '/config/session.php';
-ini_set('session.gc_maxlifetime', SESSION_LIFETIME_SECONDS);
-ini_set('session.cookie_lifetime', SESSION_LIFETIME_SECONDS);
-ini_set('session.cookie_path', '/'); // 모든 경로에서 세션 공유
-
-// 세션 시작
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
 
 // CORS 헤더 설정 (API 호출을 위해)
 header('Access-Control-Allow-Origin: *');
