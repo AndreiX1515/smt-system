@@ -12703,6 +12703,30 @@ function getB2BBookingDetail($conn, $input) {
             }
         } catch (Throwable $e) { /* ignore */ }
 
+        // 해당 출발일의 B2B 가격 조회 (package_available_dates)
+        try {
+            $padStmt = $conn->prepare("
+                SELECT b2b_price, b2b_child_price, b2b_infant_price, price
+                FROM package_available_dates
+                WHERE package_id = ? AND available_date = DATE(?)
+                LIMIT 1
+            ");
+            if ($padStmt) {
+                $pkgIdPad = intval($booking['packageId'] ?? 0);
+                $depDatePad = $booking['departureDate'] ?? '';
+                $padStmt->bind_param('is', $pkgIdPad, $depDatePad);
+                $padStmt->execute();
+                $padResult = $padStmt->get_result();
+                if ($padRow = $padResult->fetch_assoc()) {
+                    $booking['dateb2bPrice'] = $padRow['b2b_price'] !== null ? floatval($padRow['b2b_price']) : null;
+                    $booking['dateb2bChildPrice'] = $padRow['b2b_child_price'] !== null ? floatval($padRow['b2b_child_price']) : null;
+                    $booking['dateb2bInfantPrice'] = $padRow['b2b_infant_price'] !== null ? floatval($padRow['b2b_infant_price']) : null;
+                    $booking['dateb2cPrice'] = $padRow['price'] !== null ? floatval($padRow['price']) : null;
+                }
+                $padStmt->close();
+            }
+        } catch (Throwable $e) { /* ignore */ }
+
         // Get payment data from new booking_payments table
         $paymentData = getPaymentsWithLegacyFormat($conn, $bookingId);
         $payments = $paymentData['payments'];
