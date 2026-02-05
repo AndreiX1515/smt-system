@@ -320,6 +320,7 @@
 
 		let currentFilters = { search: '', travelStartDate: '', searchType: 'all' };
 		let currentTab = 'pending';
+		let __isAdminKr = false; // admin_kr 여부
 
 		// 페이지네이션 설정
 		const PAGE_SIZE = 10;
@@ -338,6 +339,17 @@
 				if (!sessionData.authenticated) {
 					window.location.href = '../index.html';
 					return;
+				}
+
+				// admin_kr 여부 설정
+				__isAdminKr = sessionData.userType === 'admin_kr';
+
+				// admin_ph: New Bookings 탭 숨김, Update Requests를 기본 탭으로
+				if (!__isAdminKr) {
+					const pendingTabBtn = document.querySelector('[data-tab="pending"]');
+					if (pendingTabBtn) pendingTabBtn.style.display = 'none';
+					// Update Requests 탭을 기본으로 활성화
+					switchTab('pending_update');
 				}
 
 				try {
@@ -428,6 +440,28 @@
 						const statusKey = String(booking.statusKey || booking.bookingStatus || '').toLowerCase().trim();
 						return statusKey === 'pending_update';
 					});
+
+					// admin_ph 권한 필터링: New Bookings 안 보이고, Update Requests는 agent travelers 변경 + 59일 이내만
+					if (!__isAdminKr) {
+						pendingData = []; // admin_ph는 pending(신규) 목록 접근 불가
+
+						pendingUpdateData = pendingUpdateData.filter(booking => {
+							const cr = booking.changeRequest;
+							if (!cr) return false;
+							// agent가 요청한 travelers 변경만
+							if (cr.requestedByType !== 'agent') return false;
+							if (cr.changeType !== 'travelers') return false;
+							// 출발 59일 이내만
+							const dep = booking.departureDate || booking.travelStartDate;
+							if (!dep) return false;
+							const depDate = new Date(dep);
+							const today = new Date();
+							depDate.setHours(0,0,0,0);
+							today.setHours(0,0,0,0);
+							const daysUntil = Math.ceil((depDate - today) / (1000*60*60*24));
+							return daysUntil <= 59;
+						});
+					}
 
 					// 전체 카운트 표시
 					const totalCountEl = document.getElementById('totalCount');

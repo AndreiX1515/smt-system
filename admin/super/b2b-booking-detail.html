@@ -1398,21 +1398,34 @@
 				if (pendingActions) pendingActions.style.display = 'flex';
 				if (acknowledgeRejectBtn) acknowledgeRejectBtn.style.display = 'none';
 
-				// admin_kr만 Approve/Reject 가능
+				// Approve/Reject 권한 판정
 				const approveBtn = document.getElementById('approveBookingBtn');
 				const rejectBtn = document.getElementById('rejectBookingBtn');
-				if (!__isAdminKr) {
+
+				// admin_ph: pending_update의 agent travelers 변경만 approve 가능
+				// admin_kr: 모든 pending/pending_update approve 가능
+				let canApprove = __isAdminKr;
+				if (!__isAdminKr && isPendingUpdate && currentChangeRequest) {
+					const ct = currentChangeRequest.changeType;
+					const rbt = currentChangeRequest.requestedByType;
+					// agent가 요청한 travelers 변경만 admin_ph가 승인 가능
+					if (ct === 'travelers' && rbt === 'agent') {
+						canApprove = true;
+					}
+				}
+
+				if (!canApprove) {
 					if (approveBtn) {
 						approveBtn.disabled = true;
 						approveBtn.style.opacity = '0.5';
 						approveBtn.style.cursor = 'not-allowed';
-						approveBtn.title = 'Only admin_kr can approve bookings';
+						approveBtn.title = 'Only admin_kr can approve this type of request';
 					}
 					if (rejectBtn) {
 						rejectBtn.disabled = true;
 						rejectBtn.style.opacity = '0.5';
 						rejectBtn.style.cursor = 'not-allowed';
-						rejectBtn.title = 'Only admin_kr can reject bookings';
+						rejectBtn.title = 'Only admin_kr can reject this type of request';
 					}
 				} else {
 					if (approveBtn) {
@@ -1689,13 +1702,15 @@
 				}
 
 				// pending_update 플로우 대상인지 확인 (cancelled ↔ 다른 상태)
-				const isPendingUpdateFlow =
+				// admin_kr은 cancelled 전환도 직접 변경 가능, admin_ph만 pending_update 필요
+				const isPendingUpdateFlow = !__isAdminKr && (
 					(currentStatus === 'cancelled' && statusKey !== 'cancelled') ||
-					(currentStatus !== 'cancelled' && statusKey === 'cancelled');
+					(currentStatus !== 'cancelled' && statusKey === 'cancelled')
+				);
 
-				// 직접 상태 변경 시 (pending_update가 아닌 경우) 사유 필수
+				// 모든 상태 변경 시 사유 필수 (pending_update 포함)
 				let statusChangeReason = null;
-				if (statusKey !== currentStatus && !isPendingUpdateFlow) {
+				if (statusKey !== currentStatus) {
 					statusChangeReason = await promptForStatusChangeReason();
 					if (statusChangeReason === null) return; // 취소됨
 				}
@@ -1784,23 +1799,27 @@
 						{ id: 'fullPaymentDeadline', type: 'full', field: 'fullPaymentDueDate' }
 					];
 					let deadlineChanged = false;
+					let deadlineDirectUpdate = true; // 직접 변경 여부 추적
 					for (const dl of deadlineMap) {
 						const newVal = (document.getElementById(dl.id)?.value || '').trim();
 						const origVal = (lastLoadedBooking?.[dl.field] || '').trim().substring(0, 10);
 						if (newVal && newVal !== origVal) {
-							await updateDeadline(dl.type, newVal);
+							const dlResult = await updateDeadline(dl.type, newVal);
 							deadlineChanged = true;
+							if (dlResult && dlResult.data && !dlResult.data.directUpdate) {
+								deadlineDirectUpdate = false;
+							}
 						}
 					}
 
 					if (deadlineChanged) {
-						alert('Saved. Deadline change request submitted.');
+						alert(deadlineDirectUpdate ? 'Saved. Deadline updated.' : 'Saved. Deadline change request submitted.');
 					} else {
 						alert('Saved.');
 					}
 					// pending_update로 변경되었거나, 현재 상태가 pending_update인 경우 목록으로 돌아가기
 					const currentStatusCheck = lastLoadedBooking?.bookingStatus;
-					if (deadlineChanged || (result.data && result.data.newStatus === 'pending_update') || currentStatusCheck === 'pending_update') {
+					if ((deadlineChanged && !deadlineDirectUpdate) || (result.data && result.data.newStatus === 'pending_update') || currentStatusCheck === 'pending_update') {
 						window.history.back();
 					} else {
 						window.location.reload();
@@ -4219,7 +4238,7 @@
 
 		// Update payment deadline
 		async function updateDeadline(type, value) {
-			if (!value) return;
+			if (!value) return null;
 
 			try {
 				const response = await fetch('../backend/api/super-api.php', {
@@ -4238,6 +4257,7 @@
 				if (!response.ok || !result.success) {
 					throw new Error(result.message || 'Failed to update deadline');
 				}
+				return result; // directUpdate 플래그 포함
 			} catch (error) {
 				alert(error?.message || 'An error occurred while updating deadline.');
 				throw error; // handleSave에서 감지할 수 있도록 re-throw

@@ -12835,11 +12835,15 @@ function updateB2BBooking($conn, $input) {
             ];
 
             // 상태 변경 시 pending_update 플로우 적용: cancelled ↔ 다른 상태 양방향 적용
-            $shouldUsePendingUpdate = ($currentBook === 'cancelled' && $k !== 'cancelled')
-                                   || ($currentBook !== 'cancelled' && $k === 'cancelled');
+            // admin_kr은 cancelled 전환도 직접 변경 가능, admin_ph만 pending_update 필요
+            $adminUserType = $_SESSION['admin_userType'] ?? 'admin_ph';
+            $shouldUsePendingUpdate = ($adminUserType !== 'admin_kr') && (
+                ($currentBook === 'cancelled' && $k !== 'cancelled')
+                || ($currentBook !== 'cancelled' && $k === 'cancelled')
+            );
 
-            // 직접 상태 변경 시 (pending_update가 아닌 경우) 사유 필수
-            if ($currentBook !== $k && !$shouldUsePendingUpdate) {
+            // 모든 상태 변경 시 사유 필수
+            if ($currentBook !== $k) {
                 if (empty($statusChangeReason)) {
                     send_error_response('Status change reason is required', 400);
                 }
@@ -12863,13 +12867,14 @@ function updateB2BBooking($conn, $input) {
                     $targetPaymentStatus = 'refunded';
                 }
 
-                // booking_change_requests 테이블에 변경 요청 저장
+                // booking_change_requests 테이블에 변경 요청 저장 (사유 포함)
                 $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
-                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, targetStatus, targetPaymentStatus, requestedBy, requestedByType, status) VALUES (?, 'status', ?, ?, ?, ?, ?, 'employee', 'pending')";
+                $changeRequestNewData = json_encode(['reason' => $statusChangeReason]);
+                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, targetStatus, targetPaymentStatus, newData, requestedBy, requestedByType, status) VALUES (?, 'status', ?, ?, ?, ?, ?, ?, 'employee', 'pending')";
                 $changeRequestStmt = $conn->prepare($changeRequestSql);
                 if ($changeRequestStmt) {
                     $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                    $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $targetStatus, $targetPaymentStatus, $requestedBy);
+                    $changeRequestStmt->bind_param('sssssss', $bookingId, $trueOriginalStatus, $currentPay, $targetStatus, $targetPaymentStatus, $changeRequestNewData, $requestedBy);
                     $changeRequestStmt->execute();
                     $changeRequestStmt->close();
                 }
@@ -14084,8 +14089,14 @@ function approveB2BBooking($conn, $input) {
             send_error_response('Booking not found');
         }
 
+        $adminUserType = $_SESSION['admin_userType'] ?? '';
+
         if ($booking['bookingStatus'] === 'pending') {
-            // 신규 예약 승인: paymentType에 따라 다른 상태로 변경
+            // 신규 예약 승인: admin_kr만 가능
+            if ($adminUserType !== 'admin_kr') {
+                send_error_response('Only admin_kr can approve new bookings', 403);
+            }
+            // paymentType에 따라 다른 상태로 변경
             $newStatus = ($booking['paymentType'] === 'full') ? 'waiting_full_payment' : 'waiting_down_payment';
 
             $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
@@ -14113,6 +14124,13 @@ function approveB2BBooking($conn, $input) {
             }
 
             $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+
+            // status, deadline, product_edit changeType은 admin_kr만 승인 가능
+            if (in_array($changeRequest['changeType'], ['status', 'deadline', 'product_edit'])) {
+                if ($adminUserType !== 'admin_kr') {
+                    send_error_response('Only admin_kr can approve this change type', 403);
+                }
+            }
 
             if ($changeRequest['changeType'] === 'status') {
                 // 상태 변경 요청 승인: targetStatus로 변경
@@ -14834,8 +14852,14 @@ function rejectB2BBooking($conn, $input) {
             $hasRemarks = true;
         }
 
+        $adminUserType = $_SESSION['admin_userType'] ?? '';
+
         if ($booking['bookingStatus'] === 'pending') {
-            // 신규 예약 거절: pending → cancelled (rejected 대신 cancelled 사용)
+            // 신규 예약 거절: admin_kr만 가능
+            if ($adminUserType !== 'admin_kr') {
+                send_error_response('Only admin_kr can reject new bookings', 403);
+            }
+            // pending → cancelled (rejected 대신 cancelled 사용)
             if ($hasRemarks && !empty($reason)) {
                 $sql = "UPDATE bookings SET bookingStatus = 'cancelled', remarks = CONCAT(COALESCE(remarks, ''), '\n[Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
                 $stmt = $conn->prepare($sql);
@@ -14869,6 +14893,13 @@ function rejectB2BBooking($conn, $input) {
 
             if (!$changeRequest) {
                 send_error_response('No pending change request found for this booking');
+            }
+
+            // status, deadline, product_edit changeType은 admin_kr만 거절 가능
+            if (in_array($changeRequest['changeType'], ['status', 'deadline', 'product_edit'])) {
+                if ($adminUserType !== 'admin_kr') {
+                    send_error_response('Only admin_kr can reject this change type', 403);
+                }
             }
 
             $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
@@ -15286,8 +15317,8 @@ function setPaymentDeadline($conn, $input) {
             'full' => 'Full Payment deadline'
         ];
 
-        // 예약 정보 조회
-        $checkSql = "SELECT bookingId, bookingStatus, $fieldName as currentDeadline FROM bookings WHERE bookingId = ?";
+        // 예약 정보 조회 (departureDate 포함)
+        $checkSql = "SELECT bookingId, bookingStatus, departureDate, $fieldName as currentDeadline FROM bookings WHERE bookingId = ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param("s", $bookingId);
         $checkStmt->execute();
@@ -15309,61 +15340,91 @@ function setPaymentDeadline($conn, $input) {
             session_start();
         }
         $requestedBy = $_SESSION['admin_userType'] ?? $_SESSION['admin_accountId'] ?? 'admin';
+        $adminUserType = $_SESSION['admin_userType'] ?? 'admin_ph';
 
-        // previousData와 newData 구성
-        $previousData = json_encode([
-            'type' => $deadlineType,
-            'deadline' => $currentDeadline,
-            'fieldName' => $fieldName
-        ]);
+        // 출발일까지 남은 일수 계산
+        $departureDate = $booking['departureDate'] ?? null;
+        $daysUntilDeparture = null;
+        if ($departureDate) {
+            $depDate = new DateTime(substr($departureDate, 0, 10));
+            $today = new DateTime(date('Y-m-d'));
+            $daysUntilDeparture = (int)$today->diff($depDate)->format('%r%a');
+        }
 
-        $newData = json_encode([
-            'type' => $deadlineType,
-            'deadline' => $deadlineDate,
-            'fieldName' => $fieldName
-        ]);
+        // 44일 규칙: 44일 이상 OR admin_kr → 직접 변경, 44일 미만 AND admin_ph → pending_update
+        $shouldDirectUpdate = ($daysUntilDeparture === null || $daysUntilDeparture >= 44)
+                           || ($adminUserType === 'admin_kr');
 
-        // 기존 pending deadline 변경 요청이 있으면 업데이트, 없으면 신규 생성
-        $existingReq = null;
-        $existStmt = $conn->prepare("SELECT id FROM booking_change_requests WHERE bookingId = ? AND changeType = 'deadline' AND status = 'pending' LIMIT 1");
-        $existStmt->bind_param("s", $bookingId);
-        $existStmt->execute();
-        $existingReq = $existStmt->get_result()->fetch_assoc();
-        $existStmt->close();
+        if ($shouldDirectUpdate) {
+            // 직접 deadline 업데이트
+            $updateSql = "UPDATE bookings SET $fieldName = ?, updatedAt = NOW() WHERE bookingId = ?";
+            $updateStmt = $conn->prepare($updateSql);
+            $updateStmt->bind_param("ss", $deadlineDate, $bookingId);
+            $updateStmt->execute();
+            $updateStmt->close();
 
-        if ($existingReq) {
-            // 기존 pending 요청의 newData만 업데이트
-            $updateReqStmt = $conn->prepare("UPDATE booking_change_requests SET newData = ?, requestedBy = ?, requestedAt = NOW() WHERE id = ?");
-            $updateReqStmt->bind_param("ssi", $newData, $requestedBy, $existingReq['id']);
-            $updateReqStmt->execute();
-            $updateReqStmt->close();
+            // 예약 이력 추가
+            $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' changed directly: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
+            __addBookingHistory($conn, $bookingId, $historyMsg);
+
+            send_success_response(['directUpdate' => true], 'Payment deadline updated successfully.');
         } else {
-            $insertReqSql = "INSERT INTO booking_change_requests
-                (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
-                VALUES (?, 'deadline', ?, ?, ?, ?, 'employee', 'pending')";
-            $insertReqStmt = $conn->prepare($insertReqSql);
-            $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $requestedBy);
-            $insertReqStmt->execute();
-            $insertReqStmt->close();
+            // pending_update 경로 (기존 로직)
+            // previousData와 newData 구성
+            $previousData = json_encode([
+                'type' => $deadlineType,
+                'deadline' => $currentDeadline,
+                'fieldName' => $fieldName
+            ]);
+
+            $newData = json_encode([
+                'type' => $deadlineType,
+                'deadline' => $deadlineDate,
+                'fieldName' => $fieldName
+            ]);
+
+            // 기존 pending deadline 변경 요청이 있으면 업데이트, 없으면 신규 생성
+            $existingReq = null;
+            $existStmt = $conn->prepare("SELECT id FROM booking_change_requests WHERE bookingId = ? AND changeType = 'deadline' AND status = 'pending' LIMIT 1");
+            $existStmt->bind_param("s", $bookingId);
+            $existStmt->execute();
+            $existingReq = $existStmt->get_result()->fetch_assoc();
+            $existStmt->close();
+
+            if ($existingReq) {
+                // 기존 pending 요청의 newData만 업데이트
+                $updateReqStmt = $conn->prepare("UPDATE booking_change_requests SET newData = ?, requestedBy = ?, requestedAt = NOW() WHERE id = ?");
+                $updateReqStmt->bind_param("ssi", $newData, $requestedBy, $existingReq['id']);
+                $updateReqStmt->execute();
+                $updateReqStmt->close();
+            } else {
+                $insertReqSql = "INSERT INTO booking_change_requests
+                    (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
+                    VALUES (?, 'deadline', ?, ?, ?, ?, 'employee', 'pending')";
+                $insertReqStmt = $conn->prepare($insertReqSql);
+                $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $requestedBy);
+                $insertReqStmt->execute();
+                $insertReqStmt->close();
+            }
+
+            // bookingStatus를 pending_update로 변경
+            $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
+            $updateStmt = $conn->prepare($updateSql);
+            $updateStmt->bind_param("s", $bookingId);
+            $updateStmt->execute();
+            $updateStmt->close();
+
+            // 예약 이력 추가
+            $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' change requested: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
+            __addBookingHistory($conn, $bookingId, $historyMsg);
+
+            // 상태 변경 이력 (booking_status_history) 기록
+            if ($originalStatus !== 'pending_update') {
+                __log_booking_status_change($conn, $bookingId, $originalStatus, 'pending_update', null, null, $historyMsg);
+            }
+
+            send_success_response(['directUpdate' => false], 'Payment deadline change request submitted. Waiting for admin_kr approval.');
         }
-
-        // bookingStatus를 pending_update로 변경
-        $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
-        $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->bind_param("s", $bookingId);
-        $updateStmt->execute();
-        $updateStmt->close();
-
-        // 예약 이력 추가
-        $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' change requested: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
-        __addBookingHistory($conn, $bookingId, $historyMsg);
-
-        // 상태 변경 이력 (booking_status_history) 기록
-        if ($originalStatus !== 'pending_update') {
-            __log_booking_status_change($conn, $bookingId, $originalStatus, 'pending_update', null, null, $historyMsg);
-        }
-
-        send_success_response([], 'Payment deadline change request submitted. Waiting for admin_kr approval.');
     } catch (Exception $e) {
         send_error_response('Failed to set payment deadline: ' . $e->getMessage());
     }
