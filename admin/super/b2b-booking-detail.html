@@ -1098,7 +1098,7 @@
 				}
 
 				// Reservation Summary - 계산된 총액 표시
-				if (isPendingTravelerChange && pendingTotal !== null) {
+				if (isPendingTravelerChange && pendingTotal !== null && pendingTotal > 0) {
 					const diff = pendingTotal - displayTotal;
 					const diffColor = diff > 0 ? '#dc2626' : diff < 0 ? '#059669' : '#6B7280';
 					const diffSign = diff > 0 ? '+' : '';
@@ -3306,10 +3306,8 @@
 			const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
 			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
 
-			// 할인 전 원래 가격 계산 (인당 할인액 = 총 할인금액 / 할인대상 인원수)
-			const discountableCountFromBooking = (parseInt(booking.adults) || 0) + (parseInt(booking.children) || 0);
-			const perPersonDiscount = discountableCountFromBooking > 0 ? saleDiscountAmount / discountableCountFromBooking : 0;
-			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + perPersonDiscount) : adultPrice;
+			// 할인 전 원래 가격 계산 (saleDiscountAmount는 인당 할인금액)
+			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
 
 			// 인원 수 계산
 			let adults = 0;
@@ -3397,8 +3395,8 @@
 			// 소계 (할인 전)
 			const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
 
-			// Sale 할인 금액 (DB에 총 할인금액이 저장되어 있음)
-			const totalDiscount = saleDiscountAmount;
+			// Sale 할인 금액 계산 (인당 할인액 × 할인 대상 인원수)
+			const totalDiscount = saleDiscountAmount * discountableCount;
 
 			// 총액 계산 (할인 차감)
 			const calculatedTotal = subtotal - totalDiscount;
@@ -3453,10 +3451,8 @@
 			const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
 			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
 
-			// 할인 전 원래 가격 (인당 할인액 = 총 할인금액 / 할인대상 인원수)
-			const discountableCountFromBooking = (parseInt(booking.adults) || 0) + (parseInt(booking.children) || 0);
-			const perPersonDiscount = discountableCountFromBooking > 0 ? saleDiscountAmount / discountableCountFromBooking : 0;
-			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + perPersonDiscount) : adultPrice;
+			// 할인 전 원래 가격 (saleDiscountAmount는 인당 할인금액)
+			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
 
 			// 인원 수 계산
 			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
@@ -3464,7 +3460,17 @@
 			let flightOptionsTotal = 0;
 
 			travelers.forEach(t => {
-				const type = (t.type || t.travelerType || '').toLowerCase();
+				let type = (t.type || t.travelerType || '').toLowerCase();
+				// pendingTravelers에 travelerType이 없으면 allTravelers에서 조회
+				if (!type && t.bookingTravelerId) {
+					const orig = allTravelers.find(o => o.bookingTravelerId == t.bookingTravelerId);
+					if (orig) {
+						type = (orig.type || orig.travelerType || '').toLowerCase();
+					}
+				}
+				// 그래도 없으면 기본값 adult
+				if (!type) type = 'adult';
+
 				if (type === 'adult') {
 					adults++;
 				} else if (type === 'child') {
@@ -3499,8 +3505,8 @@
 
 			// 할인 대상 인원 (새 travelers 기준)
 			const discountableCount = adults + childrenWithRoom;
-			// Sale 할인 금액 (인당 할인액 × 새 할인대상 인원수)
-			const totalDiscount = perPersonDiscount * discountableCount;
+			// Sale 할인 금액 (인당 할인액 × 할인 대상 인원수)
+			const totalDiscount = saleDiscountAmount * discountableCount;
 
 			// 총액 계산
 			const total = packageTotal - totalDiscount + visaFeeTotal + flightOptionsTotal;

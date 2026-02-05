@@ -682,8 +682,8 @@ function renderReservationDetail(data) {
 
             if (isPendingTravelerChange) {
                 const pendingTravelers = pendingChangeRequest.newData?.pendingTravelers || [];
-                if (pendingTravelers.length > 0) {
-                    const pendingTotal = calculateTotalFromTravelersAgent(booking, pendingTravelers);
+                const pendingTotal = pendingTravelers.length > 0 ? calculateTotalFromTravelersAgent(booking, pendingTravelers) : 0;
+                if (pendingTotal > 0) {
                     const diff = pendingTotal - amount;
                     const diffColor = diff > 0 ? '#dc2626' : diff < 0 ? '#059669' : '#6B7280';
                     const diffSign = diff > 0 ? '+' : '';
@@ -5429,7 +5429,17 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
     let flightOptionsTotal = 0;
 
     travelers.forEach(t => {
-        const type = (t.type || t.travelerType || '').toLowerCase();
+        let type = (t.type || t.travelerType || '').toLowerCase();
+        // pendingTravelers에 travelerType이 없으면 __allTravelers에서 조회
+        if (!type && t.bookingTravelerId) {
+            const orig = (typeof __allTravelers !== 'undefined' ? __allTravelers : []).find(o => o.bookingTravelerId == t.bookingTravelerId);
+            if (orig) {
+                type = (orig.type || orig.travelerType || '').toLowerCase();
+            }
+        }
+        // 그래도 없으면 기본값 adult
+        if (!type) type = 'adult';
+
         if (type === 'adult') {
             adults++;
         } else if (type === 'child') {
