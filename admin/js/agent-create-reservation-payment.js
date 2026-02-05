@@ -9,6 +9,7 @@ let currentBookingData = null;
 let selectedPaymentType = 'staged';
 let downPaymentFile = null;
 let fullPaymentFile = null;
+let middlePaymentFile = null;
 let isReservationCompleted = false; // 예약 완료 여부 플래그
 
 // 페이지 초기화
@@ -435,11 +436,12 @@ function getDaysUntilDeparture(departureDate) {
 /**
  * 결제 타입 제한 적용
  * - 34일 이내: Full Payment Only (24시간 내)
- * - 35~44일: Full Payment Only (3일 내)
+ * - 35~44일: Middle Payment (기본) / Full Payment 선택 가능
  * - 44일 초과: Staged/Full 선택 가능
  */
 function applyPaymentTypeRestrictions(daysUntilDeparture, existingPaymentType) {
     const stagedTabBtn = document.querySelector('[data-payment-type="staged"]');
+    const middleTabBtn = document.querySelector('[data-payment-type="middle"]');
     const fullTabBtn = document.querySelector('[data-payment-type="full"]');
     const warningBox = document.getElementById('payment-warning-box');
 
@@ -448,7 +450,10 @@ function applyPaymentTypeRestrictions(daysUntilDeparture, existingPaymentType) {
         if (daysUntilDeparture !== null && daysUntilDeparture <= 34) {
             warningBox.innerHTML = `<strong>Warning:</strong> For products with less than 34 days until departure, all payments must be completed within <strong>24 hours</strong>. (Full Payment only)`;
         } else if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
-            warningBox.innerHTML = `<strong>Warning:</strong> For products with 35-44 days until departure, all payments must be completed within <strong>3 days</strong>. (Full Payment only)`;
+            warningBox.style.background = '#FFF8E6';
+            warningBox.style.borderColor = '#FFE082';
+            warningBox.style.color = '#8B6914';
+            warningBox.innerHTML = `<strong>Info:</strong> For products with 35-44 days until departure, you can choose between <strong>Middle Payment (2-Step)</strong> or <strong>Full Payment</strong>. Middle Payment deadline: within 3 days, Balance: 30 days before departure.`;
         } else {
             warningBox.style.background = '#F0F7FF';
             warningBox.style.borderColor = '#0050C8';
@@ -457,29 +462,77 @@ function applyPaymentTypeRestrictions(daysUntilDeparture, existingPaymentType) {
         }
     }
 
-    // 44일 이내: Full Payment만 가능
-    if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+    // 34일 이내: Full Payment만 가능
+    if (daysUntilDeparture !== null && daysUntilDeparture <= 34) {
         // Staged 탭 비활성화
         if (stagedTabBtn) {
             stagedTabBtn.disabled = true;
             stagedTabBtn.style.opacity = '0.5';
             stagedTabBtn.style.cursor = 'not-allowed';
-            stagedTabBtn.title = daysUntilDeparture <= 34
-                ? 'Only Full Payment available (departure within 34 days)'
-                : 'Only Full Payment available (departure within 44 days)';
+            stagedTabBtn.title = 'Only Full Payment available (departure within 34 days)';
+        }
+        // Middle 탭 비활성화
+        if (middleTabBtn) {
+            middleTabBtn.disabled = true;
+            middleTabBtn.style.opacity = '0.5';
+            middleTabBtn.style.cursor = 'not-allowed';
+            middleTabBtn.title = 'Only Full Payment available (departure within 34 days)';
         }
         // Full Payment 강제 선택
         switchPaymentType('full');
-    } else {
-        // 44일 초과: 선택 가능
+    }
+    // 35~44일: Middle Payment (기본) / Full Payment 선택 가능
+    else if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+        // Staged 탭 비활성화
+        if (stagedTabBtn) {
+            stagedTabBtn.disabled = true;
+            stagedTabBtn.style.opacity = '0.5';
+            stagedTabBtn.style.cursor = 'not-allowed';
+            stagedTabBtn.title = 'Not available (departure within 44 days)';
+        }
+        // Middle 탭 활성화
+        if (middleTabBtn) {
+            middleTabBtn.disabled = false;
+            middleTabBtn.style.opacity = '1';
+            middleTabBtn.style.cursor = 'pointer';
+            middleTabBtn.title = '';
+        }
+        // Full 탭 활성화
+        if (fullTabBtn) {
+            fullTabBtn.disabled = false;
+            fullTabBtn.style.opacity = '1';
+            fullTabBtn.style.cursor = 'pointer';
+            fullTabBtn.title = '';
+        }
+        // 기존 결제 타입이 middle 또는 full이면 유지, 아니면 middle 기본
+        const paymentType = (existingPaymentType === 'middle' || existingPaymentType === 'full') ? existingPaymentType : 'middle';
+        switchPaymentType(paymentType);
+    }
+    // 44일 초과: Staged/Full 선택 가능
+    else {
+        // Staged 탭 활성화
         if (stagedTabBtn) {
             stagedTabBtn.disabled = false;
             stagedTabBtn.style.opacity = '1';
             stagedTabBtn.style.cursor = 'pointer';
             stagedTabBtn.title = '';
         }
-        // 기존 결제 타입 유지 또는 기본값
-        const paymentType = existingPaymentType || 'staged';
+        // Middle 탭 비활성화 (44일 초과에서는 사용 안 함)
+        if (middleTabBtn) {
+            middleTabBtn.disabled = true;
+            middleTabBtn.style.opacity = '0.5';
+            middleTabBtn.style.cursor = 'not-allowed';
+            middleTabBtn.title = 'Available only for 35-44 days before departure';
+        }
+        // Full 탭 활성화
+        if (fullTabBtn) {
+            fullTabBtn.disabled = false;
+            fullTabBtn.style.opacity = '1';
+            fullTabBtn.style.cursor = 'pointer';
+            fullTabBtn.title = '';
+        }
+        // 기존 결제 타입 유지 또는 기본값 staged
+        const paymentType = (existingPaymentType === 'staged' || existingPaymentType === 'full') ? existingPaymentType : 'staged';
         switchPaymentType(paymentType);
     }
 }
@@ -498,17 +551,31 @@ function calculatePaymentAmounts(totalAmount, travelerCount, visaFee = 0) {
     const secondPaymentEl = document.getElementById('second_payment_amount');
     if (secondPaymentEl) secondPaymentEl.value = formatCurrency(secondPayment);
 
-    // Balance: 나머지 금액
+    // Balance: 나머지 금액 (Staged)
     const balance = totalAmount - downPayment - secondPayment;
     const balanceEl = document.getElementById('balance_amount');
     if (balanceEl) balanceEl.value = formatCurrency(balance);
+
+    // Middle Payment: Down Payment + Second Payment
+    const middlePayment = downPayment + secondPayment;
+    const middlePaymentEl = document.getElementById('middle_payment_amount');
+    if (middlePaymentEl) middlePaymentEl.value = formatCurrency(middlePayment);
+
+    // Middle Payment Order Amount
+    const middlePayTotalEl = document.getElementById('middle_pay_total');
+    if (middlePayTotalEl) middlePayTotalEl.value = formatCurrency(totalAmount);
+
+    // Middle Balance: 나머지 금액
+    const middleBalance = totalAmount - middlePayment;
+    const middleBalanceEl = document.getElementById('middle_balance_amount');
+    if (middleBalanceEl) middleBalanceEl.value = formatCurrency(middleBalance);
 }
 
 /**
  * 결제 데드라인 계산
  * 규칙:
  * - 출발 34일 이내: Full Payment만, deadline = +1일 (24시간)
- * - 출발 35~44일: Full Payment만, deadline = +3일
+ * - 출발 35~44일: Middle/Full 선택, Middle deadline = +3일, Balance = 출발 -30일
  * - 출발 44일 초과: Staged Payment
  */
 function calculatePaymentDeadlines(departureDate) {
@@ -517,8 +584,9 @@ function calculatePaymentDeadlines(departureDate) {
 
     // 출발일까지 남은 일수 계산
     let daysUntilDeparture = null;
+    let departure = null;
     if (departureDate) {
-        const departure = new Date(departureDate);
+        departure = new Date(departureDate);
         departure.setHours(0, 0, 0, 0);
         daysUntilDeparture = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
     }
@@ -547,6 +615,22 @@ function calculatePaymentDeadlines(departureDate) {
     const fullPaymentDeadlineEl = document.getElementById('full_payment_deadline_display');
     if (fullPaymentDeadlineEl) {
         fullPaymentDeadlineEl.textContent = `By ${formatDisplayDate(fullPaymentDeadline.toISOString().split('T')[0])}`;
+    }
+
+    // Middle Payment Deadline: +3일
+    const middlePaymentDeadline = new Date(today);
+    middlePaymentDeadline.setDate(middlePaymentDeadline.getDate() + 3);
+    const middlePaymentDeadlineEl = document.getElementById('middle_payment_deadline_display');
+    if (middlePaymentDeadlineEl) {
+        middlePaymentDeadlineEl.textContent = `By ${formatDisplayDate(middlePaymentDeadline.toISOString().split('T')[0])}`;
+    }
+
+    // Middle Balance Deadline: 출발 30일 전
+    const middleBalanceDeadlineEl = document.getElementById('middle_balance_deadline_display');
+    if (middleBalanceDeadlineEl && departure) {
+        const middleBalanceDeadline = new Date(departure);
+        middleBalanceDeadline.setDate(middleBalanceDeadline.getDate() - 30);
+        middleBalanceDeadlineEl.textContent = `By ${formatDisplayDate(middleBalanceDeadline.toISOString().split('T')[0])}`;
     }
 }
 
@@ -616,6 +700,31 @@ function initializeFileUpload() {
             if (fullPaymentFileInfo) fullPaymentFileInfo.style.display = 'none';
         });
     }
+
+    // Middle Payment 파일 업로드
+    const middlePaymentFileInput = document.getElementById('middle_payment_file_input');
+    const middlePaymentFileBtn = document.getElementById('middle_payment_file_btn');
+    const middlePaymentFileInfo = document.getElementById('middle_payment_file_info');
+    const middlePaymentFileName = document.getElementById('middle_payment_file_name');
+    const middlePaymentFileRemove = document.getElementById('middle_payment_file_remove');
+
+    if (middlePaymentFileBtn && middlePaymentFileInput) {
+        middlePaymentFileBtn.addEventListener('click', () => middlePaymentFileInput.click());
+        middlePaymentFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                middlePaymentFile = e.target.files[0];
+                if (middlePaymentFileName) middlePaymentFileName.textContent = middlePaymentFile.name;
+                if (middlePaymentFileInfo) middlePaymentFileInfo.style.display = 'block';
+            }
+        });
+    }
+    if (middlePaymentFileRemove) {
+        middlePaymentFileRemove.addEventListener('click', () => {
+            middlePaymentFile = null;
+            if (middlePaymentFileInput) middlePaymentFileInput.value = '';
+            if (middlePaymentFileInfo) middlePaymentFileInfo.style.display = 'none';
+        });
+    }
 }
 
 /**
@@ -643,9 +752,11 @@ function switchPaymentType(paymentType) {
 
     // Show/hide content sections
     const stagedContent = document.getElementById('staged_payment_content');
+    const middleContent = document.getElementById('middle_payment_content');
     const fullContent = document.getElementById('full_payment_content');
 
     if (stagedContent) stagedContent.style.display = paymentType === 'staged' ? 'block' : 'none';
+    if (middleContent) middleContent.style.display = paymentType === 'middle' ? 'block' : 'none';
     if (fullContent) fullContent.style.display = paymentType === 'full' ? 'block' : 'none';
 }
 
@@ -684,6 +795,18 @@ async function handleSave() {
         const secondPaymentAmount = 10000 * travelerCount + visaFee;
         const balanceAmount = totalAmount - downPaymentAmount - secondPaymentAmount;
 
+        // Middle Payment 금액 계산
+        const middlePaymentAmount = downPaymentAmount + secondPaymentAmount;
+        const middleBalanceAmount = totalAmount - middlePaymentAmount;
+
+        // Middle Balance Due Date 계산 (출발 30일 전)
+        let middleBalanceDueDateStr = null;
+        if (currentBookingData?.departureDate) {
+            const departure = new Date(currentBookingData.departureDate);
+            departure.setDate(departure.getDate() - 30);
+            middleBalanceDueDateStr = departure.toISOString().split('T')[0];
+        }
+
         const paymentData = {
             action: 'updatePaymentInfo',
             bookingId: currentBookingId,
@@ -695,7 +818,12 @@ async function handleSave() {
             balanceAmount: balanceAmount,
             balanceDueDate: null,
             fullPaymentAmount: totalAmount,
-            fullPaymentDueDate: downPaymentDueDateStr
+            fullPaymentDueDate: downPaymentDueDateStr,
+            // Middle Payment 관련 필드
+            middlePaymentAmount: middlePaymentAmount,
+            middlePaymentDueDate: downPaymentDueDateStr,
+            middleBalanceAmount: middleBalanceAmount,
+            middleBalanceDueDate: middleBalanceDueDateStr
         };
 
         // FormData 구성 (파일 포함)
@@ -709,6 +837,9 @@ async function handleSave() {
         }
         if (selectedPaymentType === 'full' && fullPaymentFile) {
             formData.append('fullPaymentFile', fullPaymentFile);
+        }
+        if (selectedPaymentType === 'middle' && middlePaymentFile) {
+            formData.append('middlePaymentFile', middlePaymentFile);
         }
 
         // API 호출

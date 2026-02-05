@@ -548,7 +548,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
     <script type="text/javascript" src="//code.jquery.com/jquery-migrate-1.2.1.min.js" defer></script>
     <script type="text/javascript" src="../js/slick/slick.min.js" defer></script>
     <script src="../js/slider.js" defer></script>
-    <script src="../js/product-detail.js?v=20251226_bookbtnfix2" defer></script>
+    <script src="../js/product-detail.js?v=20250204_contactagent4" defer></script>
     <link rel="stylesheet" href="/css/i18n-boot.css">
     <script src="/js/i18n-boot.js"></script>
     <script src="../js/i18n.js" defer></script>
@@ -1018,12 +1018,15 @@ function formatDuration($startTime, $endTime, $lang = null) {
                 </div>
                 <a href="inquiry.php?lang=<?php echo urlencode($currentLang); ?>&returnUrl=<?php echo urlencode($_SERVER['REQUEST_URI'] ?? ('/user/product-detail.php?id=' . (int)$productId)); ?>" class="text fz14 fw500 lh20 reded"><?php echoI18nText('customer_support', $currentLang); ?> <img src="../images/ico_arrow_right_red.svg" alt=""></a>
             </div>
-            <?php if (!$isB2B): ?>
-                <!-- 예약 버튼은 하단 고정 바(달력 날짜 선택 후 활성화)를 사용 -->
-                <!-- NOTE: 날짜 미선택 시 "Book Now"가 보이거나 다음 단계로 넘어가는 문제를 방지하기 위해, 페이지 본문 버튼은 제거합니다. -->
-            <?php endif; ?>
         </div>
 
+    </div>
+
+    <!-- B2C 사용자용 Contact Agent 버튼 (탭 영역 밖에 위치) -->
+    <div id="b2cContactAgentBar" class="fixed-bottom-bar b2c-contact-bar" style="position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #e9ecef;padding:16px 20px;z-index:1000;box-shadow:0 -2px 10px rgba(0,0,0,0.1);display:<?php echo $isB2B ? 'none' : 'block'; ?>;">
+        <button class="btn primary lg w100" type="button" onclick="goToContactAgent()">
+            Contact Agent
+        </button>
     </div>
 </body>
 </html>

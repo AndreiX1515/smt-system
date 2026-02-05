@@ -107,6 +107,9 @@
 					<button type="button" class="payment-tab-btn active" data-payment-type="staged" onclick="switchPaymentType('staged')">
 						<span data-lan-eng="Staged Payment (3-Step)">3단계 결제</span>
 					</button>
+					<button type="button" class="payment-tab-btn" data-payment-type="middle" onclick="switchPaymentType('middle')">
+						<span data-lan-eng="Middle Payment (2-Step)">2단계 결제</span>
+					</button>
 					<button type="button" class="payment-tab-btn" data-payment-type="full" onclick="switchPaymentType('full')">
 						<span data-lan-eng="Full Payment">전액 결제</span>
 					</button>
@@ -260,6 +263,82 @@
 					</div>
 				</div>
 			</div><!-- End of full_payment_content -->
+
+			<!-- Middle Payment Content (2-Step) -->
+			<div id="middle_payment_content" style="display: none;">
+				<!-- Order Amount (for Middle Payment view) -->
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item">
+							<label class="label-name" for="middle_pay_total" data-lan-eng="Order Amount">Order Amount (PHP)</label>
+							<input id="middle_pay_total" type="text" class="form-control" value="0" disabled>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+					</div>
+				</div>
+
+				<!-- Middle Payment Section (Down + Second combined) -->
+				<div class="card-panel jw-mgt16">
+					<h3 class="card-panel-title" data-lan-eng="Middle Payment">Middle Payment (Down + Second)</h3>
+					<div class="card-panel-divider"></div>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item">
+							<label class="label-name" for="middle_payment_amount" data-lan-eng="Middle Payment Amount">Middle Payment Amount (PHP)</label>
+							<input id="middle_payment_amount" type="text" class="form-control" value="0" disabled>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Payment Deadline">Payment Deadline</label>
+							<div class="form-control" id="middle_payment_deadline_display" style="background: #F5F5F5; color: #666; display: flex; align-items: center;">Within 3 days</div>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" for="middle_payment_file" data-lan-eng="Proof File">Proof File</label>
+							<div class="field-col">
+								<input id="middle_payment_file_input" type="file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.heic,.heif" style="display:none;">
+								<button type="button" class="jw-button typeE" id="middle_payment_file_btn">
+									<img src="../image/upload.svg" alt=""><span data-lan-eng="File Upload">File Upload</span>
+								</button>
+								<div class="file-info" id="middle_payment_file_info" style="display:none; margin-top:12px;">
+									<div class="file-info-item" style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:#F7FAFF; border-radius:10px;">
+										<span class="file-name" id="middle_payment_file_name" style="font-weight:500;"></span>
+										<button type="button" class="file-remove" id="middle_payment_file_remove" aria-label="Remove file" style="background:none; border:none; cursor:pointer; padding:4px;">
+											<img src="../image/button-close2.svg" alt="" style="width:16px;height:16px;">
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div style="margin-top: 12px; padding: 8px 12px; background: #FFF5F5; border: 1px solid #F87171; border-radius: 6px; color: #DC2626; font-size: 12px;">
+						<strong>Warning:</strong> Middle payment is non-refundable.
+					</div>
+				</div>
+
+				<!-- Balance Section (for Middle Payment) -->
+				<div class="card-panel jw-mgt16" id="middle_balance_section">
+					<h3 class="card-panel-title" data-lan-eng="Balance">Balance</h3>
+					<div class="card-panel-divider"></div>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item">
+							<label class="label-name" for="middle_balance_amount" data-lan-eng="Balance Amount">Balance Amount (PHP)</label>
+							<input id="middle_balance_amount" type="text" class="form-control" value="0" disabled>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Balance Deadline">Balance Deadline</label>
+							<div class="form-control" id="middle_balance_deadline_display" style="background: #F5F5F5; color: #666; display: flex; align-items: center;">30 days before departure</div>
+						</div>
+						<div class="grid-item"></div>
+					</div>
+					<div id="middle_balance_disabled_notice" class="payment-disabled-notice" style="padding: 16px; background: #F5F5F5; border-radius: 8px; margin-top: 16px; text-align: center; color: #666;">
+						<img src="../image/lock.svg" alt="" style="width: 24px; height: 24px; margin-bottom: 8px; opacity: 0.5;" onerror="this.style.display='none'">
+						<p style="margin: 0; font-size: 14px;">Balance can be uploaded after Middle Payment is confirmed.</p>
+					</div>
+				</div>
+
+				<div style="margin-top: 16px; padding: 12px 16px; background: #FFF8E6; border: 1px solid #FFE082; border-radius: 8px; color: #8B6914; font-size: 13px;">
+					<strong>Middle Payment (2-Step):</strong> Pay Down Payment + Second Payment together first, then pay the Balance 30 days before departure.
+				</div>
+			</div><!-- End of middle_payment_content -->
 
 		</section>
 	</main>

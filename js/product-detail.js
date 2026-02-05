@@ -539,19 +539,38 @@ function updateFixedBottomBar(packageInfo) {
 
     // B2B 사용자만 하단 바 표시 (B2C는 에이전트를 통해 예약)
     const b2bUser = isB2BUser();
-    let fixedBar = document.querySelector('.fixed-bottom-bar');
+    console.log('[updateFixedBottomBar] isB2BUser:', b2bUser, 'accountType:', localStorage.getItem('accountType'));
+
+    // B2B용 하단 바 (Book Now 버튼) - b2c-contact-bar는 제외
+    let fixedBar = document.querySelector('.fixed-bottom-bar.b2b-booking-bar');
+    // B2C용 Contact Agent 바 - ID로 찾기
+    let b2cContactBar = document.getElementById('b2cContactAgentBar');
+    console.log('[updateFixedBottomBar] fixedBar:', fixedBar, 'b2cContactBar:', b2cContactBar);
 
     if (!b2bUser) {
-        // B2C 사용자: 하단 바 숨김
+        // B2C 사용자: B2B용 하단 바 숨김, Contact Agent 바 표시
+        console.log('[updateFixedBottomBar] B2C user - showing Contact Agent bar');
         if (fixedBar) {
             fixedBar.style.display = 'none';
         }
+        if (b2cContactBar) {
+            b2cContactBar.style.display = 'block';
+            console.log('[updateFixedBottomBar] b2cContactBar display set to block');
+        } else {
+            console.log('[updateFixedBottomBar] WARNING: b2cContactBar not found!');
+        }
         return;
+    } else {
+        // B2B 사용자: Contact Agent 바 숨김
+        console.log('[updateFixedBottomBar] B2B user - hiding Contact Agent bar');
+        if (b2cContactBar) {
+            b2cContactBar.style.display = 'none';
+        }
     }
 
     if (!fixedBar) {
         fixedBar = document.createElement('div');
-        fixedBar.className = 'fixed-bottom-bar';
+        fixedBar.className = 'fixed-bottom-bar b2b-booking-bar';
         fixedBar.style.cssText = `
             position: fixed;
             bottom: 0;
@@ -1960,29 +1979,29 @@ function requestVisaSupport() {
     }
 }
 
-//    
+//
 function setupProductDescriptionToggle() {
     const toggleButton = document.querySelector('.btn-product');
     const descriptionArea = document.getElementById('product-description');
-    
+
     if (toggleButton && descriptionArea) {
-        //   
+        //
         const getText = (key) => {
             const currentLang = localStorage.getItem('selectedLanguage') || 'ko';
             const texts = globalLanguageTexts[currentLang] || globalLanguageTexts['ko'];
             return texts[key] || key;
         };
-        
+
         toggleButton.addEventListener('click', function() {
             const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
-            
+
             if (isExpanded) {
-                // 
+                //
                 descriptionArea.style.display = 'none';
                 toggleButton.setAttribute('aria-expanded', 'false');
                 toggleButton.innerHTML = getText('expand_intro') + '<img src="../images/ico_arrow_down_black.svg" alt="" style="transform: rotate(0deg);">';
             } else {
-                // 
+                //
                 descriptionArea.style.display = 'block';
                 toggleButton.setAttribute('aria-expanded', 'true');
                 toggleButton.innerHTML = getText('collapse_intro') + '<img src="../images/ico_arrow_down_black.svg" alt="" style="transform: rotate(180deg);">';
@@ -1990,3 +2009,22 @@ function setupProductDescriptionToggle() {
         });
     }
 }
+
+// B2C 사용자용 Contact Agent 페이지로 이동
+function goToContactAgent() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const packageId = urlParams.get('id') || '';
+    const selectedDateStr = selectedDate || '';
+    const packageName = currentPackage?.packageName ||
+                       document.querySelector('h3.text.fz20.fw600')?.textContent ||
+                       document.querySelector('h1.text.fz20.fw600.lh28.black12')?.textContent || '';
+
+    const params = new URLSearchParams({
+        product_id: packageId,
+        product_name: packageName,
+        departure_date: selectedDateStr
+    });
+
+    window.location.href = `/user/contact-agent.php?${params.toString()}`;
+}
+window.goToContactAgent = goToContactAgent;

@@ -18,7 +18,8 @@ const PROTECTED_PAGES = [
     'inquiry-detail.html',
     'inquiry-edit.html',
     'account-setting.html',
-    'traveler-info-detail.html'
+    'traveler-info-detail.html',
+    'contact-agent.php'
 ];
 
 //      

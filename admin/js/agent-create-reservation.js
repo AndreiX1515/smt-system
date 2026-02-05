@@ -3322,7 +3322,7 @@ function sortDatesArray() {
     if (currentDateSort === 'date') {
         allAvailableDates.sort((a, b) => a.availableDate.localeCompare(b.availableDate));
     } else if (currentDateSort === 'price') {
-        allAvailableDates.sort((a, b) => (a.price || 0) - (b.price || 0));
+        allAvailableDates.sort((a, b) => ((a.b2bPrice ?? a.price) || 0) - ((b.b2bPrice ?? b.price) || 0));
     }
 }
 
@@ -3362,7 +3362,7 @@ function renderDatesTableRows() {
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         const formattedDate = `${yyyy}-${mm}-${dd}`;
-        const price = formatCurrency(date.price || 0);
+        const price = formatCurrency(date.b2bPrice ?? date.price ?? 0);
         const isOnSale = date.isOnSale || date.discountAmount > 0;
         const discountHtml = isOnSale && date.discountAmount > 0
             ? `<span class="discount-badge">-₱${formatCurrency(date.discountAmount)}</span>`
@@ -3475,7 +3475,7 @@ async function renderCalendar() {
                     cellClass = 'inactive';
                 } else if (availabilityInfo && availabilityInfo.remainingSeats > 0) {
                     cellClass = 'available';
-                    const price = Math.floor(availabilityInfo.price / 1000);
+                    const price = Math.floor((availabilityInfo.b2bPrice ?? availabilityInfo.price) / 1000);
                     const isOnSale = availabilityInfo.isOnSale || availabilityInfo.discountAmount > 0;
                     const discountAmount = availabilityInfo.discountAmount || 0;
 
@@ -3561,7 +3561,7 @@ function updateCalendarInfo() {
     const date = new Date(selectedDateInfo.availableDate);
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-    const price = formatCurrency(selectedDateInfo.price);
+    const price = formatCurrency(selectedDateInfo.b2bPrice ?? selectedDateInfo.price);
     const remainingSeats = selectedDateInfo.remainingSeats;
 
     // Sale 할인 정보 표시
