@@ -5271,9 +5271,9 @@ function getBookingDetail($conn, $input) {
             p.meetingPoint,
             p.meetingTime,
             -- Agent info: agentId로 조인하거나, accountId가 에이전트 계정인 경우 처리
-            COALESCE(ag1.agencyName, ag2.agencyName, '' as co1_companyName, '' as co2_companyName) as agentName,
-            COALESCE(ag1.agencyName, ag2.agencyName, '' as co1_companyName, '' as co2_companyName) as branchName,
-            COALESCE('' as co1_companyName, '' as co2_companyName) as companyName,
+            COALESCE(ag1.agencyName, ag2.agencyName, '') as agentName,
+            COALESCE(ag1.agencyName, ag2.agencyName, '') as branchName,
+            '' as companyName,
             COALESCE(CONCAT(ag1.fName, ' ', ag1.lName), CONCAT(ag2.fName, ' ', ag2.lName)) as agentManagerName,
             COALESCE(ag1.personInChargeEmail, ag2.personInChargeEmail) as agentManagerEmail,
             COALESCE(CONCAT(ag1.countryCode, ag1.contactNo), CONCAT(ag2.countryCode, ag2.contactNo)) as agentManagerContact
@@ -13065,6 +13065,71 @@ function updateB2BBooking($conn, $input) {
                     $travStmt->close();
                 }
             } catch (Throwable $e) { /* ignore */ }
+
+            // 실제 변경이 있는지 비교 (변경 없으면 pending_update 건너뜀)
+            $hasActualChanges = false;
+
+            // 1) Customer Info 비교
+            if ($hasCustomerInfo && $currentCustomerInfo) {
+                $incomingCI = $input['customerInfo'];
+                $normalizeStr = function($v) { return strtolower(trim((string)($v ?? ''))); };
+                if ($normalizeStr($incomingCI['name'] ?? '') !== $normalizeStr($currentCustomerInfo['name'] ?? '')
+                    || $normalizeStr($incomingCI['email'] ?? '') !== $normalizeStr($currentCustomerInfo['email'] ?? '')
+                    || preg_replace('/[^0-9+]/', '', (string)($incomingCI['phone'] ?? '')) !== preg_replace('/[^0-9+]/', '', (string)($currentCustomerInfo['phone'] ?? ''))
+                ) {
+                    $hasActualChanges = true;
+                }
+            }
+
+            // 2) Travelers 비교
+            if (!$hasActualChanges && $hasTravelers) {
+                $incomingTravelers = $input['travelers'];
+                // 여행자 수 변경 체크
+                if (count($incomingTravelers) !== count($currentTravelers)) {
+                    $hasActualChanges = true;
+                } else {
+                    // 기존 traveler를 ID로 맵핑
+                    $currentTravelerMap = [];
+                    foreach ($currentTravelers as $ct) {
+                        $ctId = intval($ct['bookingTravelerId'] ?? 0);
+                        if ($ctId > 0) $currentTravelerMap[$ctId] = $ct;
+                    }
+                    $compareFields = ['title','firstName','lastName','gender','birthDate','nationality','passportNumber','passportIssueDate','passportExpiry','visaStatus'];
+                    foreach ($incomingTravelers as $it) {
+                        if (!is_array($it)) continue;
+                        $itId = intval($it['bookingTravelerId'] ?? 0);
+                        if ($itId <= 0) {
+                            // 신규 traveler = 변경 있음
+                            $hasActualChanges = true;
+                            break;
+                        }
+                        if (!isset($currentTravelerMap[$itId])) {
+                            $hasActualChanges = true;
+                            break;
+                        }
+                        $ct = $currentTravelerMap[$itId];
+                        foreach ($compareFields as $f) {
+                            $inVal = trim((string)($it[$f] ?? ''));
+                            // passportExpiry는 프론트에서 passportExpiry로 오지만 DB 컬럼명이 passportExpiry 또는 passportExpiryDate일 수 있음
+                            $dbVal = trim((string)($ct[$f] ?? $ct[$f . 'Date'] ?? ''));
+                            // 빈값/null 통일
+                            if ($inVal === '' || $inVal === '0000-00-00') $inVal = '';
+                            if ($dbVal === '' || $dbVal === '0000-00-00') $dbVal = '';
+                            if (strtolower($inVal) !== strtolower($dbVal)) {
+                                $hasActualChanges = true;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 실제 변경이 없으면 pending_update 플로우 건너뜀
+            if (!$hasActualChanges) {
+                // 변경 없이 저장 - 기존 상태 유지하고 정상 응답
+                // (guideId, balanceDueDate 등 다른 필드는 이미 위에서 처리됨)
+                send_success_response([], 'Booking updated successfully (no customer/traveler changes detected)');
+            }
 
             // booking_change_requests 테이블에 통합 저장 (changeType = 'travelers' 유지)
             $previousDataJson = json_encode([
