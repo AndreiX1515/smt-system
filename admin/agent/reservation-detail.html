@@ -700,6 +700,7 @@
 			<div class="jw-cols jw-between jw-mgt32">
 				<h2 class="section-title" id="section-customer" data-lan-eng="Reservation Customer Information">예약 고객 정보</h2>
 				<div class="customer-edit-btns" id="customerEditBtns" style="display:none;">
+					<button type="button" id="viewCustomerBtn" class="jw-button typeA" data-lan-eng="View" onclick="openCustomerViewModal()">View</button>
 					<button type="button" id="editCustomerBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
 					<button type="button" id="saveCustomerBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
 					<button type="button" id="cancelCustomerBtn" class="jw-button typeD" style="display:none;" data-lan-eng="Cancel">Cancel</button>
@@ -1027,6 +1028,37 @@
 			<div class="modal-footer">
 				<button type="button" class="jw-button typeB" id="confirmCancelBtn">확인</button>
 				<button type="button" class="jw-button typeD" onclick="closeModal('cancelReservationModal')">취소</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- 고객 정보 보기 모달 -->
+	<div id="customerViewModal" class="modal" style="display:none;">
+		<div class="modal-content" style="max-width: 520px;">
+			<div class="modal-header">
+				<h3 data-lan-eng="Customer Information">고객 정보</h3>
+				<button type="button" class="modal-close" onclick="closeCustomerViewModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Name">이름</label>
+						<input id="view_cust_name" type="text" class="form-control" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">이메일</label>
+						<input id="view_cust_email" type="email" class="form-control" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contact">연락처</label>
+						<input id="view_cust_phone" type="text" class="form-control" value="" disabled>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button typeD" onclick="closeCustomerViewModal()" data-lan-eng="Close">Close</button>
 			</div>
 		</div>
 	</div>

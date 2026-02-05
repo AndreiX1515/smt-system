@@ -4040,6 +4040,40 @@ function closeModal(modalId, skipReset = false) {
     }
 }
 
+// ===== 고객 정보 보기 모달 =====
+
+function openCustomerViewModal() {
+    const booking = currentBookingData?.booking || {};
+    const selectedOptions = currentBookingData?.selectedOptions || {};
+    const ci = (selectedOptions && typeof selectedOptions === 'object') ? (selectedOptions.customerInfo || {}) : {};
+
+    // Name
+    const firstName = booking.customerFirstName || booking.customerFName || booking.fName || ci.firstName || ci.fName || '';
+    const lastName = booking.customerLastName || booking.customerLName || booking.lName || ci.lastName || ci.lName || '';
+    const name = `${firstName} ${lastName}`.trim() || booking.customerName || ci.name || '';
+
+    // Email
+    const email = booking.contactEmail || booking.customerEmail || booking.accountEmail || ci.email || ci.emailAddress || '';
+
+    // Phone
+    const phone = booking.contactPhone || booking.customerPhone || booking.contactNo || ci.phone || ci.contactNo || '';
+    const countryCode = booking.countryCode || ci.countryCode || '';
+    const phoneDisplay = countryCode ? `${countryCode} ${phone}` : phone;
+
+    const nameEl = document.getElementById('view_cust_name');
+    const emailEl = document.getElementById('view_cust_email');
+    const phoneEl = document.getElementById('view_cust_phone');
+    if (nameEl) nameEl.value = name;
+    if (emailEl) emailEl.value = email;
+    if (phoneEl) phoneEl.value = phoneDisplay;
+
+    openModal('customerViewModal');
+}
+
+function closeCustomerViewModal() {
+    closeModal('customerViewModal');
+}
+
 // ===== 출발일 기준 수정 기능 =====
 
 // 출발일까지 남은 일수 계산
@@ -4083,9 +4117,15 @@ function initEditButtonsIfWithin24Hours(booking) {
         __travelerEditMode = 'locked';
         console.log(`[Edit Check] Editing disabled: booking is in ${bookingStatus} status`);
 
-        // 모든 수정 버튼 숨기기
+        // 모든 수정 버튼 숨기기 (View 버튼만 표시)
         const customerEditBtns = document.getElementById('customerEditBtns');
-        if (customerEditBtns) customerEditBtns.style.display = 'none';
+        if (customerEditBtns) {
+            customerEditBtns.style.display = 'flex';
+            const viewBtn = document.getElementById('viewCustomerBtn');
+            const editBtn = document.getElementById('editCustomerBtn');
+            if (viewBtn) viewBtn.style.display = 'inline-flex';
+            if (editBtn) editBtn.style.display = 'none';
+        }
 
         const editTravelerBtn = document.getElementById('editTravelerBtn');
         if (editTravelerBtn) editTravelerBtn.style.display = 'none';
@@ -4105,10 +4145,14 @@ function initEditButtonsIfWithin24Hours(booking) {
     __canEditBeforeDeparture = __travelerEditMode !== 'locked';
     console.log(`[Edit Check] Days before departure: ${daysLeft}, Edit mode: ${__travelerEditMode}, edit_allowed: ${isEditAllowed}`);
 
-    // Customer Info 수정 버튼 - 항상 숨김
+    // Customer Info - Edit 숨기고 View만 표시
     const customerEditBtns = document.getElementById('customerEditBtns');
     if (customerEditBtns) {
-        customerEditBtns.style.display = 'none';
+        customerEditBtns.style.display = 'flex';
+        const viewBtn = document.getElementById('viewCustomerBtn');
+        const editBtn = document.getElementById('editCustomerBtn');
+        if (viewBtn) viewBtn.style.display = 'inline-flex';
+        if (editBtn) editBtn.style.display = 'none';
     }
 
     // Product Edit 버튼 - 항상 숨김
@@ -4265,10 +4309,14 @@ function updateEditButtonsState() {
         editProductBtn.style.display = 'none';
     }
 
-    // Customer Edit 버튼 - 항상 숨김
+    // Customer - Edit 숨기고 View만 표시
     const customerEditBtns = document.getElementById('customerEditBtns');
     if (customerEditBtns) {
-        customerEditBtns.style.display = 'none';
+        customerEditBtns.style.display = 'flex';
+        const viewBtn = document.getElementById('viewCustomerBtn');
+        const editBtn = document.getElementById('editCustomerBtn');
+        if (viewBtn) viewBtn.style.display = 'inline-flex';
+        if (editBtn) editBtn.style.display = 'none';
     }
 
     // Traveler Edit 버튼
