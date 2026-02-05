@@ -14723,6 +14723,14 @@ function approveB2BBooking($conn, $input) {
                     send_error_response('No deadline value found in change request');
                 }
 
+                // 같은 bookingId + deadline 타입의 다른 pending 요청을 자동 reject (중복 방지)
+                $autoRejectStmt = $conn->prepare(
+                    "UPDATE booking_change_requests SET status = 'rejected', rejectReason = 'Auto-rejected: superseded by approved request', processedBy = ?, processedAt = NOW() WHERE bookingId = ? AND changeType = 'deadline' AND status = 'pending' AND id != ?"
+                );
+                $autoRejectStmt->bind_param('ssi', $processedBy, $bookingId, $changeRequest['id']);
+                $autoRejectStmt->execute();
+                $autoRejectStmt->close();
+
                 // 원래 상태로 복원하면서 deadline 업데이트
                 $newStatus = __resolve_post_approval_status($conn, $bookingId, $changeRequest['id'], $changeRequest['originalStatus'] ?? 'confirmed');
 
