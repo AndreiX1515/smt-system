@@ -8547,6 +8547,34 @@ function deletePaymentProofFile($conn, $input) {
 }
 
 /**
+ * 현재 예약의 여행자 bookingTravelerId 목록 조회
+ */
+function __get_current_traveler_ids($conn, $bookingId) {
+    $ids = [];
+    $travelerColumns = [];
+    $travelerColumnCheck = $conn->query("SHOW COLUMNS FROM booking_travelers");
+    if ($travelerColumnCheck) {
+        while ($col = $travelerColumnCheck->fetch_assoc()) {
+            $travelerColumns[] = strtolower($col['Field']);
+        }
+    }
+    $bookingIdCol = in_array('transactno', $travelerColumns) ? 'transactNo' : 'bookingId';
+    $stmt = $conn->prepare("SELECT bookingTravelerId FROM booking_travelers WHERE $bookingIdCol = ?");
+    if ($stmt) {
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            if (!empty($row['bookingTravelerId'])) {
+                $ids[] = (int)$row['bookingTravelerId'];
+            }
+        }
+        $stmt->close();
+    }
+    return $ids;
+}
+
+/**
  * pending_update 상태에서 변경 요청 생성 시, 올바른 originalStatus를 조회
  */
 function __get_true_original_status_agent($conn, $bookingId, $currentStatus) {
@@ -9803,9 +9831,72 @@ function updateTravelerInfo($conn, $input) {
             send_error_response('Previous change request was rejected. Please confirm the rejection first.', 400);
         }
 
-        // 에이전트는 항상 승인 필요 (edit_allowed 무관)
-        $editAllowed = false;
-        if (!$editAllowed) {
+        // === 일수 기반 수정 분기 로직 ===
+        $departureDate = $booking['departureDate'] ?? '';
+        $editAllowedFlag = (int)($booking['edit_allowed'] ?? 0);
+        $editMode = $input['editMode'] ?? 'locked';
+        $isAddRemoveClient = (bool)($input['isAddRemove'] ?? false);
+
+        // 서버 사이드 남은 일수 계산
+        $daysRemaining = null;
+        if (!empty($departureDate)) {
+            $departure = new DateTime($departureDate);
+            $now = new DateTime('today');
+            $diff = $now->diff($departure);
+            $daysRemaining = $diff->invert ? -$diff->days : $diff->days;
+        }
+
+        // 서버 사이드 추가/삭제 검증
+        $currentTravelerIds = __get_current_traveler_ids($conn, $bookingId);
+        $currentTravelerCount = count($currentTravelerIds);
+        $isAddRemoveServer = false;
+        if (count($travelers) !== $currentTravelerCount) {
+            $isAddRemoveServer = true;
+        } else {
+            $pendingIds = array_filter(array_map(function($t) {
+                return $t['bookingTravelerId'] ?? null;
+            }, $travelers));
+            foreach ($currentTravelerIds as $existId) {
+                if (!in_array($existId, $pendingIds)) {
+                    $isAddRemoveServer = true;
+                    break;
+                }
+            }
+            // 새 여행자 (bookingTravelerId 없는) 존재 확인
+            foreach ($travelers as $t) {
+                if (empty($t['bookingTravelerId'])) {
+                    $isAddRemoveServer = true;
+                    break;
+                }
+            }
+        }
+        $isAddRemove = $isAddRemoveClient || $isAddRemoveServer;
+
+        // 수정 가능 여부 판단
+        if ($daysRemaining !== null && $daysRemaining < 45 && $editAllowedFlag !== 1) {
+            send_error_response('Edit is only allowed until 45 days before departure date', 403);
+        }
+
+        // 직접 수정 가능 여부 결정
+        $canDirectEdit = false;
+        if ($isAddRemove) {
+            // 여행자 추가/삭제는 항상 admin_kr 승인 필요
+            $canDirectEdit = false;
+        } else if ($editAllowedFlag === 1) {
+            // admin 오버라이드
+            $canDirectEdit = true;
+        } else if ($daysRemaining !== null && $daysRemaining >= 60) {
+            // 60일 이상 전: 즉시 수정
+            $canDirectEdit = true;
+        } else {
+            // 45~59일: 승인 필요
+            $canDirectEdit = false;
+        }
+
+        $changeType = $isAddRemove ? 'travelers_add_remove' : 'travelers';
+
+        if (!$canDirectEdit) {
+            // === pending_update 경로 (승인 필요) ===
             // 현재 여행자 정보 조회
             $travelerColumns = [];
             $travelerColumnCheck = $conn->query("SHOW COLUMNS FROM booking_travelers");
@@ -9839,7 +9930,6 @@ function updateTravelerInfo($conn, $input) {
                     $roomStmt->close();
 
                     if ($roomRow) {
-                        // selectedRooms 컬럼 우선, 없으면 selectedOptions 내의 selectedRooms 사용
                         $srRaw = $roomRow['selectedRooms'] ?? '';
                         if (!empty($srRaw)) {
                             $tmp = json_decode($srRaw, true);
@@ -9857,11 +9947,11 @@ function updateTravelerInfo($conn, $input) {
                 }
             } catch (Throwable $e) { /* ignore */ }
 
-            // previousData 구성 (originalTravelers + originalRooms)
+            // previousData 구성
             $previousDataArray = ['originalTravelers' => $currentTravelers, 'originalRooms' => $currentRooms];
             $previousData = json_encode($previousDataArray, JSON_UNESCAPED_UNICODE);
 
-            // newData 구성 (pendingTravelers + selectedRooms)
+            // newData 구성
             $newDataArray = ['pendingTravelers' => $travelers];
             if ($selectedRooms !== null) {
                 $newDataArray['selectedRooms'] = $selectedRooms;
@@ -9871,9 +9961,9 @@ function updateTravelerInfo($conn, $input) {
             // booking_change_requests에 변경 요청 저장
             $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';
             $trueOriginalStatus = __get_true_original_status_agent($conn, $bookingId, $booking['bookingStatus']);
-            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'agent', 'pending')";
+            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'agent', 'pending')";
             $changeRequestStmt = $conn->prepare($changeRequestSql);
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $booking['paymentStatus'], $previousData, $newData, $requestedBy);
+            $changeRequestStmt->bind_param('sssssss', $bookingId, $changeType, $trueOriginalStatus, $booking['paymentStatus'], $previousData, $newData, $requestedBy);
             $changeRequestStmt->execute();
             $changeRequestStmt->close();
 
@@ -9887,20 +9977,16 @@ function updateTravelerInfo($conn, $input) {
             return;
         }
 
-        // edit_allowed = 1인 경우 직접 수정 진행
+        // === 직접 수정 경로 (60일 이상 전 또는 edit_allowed=1) ===
         // 비자 신청용 변수 추출
         $customerAccountId = $booking['customerAccountId'] ?? $agentAccountId;
-        $departureDate = $booking['departureDate'] ?? '';
         $packageDestination = $booking['packageDestination'] ?? 'Korea';
         $packageDurationDays = (int)($booking['packageDurationDays'] ?? 3);
 
-        // 출발 한달 전까지만 수정 가능
-        if (!empty($departureDate)) {
-            $departure = strtotime($departureDate);
-            $oneMonthBefore = strtotime('-1 month', $departure);
-            $now = time();
-            if ($now >= $oneMonthBefore) {
-                send_error_response('Edit is only allowed until one month before departure date', 403);
+        // 출발 45일 전까지만 직접 수정 가능 (edit_allowed 오버라이드 제외)
+        if (!empty($departureDate) && $editAllowedFlag !== 1) {
+            if ($daysRemaining !== null && $daysRemaining < 45) {
+                send_error_response('Edit is only allowed until 45 days before departure date', 403);
             }
         }
 

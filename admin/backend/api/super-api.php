@@ -14143,7 +14143,14 @@ function approveB2BBooking($conn, $input) {
 
                 send_success_response([], 'Status change approved successfully');
 
-            } else if ($changeRequest['changeType'] === 'travelers') {
+            } else if ($changeRequest['changeType'] === 'travelers' || $changeRequest['changeType'] === 'travelers_add_remove') {
+                // travelers_add_remove인 경우: admin_kr만 승인 가능
+                if ($changeRequest['changeType'] === 'travelers_add_remove') {
+                    $adminUserType = $_SESSION['admin_userType'] ?? '';
+                    if ($adminUserType !== 'admin_kr') {
+                        send_error_response('Only admin_kr can approve traveler add/remove changes', 403);
+                    }
+                }
                 // Traveler/Customer Info 변경 요청 승인: pendingTravelers + pendingCustomerInfo 적용
                 $newData = json_decode($changeRequest['newData'], true);
                 $previousData = json_decode($changeRequest['previousData'], true);

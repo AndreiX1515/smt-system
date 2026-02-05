@@ -1532,12 +1532,15 @@ function openTravelerEditModal() {
         return;
     }
 
-    // 출발 한달 전이거나 Edit Allowed인 경우에만 수정 가능
-    const canEdit = __canEditBeforeDeparture || isEditAllowed;
-    if (!canEdit) {
-        alert('Edit is only allowed until one month before departure.');
+    // 수정 모드 확인: locked이면서 edit_allowed도 아닌 경우 차단
+    if (__travelerEditMode === 'locked' && !isEditAllowed) {
+        alert('Edit is only allowed until 45 days before departure.');
         return;
     }
+
+    // 원본 여행자 수/ID 저장 (추가/삭제 감지용)
+    __originalTravelerCount = __allTravelers.length;
+    __originalTravelerIds = __allTravelers.map(t => t.bookingTravelerId).filter(Boolean);
 
     __tempPassportImages = {};
     renderTravelerEditCards();
@@ -2264,6 +2267,7 @@ async function saveAllTravelers() {
         }
 
         travelers.push({
+            bookingTravelerId: original.bookingTravelerId || null,
             travelerType: travelerType,
             title: document.getElementById(`edit_title_${i}`)?.value || 'MR',
             firstName: document.getElementById(`edit_firstname_${i}`)?.value || '',
@@ -4036,32 +4040,47 @@ function closeModal(modalId, skipReset = false) {
     }
 }
 
-// ===== 출발 한달 전까지 수정 기능 =====
+// ===== 출발일 기준 수정 기능 =====
 
-// 출발일 한달 전까지인지 확인
-function isBeforeOneMonthOfDeparture(departureDate) {
-    if (!departureDate) return false;
+// 출발일까지 남은 일수 계산
+function getDaysBeforeDeparture(departureDate) {
+    if (!departureDate) return null;
     const departure = new Date(departureDate);
     const now = new Date();
-    // 출발일 한달 전 날짜 계산
-    const oneMonthBefore = new Date(departure);
-    oneMonthBefore.setMonth(oneMonthBefore.getMonth() - 1);
-    const daysUntilDeadline = Math.ceil((oneMonthBefore - now) / (1000 * 60 * 60 * 24));
-    console.log(`[Edit Check] Departure: ${departureDate}, One month before: ${oneMonthBefore.toISOString().split('T')[0]}, Days until deadline: ${daysUntilDeadline}`);
-    // 현재 날짜가 출발일 한달 전보다 이전이면 수정 가능
-    return now < oneMonthBefore;
+    departure.setHours(0,0,0,0);
+    now.setHours(0,0,0,0);
+    return Math.ceil((departure - now) / (1000 * 60 * 60 * 24));
+}
+
+// 여행자 수정 모드 결정 (출발일 기준 일수)
+function getTravelerEditMode(departureDate) {
+    const days = getDaysBeforeDeparture(departureDate);
+    if (days === null) return 'locked';
+    if (days >= 60) return 'direct';           // 즉시 수정 (승인 불필요)
+    if (days >= 45) return 'pending_approval';  // 승인 필요
+    return 'locked';                            // 수정 불가
+}
+
+// 하위 호환성 유지
+function isBeforeOneMonthOfDeparture(departureDate) {
+    const days = getDaysBeforeDeparture(departureDate);
+    return days !== null && days >= 30;
 }
 
 // 수정 가능 여부 저장
 let __canEditBeforeDeparture = false;
+let __travelerEditMode = 'locked'; // 'direct', 'pending_approval', 'locked'
+let __originalTravelerCount = 0;
+let __originalTravelerIds = [];
 
-// 출발 한달 전까지 수정 버튼 표시
+// 출발일 기준 수정 버튼 표시
 function initEditButtonsIfWithin24Hours(booking) {
     const bookingStatus = (booking.bookingStatus || '').toLowerCase();
 
     // pending 또는 pending_update 상태에서는 수정 불가
     if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
         __canEditBeforeDeparture = false;
+        __travelerEditMode = 'locked';
         console.log(`[Edit Check] Editing disabled: booking is in ${bookingStatus} status`);
 
         // 모든 수정 버튼 숨기기
@@ -4080,50 +4099,62 @@ function initEditButtonsIfWithin24Hours(booking) {
         return;
     }
 
-    const canEdit = isBeforeOneMonthOfDeparture(booking.departureDate);
-    __canEditBeforeDeparture = canEdit;
-    console.log(`[Edit Check] Can edit (before 1 month of departure): ${canEdit}`);
+    // 일수 기반 수정 모드 결정
+    __travelerEditMode = getTravelerEditMode(booking.departureDate);
+    const daysLeft = getDaysBeforeDeparture(booking.departureDate);
+    __canEditBeforeDeparture = __travelerEditMode !== 'locked';
+    console.log(`[Edit Check] Days before departure: ${daysLeft}, Edit mode: ${__travelerEditMode}, edit_allowed: ${isEditAllowed}`);
 
-    // Customer Info 수정 버튼
+    // Customer Info 수정 버튼 - 항상 숨김
     const customerEditBtns = document.getElementById('customerEditBtns');
     if (customerEditBtns) {
-        customerEditBtns.style.display = canEdit ? 'flex' : 'none';
+        customerEditBtns.style.display = 'none';
     }
 
-    // Traveler Info Edit 버튼 (카드 형식 헤더에 표시)
+    // Product Edit 버튼 - 항상 숨김
+    const editProductBtn = document.getElementById('editProductBtn');
+    if (editProductBtn) {
+        editProductBtn.style.display = 'none';
+    }
+
+    // Room Option 버튼 - 항상 숨김
+    const roomOptionBtn = document.getElementById('room_option_btn');
+    if (roomOptionBtn) {
+        roomOptionBtn.style.display = 'none';
+    }
+
+    // Traveler Info Edit 버튼
     const editTravelerBtn = document.getElementById('editTravelerBtn');
     if (editTravelerBtn) {
-        editTravelerBtn.style.display = canEdit ? 'inline-flex' : 'none';
+        const canEditTraveler = __travelerEditMode !== 'locked' || isEditAllowed;
+        if (canEditTraveler) {
+            editTravelerBtn.style.display = 'inline-flex';
+            editTravelerBtn.disabled = false;
+            editTravelerBtn.style.opacity = '';
+            editTravelerBtn.style.cursor = '';
+            editTravelerBtn.title = __travelerEditMode === 'pending_approval'
+                ? 'Changes will require admin approval'
+                : '';
+        } else {
+            editTravelerBtn.style.display = 'inline-flex';
+            editTravelerBtn.disabled = true;
+            editTravelerBtn.style.opacity = '0.5';
+            editTravelerBtn.style.cursor = 'not-allowed';
+            editTravelerBtn.title = 'Edit is only allowed until 45 days before departure.';
+        }
         editTravelerBtn.onclick = openTravelerEditModal;
     }
 
-    // 이벤트 리스너 등록
-    if (canEdit) {
-        // Customer Edit 버튼
-        const editCustomerBtn = document.getElementById('editCustomerBtn');
-        const saveCustomerBtn = document.getElementById('saveCustomerBtn');
-        const cancelCustomerBtn = document.getElementById('cancelCustomerBtn');
-
-        if (editCustomerBtn) editCustomerBtn.onclick = startEditCustomer;
-        if (saveCustomerBtn) saveCustomerBtn.onclick = saveCustomerInfo;
-        if (cancelCustomerBtn) cancelCustomerBtn.onclick = cancelEditCustomer;
-    }
-
-    // Edit 버튼 상태 업데이트 (출발 한달 전 체크 적용)
+    // Edit 버튼 상태 업데이트
     updateEditButtonsState();
 }
 
 // ===== Customer Info 수정 =====
 
 function startEditCustomer() {
-    // pending 또는 pending_update 상태에서는 수정 불가
-    const bookingStatus = (currentBookingData?.booking?.bookingStatus || '').toLowerCase();
-    if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
-        alert(bookingStatus === 'pending'
-            ? 'Editing is not allowed while booking is pending approval.'
-            : 'This booking already has a pending change request.');
-        return;
-    }
+    // Customer Info 수정 비활성화 (Agent에서는 UI 버튼 숨김으로 접근 차단)
+    alert('Customer info editing is not available.');
+    return;
 
     // 현재 값 백업
     originalCustomerData = {
@@ -4223,44 +4254,41 @@ let selectedProductForEdit = null;
 let tripRangePicker = null;
 
 /**
- * Edit Allowed 상태에 따라 Edit 버튼들의 표시 여부를 제어
- * 출발 한달 전까지는 edit_allowed와 상관없이 수정 가능
+ * Edit 버튼 상태 업데이트
+ * Product/Customer 버튼은 항상 숨김
+ * Traveler 버튼만 __travelerEditMode + isEditAllowed 기반 제어
  */
 function updateEditButtonsState() {
+    // Product Edit 버튼 - 항상 숨김
     const editProductBtn = document.getElementById('editProductBtn');
+    if (editProductBtn) {
+        editProductBtn.style.display = 'none';
+    }
+
+    // Customer Edit 버튼 - 항상 숨김
+    const customerEditBtns = document.getElementById('customerEditBtns');
+    if (customerEditBtns) {
+        customerEditBtns.style.display = 'none';
+    }
+
+    // Traveler Edit 버튼
     const editTravelerBtn = document.getElementById('editTravelerBtn');
-
-    // 출발 한달 전이거나 Admin이 수정 허용한 경우 - 버튼 활성화
-    const canEdit = __canEditBeforeDeparture || isEditAllowed;
-
-    if (canEdit) {
-        if (editProductBtn) {
-            editProductBtn.style.display = 'inline-flex';
-            editProductBtn.disabled = false;
-            editProductBtn.style.opacity = '';
-            editProductBtn.style.cursor = '';
-            editProductBtn.title = '';
-        }
-        if (editTravelerBtn) {
+    if (editTravelerBtn) {
+        const canEditTraveler = __travelerEditMode !== 'locked' || isEditAllowed;
+        if (canEditTraveler) {
             editTravelerBtn.style.display = 'inline-flex';
             editTravelerBtn.disabled = false;
             editTravelerBtn.style.opacity = '';
             editTravelerBtn.style.cursor = '';
-            editTravelerBtn.title = '';
-        }
-    } else {
-        // 출발 한달 이내이고 Admin 허용도 없는 경우 - 버튼 비활성화
-        if (editProductBtn) {
-            editProductBtn.disabled = true;
-            editProductBtn.style.opacity = '0.5';
-            editProductBtn.style.cursor = 'not-allowed';
-            editProductBtn.title = 'Edit is only allowed until one month before departure.';
-        }
-        if (editTravelerBtn) {
+            editTravelerBtn.title = __travelerEditMode === 'pending_approval'
+                ? 'Changes will require admin approval'
+                : '';
+        } else {
+            editTravelerBtn.style.display = 'inline-flex';
             editTravelerBtn.disabled = true;
             editTravelerBtn.style.opacity = '0.5';
             editTravelerBtn.style.cursor = 'not-allowed';
-            editTravelerBtn.title = 'Edit is only allowed until one month before departure.';
+            editTravelerBtn.title = 'Edit is only allowed until 45 days before departure.';
         }
     }
 }
@@ -4270,12 +4298,9 @@ function updateEditButtonsState() {
  * 관리자 승인 필요 플로우: 예약을 pending_update로 변경하고 신규 예약 정보 입력 페이지로 이동
  */
 async function handleEditProductClick() {
-    // 출발 한달 전이거나 Edit Allowed인 경우에만 수정 가능
-    const canEdit = __canEditBeforeDeparture || isEditAllowed;
-    if (!canEdit) {
-        alert('Edit is only allowed until one month before departure.');
-        return;
-    }
+    // Product Edit은 Agent에서 비활성화
+    alert('Product editing is not available.');
+    return;
 
     // pending 또는 pending_update 상태에서는 수정 불가
     const bookingStatus = (currentBookingData?.booking?.bookingStatus || '').toLowerCase();
@@ -5476,6 +5501,17 @@ function closeChangeSummaryModal() {
     __pendingTravelers = null;
 }
 
+// 여행자 추가/삭제 감지
+function detectTravelerAddRemove(pendingTravelers) {
+    if (pendingTravelers.length !== __originalTravelerCount) return true;
+    const pendingIds = pendingTravelers.map(t => t.bookingTravelerId).filter(Boolean);
+    for (const id of __originalTravelerIds) {
+        if (!pendingIds.includes(id)) return true;
+    }
+    if (pendingTravelers.some(t => !t.bookingTravelerId)) return true;
+    return false;
+}
+
 // 최종 변경 사항 제출
 async function submitChanges() {
     const submitBtn = document.getElementById('submit-changes-btn');
@@ -5484,6 +5520,12 @@ async function submitChanges() {
     try {
         // Step 1: Travelers 저장 (pendingTravelers가 있는 경우)
         if (__pendingTravelers && __pendingTravelers.length > 0) {
+            // 추가/삭제 감지
+            const isAddRemove = detectTravelerAddRemove(__pendingTravelers);
+            // 수정 모드 결정 (edit_allowed면 direct 오버라이드)
+            const effectiveEditMode = isEditAllowed && __travelerEditMode === 'locked'
+                ? 'direct' : __travelerEditMode;
+
             // selectedRooms도 함께 전송 (pending_update 시 review changes 모달에서 표시하기 위해)
             const roomsToSubmit = selectedRoomsInModal.filter(r => r.count > 0);
             const travelerResponse = await fetch('../backend/api/agent-api.php', {
@@ -5494,7 +5536,9 @@ async function submitChanges() {
                     action: 'updateTravelerInfo',
                     bookingId: currentBookingId,
                     travelers: __pendingTravelers,
-                    selectedRooms: roomsToSubmit
+                    selectedRooms: roomsToSubmit,
+                    editMode: effectiveEditMode,
+                    isAddRemove: isAddRemove
                 })
             });
 
@@ -5514,6 +5558,7 @@ async function submitChanges() {
                 return;
             }
 
+            // 직접 수정 성공 시 (success: true) → Step 2로 진행
             // pending 초기화
             __pendingTravelers = null;
         }

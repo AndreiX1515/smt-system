@@ -500,6 +500,88 @@ class EmailNotificationService {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
+
+    /**
+     * Send traveler edit deadline reminders
+     * For bookings where departure is exactly 45 days away
+     * Called by cron job
+     *
+     * @return array ['processed' => int, 'sent' => int, 'failed' => int, 'skipped' => int]
+     */
+    public function sendTravelerEditDeadlineReminders(): array {
+        $stats = ['processed' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 0];
+
+        try {
+            // 출발 45일 전인 active 예약 조회
+            $sql = "
+                SELECT
+                    b.bookingId,
+                    b.packageName,
+                    b.departureDate,
+                    ag.personInChargeEmail as agentEmail,
+                    COALESCE(ag.agencyName, ag.personInCharge, CONCAT(COALESCE(a.firstName, ''), ' ', COALESCE(a.lastName, ''))) as agentName
+                FROM bookings b
+                LEFT JOIN accounts a ON b.accountId = a.accountId
+                LEFT JOIN agent ag ON a.accountId = ag.accountId
+                WHERE DATEDIFF(b.departureDate, CURDATE()) = 45
+                  AND b.bookingStatus NOT IN ('cancelled', 'completed', 'rejected')
+                  AND ag.personInChargeEmail IS NOT NULL
+                  AND ag.personInChargeEmail != ''
+            ";
+
+            $result = $this->conn->query($sql);
+            if (!$result) return $stats;
+
+            while ($row = $result->fetch_assoc()) {
+                $stats['processed']++;
+
+                $bookingId = $row['bookingId'];
+                $agentEmail = $row['agentEmail'];
+
+                // 중복 확인
+                if ($this->isNotificationSent($bookingId, 'traveler_edit_deadline', $agentEmail)) {
+                    $stats['skipped']++;
+                    continue;
+                }
+
+                // 수정 마감일 계산 (출발일 - 45일 = 오늘)
+                $editDeadlineDate = date('Y-m-d');
+
+                $templateData = [
+                    'bookingId' => $bookingId,
+                    'packageName' => $row['packageName'] ?? '',
+                    'departureDate' => $row['departureDate'] ?? '',
+                    'editDeadlineDate' => $editDeadlineDate,
+                    'agentName' => trim($row['agentName'] ?? 'Agent'),
+                ];
+
+                $htmlBody = get_traveler_edit_deadline_template($templateData);
+                $subject = "[SMT Escape] Traveler Edit Deadline Reminder - {$bookingId}";
+
+                $sendResult = mailer_send($agentEmail, $subject, $htmlBody);
+
+                $this->logNotification(
+                    $bookingId,
+                    'traveler_edit_deadline',
+                    $agentEmail,
+                    $sendResult['ok'] ? 'sent' : 'failed',
+                    $sendResult['error'] ?? null
+                );
+
+                if ($sendResult['ok']) {
+                    $stats['sent']++;
+                } else {
+                    $stats['failed']++;
+                    error_log("Failed to send traveler edit deadline reminder for {$bookingId}: " . ($sendResult['error'] ?? 'Unknown error'));
+                }
+            }
+
+        } catch (Exception $e) {
+            error_log("EmailNotificationService::sendTravelerEditDeadlineReminders error: " . $e->getMessage());
+        }
+
+        return $stats;
+    }
 }
 
 /**

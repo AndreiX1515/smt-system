@@ -458,3 +458,83 @@ HTML;
 </html>
 HTML;
 }
+
+/**
+ * Get traveler edit deadline reminder email template
+ *
+ * @param array $data [
+ *   'bookingId' => string,
+ *   'packageName' => string,
+ *   'departureDate' => string (YYYY-MM-DD),
+ *   'editDeadlineDate' => string (YYYY-MM-DD),
+ *   'agentName' => string,
+ * ]
+ */
+function get_traveler_edit_deadline_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $departureDate = $data['departureDate'] ?? '';
+    $departureDateFormatted = $departureDate ? date('F j, Y', strtotime($departureDate)) : '';
+    $editDeadlineDate = $data['editDeadlineDate'] ?? '';
+    $editDeadlineDateFormatted = $editDeadlineDate ? date('F j, Y', strtotime($editDeadlineDate)) : '';
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traveler Edit Deadline Reminder - {$bookingId}</title>
+    <style>{$styles}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">SMT ESCAPE</div>
+            <h1>Traveler Edit Deadline Reminder</h1>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Dear {$agentName},</p>
+
+            <p>This is a reminder that the <strong>traveler information edit deadline</strong> for the following booking is approaching.</p>
+
+            <div class="info-box">
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Booking ID:</td>
+                        <td class="value">{$bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Package:</td>
+                        <td class="value">{$packageName}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Departure Date:</td>
+                        <td class="value">{$departureDateFormatted}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="urgent-box">
+                <h3 style="margin: 0 0 10px 0; color: #991b1b;">Important: Edit Deadline</h3>
+                <p style="margin: 0;">After <strong>{$editDeadlineDateFormatted}</strong> (45 days before departure), traveler information can no longer be modified without special admin approval.</p>
+                <p style="margin: 10px 0 0 0;">Please ensure all traveler details (names, passport info, etc.) are correct before this date.</p>
+            </div>
+
+            <p>If you need to make any changes, please log in to the system and update the traveler information as soon as possible.</p>
+        </div>
+
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p>&copy; 2024 SMT Escape. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
