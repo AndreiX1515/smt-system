@@ -289,6 +289,12 @@ function applyB2BAutoCancellation($conn) {
                 continue;
             }
 
+            // Skip confirmed/completed bookings (should not be auto-cancelled)
+            $bStatus = strtolower(trim($overduePayment['bookingStatus'] ?? ''));
+            if (in_array($bStatus, ['confirmed', 'completed', 'cancelled'], true)) {
+                continue;
+            }
+
             // Check B2B condition if applicable
             if ($hasSalesTarget) {
                 $pkgStmt = $conn->prepare("SELECT p.sales_target FROM bookings b LEFT JOIN packages p ON b.packageId = p.packageId WHERE b.bookingId = ?");
