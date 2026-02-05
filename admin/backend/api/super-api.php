@@ -14674,8 +14674,8 @@ function approveB2BBooking($conn, $input) {
 
             } else if ($changeRequest['changeType'] === 'deadline') {
                 // Deadline 변경 요청 승인: admin_kr만 승인 가능
-                $currentAdminId = $_SESSION['super_accountId'] ?? '';
-                if ($currentAdminId !== 'admin_kr') {
+                $currentAdminType = $_SESSION['admin_userType'] ?? '';
+                if ($currentAdminType !== 'admin_kr') {
                     send_error_response('Only admin_kr can approve deadline changes');
                 }
 
@@ -15263,7 +15263,7 @@ function setPaymentDeadline($conn, $input) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $requestedBy = $_SESSION['super_accountId'] ?? $_SESSION['admin_username'] ?? 'admin';
+        $requestedBy = $_SESSION['admin_emailAddress'] ?? $_SESSION['admin_username'] ?? 'admin';
 
         // previousData와 newData 구성
         $previousData = json_encode([
