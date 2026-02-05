@@ -14551,6 +14551,11 @@ function approveB2BBooking($conn, $input) {
                 // 상태 변경 히스토리 저장
                 __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Traveler changes approved');
 
+                // 승인 이메일 알림 발송
+                if (function_exists('send_approval_notification_email')) {
+                    send_approval_notification_email($conn, $bookingId, $changeRequest['changeType'], $priceAdjustment, $beforeTotal, $afterTotal);
+                }
+
                 // 금액 변동 정보를 응답에 포함
                 $adjustmentInfo = [
                     'beforeTotal' => $beforeTotal,

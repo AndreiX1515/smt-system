@@ -32,6 +32,7 @@ function get_email_styles(): string {
         .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
         .footer a { color: #2563eb; text-decoration: none; }
         .divider { height: 1px; background-color: #e5e7eb; margin: 20px 0; }
+        .success-box { background-color: #ecfdf5; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #10b981; }
         table.info-table { width: 100%; border-collapse: collapse; }
         table.info-table td { padding: 10px 0; vertical-align: top; }
         table.info-table td.label { color: #6b7280; width: 140px; }
@@ -526,6 +527,123 @@ function get_traveler_edit_deadline_template(array $data): string {
             </div>
 
             <p>If you need to make any changes, please log in to the system and update the traveler information as soon as possible.</p>
+        </div>
+
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p>&copy; 2024 SMT Escape. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
+
+/**
+ * Get approval notification email template
+ *
+ * @param array $data [
+ *   'bookingId' => string,
+ *   'packageName' => string,
+ *   'approvalType' => string ('travelers', 'travelers_add_remove'),
+ *   'agentName' => string,
+ *   'priceAdjustment' => float (optional),
+ *   'beforeTotal' => float (optional),
+ *   'afterTotal' => float (optional),
+ * ]
+ */
+function get_approval_notification_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+    $approvalType = $data['approvalType'] ?? 'travelers';
+
+    // Determine approval title and message based on type
+    $approvalTitle = 'Change Request Approved';
+    $approvalMessage = 'Your change request has been approved and applied.';
+
+    if ($approvalType === 'travelers' || $approvalType === 'travelers_add_remove') {
+        $approvalTitle = 'Traveler Changes Approved';
+        $approvalMessage = 'Your traveler change request has been approved and the changes have been applied to your booking.';
+    }
+
+    // Price adjustment section
+    $adjustmentHtml = '';
+    $priceAdjustment = floatval($data['priceAdjustment'] ?? 0);
+    if ($priceAdjustment != 0) {
+        $beforeTotal = number_format(floatval($data['beforeTotal'] ?? 0), 2);
+        $afterTotal = number_format(floatval($data['afterTotal'] ?? 0), 2);
+        $adjustmentFormatted = ($priceAdjustment >= 0 ? '+' : '') . number_format($priceAdjustment, 2);
+        $adjustmentColor = $priceAdjustment > 0 ? '#dc2626' : '#059669';
+
+        $adjustmentHtml = <<<ADJHTML
+            <div class="highlight-box">
+                <h3 style="margin: 0 0 15px 0; color: #92400e;">Price Adjustment</h3>
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Previous Total:</td>
+                        <td class="value">&#8369;{$beforeTotal}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">New Total:</td>
+                        <td class="value">&#8369;{$afterTotal}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Adjustment:</td>
+                        <td class="value" style="color: {$adjustmentColor};">&#8369;{$adjustmentFormatted}</td>
+                    </tr>
+                </table>
+            </div>
+ADJHTML;
+    }
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{$approvalTitle} - {$bookingId}</title>
+    <style>{$styles}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+            <div class="logo">SMT Escape</div>
+            <h1>{$approvalTitle}</h1>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Dear {$agentName},</p>
+
+            <p>{$approvalMessage}</p>
+
+            <div class="success-box">
+                <h3 style="margin: 0 0 15px 0; color: #065f46;">Booking Information</h3>
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Booking ID:</td>
+                        <td class="value">{$bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Package:</td>
+                        <td class="value">{$packageName}</td>
+                    </tr>
+                </table>
+            </div>
+
+            {$adjustmentHtml}
+
+            <p style="margin-top: 20px;">Please check your booking details in your agent portal.</p>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 14px; color: #6b7280;">
+                If you have any questions, please contact our support team.
+            </p>
         </div>
 
         <div class="footer">

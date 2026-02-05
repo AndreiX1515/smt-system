@@ -415,6 +415,71 @@ class EmailNotificationService {
     }
 
     /**
+     * Send booking approval notification email
+     *
+     * @param string $bookingId
+     * @param string $approvalType 'travelers', 'travelers_add_remove'
+     * @param float $priceAdjustment Price difference (can be 0)
+     * @param float $beforeTotal Total before change
+     * @param float $afterTotal Total after change
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public function sendBookingApprovalNotification(
+        string $bookingId,
+        string $approvalType = 'travelers',
+        float $priceAdjustment = 0,
+        float $beforeTotal = 0,
+        float $afterTotal = 0
+    ): array {
+        try {
+            $booking = $this->getBookingWithAgentInfo($bookingId);
+            if (!$booking) {
+                return ['success' => false, 'message' => 'Booking not found'];
+            }
+
+            $agentEmail = $booking['agentEmail'] ?? '';
+            if (empty($agentEmail)) {
+                return ['success' => false, 'message' => 'Agent email not found'];
+            }
+
+            $notificationKey = 'approval_' . $approvalType . '_' . date('Ymd');
+
+            $templateData = [
+                'bookingId' => $booking['bookingId'],
+                'packageName' => $booking['packageName'] ?? '',
+                'approvalType' => $approvalType,
+                'agentName' => $booking['agentName'] ?? 'Agent',
+                'priceAdjustment' => $priceAdjustment,
+                'beforeTotal' => $beforeTotal,
+                'afterTotal' => $afterTotal,
+            ];
+
+            $htmlBody = get_approval_notification_template($templateData);
+            $subject = "[SMT Escape] Traveler Changes Approved - {$bookingId}";
+
+            $result = mailer_send($agentEmail, $subject, $htmlBody);
+
+            $this->logNotification(
+                $bookingId,
+                $notificationKey,
+                $agentEmail,
+                $result['ok'] ? 'sent' : 'failed',
+                $result['error'] ?? null
+            );
+
+            if ($result['ok']) {
+                return ['success' => true, 'message' => 'Approval notification email sent'];
+            } else {
+                return ['success' => false, 'message' => 'Failed to send email: ' . ($result['error'] ?? 'Unknown error')];
+            }
+
+        } catch (Exception $e) {
+            error_log("EmailNotificationService::sendBookingApprovalNotification error: " . $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Send booking rejection notification email
      *
      * @param string $bookingId
@@ -615,4 +680,27 @@ function send_rejection_notification_email(
 ): array {
     $service = new EmailNotificationService($conn);
     return $service->sendBookingRejectionNotification($bookingId, $rejectionType, $reason, $paymentType);
+}
+
+/**
+ * Helper function to send approval notification email
+ *
+ * @param mysqli $conn Database connection
+ * @param string $bookingId Booking ID
+ * @param string $approvalType 'travelers', 'travelers_add_remove'
+ * @param float $priceAdjustment Price difference
+ * @param float $beforeTotal Total before change
+ * @param float $afterTotal Total after change
+ * @return array ['success' => bool, 'message' => string]
+ */
+function send_approval_notification_email(
+    $conn,
+    string $bookingId,
+    string $approvalType = 'travelers',
+    float $priceAdjustment = 0,
+    float $beforeTotal = 0,
+    float $afterTotal = 0
+): array {
+    $service = new EmailNotificationService($conn);
+    return $service->sendBookingApprovalNotification($bookingId, $approvalType, $priceAdjustment, $beforeTotal, $afterTotal);
 }
