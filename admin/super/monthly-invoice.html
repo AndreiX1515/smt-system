@@ -1065,13 +1065,15 @@
 				detailData.push(['', '', 'Subtotal', calculatedSubtotal]);
 				rowIdx++;
 
-				// Discount row (if any)
-				const saleDiscount = Number(b.saleDiscountAmount || 0);
+				// Discount row (if any) - saleDiscountAmount는 인당 할인금액
+				const saleDiscountPerPerson = Number(b.saleDiscountAmount || 0);
+				const discountableCount = adults; // 할인 대상: Adult (+ Child with Room은 invoice에서 미구분)
+				const totalSaleDiscount = saleDiscountPerPerson * discountableCount;
 				let discountRow = -1;
-				if (saleDiscount > 0) {
+				if (totalSaleDiscount > 0) {
 					discountRow = rowIdx;
 					const discountLabel = b.saleName ? `Discount (${b.saleName})` : 'Discount';
-					detailData.push(['', '', discountLabel, -saleDiscount]);
+					detailData.push(['', '', discountLabel, -totalSaleDiscount]);
 					rowIdx++;
 				}
 
@@ -1081,7 +1083,7 @@
 
 				// Total row
 				const totalRow = rowIdx;
-				const finalTotal = Number(b.totalAmount || (calculatedSubtotal - saleDiscount));
+				const finalTotal = Number(b.totalAmount || (calculatedSubtotal - totalSaleDiscount));
 				detailData.push(['', '', 'Total', finalTotal]);
 				rowIdx++;
 
