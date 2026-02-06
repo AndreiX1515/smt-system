@@ -3438,11 +3438,12 @@
 				var dep = flights.departure || flights.outbound || flights.DEPARTURE || flights.OUTBOUND || {};
 				var flightNumber = dep.flight_number || dep.flightNumber || '';
 
-				if (!flightNumber) {
-					return;
+				// airline_name 필드 우선 사용, 없으면 flight_number에서 추출
+				var airlineName = dep.airline_name || dep.airlineName || '';
+				if (!airlineName && flightNumber) {
+					airlineName = getAirlineNameFromFlightNumber(flightNumber);
 				}
 
-				var airlineName = getAirlineNameFromFlightNumber(flightNumber);
 				if (!airlineName) {
 					return;
 				}
