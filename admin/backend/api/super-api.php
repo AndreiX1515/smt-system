@@ -14108,6 +14108,16 @@ function approveB2BBooking($conn, $input) {
             // 상태 변경 히스토리 저장
             __log_booking_status_change($conn, $bookingId, 'pending', $newStatus, null, null, 'New booking approved');
 
+            // Send booking confirmation email to agent upon approval
+            try {
+                $emailResult = send_booking_confirmation_email($conn, $bookingId);
+                if (!$emailResult['success']) {
+                    error_log("Failed to send booking confirmation email for {$bookingId}: " . ($emailResult['message'] ?? 'Unknown error'));
+                }
+            } catch (Throwable $emailEx) {
+                error_log("Exception sending booking confirmation email for {$bookingId}: " . $emailEx->getMessage());
+            }
+
             send_success_response([], 'Booking approved successfully');
         } else if ($booking['bookingStatus'] === 'pending_update') {
             // booking_change_requests 테이블에서 변경 요청 조회
@@ -14481,32 +14491,25 @@ function approveB2BBooking($conn, $input) {
                         }
                     }
 
-                    // Available Seats 재고 조정 (인원 변경 시)
+                    // Available Seats 재고 조정: 인원 삭제 시에만 승인 시점에 반영 (추가는 요청 시 선차감 완료)
                     $oldPeopleCount = count($originalTravelers);
                     $newPeopleCount = count($pendingTravelers);
                     $seatDifference = $newPeopleCount - $oldPeopleCount;
 
-                    if ($seatDifference !== 0) {
-                        // 예약의 departureDate와 packageId 조회
+                    if ($seatDifference < 0) {
                         $seatInfoStmt = $conn->prepare("SELECT departureDate, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
                         if ($seatInfoStmt) {
                             $seatInfoStmt->bind_param('s', $bookingId);
                             $seatInfoStmt->execute();
                             $seatInfoResult = $seatInfoStmt->get_result();
                             if ($seatInfoRow = $seatInfoResult->fetch_assoc()) {
-                                $departureDate = $seatInfoRow['departureDate'];
-                                $packageId = $seatInfoRow['packageId'];
-
-                                // package_available_dates 테이블의 booked_seats 조정
-                                // 인원 증가 시: booked_seats 증가 (seatDifference 양수)
-                                // 인원 감소 시: booked_seats 감소 (seatDifference 음수)
+                                $depDate = $seatInfoRow['departureDate'];
+                                $pkgId = $seatInfoRow['packageId'];
                                 $updateSeatsStmt = $conn->prepare(
-                                    "UPDATE package_available_dates
-                                     SET booked_seats = GREATEST(0, booked_seats + ?)
-                                     WHERE available_date = ? AND package_id = ?"
+                                    "UPDATE package_available_dates SET booked_seats = GREATEST(0, booked_seats + ?) WHERE package_id = ? AND available_date = ?"
                                 );
                                 if ($updateSeatsStmt) {
-                                    $updateSeatsStmt->bind_param('isi', $seatDifference, $departureDate, $packageId);
+                                    $updateSeatsStmt->bind_param('iis', $seatDifference, $pkgId, $depDate);
                                     $updateSeatsStmt->execute();
                                     $updateSeatsStmt->close();
                                 }
@@ -14954,7 +14957,7 @@ function rejectB2BBooking($conn, $input) {
 
                 send_success_response([], 'Status change rejected successfully');
 
-            } else if ($changeRequest['changeType'] === 'travelers') {
+            } else if ($changeRequest['changeType'] === 'travelers' || $changeRequest['changeType'] === 'travelers_add_remove') {
                 // Traveler 변경 요청 거절: pending_update → check_reject (에이전트가 거절 사유 확인 필요)
                 if ($hasRemarks && !empty($reason)) {
                     $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Traveler Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
@@ -14967,6 +14970,35 @@ function rejectB2BBooking($conn, $input) {
                 }
                 $stmt->execute();
                 $stmt->close();
+
+                // 재고 복원: 인원 추가 요청만 선차감되었으므로 추가분만 복원 (삭제는 선차감 안 했으므로 복원 불필요)
+                $previousData = json_decode($changeRequest['previousData'] ?? '{}', true);
+                $newData = json_decode($changeRequest['newData'] ?? '{}', true);
+                $originalTravelers = $previousData['originalTravelers'] ?? [];
+                $pendingTravelers = $newData['pendingTravelers'] ?? [];
+                $rejectSeatDiff = count($pendingTravelers) - count($originalTravelers);
+                if ($rejectSeatDiff > 0) {
+                    $reverseDiff = -$rejectSeatDiff;
+                    $seatInfoStmt = $conn->prepare("SELECT departureDate, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
+                    if ($seatInfoStmt) {
+                        $seatInfoStmt->bind_param('s', $bookingId);
+                        $seatInfoStmt->execute();
+                        $seatInfoResult = $seatInfoStmt->get_result();
+                        if ($seatInfoRow = $seatInfoResult->fetch_assoc()) {
+                            $depDate = $seatInfoRow['departureDate'];
+                            $pkgId = $seatInfoRow['packageId'];
+                            $restoreStmt = $conn->prepare(
+                                "UPDATE package_available_dates SET booked_seats = GREATEST(0, booked_seats + ?) WHERE package_id = ? AND available_date = ?"
+                            );
+                            if ($restoreStmt) {
+                                $restoreStmt->bind_param('iis', $reverseDiff, $pkgId, $depDate);
+                                $restoreStmt->execute();
+                                $restoreStmt->close();
+                            }
+                        }
+                        $seatInfoStmt->close();
+                    }
+                }
 
                 // 변경 요청 거절 처리
                 $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";

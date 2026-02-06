@@ -3317,16 +3317,8 @@ function createReservation($conn, $input) {
 
             $conn->commit();
 
-            // Send booking confirmation email to agent (non-blocking)
-            try {
-                $emailResult = send_booking_confirmation_email($conn, $bookingId);
-                if (!$emailResult['success']) {
-                    error_log("Failed to send booking confirmation email for {$bookingId}: " . ($emailResult['message'] ?? 'Unknown error'));
-                }
-            } catch (Throwable $emailEx) {
-                // Don't fail the reservation if email fails
-                error_log("Exception sending booking confirmation email for {$bookingId}: " . $emailEx->getMessage());
-            }
+            // Booking confirmation email is now sent when admin approves the booking (pending → approved)
+            // See approveB2BBooking() in super-api.php
 
             send_success_response(['bookingId' => $bookingId], 'Reservation created successfully');
 
@@ -8252,9 +8244,10 @@ function uploadPaymentProofFile($conn, $input) {
             send_error_response('Reservation not found or access denied', 404);
         }
 
-        // 취소된 예약은 파일 업로드 차단
-        if (($row['bookingStatus'] ?? '') === 'cancelled') {
-            send_error_response('Cannot upload payment proof for cancelled reservation', 403);
+        // 특정 상태에서는 파일 업로드 차단
+        $blockedStatuses = ['cancelled', 'pending', 'pending_update'];
+        if (in_array($row['bookingStatus'] ?? '', $blockedStatuses, true)) {
+            send_error_response('Cannot upload payment proof in current reservation status', 403);
         }
 
         // 단계별 검증: Second는 Down 확인 후, Balance는 Second 확인 후
@@ -9895,6 +9888,30 @@ function updateTravelerInfo($conn, $input) {
 
         $changeType = $isAddRemove ? 'travelers_add_remove' : 'travelers';
 
+        // 인원 변경 시 재고 확인 (pending_update 경로에서 선차감 필요)
+        $seatDifference = count($travelers) - $currentTravelerCount;
+        if ($seatDifference > 0 && !$canDirectEdit) {
+            // 재고 부족 여부 확인
+            $packageId = $booking['packageId'] ?? '';
+            if (!empty($packageId) && !empty($departureDate)) {
+                $seatCheckStmt = $conn->prepare(
+                    "SELECT capacity, booked_seats FROM package_available_dates WHERE package_id = ? AND available_date = ? LIMIT 1"
+                );
+                if ($seatCheckStmt) {
+                    $seatCheckStmt->bind_param('is', $packageId, $departureDate);
+                    $seatCheckStmt->execute();
+                    $seatCheckResult = $seatCheckStmt->get_result();
+                    if ($seatCheckRow = $seatCheckResult->fetch_assoc()) {
+                        $remainingSeats = (int)$seatCheckRow['capacity'] - (int)$seatCheckRow['booked_seats'];
+                        if ($seatDifference > $remainingSeats) {
+                            send_error_response('Not enough available seats. Remaining: ' . $remainingSeats . ', Requested: ' . $seatDifference, 400);
+                        }
+                    }
+                    $seatCheckStmt->close();
+                }
+            }
+        }
+
         if (!$canDirectEdit) {
             // === pending_update 경로 (승인 필요) ===
             // 현재 여행자 정보 조회
@@ -9972,6 +9989,21 @@ function updateTravelerInfo($conn, $input) {
             $pendingStmt->bind_param('s', $bookingId);
             $pendingStmt->execute();
             $pendingStmt->close();
+
+            // 재고 선차감: 인원 추가 시에만 즉시 반영 (삭제는 승인 시 반영)
+            if ($seatDifference > 0) {
+                $packageId = $booking['packageId'] ?? '';
+                if (!empty($packageId) && !empty($departureDate)) {
+                    $preDeductStmt = $conn->prepare(
+                        "UPDATE package_available_dates SET booked_seats = GREATEST(0, booked_seats + ?) WHERE package_id = ? AND available_date = ?"
+                    );
+                    if ($preDeductStmt) {
+                        $preDeductStmt->bind_param('iis', $seatDifference, $packageId, $departureDate);
+                        $preDeductStmt->execute();
+                        $preDeductStmt->close();
+                    }
+                }
+            }
 
             send_success_response(['bookingId' => $bookingId, 'status' => 'pending_update'], 'Traveler change request submitted. Waiting for approval.');
             return;
