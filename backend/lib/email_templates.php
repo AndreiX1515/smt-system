@@ -461,6 +461,115 @@ HTML;
 }
 
 /**
+ * Get pending cancellation (waiting_cancelled) notification email template
+ *
+ * @param array $data [
+ *   'bookingId' => string,
+ *   'packageName' => string,
+ *   'departureDate' => string,
+ *   'totalAmount' => float,
+ *   'reason' => string,
+ *   'agentName' => string,
+ * ]
+ */
+function get_pending_cancellation_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $departureDate = $data['departureDate'] ?? '';
+    $departureDateFormatted = $departureDate ? date('F j, Y', strtotime($departureDate)) : 'N/A';
+    $totalAmount = number_format((float)($data['totalAmount'] ?? 0), 2);
+    $reason = htmlspecialchars($data['reason'] ?? '');
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+
+    $reasonHtml = '';
+    if (!empty($reason)) {
+        $reasonHtml = <<<HTML
+            <div class="urgent-box">
+                <h3 style="margin: 0 0 10px 0; color: #dc2626;">Reason</h3>
+                <p style="margin: 0; color: #333;">{$reason}</p>
+            </div>
+HTML;
+    }
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Scheduled for Cancellation - {$bookingId}</title>
+    <style>{$styles}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <div class="logo">SMT Escape</div>
+            <h1>Booking Scheduled for Cancellation</h1>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Dear {$agentName},</p>
+
+            <p>We are writing to inform you that the following booking is <strong>scheduled for cancellation</strong> due to a missed payment deadline.</p>
+
+            <div class="highlight-box" style="border-left-color: #f59e0b;">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">&#9888; You have 24 hours to take action</h3>
+                <p style="margin: 0; color: #333;">
+                    This booking will be <strong>automatically cancelled after 24 hours</strong> if no action is taken.
+                    During this grace period, the reserved seats are still being held.
+                </p>
+                <p style="margin: 10px 0 0 0; color: #333;">
+                    If you wish to keep this booking, please upload the payment proof or contact the admin immediately.
+                </p>
+            </div>
+
+            <div class="info-box">
+                <h3 style="margin: 0 0 15px 0; color: #1a4b8c;">Booking Information</h3>
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Booking ID:</td>
+                        <td class="value">{$bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Package:</td>
+                        <td class="value">{$packageName}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Departure Date:</td>
+                        <td class="value">{$departureDateFormatted}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Total Amount:</td>
+                        <td class="value">&#8369;{$totalAmount}</td>
+                    </tr>
+                </table>
+            </div>
+
+            {$reasonHtml}
+
+            <p style="margin-top: 20px;">Please log in to your agent portal to upload payment proof or contact the admin for further assistance.</p>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 14px; color: #6b7280;">
+                If the 24-hour grace period expires without action, the booking will be permanently cancelled and the reserved seats will be released.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p>&copy; 2024 SMT Escape. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
+
+/**
  * Get traveler edit deadline reminder email template
  *
  * @param array $data [

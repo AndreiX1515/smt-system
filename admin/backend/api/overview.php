@@ -244,9 +244,9 @@ function logAutoCancellation($conn, $bookingId, $previousStatus) {
     try {
         $phpTime = new DateTime('now', new DateTimeZone('Asia/Manila'));
         $changedAt = $phpTime->format('Y-m-d H:i:s');
-        $changedBy = 'System (Auto-Cancel)';
+        $changedBy = 'System (Auto-Cancel: Waiting)';
         $changedByType = 'system';
-        $newStatus = 'cancelled';
+        $newStatus = 'waiting_cancelled';
 
         $stmt = $conn->prepare("
             INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt)
@@ -291,7 +291,7 @@ function applyB2BAutoCancellation($conn) {
 
             // Skip confirmed/completed bookings (should not be auto-cancelled)
             $bStatus = strtolower(trim($overduePayment['bookingStatus'] ?? ''));
-            if (in_array($bStatus, ['confirmed', 'completed', 'cancelled'], true)) {
+            if (in_array($bStatus, ['confirmed', 'completed', 'cancelled', 'waiting_cancelled'], true)) {
                 continue;
             }
 
@@ -311,13 +311,13 @@ function applyB2BAutoCancellation($conn) {
             // Log and send notification
             logAutoCancellation($conn, $bookingId, $overduePayment['bookingStatus'] ?? '');
 
-            if (function_exists('send_rejection_notification_email')) {
+            if (function_exists('send_pending_cancellation_email')) {
                 $reason = 'Payment deadline has passed without payment proof submission.';
-                send_rejection_notification_email($conn, $bookingId, 'auto_cancellation', $reason);
+                send_pending_cancellation_email($conn, $bookingId, $reason);
             }
 
-            // Cancel the booking
-            $cancelStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'cancelled', paymentStatus = 'failed' WHERE bookingId = ?");
+            // Set to waiting_cancelled (24hr grace period before final cancellation)
+            $cancelStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'waiting_cancelled', paymentStatus = 'failed' WHERE bookingId = ?");
             $cancelStmt->bind_param('s', $bookingId);
             $cancelStmt->execute();
             $cancelStmt->close();
@@ -383,7 +383,7 @@ function applyB2BAutoCancellation($conn) {
                 FROM bookings b
                 $join
                 WHERE COALESCE(b.paymentStatus,'') = 'pending'
-                  AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
+                  AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed','waiting_cancelled')
                   $b2bCond
                   $excludeCond
                   AND (" . implode(' OR ', $conds) . ")";
@@ -400,9 +400,9 @@ function applyB2BAutoCancellation($conn) {
             while ($row = $result->fetch_assoc()) {
                 logAutoCancellation($conn, $row['bookingId'], $row['bookingStatus'] ?? '');
 
-                if (function_exists('send_rejection_notification_email')) {
+                if (function_exists('send_pending_cancellation_email')) {
                     $reason = 'Payment deadline has passed without payment proof submission.';
-                    send_rejection_notification_email($conn, $row['bookingId'], 'auto_cancellation', $reason);
+                    send_pending_cancellation_email($conn, $row['bookingId'], $reason);
                 }
             }
         }
@@ -411,9 +411,9 @@ function applyB2BAutoCancellation($conn) {
         // UPDATE legacy bookings
         $updateSql = "UPDATE bookings b
                 $join
-                SET b.bookingStatus='cancelled', b.paymentStatus='failed'
+                SET b.bookingStatus='waiting_cancelled', b.paymentStatus='failed'
                 WHERE COALESCE(b.paymentStatus,'') = 'pending'
-                  AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed')
+                  AND COALESCE(b.bookingStatus,'') NOT IN ('cancelled','confirmed','completed','waiting_cancelled')
                   $b2bCond
                   $excludeCond
                   AND (" . implode(' OR ', $conds) . ")";

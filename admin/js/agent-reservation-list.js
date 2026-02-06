@@ -17,7 +17,7 @@ const sectionGroups = {
     checking: ['checking_down_payment', 'checking_second_payment', 'checking_balance', 'checking_full_payment'],
     rejected: ['rejected', 'check_reject'],
     confirmed: ['confirmed', 'completed'],
-    cancelled: ['cancelled', 'refunded']
+    cancelled: ['cancelled', 'refunded', 'waiting_cancelled']
 };
 
 // 현재 활성 탭
@@ -333,7 +333,8 @@ function getStatusUi(item) {
         'confirmed': { label: '예약 확정', className: 'badge-confirmed', dataLanEng: 'Reservation Confirmed' },
         'completed': { label: '여행 완료', className: 'badge-completed', dataLanEng: 'Trip Completed' },
         'cancelled': { label: '예약 취소', className: 'badge-cancelled', dataLanEng: 'Reservation Cancelled' },
-        'refunded': { label: '환불 완료', className: 'badge-refunded', dataLanEng: 'Refund Completed' }
+        'refunded': { label: '환불 완료', className: 'badge-refunded', dataLanEng: 'Refund Completed' },
+        'waiting_cancelled': { label: '취소 대기', className: 'badge-wait-cancelled', dataLanEng: 'Waiting for Cancellation' }
     };
 
     if (statusMap[statusKey]) {
