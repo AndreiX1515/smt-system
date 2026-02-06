@@ -13444,7 +13444,7 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
         }
 
         // 현재 예약 정보 조회
-        $stmt = $conn->prepare("SELECT bookingId, bookingStatus, paymentStatus, COALESCE(NULLIF(transactNo,''), bookingId) as transactKey, selectedOptions, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT bookingId, bookingStatus, paymentStatus, COALESCE(NULLIF(transactNo,''), bookingId) as transactKey, selectedOptions, packageId, departureDate, COALESCE(adults,0)+COALESCE(children,0)+COALESCE(infants,0) as currentPax FROM bookings WHERE bookingId = ? LIMIT 1");
         if (!$stmt) {
             send_error_response('Database error');
         }
@@ -13461,94 +13461,249 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
         $currentPay = strtolower((string)($booking['paymentStatus'] ?? ''));
         $travelerKey = (string)($booking['transactKey'] ?? $bookingId);
 
+        // 잔여 좌석 검증: 인원 추가 시 재고 초과 방지 (agent-api createReservation과 동일한 동적 계산)
+        $newTravelerCount = count($travelers);
+        $currentPax = (int)($booking['currentPax'] ?? 0);
+        $seatDifference = $newTravelerCount - $currentPax;
+
         // 관리자도 pending_update 프로세스를 거침
         $skipPendingUpdate = false;
 
         if (!$skipPendingUpdate) {
-            // 현재 travelers 데이터 조회
-            $currentTravelers = [];
+            // 트랜잭션 시작: 좌석 체크 + change request + bookings 업데이트를 원자적으로 처리
+            $conn->begin_transaction();
             try {
-                $travStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
-                if ($travStmt) {
-                    $travStmt->bind_param('s', $travelerKey);
-                    $travStmt->execute();
-                    $travResult = $travStmt->get_result();
-                    while ($travRow = $travResult->fetch_assoc()) {
-                        $currentTravelers[] = $travRow;
-                    }
-                    $travStmt->close();
-                }
+                $packageId = (int)($booking['packageId'] ?? 0);
+                $departureDate = $booking['departureDate'] ?? '';
 
-                // flightOptions도 함께 조회하여 각 traveler에 추가
-                $foptStmt = $conn->prepare("SELECT traveler_index, option_id, price FROM booking_traveler_options WHERE booking_id = ?");
-                if ($foptStmt) {
-                    $foptStmt->bind_param('s', $bookingId);
-                    $foptStmt->execute();
-                    $foptResult = $foptStmt->get_result();
-                    $travelerFlightOpts = [];
-                    while ($frow = $foptResult->fetch_assoc()) {
-                        $tidx = (int)$frow['traveler_index'];
-                        if (!isset($travelerFlightOpts[$tidx])) {
-                            $travelerFlightOpts[$tidx] = ['flightOptions' => [], 'flightOptionPrices' => []];
+                // FOR UPDATE 잠금으로 동시성 보호 (인원 증가 시)
+                if ($seatDifference > 0 && !empty($packageId) && !empty($departureDate)) {
+                    // 1) capacity 조회
+                    $maxSeats = 0;
+                    $capStmt = $conn->prepare("SELECT capacity FROM package_available_dates WHERE package_id = ? AND available_date = ? LIMIT 1");
+                    if ($capStmt) {
+                        $capStmt->bind_param('is', $packageId, $departureDate);
+                        $capStmt->execute();
+                        $capRow = $capStmt->get_result()->fetch_assoc();
+                        if ($capRow) {
+                            $maxSeats = (int)($capRow['capacity'] ?? 0);
                         }
-                        $optId = (int)$frow['option_id'];
-                        $optPrice = (float)$frow['price'];
-                        $travelerFlightOpts[$tidx]['flightOptions'][] = $optId;
-                        $travelerFlightOpts[$tidx]['flightOptionPrices'][$optId] = $optPrice;
+                        $capStmt->close();
                     }
-                    $foptStmt->close();
-
-                    // currentTravelers에 flightOptions 추가
-                    foreach ($currentTravelers as $idx => &$trav) {
-                        if (isset($travelerFlightOpts[$idx])) {
-                            $trav['flightOptions'] = $travelerFlightOpts[$idx]['flightOptions'];
-                            $trav['flightOptionPrices'] = $travelerFlightOpts[$idx]['flightOptionPrices'];
-                        } else {
-                            $trav['flightOptions'] = [];
-                            $trav['flightOptionPrices'] = [];
+                    if ($maxSeats <= 0) {
+                        $pkgStmt = $conn->prepare("SELECT maxParticipants FROM packages WHERE packageId = ? LIMIT 1");
+                        if ($pkgStmt) {
+                            $pkgStmt->bind_param('i', $packageId);
+                            $pkgStmt->execute();
+                            $pkgRow = $pkgStmt->get_result()->fetch_assoc();
+                            if ($pkgRow) {
+                                $maxSeats = (int)($pkgRow['maxParticipants'] ?? 0);
+                            }
+                            $pkgStmt->close();
                         }
                     }
-                    unset($trav);
+                    // 2) 실제 예약 수 동적 계산 (FOR UPDATE 잠금)
+                    $bookedSeats = 0;
+                    $bkStmt = $conn->prepare(
+                        "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                         FROM bookings
+                         WHERE packageId = ? AND departureDate = ?
+                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                           AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
+                         FOR UPDATE"
+                    );
+                    if ($bkStmt) {
+                        $bkStmt->bind_param('is', $packageId, $departureDate);
+                        $bkStmt->execute();
+                        $bkRow = $bkStmt->get_result()->fetch_assoc();
+                        if ($bkRow) {
+                            $bookedSeats = (int)($bkRow['booked'] ?? 0);
+                        }
+                        $bkStmt->close();
+                    }
+                    // 3) 잔여 좌석 = maxSeats - bookedSeats (현재 예약 포함된 상태이므로 추가분만 체크)
+                    $remainingSeats = $maxSeats - $bookedSeats;
+                    if ($seatDifference > $remainingSeats) {
+                        $conn->rollback();
+                        send_error_response("Not enough seats available. Remaining: {$remainingSeats}, Requested additional: {$seatDifference}", 400);
+                    }
                 }
-            } catch (Throwable $e) { /* ignore */ }
 
-            // 현재 selectedOptions에서 기존 룸 정보 조회
-            $currentSelectedOptions = [];
-            $soRaw = (string)($booking['selectedOptions'] ?? '');
-            if ($soRaw !== '') {
-                $tmp = json_decode($soRaw, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
-                    $currentSelectedOptions = $tmp;
+                // 현재 travelers 데이터 조회
+                $currentTravelers = [];
+                try {
+                    $travStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
+                    if ($travStmt) {
+                        $travStmt->bind_param('s', $travelerKey);
+                        $travStmt->execute();
+                        $travResult = $travStmt->get_result();
+                        while ($travRow = $travResult->fetch_assoc()) {
+                            $currentTravelers[] = $travRow;
+                        }
+                        $travStmt->close();
+                    }
+
+                    // flightOptions도 함께 조회하여 각 traveler에 추가
+                    $foptStmt = $conn->prepare("SELECT traveler_index, option_id, price FROM booking_traveler_options WHERE booking_id = ?");
+                    if ($foptStmt) {
+                        $foptStmt->bind_param('s', $bookingId);
+                        $foptStmt->execute();
+                        $foptResult = $foptStmt->get_result();
+                        $travelerFlightOpts = [];
+                        while ($frow = $foptResult->fetch_assoc()) {
+                            $tidx = (int)$frow['traveler_index'];
+                            if (!isset($travelerFlightOpts[$tidx])) {
+                                $travelerFlightOpts[$tidx] = ['flightOptions' => [], 'flightOptionPrices' => []];
+                            }
+                            $optId = (int)$frow['option_id'];
+                            $optPrice = (float)$frow['price'];
+                            $travelerFlightOpts[$tidx]['flightOptions'][] = $optId;
+                            $travelerFlightOpts[$tidx]['flightOptionPrices'][$optId] = $optPrice;
+                        }
+                        $foptStmt->close();
+
+                        // currentTravelers에 flightOptions 추가
+                        foreach ($currentTravelers as $idx => &$trav) {
+                            if (isset($travelerFlightOpts[$idx])) {
+                                $trav['flightOptions'] = $travelerFlightOpts[$idx]['flightOptions'];
+                                $trav['flightOptionPrices'] = $travelerFlightOpts[$idx]['flightOptionPrices'];
+                            } else {
+                                $trav['flightOptions'] = [];
+                                $trav['flightOptionPrices'] = [];
+                            }
+                        }
+                        unset($trav);
+                    }
+                } catch (Throwable $e) { /* ignore */ }
+
+                // 현재 selectedOptions에서 기존 룸 정보 조회
+                $currentSelectedOptions = [];
+                $soRaw = (string)($booking['selectedOptions'] ?? '');
+                if ($soRaw !== '') {
+                    $tmp = json_decode($soRaw, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
+                        $currentSelectedOptions = $tmp;
+                    }
                 }
-            }
-            $currentRooms = $currentSelectedOptions['selectedRooms'] ?? [];
+                $currentRooms = $currentSelectedOptions['selectedRooms'] ?? [];
 
-            // booking_change_requests 테이블에 travelers + rooms 변경 요청 저장
-            $previousDataJson = json_encode([
-                'originalTravelers' => $currentTravelers,
-                'originalRooms' => $currentRooms
-            ], JSON_UNESCAPED_UNICODE);
-            $newDataJson = json_encode([
-                'pendingTravelers' => $travelers,
-                'pendingRooms' => $selectedRooms
-            ], JSON_UNESCAPED_UNICODE);
+                // 기존 bookings 컬럼값 조회 (선차감/복원용)
+                $bkInfoStmt = $conn->prepare("SELECT adults, children, infants, totalAmount, visaFee, flightOptionFee, adultPrice, childPrice, infantPrice FROM bookings WHERE bookingId = ? LIMIT 1");
+                $bkInfoStmt->bind_param('s', $bookingId);
+                $bkInfoStmt->execute();
+                $bkInfo = $bkInfoStmt->get_result()->fetch_assoc();
+                $bkInfoStmt->close();
 
-            $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
-            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
-            $changeRequestStmt = $conn->prepare($changeRequestSql);
-            if ($changeRequestStmt) {
-                $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
-                $changeRequestStmt->execute();
-                $changeRequestStmt->close();
-            }
+                // 새 인원 카운트 계산
+                $newAdults = 0;
+                $newChildren = 0;
+                $newInfants = 0;
+                foreach ($travelers as $t) {
+                    $type = strtolower(trim($t['travelerType'] ?? $t['type'] ?? 'adult'));
+                    if ($type === 'adult') $newAdults++;
+                    elseif ($type === 'child') $newChildren++;
+                    elseif ($type === 'infant') $newInfants++;
+                }
 
-            // bookingStatus를 pending_update로 변경
-            $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
-            if ($pendingStmt) {
-                $pendingStmt->bind_param('s', $bookingId);
-                $pendingStmt->execute();
-                $pendingStmt->close();
+                // totalAmount 계산 (approveB2BBooking과 동일한 로직)
+                $adultPrice = floatval($bkInfo['adultPrice'] ?? 0);
+                $childWithRoomPrice = $adultPrice;
+                $childNoRoomPrice = floatval($bkInfo['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
+                $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 10000;
+
+                $calculatedNewTotal = 0;
+                $calculatedVisaFee = 0;
+                $calculatedFlightOptionFee = 0;
+                foreach ($travelers as $t) {
+                    $type = strtolower(trim($t['travelerType'] ?? $t['type'] ?? 'adult'));
+                    if ($type === 'adult') {
+                        $calculatedNewTotal += $adultPrice;
+                    } elseif ($type === 'child') {
+                        $hasRoom = ($t['childRoom'] ?? false) === true || ($t['childRoom'] ?? '') === 'yes' || ($t['childRoom'] ?? '') === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
+                        $calculatedNewTotal += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+                    } elseif ($type === 'infant') {
+                        $calculatedNewTotal += $infantPriceVal;
+                    }
+                    $visaType = strtolower(trim($t['visaType'] ?? ''));
+                    if ($visaType === 'group') { $calculatedVisaFee += 1500; $calculatedNewTotal += 1500; }
+                    elseif ($visaType === 'individual') { $calculatedVisaFee += 1900; $calculatedNewTotal += 1900; }
+                    if (!empty($t['flightOptionPrices']) && is_array($t['flightOptionPrices'])) {
+                        foreach ($t['flightOptionPrices'] as $price) {
+                            $fp = floatval($price);
+                            $calculatedFlightOptionFee += $fp;
+                            $calculatedNewTotal += $fp;
+                        }
+                    }
+                }
+                $pendingRooms = !empty($selectedRooms) ? $selectedRooms : $currentRooms;
+                if (is_array($pendingRooms)) {
+                    foreach ($pendingRooms as $r) {
+                        $count = intval($r['count'] ?? $r['roomCount'] ?? 0);
+                        $price = floatval($r['roomPrice'] ?? $r['room_price'] ?? 0);
+                        if ($count > 0 && $price > 0) {
+                            $calculatedNewTotal += $count * $price;
+                        }
+                    }
+                }
+
+                $isIncrease = ($seatDifference > 0);
+
+                // booking_change_requests 테이블에 travelers + rooms 변경 요청 저장
+                $previousDataJson = json_encode([
+                    'originalTravelers' => $currentTravelers,
+                    'originalRooms' => $currentRooms,
+                    'originalAdults' => (int)$bkInfo['adults'],
+                    'originalChildren' => (int)$bkInfo['children'],
+                    'originalInfants' => (int)$bkInfo['infants'],
+                    'originalTotalAmount' => (float)$bkInfo['totalAmount'],
+                    'originalVisaFee' => (float)$bkInfo['visaFee'],
+                    'originalFlightOptionFee' => (float)$bkInfo['flightOptionFee']
+                ], JSON_UNESCAPED_UNICODE);
+                $newDataJson = json_encode([
+                    'pendingTravelers' => $travelers,
+                    'pendingRooms' => $selectedRooms,
+                    'newAdults' => $newAdults,
+                    'newChildren' => $newChildren,
+                    'newInfants' => $newInfants,
+                    'newTotalAmount' => $calculatedNewTotal,
+                    'newVisaFee' => $calculatedVisaFee,
+                    'newFlightOptionFee' => $calculatedFlightOptionFee,
+                    'preDeducted' => $isIncrease
+                ], JSON_UNESCAPED_UNICODE);
+
+                $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
+                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
+                $changeRequestStmt = $conn->prepare($changeRequestSql);
+                if ($changeRequestStmt) {
+                    $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
+                    $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
+                    $changeRequestStmt->execute();
+                    $changeRequestStmt->close();
+                }
+
+                // bookingStatus 업데이트: 증가 시 선차감, 감소 시 기존 유지
+                if ($isIncrease) {
+                    // 증가: adults/children/infants/totalAmount/visaFee/flightOptionFee 즉시 반영 (선차감)
+                    $pendingStmt = $conn->prepare("UPDATE bookings SET adults = ?, children = ?, infants = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
+                    if ($pendingStmt) {
+                        $pendingStmt->bind_param('iiiddds', $newAdults, $newChildren, $newInfants, $calculatedNewTotal, $calculatedVisaFee, $calculatedFlightOptionFee, $bookingId);
+                        $pendingStmt->execute();
+                        $pendingStmt->close();
+                    }
+                } else {
+                    // 감소 또는 동일: 원본 컬럼 유지, 상태만 변경
+                    $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
+                    if ($pendingStmt) {
+                        $pendingStmt->bind_param('s', $bookingId);
+                        $pendingStmt->execute();
+                        $pendingStmt->close();
+                    }
+                }
+
+                $conn->commit();
+            } catch (Throwable $e) {
+                $conn->rollback();
+                throw $e;
             }
 
             // 상태 변경 히스토리 기록
@@ -14491,32 +14646,7 @@ function approveB2BBooking($conn, $input) {
                         }
                     }
 
-                    // Available Seats 재고 조정: 인원 삭제 시에만 승인 시점에 반영 (추가는 요청 시 선차감 완료)
-                    $oldPeopleCount = count($originalTravelers);
-                    $newPeopleCount = count($pendingTravelers);
-                    $seatDifference = $newPeopleCount - $oldPeopleCount;
-
-                    if ($seatDifference < 0) {
-                        $seatInfoStmt = $conn->prepare("SELECT departureDate, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
-                        if ($seatInfoStmt) {
-                            $seatInfoStmt->bind_param('s', $bookingId);
-                            $seatInfoStmt->execute();
-                            $seatInfoResult = $seatInfoStmt->get_result();
-                            if ($seatInfoRow = $seatInfoResult->fetch_assoc()) {
-                                $depDate = $seatInfoRow['departureDate'];
-                                $pkgId = $seatInfoRow['packageId'];
-                                $updateSeatsStmt = $conn->prepare(
-                                    "UPDATE package_available_dates SET booked_seats = GREATEST(0, booked_seats + ?) WHERE package_id = ? AND available_date = ?"
-                                );
-                                if ($updateSeatsStmt) {
-                                    $updateSeatsStmt->bind_param('iis', $seatDifference, $pkgId, $depDate);
-                                    $updateSeatsStmt->execute();
-                                    $updateSeatsStmt->close();
-                                }
-                            }
-                            $seatInfoStmt->close();
-                        }
-                    }
+                    // booked_seats 정적 컬럼 UPDATE 제거 - 모든 잔여석은 bookings 테이블에서 동적 계산
                 } catch (Throwable $e) {
                     send_error_response('Failed to apply traveler changes: ' . $e->getMessage());
                 }
@@ -14536,11 +14666,22 @@ function approveB2BBooking($conn, $input) {
                     }
                 }
 
-                // bookingStatus 복원 + totalAmount, visaFee, flightOptionFee 업데이트 + priceAdjustment 기록 + adults/children/infants 업데이트
+                // preDeducted 플래그 확인 (하위호환: 키 없으면 false)
+                $preDeducted = (bool)($newData['preDeducted'] ?? false);
                 $adjustmentReason = 'Traveler change approved';
-                $sql = "UPDATE bookings SET bookingStatus = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, priceAdjustment = COALESCE(priceAdjustment, 0) + ?, lastAdjustmentDate = NOW(), adjustmentReason = ?, adults = ?, children = ?, infants = ?, updatedAt = NOW() WHERE bookingId = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param('sddddsiiis', $newStatus, $afterTotal, $newVisaFee, $newFlightOptionFee, $priceAdjustment, $adjustmentReason, $newAdults, $newChildren, $newInfants, $bookingId);
+
+                if ($preDeducted) {
+                    // 증가(선차감): adults/children/infants/totalAmount은 이미 요청 시점에 반영됨
+                    // bookingStatus 복원 + priceAdjustment만 기록
+                    $sql = "UPDATE bookings SET bookingStatus = ?, priceAdjustment = COALESCE(priceAdjustment, 0) + ?, lastAdjustmentDate = NOW(), adjustmentReason = ?, updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('sdss', $newStatus, $priceAdjustment, $adjustmentReason, $bookingId);
+                } else {
+                    // 감소 또는 기존 방식: 이제 컬럼값 적용
+                    $sql = "UPDATE bookings SET bookingStatus = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, priceAdjustment = COALESCE(priceAdjustment, 0) + ?, lastAdjustmentDate = NOW(), adjustmentReason = ?, adults = ?, children = ?, infants = ?, updatedAt = NOW() WHERE bookingId = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('sddddsiiis', $newStatus, $afterTotal, $newVisaFee, $newFlightOptionFee, $priceAdjustment, $adjustmentReason, $newAdults, $newChildren, $newInfants, $bookingId);
+                }
                 $stmt->execute();
                 $stmt->close();
 
@@ -14959,46 +15100,44 @@ function rejectB2BBooking($conn, $input) {
 
             } else if ($changeRequest['changeType'] === 'travelers' || $changeRequest['changeType'] === 'travelers_add_remove') {
                 // Traveler 변경 요청 거절: pending_update → check_reject (에이전트가 거절 사유 확인 필요)
-                if ($hasRemarks && !empty($reason)) {
-                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Traveler Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param('ss', $reason, $bookingId);
+
+                // 선차감 복원: preDeducted=true였으면 원본 컬럼값으로 복원
+                $rejectNewData = json_decode($changeRequest['newData'], true);
+                $rejectPreviousData = json_decode($changeRequest['previousData'], true);
+                $rejectPreDeducted = (bool)($rejectNewData['preDeducted'] ?? false);
+
+                if ($rejectPreDeducted && $rejectPreviousData) {
+                    // 증가가 선차감되었으므로 원본으로 복원 + check_reject 설정
+                    $origAdults = (int)($rejectPreviousData['originalAdults'] ?? 0);
+                    $origChildren = (int)($rejectPreviousData['originalChildren'] ?? 0);
+                    $origInfants = (int)($rejectPreviousData['originalInfants'] ?? 0);
+                    $origTotalAmount = (float)($rejectPreviousData['originalTotalAmount'] ?? 0);
+                    $origVisaFee = (float)($rejectPreviousData['originalVisaFee'] ?? 0);
+                    $origFlightOptionFee = (float)($rejectPreviousData['originalFlightOptionFee'] ?? 0);
+
+                    if ($hasRemarks && !empty($reason)) {
+                        $sql = "UPDATE bookings SET bookingStatus = 'check_reject', adults = ?, children = ?, infants = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, remarks = CONCAT(COALESCE(remarks, ''), '\n[Traveler Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('iiidddss', $origAdults, $origChildren, $origInfants, $origTotalAmount, $origVisaFee, $origFlightOptionFee, $reason, $bookingId);
+                    } else {
+                        $sql = "UPDATE bookings SET bookingStatus = 'check_reject', adults = ?, children = ?, infants = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('iiiddds', $origAdults, $origChildren, $origInfants, $origTotalAmount, $origVisaFee, $origFlightOptionFee, $bookingId);
+                    }
                 } else {
-                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', updatedAt = NOW() WHERE bookingId = ?";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param('s', $bookingId);
+                    // 감소(preDeducted=false) 또는 기존 방식: 복원할 것 없음
+                    if ($hasRemarks && !empty($reason)) {
+                        $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Traveler Change Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('ss', $reason, $bookingId);
+                    } else {
+                        $sql = "UPDATE bookings SET bookingStatus = 'check_reject', updatedAt = NOW() WHERE bookingId = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param('s', $bookingId);
+                    }
                 }
                 $stmt->execute();
                 $stmt->close();
-
-                // 재고 복원: 인원 추가 요청만 선차감되었으므로 추가분만 복원 (삭제는 선차감 안 했으므로 복원 불필요)
-                $previousData = json_decode($changeRequest['previousData'] ?? '{}', true);
-                $newData = json_decode($changeRequest['newData'] ?? '{}', true);
-                $originalTravelers = $previousData['originalTravelers'] ?? [];
-                $pendingTravelers = $newData['pendingTravelers'] ?? [];
-                $rejectSeatDiff = count($pendingTravelers) - count($originalTravelers);
-                if ($rejectSeatDiff > 0) {
-                    $reverseDiff = -$rejectSeatDiff;
-                    $seatInfoStmt = $conn->prepare("SELECT departureDate, packageId FROM bookings WHERE bookingId = ? LIMIT 1");
-                    if ($seatInfoStmt) {
-                        $seatInfoStmt->bind_param('s', $bookingId);
-                        $seatInfoStmt->execute();
-                        $seatInfoResult = $seatInfoStmt->get_result();
-                        if ($seatInfoRow = $seatInfoResult->fetch_assoc()) {
-                            $depDate = $seatInfoRow['departureDate'];
-                            $pkgId = $seatInfoRow['packageId'];
-                            $restoreStmt = $conn->prepare(
-                                "UPDATE package_available_dates SET booked_seats = GREATEST(0, booked_seats + ?) WHERE package_id = ? AND available_date = ?"
-                            );
-                            if ($restoreStmt) {
-                                $restoreStmt->bind_param('iis', $reverseDiff, $pkgId, $depDate);
-                                $restoreStmt->execute();
-                                $restoreStmt->close();
-                            }
-                        }
-                        $seatInfoStmt->close();
-                    }
-                }
 
                 // 변경 요청 거절 처리
                 $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";
@@ -18279,7 +18418,7 @@ function getSaleDetail($conn, $input) {
             send_error_response('Sale not found', 404);
         }
 
-        // 세일 아이템 (패키지/날짜 정보)
+        // 세일 아이템 (패키지/날짜 정보) - 동적 계산: bookings 테이블 기반
         $itemSql = "
             SELECT
                 si.id as saleItemId,
@@ -18289,10 +18428,18 @@ function getSaleDetail($conn, $input) {
                 pad.available_date,
                 pad.price,
                 pad.capacity,
-                COALESCE(pad.booked_seats, 0) as booked_seats
+                COALESCE(bk.booked, 0) as booked_seats
             FROM sale_items si
             INNER JOIN package_available_dates pad ON pad.id = si.package_available_date_id
             INNER JOIN packages p ON p.packageId = pad.package_id
+            LEFT JOIN (
+                SELECT packageId, departureDate,
+                       SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                FROM bookings
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                  AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
+                GROUP BY packageId, departureDate
+            ) bk ON bk.packageId = pad.package_id AND bk.departureDate = pad.available_date
             WHERE si.sale_id = ?
             ORDER BY pad.available_date ASC
         ";
@@ -18561,7 +18708,7 @@ function getPackagesForSale($conn, $input) {
         $whereConditions = [
             "pad.available_date >= CURDATE()",
             "pad.status IN ('available', 'confirmed', 'open')",
-            "(pad.capacity - COALESCE(pad.booked_seats, 0)) > 0",
+            "(pad.capacity - COALESCE((SELECT SUM(COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0)) FROM bookings b WHERE b.packageId=pad.package_id AND b.departureDate=pad.available_date AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','rejected')) AND (b.paymentStatus IS NULL OR b.paymentStatus <> 'refunded')), 0)) > 0",
             "p.isActive = 1"
         ];
         $params = [];
@@ -18621,7 +18768,7 @@ function getPackagesForSale($conn, $input) {
             ];
         }
 
-        // 날짜 목록 (B2B 가격 기준)
+        // 날짜 목록 (B2B 가격 기준) - 동적 계산: bookings 테이블 기반
         $dateSql = "
             SELECT
                 pad.id as packageAvailableDateId,
@@ -18630,10 +18777,18 @@ function getPackagesForSale($conn, $input) {
                 pad.available_date,
                 COALESCE(pad.b2b_price, pad.price) as price,
                 pad.capacity,
-                COALESCE(pad.booked_seats, 0) as booked_seats,
-                (pad.capacity - COALESCE(pad.booked_seats, 0)) as remaining_seats
+                COALESCE(bk.booked, 0) as booked_seats,
+                (pad.capacity - COALESCE(bk.booked, 0)) as remaining_seats
             FROM package_available_dates pad
             INNER JOIN packages p ON p.packageId = pad.package_id
+            LEFT JOIN (
+                SELECT packageId, departureDate,
+                       SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                FROM bookings
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                  AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
+                GROUP BY packageId, departureDate
+            ) bk ON bk.packageId = pad.package_id AND bk.departureDate = pad.available_date
             $whereClause
             ORDER BY p.packageName ASC, pad.available_date ASC
             LIMIT 500
