@@ -307,6 +307,14 @@ try {
             getSaleProducts($conn);
             break;
 
+        case 'getWaitingCancelledBookings':
+            getWaitingCancelledBookings($conn);
+            break;
+
+        case 'extendPaymentDeadline':
+            extendPaymentDeadline($conn, $input);
+            break;
+
         case 'getAgentDepositRate':
             getAgentDepositRate($conn);
             break;
@@ -903,6 +911,239 @@ function getOverview($conn) {
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to get overview: ' . $e->getMessage());
+    }
+}
+
+function getWaitingCancelledBookings($conn) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+        if (empty($agentAccountId)) {
+            send_error_response('Agent login required', 401);
+        }
+        $agentAccountId = (int)$agentAccountId;
+
+        $stmt = $conn->prepare("
+            SELECT bookingId, packageName, departureDate, paymentType, updatedAt
+            FROM bookings
+            WHERE agentId = ? AND bookingStatus = 'waiting_cancelled'
+            ORDER BY updatedAt ASC
+        ");
+        $stmt->bind_param('i', $agentAccountId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            $bookings[] = $row;
+        }
+        $stmt->close();
+
+        $now = new DateTime();
+        $items = [];
+
+        foreach ($bookings as $b) {
+            $bookingId = $b['bookingId'];
+            $payments = getPaymentsByBookingId($conn, $bookingId);
+
+            // Determine lastPaidStep and nextUnpaidStep
+            $lastPaidStep = null;
+            $nextUnpaidStep = null;
+            $nextUnpaidDueDate = null;
+            foreach ($payments as $p) {
+                if ($p['status'] === 'confirmed') {
+                    $lastPaidStep = $p['paymentStep'];
+                } else if ($nextUnpaidStep === null && ($p['status'] !== 'confirmed')) {
+                    $nextUnpaidStep = $p['paymentStep'];
+                    $nextUnpaidDueDate = $p['dueDate'] ?? null;
+                }
+            }
+
+            // Get previousStatus from booking_status_history
+            $previousStatus = null;
+            $histStmt = $conn->prepare("
+                SELECT previousStatus FROM booking_status_history
+                WHERE bookingId = ? AND newStatus = 'waiting_cancelled'
+                ORDER BY changedAt DESC LIMIT 1
+            ");
+            $histStmt->bind_param('s', $bookingId);
+            $histStmt->execute();
+            $histRow = $histStmt->get_result()->fetch_assoc();
+            if ($histRow) {
+                $previousStatus = $histRow['previousStatus'];
+            }
+            $histStmt->close();
+
+            // Days until departure
+            $depDate = new DateTime($b['departureDate']);
+            $daysUntilDeparture = (int)$now->diff($depDate)->format('%r%a');
+
+            // Grace deadline = updatedAt + 24 hours
+            $updatedAt = new DateTime($b['updatedAt']);
+            $graceDeadline = clone $updatedAt;
+            $graceDeadline->modify('+24 hours');
+            $graceRemainingSeconds = $graceDeadline->getTimestamp() - $now->getTimestamp();
+            if ($graceRemainingSeconds < 0) {
+                $graceRemainingSeconds = 0;
+            }
+
+            // canExtend: paymentType IN (staged, middle) AND departure > 31 days
+            $canExtend = in_array($b['paymentType'], ['staged', 'middle']) && $daysUntilDeparture > 31;
+
+            $items[] = [
+                'bookingId' => $bookingId,
+                'packageName' => $b['packageName'],
+                'departureDate' => $b['departureDate'],
+                'paymentType' => $b['paymentType'],
+                'lastPaidStep' => $lastPaidStep,
+                'nextUnpaidStep' => $nextUnpaidStep,
+                'nextUnpaidDueDate' => $nextUnpaidDueDate,
+                'previousStatus' => $previousStatus,
+                'daysUntilDeparture' => $daysUntilDeparture,
+                'graceDeadline' => $graceDeadline->format('Y-m-d H:i:s'),
+                'graceRemainingSeconds' => $graceRemainingSeconds,
+                'canExtend' => $canExtend
+            ];
+        }
+
+        send_success_response($items);
+    } catch (Exception $e) {
+        send_error_response('Failed to get waiting cancelled bookings: ' . $e->getMessage());
+    }
+}
+
+function extendPaymentDeadline($conn, $input) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+        if (empty($agentAccountId)) {
+            send_error_response('Agent login required', 401);
+        }
+        $agentAccountId = (int)$agentAccountId;
+
+        $bookingId = $input['bookingId'] ?? '';
+        if (empty($bookingId)) {
+            send_error_response('Booking ID is required');
+        }
+
+        // Validate booking belongs to agent and is waiting_cancelled
+        $stmt = $conn->prepare("
+            SELECT bookingId, paymentType, departureDate, bookingStatus
+            FROM bookings
+            WHERE bookingId = ? AND agentId = ? AND bookingStatus = 'waiting_cancelled'
+        ");
+        $stmt->bind_param('si', $bookingId, $agentAccountId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$booking) {
+            send_error_response('Booking not found or not eligible for extension');
+        }
+
+        if ($booking['paymentType'] === 'full') {
+            send_error_response('Full payment bookings cannot be extended');
+        }
+
+        $now = new DateTime();
+        $depDate = new DateTime($booking['departureDate']);
+        $daysUntilDeparture = (int)$now->diff($depDate)->format('%r%a');
+        if ($daysUntilDeparture <= 31) {
+            send_error_response('Cannot extend: departure is within 31 days');
+        }
+
+        // Get next unpaid step
+        $payments = getPaymentsByBookingId($conn, $bookingId);
+        $nextUnpaidStep = null;
+        $currentDueDate = null;
+        foreach ($payments as $p) {
+            if ($p['status'] !== 'confirmed') {
+                $nextUnpaidStep = $p['paymentStep'];
+                $currentDueDate = $p['dueDate'] ?? null;
+                break;
+            }
+        }
+
+        if (!$nextUnpaidStep) {
+            send_error_response('No unpaid payment step found');
+        }
+
+        // Calculate new due date (+3 days from current due date)
+        $dueDateObj = $currentDueDate ? new DateTime($currentDueDate) : new DateTime();
+        $dueDateObj->modify('+3 days');
+        $newDueDate = $dueDateObj->format('Y-m-d');
+
+        // Get previousStatus from booking_status_history
+        $histStmt = $conn->prepare("
+            SELECT previousStatus FROM booking_status_history
+            WHERE bookingId = ? AND newStatus = 'waiting_cancelled'
+            ORDER BY changedAt DESC LIMIT 1
+        ");
+        $histStmt->bind_param('s', $bookingId);
+        $histStmt->execute();
+        $histRow = $histStmt->get_result()->fetch_assoc();
+        $histStmt->close();
+        $previousStatus = $histRow['previousStatus'] ?? 'pending';
+
+        // Begin transaction
+        $conn->begin_transaction();
+
+        // 1. Update booking_payments dueDate
+        upsertPayment($conn, $bookingId, $nextUnpaidStep, ['dueDate' => $newDueDate]);
+
+        // 2. Update legacy columns in bookings table
+        $legacyMap = [
+            'down' => 'downPaymentDueDate',
+            'second' => 'advancePaymentDueDate',
+            'balance' => 'balanceDueDate',
+            'middle' => 'downPaymentDueDate',
+            'middle_balance' => 'balanceDueDate',
+            'full' => 'fullPaymentDueDate'
+        ];
+        $legacyCol = $legacyMap[$nextUnpaidStep] ?? null;
+        if ($legacyCol) {
+            $updateSql = "UPDATE bookings SET $legacyCol = ? WHERE bookingId = ?";
+            $upStmt = $conn->prepare($updateSql);
+            $upStmt->bind_param('ss', $newDueDate, $bookingId);
+            $upStmt->execute();
+            $upStmt->close();
+        }
+
+        // 3. Restore bookingStatus to previousStatus
+        $restoreStmt = $conn->prepare("UPDATE bookings SET bookingStatus = ? WHERE bookingId = ?");
+        $restoreStmt->bind_param('ss', $previousStatus, $bookingId);
+        $restoreStmt->execute();
+        $restoreStmt->close();
+
+        // 4. Log to booking_status_history
+        $agentName = $_SESSION['agent_name'] ?? $_SESSION['agent_userId'] ?? 'agent';
+        $logStmt = $conn->prepare("
+            INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changeReason)
+            VALUES (?, 'waiting_cancelled', ?, ?, 'agent', ?)
+        ");
+        $reason = "Payment deadline extended +3 days ($nextUnpaidStep: $newDueDate)";
+        $logStmt->bind_param('ssss', $bookingId, $previousStatus, $agentName, $reason);
+        $logStmt->execute();
+        $logStmt->close();
+
+        // 5. Add reservation history
+        addReservationHistory($conn, $bookingId, "Agent extended payment deadline: $nextUnpaidStep due date changed to $newDueDate (was: " . ($currentDueDate ?? 'N/A') . ")");
+
+        $conn->commit();
+
+        send_success_response([
+            'bookingId' => $bookingId,
+            'paymentStep' => $nextUnpaidStep,
+            'previousDueDate' => $currentDueDate,
+            'newDueDate' => $newDueDate,
+            'restoredStatus' => $previousStatus
+        ]);
+    } catch (Exception $e) {
+        $conn->rollback();
+        send_error_response('Failed to extend payment deadline: ' . $e->getMessage());
     }
 }
 
@@ -8245,11 +8486,11 @@ function uploadPaymentProofFile($conn, $input) {
         // 예약 확인 및 권한 체크
         if ($isAdmin) {
             // 관리자는 모든 예약에 접근 가능
-            $chk = $conn->prepare("SELECT bookingId, bookingStatus, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? LIMIT 1");
+            $chk = $conn->prepare("SELECT bookingId, bookingStatus, departureDate, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? LIMIT 1");
             $chk->bind_param("s", $bookingId);
         } else {
             // 에이전트는 자신이 담당하는 예약에만 접근 가능 (accountId 또는 agentId 매칭)
-            $chk = $conn->prepare("SELECT bookingId, bookingStatus, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?)) LIMIT 1");
+            $chk = $conn->prepare("SELECT bookingId, bookingStatus, departureDate, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?)) LIMIT 1");
             $chk->bind_param("sii", $bookingId, $agentAccountId, $agentAccountId);
         }
         $chk->execute();
@@ -8264,6 +8505,14 @@ function uploadPaymentProofFile($conn, $input) {
         $blockedStatuses = ['cancelled', 'pending', 'pending_update'];
         if (in_array($row['bookingStatus'] ?? '', $blockedStatuses, true)) {
             send_error_response('Cannot upload payment proof in current reservation status', 403);
+        }
+
+        // waiting_cancelled + 출발 31일 이내: 결제파일 업로드 차단
+        if (($row['bookingStatus'] ?? '') === 'waiting_cancelled' && !empty($row['departureDate'])) {
+            $daysUntilDep = (int)(new DateTime())->diff(new DateTime($row['departureDate']))->format('%r%a');
+            if ($daysUntilDep <= 31) {
+                send_error_response('Cannot upload payment proof: departure is within 31 days and booking is in waiting_cancelled status', 403);
+            }
         }
 
         // 단계별 검증: Second는 Down 확인 후, Balance는 Second 확인 후
@@ -8336,11 +8585,52 @@ function uploadPaymentProofFile($conn, $input) {
         $stmt->execute();
         $stmt->close();
 
+        // waiting_cancelled 상태에서 down/middle 결제증빙 업로드 시, 동일 기한인 나머지 단계 +3일 연장
+        $extendedSteps = [];
+        if (($row['bookingStatus'] ?? '') === 'waiting_cancelled' && $paymentType === 'down') {
+            $payments = getPaymentsByBookingId($conn, $bookingId);
+            $uploadedDueDate = null;
+            foreach ($payments as $p) {
+                if ($p['paymentStep'] === 'down' || $p['paymentStep'] === 'middle') {
+                    $uploadedDueDate = $p['dueDate'] ?? null;
+                    break;
+                }
+            }
+            if ($uploadedDueDate) {
+                $newDueDate = date('Y-m-d', strtotime($uploadedDueDate . ' +3 days'));
+                $legacyDueDateMap = [
+                    'second' => 'advancePaymentDueDate',
+                    'balance' => 'balanceDueDate',
+                    'middle_balance' => 'balanceDueDate'
+                ];
+                foreach ($payments as $p) {
+                    $step = $p['paymentStep'];
+                    if ($step === 'down' || $step === 'middle' || $step === 'full') continue;
+                    if ($p['status'] === 'confirmed') continue;
+                    if (($p['dueDate'] ?? '') === $uploadedDueDate) {
+                        upsertPayment($conn, $bookingId, $step, ['dueDate' => $newDueDate]);
+                        $legacyCol = $legacyDueDateMap[$step] ?? null;
+                        if ($legacyCol) {
+                            $legStmt = $conn->prepare("UPDATE bookings SET $legacyCol = ? WHERE bookingId = ?");
+                            $legStmt->bind_param('ss', $newDueDate, $bookingId);
+                            $legStmt->execute();
+                            $legStmt->close();
+                        }
+                        $extendedSteps[] = $step;
+                    }
+                }
+            }
+        }
+
         // 이력 추가
         $typeLabels = ['down' => 'Down Payment', 'second' => 'Second Payment', 'balance' => 'Balance', 'full' => 'Full Payment'];
-        addReservationHistory($conn, $bookingId, $typeLabels[$paymentType] . ' proof file uploaded: ' . $originalFileName);
+        $historyMsg = $typeLabels[$paymentType] . ' proof file uploaded: ' . $originalFileName;
+        if (!empty($extendedSteps)) {
+            $historyMsg .= ' | Due dates extended +3 days for: ' . implode(', ', $extendedSteps);
+        }
+        addReservationHistory($conn, $bookingId, $historyMsg);
 
-        send_success_response(['filePath' => $filePath], 'File uploaded successfully');
+        send_success_response(['filePath' => $filePath, 'extendedSteps' => $extendedSteps], 'File uploaded successfully');
     } catch (Exception $e) {
         send_error_response('Failed to upload payment proof file: ' . $e->getMessage());
     }

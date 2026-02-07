@@ -2719,6 +2719,11 @@ function formatDateYMD(date) {
 
 // 3단계 결제 섹션 UI 상태 관리
 function updatePaymentSections(booking) {
+    // waiting_cancelled + 출발 31일 이내 → 업로드 차단
+    const isWaitingCancelled = (booking.bookingStatus || '').toLowerCase() === 'waiting_cancelled';
+    const daysUntilDep = booking.departureDate ? Math.ceil((new Date(booking.departureDate) - new Date()) / (1000 * 60 * 60 * 24)) : 999;
+    const blockUpload = isWaitingCancelled && daysUntilDep <= 31;
+
     // Down Payment 확인 여부
     const downPaymentConfirmed = !!(booking.downPaymentConfirmedAt);
     // Second Payment 확인 여부
@@ -2775,10 +2780,12 @@ function updatePaymentSections(booking) {
     } else {
         // 파일 미업로드
         if (downPaymentStatus) {
-            downPaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+            downPaymentStatus.innerHTML = blockUpload
+                ? '<span style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Upload Blocked (Departure within 31 days)</span>'
+                : '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
         }
         if (downFileDisplay) downFileDisplay.style.display = 'none';
-        if (downFileUpload) downFileUpload.style.display = 'block';
+        if (downFileUpload) downFileUpload.style.display = blockUpload ? 'none' : 'block';
     }
 
     // === Second Payment 섹션 ===
@@ -2835,10 +2842,12 @@ function updatePaymentSections(booking) {
         if (secondDisabledNotice) secondDisabledNotice.style.display = 'none';
         if (secondPaymentFields) secondPaymentFields.style.display = 'grid';
         if (secondPaymentStatus) {
-            secondPaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+            secondPaymentStatus.innerHTML = blockUpload
+                ? '<span style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Upload Blocked (Departure within 31 days)</span>'
+                : '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
         }
         if (secondFileDisplay) secondFileDisplay.style.display = 'none';
-        if (secondFileUpload) secondFileUpload.style.display = 'block';
+        if (secondFileUpload) secondFileUpload.style.display = blockUpload ? 'none' : 'block';
     }
 
     // === Balance 섹션 ===
@@ -2894,10 +2903,12 @@ function updatePaymentSections(booking) {
         if (balanceDisabledNotice) balanceDisabledNotice.style.display = 'none';
         if (balancePaymentFields) balancePaymentFields.style.display = 'grid';
         if (balancePaymentStatus) {
-            balancePaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+            balancePaymentStatus.innerHTML = blockUpload
+                ? '<span style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Upload Blocked (Departure within 31 days)</span>'
+                : '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
         }
         if (balFileDisplay) balFileDisplay.style.display = 'none';
-        if (balFileUpload) balFileUpload.style.display = 'block';
+        if (balFileUpload) balFileUpload.style.display = blockUpload ? 'none' : 'block';
     }
 
     // === Rejection Reason 표시 ===
@@ -4725,6 +4736,11 @@ function renderFullPaymentInfo(booking, orderAmount) {
     const viewFullBtn = document.getElementById('viewFullFileBtn');
     const downloadFullBtn = document.getElementById('downloadFullFileBtn');
 
+    // waiting_cancelled + 출발 31일 이내 → 업로드 차단
+    const isWaitingCancelled = (booking.bookingStatus || '').toLowerCase() === 'waiting_cancelled';
+    const daysUntilDep = booking.departureDate ? Math.ceil((new Date(booking.departureDate) - new Date()) / (1000 * 60 * 60 * 24)) : 999;
+    const blockUpload = isWaitingCancelled && daysUntilDep <= 31;
+
     // 파일 표시
     if (booking.fullPaymentFile) {
         if (fullFileDisplay) fullFileDisplay.style.display = 'flex';
@@ -4737,7 +4753,7 @@ function renderFullPaymentInfo(booking, orderAmount) {
         if (downloadFullBtn) downloadFullBtn.disabled = false;
     } else {
         if (fullFileDisplay) fullFileDisplay.style.display = 'none';
-        if (fullFileUpload) fullFileUpload.style.display = 'block';
+        if (fullFileUpload) fullFileUpload.style.display = blockUpload ? 'none' : 'block';
         if (viewFullBtn) viewFullBtn.disabled = true;
         if (downloadFullBtn) downloadFullBtn.disabled = true;
     }
@@ -4750,6 +4766,9 @@ function renderFullPaymentInfo(booking, orderAmount) {
         } else if (booking.fullPaymentFile) {
             fullPaymentStatus.innerHTML = '<span class="badge badge-warning">Pending Confirmation</span>';
             fullPaymentStatus.className = 'payment-status pending';
+        } else if (blockUpload) {
+            fullPaymentStatus.innerHTML = '<span style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Upload Blocked (Departure within 31 days)</span>';
+            fullPaymentStatus.className = 'payment-status not-uploaded';
         } else {
             fullPaymentStatus.innerHTML = '<span class="badge badge-secondary">Not Uploaded</span>';
             fullPaymentStatus.className = 'payment-status not-uploaded';
@@ -4894,6 +4913,11 @@ function renderMiddlePaymentInfo(booking, orderAmount) {
     const balanceConfirmed = !!(booking.balanceConfirmedAt);
     const bookingStatus = (booking.bookingStatus || '').toLowerCase();
 
+    // waiting_cancelled + 출발 31일 이내 → 업로드 차단
+    const isWaitingCancelled = bookingStatus === 'waiting_cancelled';
+    const daysUntilDep = booking.departureDate ? Math.ceil((new Date(booking.departureDate) - new Date()) / (1000 * 60 * 60 * 24)) : 999;
+    const blockUpload = isWaitingCancelled && daysUntilDep <= 31;
+
     // Middle Payment 파일 (DB: downPaymentFile)
     const middleFile = booking.downPaymentFile || '';
     const middleFileName = booking.downPaymentFileName || extractFileName(middleFile);
@@ -4922,9 +4946,13 @@ function renderMiddlePaymentInfo(booking, orderAmount) {
         if (viewMiddleBtn) viewMiddleBtn.disabled = false;
         if (deleteMiddleBtn) { deleteMiddleBtn.style.display = ''; deleteMiddleBtn.disabled = false; }
     } else {
-        if (middlePaymentStatus) middlePaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+        if (middlePaymentStatus) {
+            middlePaymentStatus.innerHTML = blockUpload
+                ? '<span style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Upload Blocked (Departure within 31 days)</span>'
+                : '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+        }
         if (middleFileDisplay) middleFileDisplay.style.display = 'none';
-        if (middleFileUpload) middleFileUpload.style.display = 'block';
+        if (middleFileUpload) middleFileUpload.style.display = blockUpload ? 'none' : 'block';
     }
 
     // === Balance 섹션 UI 상태 ===
@@ -4970,9 +4998,13 @@ function renderMiddlePaymentInfo(booking, orderAmount) {
     } else {
         if (middleBalanceDisabledNotice) middleBalanceDisabledNotice.style.display = 'none';
         if (middleBalancePaymentFields) middleBalancePaymentFields.style.display = 'grid';
-        if (middleBalancePaymentStatus) middleBalancePaymentStatus.innerHTML = '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+        if (middleBalancePaymentStatus) {
+            middleBalancePaymentStatus.innerHTML = blockUpload
+                ? '<span style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Upload Blocked (Departure within 31 days)</span>'
+                : '<span style="background:#9E9E9E;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Not Uploaded</span>';
+        }
         if (middleBalFileDisplay) middleBalFileDisplay.style.display = 'none';
-        if (middleBalFileUpload) middleBalFileUpload.style.display = 'block';
+        if (middleBalFileUpload) middleBalFileUpload.style.display = blockUpload ? 'none' : 'block';
     }
 
     // Rejection Alert 표시

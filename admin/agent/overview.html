@@ -29,6 +29,17 @@
 
 			<h1 class="page-title" data-lan-eng="Operating Status">Operating Status</h1>
 
+			<!-- Waiting Cancelled Alert Section -->
+			<div id="waitingCancelledSection" class="card-panel jw-mgt32" style="display: none; border: 2px solid #f59e0b; background: #fffbeb;">
+				<div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+					<span style="font-size: 22px;">&#9888;</span>
+					<h2 class="card-title" style="margin: 0; color: #b45309;" data-lan-eng="Payment Deadline Exceeded">Payment Deadline Exceeded</h2>
+					<span id="waitingCancelledCount" style="background: #ef4444; color: #fff; border-radius: 12px; padding: 2px 10px; font-size: 13px; font-weight: 600;">0</span>
+				</div>
+				<p style="color: #92400e; font-size: 13px; margin-bottom: 12px;" data-lan-eng="These bookings have exceeded their payment deadline and are in a 24-hour grace period before cancellation.">These bookings have exceeded their payment deadline and are in a 24-hour grace period before cancellation.</p>
+				<div id="waitingCancelledCards" style="display: flex; flex-direction: column; gap: 10px;"></div>
+			</div>
+
 			<!-- Sale Products -->
 			<div class="card-panel jw-mgt32">
 				<div style="margin-bottom: 16px;">
@@ -245,6 +256,7 @@
 				waitForHeaderUserNameAndHydrate();
 
 				//
+				await loadWaitingCancelledBookings();
 				await loadOverviewData();
 				await loadSaleProducts();
 				await loadTodayItineraries();
@@ -440,6 +452,99 @@
 			}
 		}
 		
+		async function loadWaitingCancelledBookings() {
+			try {
+				const response = await fetch('../backend/api/agent-api.php?action=getWaitingCancelledBookings', {
+					credentials: 'same-origin'
+				});
+				const result = await response.json();
+
+				const section = document.getElementById('waitingCancelledSection');
+				const container = document.getElementById('waitingCancelledCards');
+				const countBadge = document.getElementById('waitingCancelledCount');
+
+				if (result.success && result.data && result.data.length > 0) {
+					const items = result.data;
+					section.style.display = '';
+					countBadge.textContent = items.length;
+
+					container.innerHTML = items.map(item => {
+						const isNearDeparture = item.daysUntilDeparture <= 31;
+						const cardBorder = isNearDeparture ? 'border: 2px solid #ef4444;' : 'border: 1px solid #e5e7eb;';
+
+						// Grace remaining formatted
+						let graceText = '';
+						if (item.graceRemainingSeconds > 0) {
+							const hours = Math.floor(item.graceRemainingSeconds / 3600);
+							const mins = Math.floor((item.graceRemainingSeconds % 3600) / 60);
+							graceText = hours + 'h ' + mins + 'm remaining';
+						} else {
+							graceText = 'Grace period expired';
+						}
+
+						let extendBtn = '';
+						if (item.canExtend) {
+							extendBtn = '<button onclick="extendDeadline(\'' + escapeHtml(item.bookingId) + '\')" style="background: #f59e0b; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;">Extend +3 Days</button>';
+						}
+
+						let nearDepartureWarning = '';
+						if (isNearDeparture) {
+							nearDepartureWarning = '<div style="color: #ef4444; font-weight: 600; font-size: 12px; margin-top: 6px;">&#9888; Departure within 31 days - Extension not available</div>';
+						}
+
+						return '<div style="background: #fff; border-radius: 8px; padding: 14px 18px; ' + cardBorder + '">' +
+							'<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">' +
+								'<div style="flex: 1; min-width: 200px;">' +
+									'<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">' +
+										'<a href="javascript:void(0)" onclick="goToReservationDetail(\'' + escapeHtml(item.bookingId) + '\')" style="font-weight: 700; color: #1d4ed8; text-decoration: underline; font-size: 14px;">' + escapeHtml(item.bookingId) + '</a>' +
+										'<span style="background: #fef3c7; color: #92400e; border-radius: 4px; padding: 1px 8px; font-size: 11px; font-weight: 600;">' + graceText + '</span>' +
+									'</div>' +
+									'<div style="font-size: 13px; color: #374151;">' + escapeHtml(decodeHtmlEntities(item.packageName) || '') + '</div>' +
+									'<div style="font-size: 12px; color: #6b7280; margin-top: 4px;">' +
+										'Departure: ' + escapeHtml(item.departureDate) +
+										' &nbsp;|&nbsp; Last Paid: ' + escapeHtml(item.lastPaidStep || 'None') +
+										' &nbsp;|&nbsp; Next Due: ' + escapeHtml(item.nextUnpaidStep || '-') + (item.nextUnpaidDueDate ? ' (' + escapeHtml(item.nextUnpaidDueDate) + ')' : '') +
+									'</div>' +
+									nearDepartureWarning +
+								'</div>' +
+								'<div>' + extendBtn + '</div>' +
+							'</div>' +
+						'</div>';
+					}).join('');
+				} else {
+					section.style.display = 'none';
+					container.innerHTML = '';
+				}
+			} catch (error) {
+				console.error('Error loading waiting cancelled bookings:', error);
+			}
+		}
+
+		async function extendDeadline(bookingId) {
+			if (!confirm('Are you sure you want to extend the payment deadline by 3 days for booking ' + bookingId + '?')) {
+				return;
+			}
+			try {
+				const response = await fetch('../backend/api/agent-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'extendPaymentDeadline', bookingId: bookingId })
+				});
+				const result = await response.json();
+				if (result.success) {
+					alert('Deadline extended successfully!\n\nStep: ' + result.data.paymentStep + '\nNew Due Date: ' + result.data.newDueDate + '\nStatus restored to: ' + result.data.restoredStatus);
+					await loadWaitingCancelledBookings();
+					await loadOverviewData();
+				} else {
+					alert('Failed to extend deadline: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Error extending deadline:', error);
+				alert('Error extending deadline. Please try again.');
+			}
+		}
+
 		function escapeHtml(text) {
 			const div = document.createElement('div');
 			div.textContent = text;
