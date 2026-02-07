@@ -2983,6 +2983,10 @@ function createReservation($conn, $input) {
                     $balanceAmount = max(0, $totalAmount - $downPaymentAmount - $advancePaymentAmount);
                     // Balance deadline = 출발일 - 30일
                     $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -30 days')) : null;
+                    // Second Payment 기한이 Balance 기한보다 늦으면 Balance 기한에 맞춤
+                    if ($balanceDueDate && $advancePaymentDueDate > $balanceDueDate) {
+                        $advancePaymentDueDate = $balanceDueDate;
+                    }
                     $fullPaymentAmount = null;
                     $fullPaymentDueDate = null;
                 }
@@ -11124,6 +11128,10 @@ function updatePaymentInfo($conn, $input) {
                 $balanceAmount = isset($input['balanceAmount']) ? (float)$input['balanceAmount'] : null;
                 // Balance deadline = 출발일 - 30일
                 $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -30 days')) : null;
+                // Second Payment 기한이 Balance 기한보다 늦으면 Balance 기한에 맞춤
+                if ($balanceDueDate && $advancePaymentDueDate > $balanceDueDate) {
+                    $advancePaymentDueDate = $balanceDueDate;
+                }
                 $fullPaymentAmount = null;
                 $fullPaymentDueDate = null;
             }
