@@ -768,7 +768,13 @@ try {
         case 'downloadSalesByProduct':
             downloadSalesByProduct($conn, $input);
             break;
-            
+        case 'getSalesDashboard':
+            getSalesDashboard($conn, $input);
+            break;
+        case 'downloadSalesDashboard':
+            downloadSalesDashboard($conn, $input);
+            break;
+
         // 비자 신청 관리
         case 'getVisaApplications':
             getVisaApplications($conn, $input);
@@ -9493,6 +9499,276 @@ function downloadSalesByProduct($conn, $input) {
         exit;
     } catch (Exception $e) {
         send_error_response('Failed to download sales by product: ' . $e->getMessage());
+    }
+}
+
+// ========== Sales Dashboard 함수들 ==========
+
+function getSalesDashboard($conn, $input) {
+    try {
+        $page = max(1, intval($input['page'] ?? 1));
+        $limit = max(1, min(100, intval($input['limit'] ?? 50)));
+
+        $landOnlyCond = "p.packageName LIKE '(LAND ONLY)%'";
+
+        // Query 1: 월별 재고 (normal / landOnly 분리)
+        $sqlCapacity = "SELECT DATE_FORMAT(pad.available_date, '%Y-%m') AS yearMonth,
+                               SUM(CASE WHEN NOT {$landOnlyCond} THEN pad.capacity ELSE 0 END) AS normalCapacity,
+                               SUM(CASE WHEN {$landOnlyCond} THEN pad.capacity ELSE 0 END) AS landOnlyCapacity
+                        FROM package_available_dates pad
+                        INNER JOIN packages p ON pad.package_id = p.packageId
+                        WHERE pad.capacity > 0
+                        GROUP BY DATE_FORMAT(pad.available_date, '%Y-%m')
+                        ORDER BY yearMonth ASC";
+        $capResult = $conn->query($sqlCapacity);
+        $capacityMap = [];
+        while ($row = $capResult->fetch_assoc()) {
+            $capacityMap[$row['yearMonth']] = [
+                'normalCapacity' => intval($row['normalCapacity']),
+                'landOnlyCapacity' => intval($row['landOnlyCapacity']),
+            ];
+        }
+
+        // Query 2: 월별 예약 집계 (3탭: all/confirmed = non-land-only, landOnly)
+        $sqlBookings = "SELECT DATE_FORMAT(b.departureDate, '%Y-%m') AS yearMonth,
+            -- All (non-land-only, cancelled/rejected/refunded 제외)
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS allBookedSeats,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS allTotalAmount,
+            COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND COALESCE(b.paymentStatus,'') != 'refunded'
+                  THEN 1 ELSE NULL END) AS allBookingCount,
+            -- Confirmed (non-land-only)
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus = 'confirmed'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS confirmedBookedSeats,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus = 'confirmed'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS confirmedTotalAmount,
+            COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                       AND b.bookingStatus = 'confirmed'
+                  THEN 1 ELSE NULL END) AS confirmedBookingCount,
+            -- Land Only (cancelled/rejected/refunded 제외)
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS landOnlyBookedSeats,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS landOnlyTotalAmount,
+            COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
+                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND COALESCE(b.paymentStatus,'') != 'refunded'
+                  THEN 1 ELSE NULL END) AS landOnlyBookingCount
+            FROM bookings b
+            LEFT JOIN packages p ON b.packageId = p.packageId
+            GROUP BY DATE_FORMAT(b.departureDate, '%Y-%m')
+            ORDER BY yearMonth ASC";
+        $bookResult = $conn->query($sqlBookings);
+        $bookingMap = [];
+        while ($row = $bookResult->fetch_assoc()) {
+            $bookingMap[$row['yearMonth']] = $row;
+        }
+
+        // Merge: capacity가 있는 월만 포함
+        $months = [];
+        foreach ($capacityMap as $ym => $capRow) {
+            $b = $bookingMap[$ym] ?? null;
+            $months[] = [
+                'yearMonth' => $ym,
+                'normalCapacity' => $capRow['normalCapacity'],
+                'landOnlyCapacity' => $capRow['landOnlyCapacity'],
+                'allBookedSeats' => intval($b['allBookedSeats'] ?? 0),
+                'allTotalAmount' => floatval($b['allTotalAmount'] ?? 0),
+                'allBookingCount' => intval($b['allBookingCount'] ?? 0),
+                'confirmedBookedSeats' => intval($b['confirmedBookedSeats'] ?? 0),
+                'confirmedTotalAmount' => floatval($b['confirmedTotalAmount'] ?? 0),
+                'confirmedBookingCount' => intval($b['confirmedBookingCount'] ?? 0),
+                'landOnlyBookedSeats' => intval($b['landOnlyBookedSeats'] ?? 0),
+                'landOnlyTotalAmount' => floatval($b['landOnlyTotalAmount'] ?? 0),
+                'landOnlyBookingCount' => intval($b['landOnlyBookingCount'] ?? 0),
+            ];
+        }
+
+        // Grand totals
+        $keys = ['normalCapacity','landOnlyCapacity',
+                 'allBookedSeats','allTotalAmount','allBookingCount',
+                 'confirmedBookedSeats','confirmedTotalAmount','confirmedBookingCount',
+                 'landOnlyBookedSeats','landOnlyTotalAmount','landOnlyBookingCount'];
+        $grandTotals = array_fill_keys($keys, 0);
+        foreach ($months as $m) {
+            foreach ($keys as $k) { $grandTotals[$k] += $m[$k]; }
+        }
+
+        // Pagination
+        $totalCount = count($months);
+        $totalPages = max(1, ceil($totalCount / $limit));
+        $page = min($page, $totalPages);
+        $offset = ($page - 1) * $limit;
+        $pagedMonths = array_slice($months, $offset, $limit);
+
+        send_success_response([
+            'months' => $pagedMonths,
+            'grandTotals' => $grandTotals,
+            'pagination' => [
+                'currentPage' => $page,
+                'totalPages' => $totalPages,
+                'totalCount' => $totalCount,
+                'limit' => $limit
+            ]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to load sales dashboard: ' . $e->getMessage());
+    }
+}
+
+function downloadSalesDashboard($conn, $input) {
+    try {
+        $landOnlyCond = "p.packageName LIKE '(LAND ONLY)%'";
+
+        // Query 1: 월별 재고 (normal / landOnly 분리)
+        $sqlCapacity = "SELECT DATE_FORMAT(pad.available_date, '%Y-%m') AS yearMonth,
+                               SUM(CASE WHEN NOT {$landOnlyCond} THEN pad.capacity ELSE 0 END) AS normalCapacity,
+                               SUM(CASE WHEN {$landOnlyCond} THEN pad.capacity ELSE 0 END) AS landOnlyCapacity
+                        FROM package_available_dates pad
+                        INNER JOIN packages p ON pad.package_id = p.packageId
+                        WHERE pad.capacity > 0
+                        GROUP BY DATE_FORMAT(pad.available_date, '%Y-%m')
+                        ORDER BY yearMonth ASC";
+        $capResult = $conn->query($sqlCapacity);
+        $capacityMap = [];
+        while ($row = $capResult->fetch_assoc()) {
+            $capacityMap[$row['yearMonth']] = [
+                'normalCapacity' => intval($row['normalCapacity']),
+                'landOnlyCapacity' => intval($row['landOnlyCapacity']),
+            ];
+        }
+
+        // Query 2: 월별 예약 집계 (3탭)
+        $sqlBookings = "SELECT DATE_FORMAT(b.departureDate, '%Y-%m') AS yearMonth,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS allBookedSeats,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS allTotalAmount,
+            COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND COALESCE(b.paymentStatus,'') != 'refunded'
+                  THEN 1 ELSE NULL END) AS allBookingCount,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus = 'confirmed'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS confirmedBookedSeats,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus = 'confirmed'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS confirmedTotalAmount,
+            COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
+                       AND b.bookingStatus = 'confirmed'
+                  THEN 1 ELSE NULL END) AS confirmedBookingCount,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS landOnlyBookedSeats,
+            SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
+                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS landOnlyTotalAmount,
+            COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
+                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND COALESCE(b.paymentStatus,'') != 'refunded'
+                  THEN 1 ELSE NULL END) AS landOnlyBookingCount
+            FROM bookings b
+            LEFT JOIN packages p ON b.packageId = p.packageId
+            GROUP BY DATE_FORMAT(b.departureDate, '%Y-%m')
+            ORDER BY yearMonth ASC";
+        $bookResult = $conn->query($sqlBookings);
+        $bookingMap = [];
+        while ($row = $bookResult->fetch_assoc()) {
+            $bookingMap[$row['yearMonth']] = $row;
+        }
+
+        // Merge
+        $keys = ['normalCapacity','landOnlyCapacity',
+                 'allBookedSeats','allTotalAmount','allBookingCount',
+                 'confirmedBookedSeats','confirmedTotalAmount','confirmedBookingCount',
+                 'landOnlyBookedSeats','landOnlyTotalAmount','landOnlyBookingCount'];
+        $months = [];
+        $grandTotals = array_fill_keys($keys, 0);
+        foreach ($capacityMap as $ym => $capRow) {
+            $b = $bookingMap[$ym] ?? null;
+            $row = [
+                'yearMonth' => $ym,
+                'normalCapacity' => $capRow['normalCapacity'],
+                'landOnlyCapacity' => $capRow['landOnlyCapacity'],
+                'allBookedSeats' => intval($b['allBookedSeats'] ?? 0),
+                'allTotalAmount' => floatval($b['allTotalAmount'] ?? 0),
+                'allBookingCount' => intval($b['allBookingCount'] ?? 0),
+                'confirmedBookedSeats' => intval($b['confirmedBookedSeats'] ?? 0),
+                'confirmedTotalAmount' => floatval($b['confirmedTotalAmount'] ?? 0),
+                'confirmedBookingCount' => intval($b['confirmedBookingCount'] ?? 0),
+                'landOnlyBookedSeats' => intval($b['landOnlyBookedSeats'] ?? 0),
+                'landOnlyTotalAmount' => floatval($b['landOnlyTotalAmount'] ?? 0),
+                'landOnlyBookingCount' => intval($b['landOnlyBookingCount'] ?? 0),
+            ];
+            $months[] = $row;
+            foreach ($keys as $k) { $grandTotals[$k] += $row[$k]; }
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="sales_dashboard_' . date('Y-m-d') . '.csv"');
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+
+        fputcsv($output, [
+            'No', 'Month',
+            'Inventory', 'Booked Seats', 'Occupancy (%)', 'Total Amount', 'Bookings',
+            'Confirmed Seats', 'Confirmed Occ (%)', 'Confirmed Amount', 'Confirmed Bookings',
+            'LandOnly Inventory', 'LandOnly Seats', 'LandOnly Occ (%)', 'LandOnly Amount', 'LandOnly Bookings'
+        ], ',', '"', '\\');
+
+        $rowNum = 1;
+        foreach ($months as $m) {
+            $allOcc = $m['normalCapacity'] > 0 ? round($m['allBookedSeats'] / $m['normalCapacity'] * 100, 1) : 0;
+            $confOcc = $m['normalCapacity'] > 0 ? round($m['confirmedBookedSeats'] / $m['normalCapacity'] * 100, 1) : 0;
+            $loOcc = $m['landOnlyCapacity'] > 0 ? round($m['landOnlyBookedSeats'] / $m['landOnlyCapacity'] * 100, 1) : 0;
+            fputcsv($output, [
+                $rowNum++, $m['yearMonth'],
+                number_format($m['normalCapacity']),
+                number_format($m['allBookedSeats']), $allOcc.'%', number_format($m['allTotalAmount']), number_format($m['allBookingCount']),
+                number_format($m['confirmedBookedSeats']), $confOcc.'%', number_format($m['confirmedTotalAmount']), number_format($m['confirmedBookingCount']),
+                number_format($m['landOnlyCapacity']),
+                number_format($m['landOnlyBookedSeats']), $loOcc.'%', number_format($m['landOnlyTotalAmount']), number_format($m['landOnlyBookingCount']),
+            ], ',', '"', '\\');
+        }
+
+        // TOTAL row
+        $g = $grandTotals;
+        $allOccT = $g['normalCapacity'] > 0 ? round($g['allBookedSeats'] / $g['normalCapacity'] * 100, 1) : 0;
+        $confOccT = $g['normalCapacity'] > 0 ? round($g['confirmedBookedSeats'] / $g['normalCapacity'] * 100, 1) : 0;
+        $loOccT = $g['landOnlyCapacity'] > 0 ? round($g['landOnlyBookedSeats'] / $g['landOnlyCapacity'] * 100, 1) : 0;
+        fputcsv($output, [
+            '', 'TOTAL',
+            number_format($g['normalCapacity']),
+            number_format($g['allBookedSeats']), $allOccT.'%', number_format($g['allTotalAmount']), number_format($g['allBookingCount']),
+            number_format($g['confirmedBookedSeats']), $confOccT.'%', number_format($g['confirmedTotalAmount']), number_format($g['confirmedBookingCount']),
+            number_format($g['landOnlyCapacity']),
+            number_format($g['landOnlyBookedSeats']), $loOccT.'%', number_format($g['landOnlyTotalAmount']), number_format($g['landOnlyBookingCount']),
+        ], ',', '"', '\\');
+
+        fclose($output);
+        exit;
+    } catch (Exception $e) {
+        send_error_response('Failed to download sales dashboard: ' . $e->getMessage());
     }
 }
 
