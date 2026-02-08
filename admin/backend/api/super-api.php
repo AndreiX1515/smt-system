@@ -762,6 +762,9 @@ try {
         case 'getSalesByProduct':
             getSalesByProduct($conn, $input);
             break;
+        case 'getProductSalesOverview':
+            getProductSalesOverview($conn, $input);
+            break;
         case 'downloadSalesByDate':
             downloadSalesByDate($conn, $input);
             break;
@@ -9324,6 +9327,131 @@ function getSalesByProduct($conn, $input) {
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to get sales by product: ' . $e->getMessage());
+    }
+}
+
+function getProductSalesOverview($conn, $input) {
+    try {
+        $landOnlyPattern = "(LAND ONLY)%";
+
+        // Query 1: 패키지별 전체 재고
+        $sqlPackages = "SELECT p.packageId, p.packageName,
+                               SUM(pad.capacity) as totalCapacity,
+                               p.packageName LIKE ? as isLandOnly
+                        FROM packages p
+                        INNER JOIN package_available_dates pad ON pad.package_id = p.packageId
+                        WHERE pad.capacity > 0
+                        GROUP BY p.packageId
+                        ORDER BY p.packageName ASC";
+        $stmt1 = $conn->prepare($sqlPackages);
+        $stmt1->bind_param('s', $landOnlyPattern);
+        $stmt1->execute();
+        $pkgResult = $stmt1->get_result();
+        $packages = [];
+        while ($row = $pkgResult->fetch_assoc()) {
+            $packages[$row['packageId']] = [
+                'packageId' => intval($row['packageId']),
+                'packageName' => $row['packageName'],
+                'totalCapacity' => intval($row['totalCapacity']),
+                'isLandOnly' => intval($row['isLandOnly']) === 1,
+                'allSeats' => 0, 'allAmount' => 0, 'allCount' => 0,
+                'confirmedSeats' => 0, 'confirmedAmount' => 0, 'confirmedCount' => 0,
+                'dates' => []
+            ];
+        }
+        $stmt1->close();
+
+        // Query 2: 패키지별 예약 집계 (all / confirmed)
+        $sqlBookings = "SELECT b.packageId,
+            SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) as allSeats,
+            SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND COALESCE(b.paymentStatus,'') != 'refunded'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) as allAmount,
+            COUNT(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND COALESCE(b.paymentStatus,'') != 'refunded'
+                  THEN 1 ELSE NULL END) as allCount,
+            SUM(CASE WHEN b.bookingStatus = 'confirmed'
+                THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) as confirmedSeats,
+            SUM(CASE WHEN b.bookingStatus = 'confirmed'
+                THEN COALESCE(b.totalAmount,0) ELSE 0 END) as confirmedAmount,
+            COUNT(CASE WHEN b.bookingStatus = 'confirmed' THEN 1 ELSE NULL END) as confirmedCount
+            FROM bookings b
+            WHERE b.packageId IS NOT NULL
+            GROUP BY b.packageId";
+        $bookResult = $conn->query($sqlBookings);
+        while ($row = $bookResult->fetch_assoc()) {
+            $pid = $row['packageId'];
+            if (isset($packages[$pid])) {
+                $packages[$pid]['allSeats'] = intval($row['allSeats']);
+                $packages[$pid]['allAmount'] = floatval($row['allAmount']);
+                $packages[$pid]['allCount'] = intval($row['allCount']);
+                $packages[$pid]['confirmedSeats'] = intval($row['confirmedSeats']);
+                $packages[$pid]['confirmedAmount'] = floatval($row['confirmedAmount']);
+                $packages[$pid]['confirmedCount'] = intval($row['confirmedCount']);
+            }
+        }
+
+        // Query 3: 날짜별 상세 (재고 + 예약)
+        $sqlDates = "SELECT pad.package_id as packageId, pad.available_date, pad.capacity, pad.status,
+            COALESCE(SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+                              AND COALESCE(b.paymentStatus,'') != 'refunded'
+                         THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) END), 0) as allSeats,
+            COALESCE(SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+                              AND COALESCE(b.paymentStatus,'') != 'refunded'
+                         THEN COALESCE(b.totalAmount,0) END), 0) as allAmount,
+            COALESCE(SUM(CASE WHEN b.bookingStatus = 'confirmed'
+                         THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) END), 0) as confirmedSeats,
+            COALESCE(SUM(CASE WHEN b.bookingStatus = 'confirmed'
+                         THEN COALESCE(b.totalAmount,0) END), 0) as confirmedAmount
+            FROM package_available_dates pad
+            LEFT JOIN bookings b ON b.packageId = pad.package_id AND b.departureDate = pad.available_date
+            WHERE pad.capacity > 0
+            GROUP BY pad.package_id, pad.available_date
+            ORDER BY pad.available_date ASC";
+        $dateResult = $conn->query($sqlDates);
+        while ($row = $dateResult->fetch_assoc()) {
+            $pid = $row['packageId'];
+            if (isset($packages[$pid])) {
+                $packages[$pid]['dates'][] = [
+                    'date' => $row['available_date'],
+                    'capacity' => intval($row['capacity']),
+                    'status' => $row['status'],
+                    'allSeats' => intval($row['allSeats']),
+                    'allAmount' => floatval($row['allAmount']),
+                    'confirmedSeats' => intval($row['confirmedSeats']),
+                    'confirmedAmount' => floatval($row['confirmedAmount'])
+                ];
+            }
+        }
+
+        // Grand totals
+        $grandTotals = [
+            'totalCapacity' => 0, 'allSeats' => 0, 'allAmount' => 0,
+            'confirmedSeats' => 0, 'confirmedAmount' => 0,
+            'landOnlyCapacity' => 0, 'landOnlyAllSeats' => 0, 'landOnlyAllAmount' => 0
+        ];
+        foreach ($packages as $p) {
+            if ($p['isLandOnly']) {
+                $grandTotals['landOnlyCapacity'] += $p['totalCapacity'];
+                $grandTotals['landOnlyAllSeats'] += $p['allSeats'];
+                $grandTotals['landOnlyAllAmount'] += $p['allAmount'];
+            } else {
+                $grandTotals['totalCapacity'] += $p['totalCapacity'];
+                $grandTotals['allSeats'] += $p['allSeats'];
+                $grandTotals['allAmount'] += $p['allAmount'];
+                $grandTotals['confirmedSeats'] += $p['confirmedSeats'];
+                $grandTotals['confirmedAmount'] += $p['confirmedAmount'];
+            }
+        }
+
+        send_success_response([
+            'packages' => array_values($packages),
+            'grandTotals' => $grandTotals
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get product sales overview: ' . $e->getMessage());
     }
 }
 

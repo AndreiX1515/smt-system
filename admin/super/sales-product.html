@@ -6,7 +6,6 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1.0">
 	<title>SMART TRAVEL ADMIN</title>
 
-	<!--   -->
 	<link rel="shortcut icon" href="../image/favicon.ico">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,131 +14,100 @@
 	<link rel="stylesheet" href="../css/a_variables.css">
 	<link rel="stylesheet" href="../css/a_components.css">
 	<link rel="stylesheet" href="../css/a_contents.css">
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+	<style>
+		/* Tabs */
+		.sp-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 24px; }
+		.sp-tab-btn { padding: 12px 24px; font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s; }
+		.sp-tab-btn:hover { color: #3b82f6; }
+		.sp-tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 700; }
+
+		/* Summary bar */
+		.sp-summary { display: flex; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+		.sp-summary-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 180px; }
+		.sp-summary-item .label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+		.sp-summary-item .value { font-size: 20px; font-weight: 700; color: #1e293b; }
+
+		/* Package card */
+		.sp-card { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: #fff; }
+		.sp-card-header { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; gap: 12px; transition: background .15s; }
+		.sp-card-header:hover { background: #f8fafc; }
+		.sp-card-toggle { width: 20px; height: 20px; transition: transform .2s; flex-shrink: 0; color: #94a3b8; }
+		.sp-card.open .sp-card-toggle { transform: rotate(90deg); }
+		.sp-card-name { flex: 1; font-size: 14px; font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.sp-card-stats { display: flex; gap: 24px; flex-shrink: 0; align-items: center; }
+		.sp-card-stat { text-align: right; }
+		.sp-card-stat .stat-label { font-size: 11px; color: #94a3b8; }
+		.sp-card-stat .stat-value { font-size: 14px; font-weight: 600; color: #334155; }
+		.sp-card-stat .stat-value.highlight { color: #2563eb; }
+
+		/* Progress bar */
+		.sp-progress { width: 120px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+		.sp-progress-bar { height: 100%; border-radius: 3px; transition: width .3s; }
+		.sp-progress-bar.low { background: #22c55e; }
+		.sp-progress-bar.mid { background: #f59e0b; }
+		.sp-progress-bar.high { background: #ef4444; }
+
+		/* Date detail table */
+		.sp-card-body { display: none; border-top: 1px solid #e2e8f0; background: #f8fafc; padding: 12px 16px; }
+		.sp-card.open .sp-card-body { display: block; }
+		.sp-date-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+		.sp-date-table th { text-align: center; padding: 8px 10px; color: #64748b; font-weight: 600; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; font-size: 12px; }
+		.sp-date-table td { text-align: center; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+		.sp-date-table tr:last-child td { border-bottom: none; }
+		.sp-date-table .date-col { text-align: left; font-weight: 500; }
+
+		/* Empty state */
+		.sp-empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 14px; }
+
+		/* Loading */
+		.sp-loading { text-align: center; padding: 60px 20px; color: #94a3b8; }
+
+		@media (max-width: 768px) {
+			.sp-card-stats { gap: 12px; }
+			.sp-card-stat .stat-label { display: none; }
+			.sp-progress { width: 60px; }
+			.sp-summary { gap: 8px; }
+			.sp-summary-item { min-width: 140px; padding: 10px 14px; }
+			.sp-summary-item .value { font-size: 16px; }
+		}
+	</style>
 </head>
 
 <body>
 
-	<!-- header   -->
 	<header class="layout-header"></header>
 
-	<!--   -->
 	<main class="layout-main">
-		<!-- nav   -->
 		<nav class="layout-nav"></nav>
 
 		<section class="layout-content">
 
-			<h1 class="page-title" data-lan-eng="Sales by product">Sales by product</h1>
+			<h1 class="page-title" data-lan-eng="Sales by Product">Sales by Product</h1>
 
 			<div class="card-panel jw-mgt32">
 
-				<h3 class="card-subtitle2" data-lan-eng="Select period">Select period</h3>
-				<div class="jw-cols jw-gap10 jw-mgt16">
-					<label class="jw-radio typeA">
-						<input type="radio" name="periodSelect" value="daily" checked onchange="handlePeriodChange()">
-						<p class="text" data-lan-eng="Daily">Daily</p>
-					</label>
-					<label class="jw-radio typeA">
-						<input type="radio" name="periodSelect" value="weekly" onchange="handlePeriodChange()">
-						<p class="text" data-lan-eng="Weekly">Weekly</p>
-					</label>
-					<label class="jw-radio typeA">
-						<input type="radio" name="periodSelect" value="monthly" onchange="handlePeriodChange()">
-						<p class="text" data-lan-eng="Monthly">Monthly</p>
-					</label>
-					<label class="jw-radio typeA">
-						<input type="radio" name="periodSelect" value="annual" onchange="handlePeriodChange()">
-						<p class="text" data-lan-eng="Annual">Annual</p>
-					</label>
-					<label class="jw-radio typeA">
-						<input type="radio" name="periodSelect" value="all" onchange="handlePeriodChange()">
-						<p class="text" data-lan-eng="All">All</p>
-					</label>
-					<div class="field-row jw-w400">
-						<input type="text" class="form-control" id="customDateInput" placeholder="Select period" data-lan-eng-placeholder="Select period" readonly>
-						<button type="button" class="btn-icon calendar" aria-label="Calendar" data-target="#customDateInput"></button>
-					</div>
-				</div>
-				<div class="input-box typeA jw-w400 jw-mgt16">
-					<input type="text" id="dateRangeDisplay" readonly>
+				<!-- Tabs -->
+				<div class="sp-tabs">
+					<button class="sp-tab-btn active" data-tab="all" onclick="switchTab('all')">All Bookings</button>
+					<button class="sp-tab-btn" data-tab="confirmed" onclick="switchTab('confirmed')">Confirmed Only</button>
+					<button class="sp-tab-btn" data-tab="land" onclick="switchTab('land')">Land Only</button>
 				</div>
 
-				<div class="list-header jw-mgt32">
-					<div class="result-count">
-						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
-					</div>
-				</div>
-				
-				<table class="jw-tableA">
-					<colgroup>
-						<col class="col-60"> <!-- No -->
-						<col> <!-- Product Name -->
-						<col> <!-- Views -->
-						<col> <!-- Number of reservations -->
-						<col> <!-- Reservation rate -->
-						<col> <!-- Sales Amount -->
-					</colgroup>
-					<thead>
-						<tr>
-							<th class="no is-center">No</th>
-							<th data-lan-eng="Product Name">Product Name</th>
-							<th class="is-center" data-lan-eng="Views">Views</th>
-							<th class="is-center" data-lan-eng="Number of reservations">Number of reservations</th>
-							<th class="is-center" data-lan-eng="Reservation rate">Reservation rate</th>
-							<th class="is-center" data-lan-eng="Sales Amount (₩)">Sales Amount (₩)</th>
-						</tr>
-					</thead>
-					<tbody id="salesTableBody">
-						<tr>
-							<td colspan="6" class="is-center">  ...</td>
-						</tr>
-					</tbody>
-				</table>
+				<!-- Summary -->
+				<div class="sp-summary" id="summaryArea"></div>
 
-				
-				<div class="jw-pagebox" role="navigation" aria-label="">
-					<div class="contents">
-						<button type="button" class="first" aria-label=" " aria-disabled="false">
-							<img src="../image/first.svg" alt="">
-						</button>
-						<button type="button" class="prev" aria-label=" " aria-disabled="false">
-							<img src="../image/prev.svg" alt="">
-						</button>
-
-						<div class="page" role="list">
-							<button type="button" class="p" role="listitem">1</button>
-							<button type="button" class="p" role="listitem">2</button>
-							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
-							<button type="button" class="p" role="listitem">4</button>
-							<button type="button" class="p" role="listitem">5</button>
-						</div>
-
-						<button type="button" class="next" aria-label=" " aria-disabled="false">
-							<img src="../image/next.svg" alt="">
-						</button>
-						<button type="button" class="last" aria-label=" " aria-disabled="false">
-							<img src="../image/last.svg" alt="">
-						</button>
-					</div>
+				<!-- Package list -->
+				<div id="packageList">
+					<div class="sp-loading">Loading...</div>
 				</div>
 
 			</div>
-
-			<div class="controller">
-				<button type="button" class="jw-button typeA" id="downloadBtn" onclick="handleDownload()" data-lan-eng="Download">Download</button>
-			</div>
-
-
 
 		</section>
-
 	</main>
 
-	<!--   -->
 	<script src="../js/default.js"></script>
 	<script src="../js/super.js"></script>
 
@@ -149,303 +117,182 @@
 			navUrl: '../inc/nav_super.html'
 		});
 
-		let currentPage = 1;
-		const limit = 10;
-		let currentPeriod = 'daily';
-		let currentDateRange = { startDate: '', endDate: '' };
+		let allData = null;
+		let currentTab = 'all';
 
 		document.addEventListener('DOMContentLoaded', async () => {
 			try {
-				const sessionResponse = await fetch('../backend/api/check-session.php', {
-					credentials: 'same-origin'
-				});
+				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
 				const sessionData = await sessionResponse.json();
-				
-				// Super  admin  
 				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
-				if (!isAdmin) {
-					window.location.href = '../index.html';
-					return;
-				}
-				
-				handlePeriodChange();
-				await loadSalesByProduct();
-				initDateRangePicker();
+				if (!isAdmin) { window.location.href = '../index.html'; return; }
+				await loadData();
 			} catch (error) {
 				console.error('Session check error:', error);
 				window.location.href = '../index.html';
-				return;
 			}
 		});
 
-		function initDateRangePicker() {
-			const $customDateInput = $('#customDateInput');
+		async function loadData() {
+			try {
+				const response = await fetch('../backend/api/super-api.php?action=getProductSalesOverview', { credentials: 'same-origin' });
+				if (response.status === 401) { alert('Session expired.'); window.location.href = '../index.html'; return; }
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				const result = await response.json();
+				if (result.success && result.data) {
+					allData = result.data;
+					render();
+				}
+			} catch (error) {
+				console.error('Error loading data:', error);
+				document.getElementById('packageList').innerHTML = '<div class="sp-empty">Failed to load data.</div>';
+			}
+		}
 
-			if ($customDateInput.length) {
-				$customDateInput.daterangepicker({
-					autoUpdateInput: false,
-					locale: {
-						format: 'YYYY-MM-DD',
-						separator: ' ~ ',
-						applyLabel: 'Apply',
-						cancelLabel: 'Cancel',
-						daysOfWeek: ['Su','Mo','Tu','We','Th','Fr','Sa'],
-						monthNames: [
-							'January','February','March','April','May','June',
-							'July','August','September','October','November','December'
-						],
-						firstDay: 0
-					}
-				});
+		function switchTab(tab) {
+			currentTab = tab;
+			document.querySelectorAll('.sp-tab-btn').forEach(btn => {
+				btn.classList.toggle('active', btn.dataset.tab === tab);
+			});
+			render();
+		}
 
-				$customDateInput.on('apply.daterangepicker', function (ev, picker) {
-					$(this).val(
-						picker.startDate.format('YYYY-MM-DD') +
-						' ~ ' +
-						picker.endDate.format('YYYY-MM-DD')
-					);
-					handleCustomDateChange();
-				});
+		function render() {
+			if (!allData) return;
+			const { packages, grandTotals } = allData;
 
-				$customDateInput.on('cancel.daterangepicker', function () {
-					$(this).val('');
-				});
+			// Filter packages based on tab
+			let filtered;
+			if (currentTab === 'land') {
+				filtered = packages.filter(p => p.isLandOnly);
+			} else {
+				filtered = packages.filter(p => !p.isLandOnly);
 			}
 
-			// Calendar button click handler
-			$(document).on('click', '.btn-icon.calendar', function () {
-				const targetSelector = $(this).data('target');
-				if (!targetSelector) return;
+			// Sort by sold seats descending
+			const seatKey = currentTab === 'confirmed' ? 'confirmedSeats' : 'allSeats';
+			filtered.sort((a, b) => b[seatKey] - a[seatKey]);
 
-				const $target = $(targetSelector);
-				if ($target.length) {
-					$target.trigger('click').focus();
+			renderSummary(filtered, grandTotals);
+			renderList(filtered);
+		}
+
+		function renderSummary(filtered, gt) {
+			const area = document.getElementById('summaryArea');
+			let totalCap = 0, totalSold = 0, totalAmt = 0;
+
+			filtered.forEach(p => {
+				totalCap += p.totalCapacity;
+				if (currentTab === 'confirmed') {
+					totalSold += p.confirmedSeats;
+					totalAmt += p.confirmedAmount;
+				} else {
+					totalSold += p.allSeats;
+					totalAmt += p.allAmount;
 				}
 			});
+
+			const occupancy = totalCap > 0 ? ((totalSold / totalCap) * 100).toFixed(1) : '0.0';
+
+			area.innerHTML = `
+				<div class="sp-summary-item">
+					<div class="label">Total Packages</div>
+					<div class="value">${filtered.length}</div>
+				</div>
+				<div class="sp-summary-item">
+					<div class="label">Total Inventory</div>
+					<div class="value">${totalCap.toLocaleString()}</div>
+				</div>
+				<div class="sp-summary-item">
+					<div class="label">Sold Seats</div>
+					<div class="value">${totalSold.toLocaleString()} <span style="font-size:13px;color:#64748b;font-weight:400">(${occupancy}%)</span></div>
+				</div>
+				<div class="sp-summary-item">
+					<div class="label">Total Sales Amount</div>
+					<div class="value">${formatCurrency(totalAmt)}</div>
+				</div>
+			`;
 		}
 
-		function handlePeriodChange() {
-			const selectedPeriod = document.querySelector('input[name="periodSelect"]:checked')?.value || 'daily';
-			currentPeriod = selectedPeriod;
-			currentPage = 1;
-			
-			const today = new Date();
-			let startDate, endDate;
-			
-			if (selectedPeriod === 'all') {
-				startDate = null;
-				endDate = null;
-			} else {
-				switch(selectedPeriod) {
-					case 'daily':
-						startDate = new Date(today);
-						endDate = new Date(today);
-						break;
-					case 'weekly':
-						const dayOfWeek = today.getDay();
-						const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-						startDate = new Date(today.setDate(diff));
-						endDate = new Date(startDate);
-						endDate.setDate(startDate.getDate() + 6);
-						break;
-					case 'monthly':
-						startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-						endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-						break;
-					case 'annual':
-						startDate = new Date(today.getFullYear(), 0, 1);
-						endDate = new Date(today.getFullYear(), 11, 31);
-						break;
-					default:
-						startDate = new Date(today);
-						endDate = new Date(today);
-				}
+		function renderList(filtered) {
+			const container = document.getElementById('packageList');
+
+			if (filtered.length === 0) {
+				container.innerHTML = '<div class="sp-empty">No packages found.</div>';
+				return;
 			}
-			
-			if (startDate && endDate) {
-				currentDateRange.startDate = startDate.toISOString().split('T')[0];
-				currentDateRange.endDate = endDate.toISOString().split('T')[0];
-			} else {
-				currentDateRange.startDate = '';
-				currentDateRange.endDate = '';
-			}
-			
-			const dateRangeDisplay = document.getElementById('dateRangeDisplay');
-			if (dateRangeDisplay) {
-				if (selectedPeriod === 'all') {
-					dateRangeDisplay.value = ' ';
-				} else {
-					dateRangeDisplay.value = `${currentDateRange.startDate} ~ ${currentDateRange.endDate}`;
-				}
-			}
-			
-			loadSalesByProduct();
+
+			container.innerHTML = filtered.map((pkg, idx) => {
+				const sold = currentTab === 'confirmed' ? pkg.confirmedSeats : pkg.allSeats;
+				const amt = currentTab === 'confirmed' ? pkg.confirmedAmount : pkg.allAmount;
+				const cap = pkg.totalCapacity;
+				const pct = cap > 0 ? ((sold / cap) * 100).toFixed(1) : '0.0';
+				const pctNum = parseFloat(pct);
+				const barClass = pctNum >= 80 ? 'high' : pctNum >= 50 ? 'mid' : 'low';
+
+				const dateRows = (pkg.dates || []).map(d => {
+					const ds = currentTab === 'confirmed' ? d.confirmedSeats : d.allSeats;
+					const da = currentTab === 'confirmed' ? d.confirmedAmount : d.allAmount;
+					const dp = d.capacity > 0 ? ((ds / d.capacity) * 100).toFixed(1) : '0.0';
+					return `<tr>
+						<td class="date-col">${d.date}</td>
+						<td>${d.capacity.toLocaleString()}</td>
+						<td>${ds.toLocaleString()}</td>
+						<td>${dp}%</td>
+						<td>${formatCurrency(da)}</td>
+					</tr>`;
+				}).join('');
+
+				return `
+				<div class="sp-card" id="card-${idx}">
+					<div class="sp-card-header" onclick="toggleCard(${idx})">
+						<svg class="sp-card-toggle" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+						<div class="sp-card-name" title="${escapeHtml(pkg.packageName)}">${escapeHtml(pkg.packageName)}</div>
+						<div class="sp-card-stats">
+							<div class="sp-card-stat">
+								<div class="stat-label">Sold / Total</div>
+								<div class="stat-value">${sold.toLocaleString()} / ${cap.toLocaleString()}</div>
+							</div>
+							<div class="sp-card-stat">
+								<div class="sp-progress"><div class="sp-progress-bar ${barClass}" style="width:${Math.min(pctNum, 100)}%"></div></div>
+								<div style="font-size:11px;color:#64748b;text-align:right;margin-top:2px">${pct}%</div>
+							</div>
+							<div class="sp-card-stat">
+								<div class="stat-label">Sales Amount</div>
+								<div class="stat-value highlight">${formatCurrency(amt)}</div>
+							</div>
+						</div>
+					</div>
+					<div class="sp-card-body">
+						<table class="sp-date-table">
+							<thead>
+								<tr>
+									<th class="date-col">Date</th>
+									<th>Capacity</th>
+									<th>Sold</th>
+									<th>Occupancy</th>
+									<th>Amount</th>
+								</tr>
+							</thead>
+							<tbody>${dateRows || '<tr><td colspan="5" style="color:#94a3b8">No date data</td></tr>'}</tbody>
+						</table>
+					</div>
+				</div>`;
+			}).join('');
 		}
-	
-	function handleCustomDateChange() {
-		const customPeriod = document.getElementById('customDateInput').value;
-		if (customPeriod) {
-			// Parse "YYYY-MM-DD ~ YYYY-MM-DD" format
-			const match = customPeriod.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
-			if (match) {
-				currentDateRange.startDate = match[1];
-				currentDateRange.endDate = match[2];
-				currentPeriod = 'custom';
-				
-				const dateRangeDisplay = document.getElementById('dateRangeDisplay');
-				if (dateRangeDisplay) {
-					dateRangeDisplay.value = `${currentDateRange.startDate} ~ ${currentDateRange.endDate}`;
-				}
-				
-				loadSalesByProduct();
-			}
+
+		function toggleCard(idx) {
+			document.getElementById('card-' + idx).classList.toggle('open');
 		}
-	}
 
-	async function loadSalesByProduct(page = currentPage) {
-		try {
-				const tbody = document.getElementById('salesTableBody');
-				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="6" class="is-center">  ...</td></tr>';
-				}
-
-				const params = new URLSearchParams({
-					action: 'getSalesByProduct',
-					period: currentPeriod,
-					page: page,
-					limit: limit
-				});
-				
-				if (currentDateRange.startDate) params.append('startDate', currentDateRange.startDate);
-				if (currentDateRange.endDate) params.append('endDate', currentDateRange.endDate);
-
-				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
-					credentials: 'same-origin'
-				});
-
-				if (response.status === 401) {
-					alert(' .');
-					window.location.href = '../index.html';
-					return;
-				}
-				if (!response.ok) throw new Error('HTTP ' + response.status);
-
-				const result = await response.json();
-
-				if (result.success && result.data) {
-					const { products, pagination, dateRangeLabel } = result.data;
-					//   API    
-					if (currentPeriod === 'all' && dateRangeLabel) {
-						const dateRangeDisplay = document.getElementById('dateRangeDisplay');
-						if (dateRangeDisplay) dateRangeDisplay.value = dateRangeLabel;
-					}
-					
-					const totalCountEl = document.getElementById('totalCount');
-					if (totalCountEl) totalCountEl.textContent = pagination?.totalCount || products?.length || 0;
-
-					if (tbody) {
-						if (!products || products.length === 0) {
-							tbody.innerHTML = '<tr><td colspan="6" class="is-center">  .</td></tr>';
-						} else {
-							tbody.innerHTML = products.map((product, index) => {
-								// SMT: Always render No as 1..N within current search result pages (avoid negative values)
-								const rowNum = ((Number(page) - 1) * limit) + index + 1;
-								const reservationRate = product.views > 0 ? ((product.reservations / product.views) * 100).toFixed(2) + '%' : '0%';
-								return `
-									<tr>
-										<td class="no is-center">${rowNum}</td>
-										<!-- (HTML 태그 수정) 디코딩 적용 -->
-										<td class="is-center">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</td>
-										<td class="is-center">${Number(product.views || 0).toLocaleString()}</td>
-										<td class="is-center">${Number(product.reservations || 0).toLocaleString()}</td>
-										<td class="is-center">${reservationRate}</td>
-										<td class="is-center">${Number(product.salesAmount || 0).toLocaleString()}</td>
-									</tr>
-								`;
-							}).join('');
-						}
-					}
-					
-					if (pagination) {
-						updatePagination(pagination);
-						currentPage = pagination.currentPage;
-					}
-				}
-			} catch (error) {
-				console.error('Error loading sales by product:', error);
-				const tbody = document.getElementById('salesTableBody');
-				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="6" class="is-center">    .</td></tr>';
-				}
-			}
-		}
-		
-		function updatePagination(pagination) {
-			const box = document.querySelector('.jw-pagebox');
-			if (!box) return;
-			const pageWrap = box.querySelector('.page');
-			if (!pageWrap) return;
-
-			const totalPages = Math.max(1, Number(pagination.totalPages || 1));
-			const current = Math.max(1, Number(pagination.currentPage || 1));
-			const groupSize = 5;
-			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
-			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
-
-			pageWrap.innerHTML = '';
-			for (let p = groupStart; p <= groupEnd; p++) {
-				const btn = document.createElement('button');
-				btn.type = 'button';
-				btn.className = 'p' + (p === current ? ' show' : '');
-				btn.setAttribute('role', 'listitem');
-				if (p === current) btn.setAttribute('aria-current', 'page');
-				btn.textContent = String(p);
-				btn.addEventListener('click', () => loadSalesByProduct(p));
-				pageWrap.appendChild(btn);
-			}
-
-			const firstBtn = box.querySelector('.first');
-			const prevBtn = box.querySelector('.prev');
-			const nextBtn = box.querySelector('.next');
-			const lastBtn = box.querySelector('.last');
-
-			const prevTarget = Math.max(1, groupStart - groupSize);
-			const nextTarget = Math.min(totalPages, groupStart + groupSize);
-
-			if (firstBtn) firstBtn.onclick = () => loadSalesByProduct(1);
-			if (lastBtn) lastBtn.onclick = () => loadSalesByProduct(totalPages);
-			if (prevBtn) prevBtn.onclick = () => loadSalesByProduct(prevTarget);
-			if (nextBtn) nextBtn.onclick = () => loadSalesByProduct(nextTarget);
-		}
-		
-		async function handleDownload() {
-			try {
-				const params = new URLSearchParams({
-					action: 'downloadSalesByProduct',
-					period: currentPeriod,
-					startDate: currentDateRange.startDate,
-					endDate: currentDateRange.endDate
-				});
-				
-				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
-			} catch (error) {
-				console.error('Error downloading CSV:', error);
-				alert('   .');
-			}
+		function formatCurrency(val) {
+			return '₱' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 		}
 
 		function escapeHtml(text) {
 			const div = document.createElement('div');
-			div.textContent = text;
+			div.textContent = text || '';
 			return div.innerHTML;
-		}
-
-		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
-		function decodeHtmlEntities(str) {
-			if (!str) return str;
-			const txt = document.createElement('textarea');
-			txt.innerHTML = str;
-			return txt.value;
 		}
 	</script>
 </body>
