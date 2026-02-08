@@ -64,13 +64,69 @@
 		/* Loading */
 		.sp-loading { text-align: center; padding: 60px 20px; color: #94a3b8; }
 
+		/* ===== Mobile Responsive ===== */
 		@media (max-width: 768px) {
-			.sp-card-stats { gap: 12px; }
+			/* Sidebar overlay */
+			.layout-nav {
+				position: fixed; left: -280px; top: 70px; bottom: 0;
+				width: 260px; z-index: 200; background: #fff;
+				transition: left 0.3s ease;
+				box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+				padding: 20px 12px; overflow-y: auto;
+			}
+			.layout-nav.open { left: 0; }
+			.nav-overlay {
+				display: none; position: fixed; inset: 0; top: 70px;
+				background: rgba(0,0,0,0.4); z-index: 199;
+			}
+			.nav-overlay.show { display: block; }
+			.hamburger-btn {
+				display: flex; align-items: center; justify-content: center;
+				width: 40px; height: 40px; background: none; border: none;
+				cursor: pointer; font-size: 24px;
+			}
+			.layout-content { padding: 16px; }
+			.page-title { font-size: 20px !important; }
+			.card-panel { padding: 16px; border-radius: 16px; }
+
+			/* Tabs scroll */
+			.sp-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+			.sp-tab-btn { white-space: nowrap; padding: 10px 16px; font-size: 13px; }
+
+			/* Summary 2-col */
+			.sp-summary { gap: 8px; }
+			.sp-summary-item { min-width: calc(50% - 4px); flex: none; padding: 10px 14px; }
+			.sp-summary-item .value { font-size: 16px; }
+
+			/* Card header mobile: name full width + stats below */
+			.sp-card-header { flex-wrap: wrap; padding: 12px; gap: 8px; }
+			.sp-card-name { min-width: 100%; order: 1; white-space: normal; }
+			.sp-card-stats { order: 2; width: 100%; justify-content: space-between; gap: 12px; }
 			.sp-card-stat .stat-label { display: none; }
 			.sp-progress { width: 60px; }
-			.sp-summary { gap: 8px; }
-			.sp-summary-item { min-width: 140px; padding: 10px 14px; }
-			.sp-summary-item .value { font-size: 16px; }
+
+			/* Inner date table -> card */
+			.sp-date-table thead { display: none; }
+			.sp-date-table tr {
+				display: block; border: 1px solid #e2e8f0; border-radius: 8px;
+				padding: 10px; margin-bottom: 6px; background: #fff;
+			}
+			.sp-date-table td {
+				display: flex; justify-content: space-between; align-items: center;
+				padding: 4px 0; border: none; text-align: right;
+			}
+			.sp-date-table td::before {
+				content: attr(data-label);
+				font-weight: 600; color: #64748b; font-size: 12px;
+				margin-right: 8px; text-align: left;
+			}
+		}
+		@media (min-width: 769px) {
+			.hamburger-btn { display: none; }
+			.nav-overlay { display: none !important; }
+		}
+		@media (max-width: 480px) {
+			.sp-summary-item { min-width: 100%; }
 		}
 	</style>
 </head>
@@ -120,12 +176,36 @@
 		let allData = null;
 		let currentTab = 'all';
 
+		function initMobileMenu() {
+			const header = document.querySelector('.layout-header');
+			if (!header) return;
+			const brand = header.querySelector('.brand');
+			if (!brand) return;
+			const btn = document.createElement('button');
+			btn.className = 'hamburger-btn';
+			btn.innerHTML = '☰';
+			btn.setAttribute('aria-label', 'Menu');
+			brand.parentElement.insertBefore(btn, brand);
+			const overlay = document.createElement('div');
+			overlay.className = 'nav-overlay';
+			document.body.appendChild(overlay);
+			btn.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.toggle('open');
+				overlay.classList.toggle('show');
+			});
+			overlay.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.remove('open');
+				overlay.classList.remove('show');
+			});
+		}
+
 		document.addEventListener('DOMContentLoaded', async () => {
 			try {
 				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
 				const sessionData = await sessionResponse.json();
 				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
 				if (!isAdmin) { window.location.href = '../index.html'; return; }
+				initMobileMenu();
 				await loadData();
 			} catch (error) {
 				console.error('Session check error:', error);
@@ -235,11 +315,11 @@
 					const da = currentTab === 'confirmed' ? d.confirmedAmount : d.allAmount;
 					const dp = d.capacity > 0 ? ((ds / d.capacity) * 100).toFixed(1) : '0.0';
 					return `<tr>
-						<td class="date-col">${d.date}</td>
-						<td>${d.capacity.toLocaleString()}</td>
-						<td>${ds.toLocaleString()}</td>
-						<td>${dp}%</td>
-						<td>${formatCurrency(da)}</td>
+						<td class="date-col" data-label="Date">${d.date}</td>
+						<td data-label="Capacity">${d.capacity.toLocaleString()}</td>
+						<td data-label="Sold">${ds.toLocaleString()}</td>
+						<td data-label="Occupancy">${dp}%</td>
+						<td data-label="Amount">${formatCurrency(da)}</td>
 					</tr>`;
 				}).join('');
 

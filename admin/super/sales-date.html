@@ -51,8 +51,81 @@
 
 		.total-row td { font-weight: 700 !important; background: #f0f4ff !important; }
 
+		/* ===== Mobile Responsive ===== */
 		@media (max-width: 768px) {
-			.summary-stats { grid-template-columns: repeat(2, 1fr); }
+			/* Sidebar overlay */
+			.layout-nav {
+				position: fixed; left: -280px; top: 70px; bottom: 0;
+				width: 260px; z-index: 200; background: #fff;
+				transition: left 0.3s ease;
+				box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+				padding: 20px 12px; overflow-y: auto;
+			}
+			.layout-nav.open { left: 0; }
+			.nav-overlay {
+				display: none; position: fixed; inset: 0; top: 70px;
+				background: rgba(0,0,0,0.4); z-index: 199;
+			}
+			.nav-overlay.show { display: block; }
+			.hamburger-btn {
+				display: flex; align-items: center; justify-content: center;
+				width: 40px; height: 40px; background: none; border: none;
+				cursor: pointer; font-size: 24px;
+			}
+			.layout-content { padding: 16px; }
+			.page-title { font-size: 20px !important; }
+			.card-panel { padding: 16px; border-radius: 16px; }
+
+			/* Tabs */
+			.tab-wrap { flex-wrap: wrap; gap: 4px; }
+			.tab-btn { padding: 6px 14px; font-size: 13px; flex: 1; text-align: center; min-width: 0; }
+
+			/* Summary cards */
+			.summary-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+			.stat-card { padding: 14px; }
+			.stat-card .stat-value { font-size: 18px; }
+
+			/* Table -> Card */
+			.jw-tableA { border: none; }
+			.jw-tableA colgroup { display: none; }
+			.jw-tableA thead { display: none; }
+			.jw-tableA tbody tr {
+				display: block; border: 1px solid #e5e7eb; border-radius: 12px;
+				padding: 14px; margin-bottom: 10px; background: #fff;
+			}
+			.jw-tableA tbody td {
+				display: flex; justify-content: space-between; align-items: center;
+				padding: 6px 0; border: none; height: auto; white-space: normal;
+				text-overflow: unset; overflow: visible;
+			}
+			.jw-tableA tbody td::before {
+				content: attr(data-label);
+				font-weight: 600; color: #64748b; font-size: 13px;
+				flex-shrink: 0; margin-right: 12px; min-width: 100px;
+			}
+			.jw-tableA tbody td.no { display: none; }
+
+			/* Occupancy bar in card */
+			.occupancy-bar-wrap { flex-direction: column; align-items: flex-end; gap: 4px; }
+			.occupancy-bar { width: 100%; }
+
+			/* TOTAL row highlight */
+			.total-row { border: 2px solid #3b82f6 !important; background: #f0f4ff; }
+
+			/* Download button */
+			.controller { margin-top: 20px; }
+			.controller .jw-button { width: 100%; }
+
+			/* Pagination */
+			.jw-pagebox { margin-top: 16px; }
+		}
+		@media (min-width: 769px) {
+			.hamburger-btn { display: none; }
+			.nav-overlay { display: none !important; }
+		}
+		@media (max-width: 480px) {
+			.summary-stats { grid-template-columns: 1fr; }
+			.stat-card .stat-value { font-size: 16px; }
 		}
 	</style>
 </head>
@@ -175,6 +248,29 @@
 		let currentTab = 'all';
 		let cachedData = null;
 
+		function initMobileMenu() {
+			const header = document.querySelector('.layout-header');
+			if (!header) return;
+			const brand = header.querySelector('.brand');
+			if (!brand) return;
+			const btn = document.createElement('button');
+			btn.className = 'hamburger-btn';
+			btn.innerHTML = '☰';
+			btn.setAttribute('aria-label', 'Menu');
+			brand.parentElement.insertBefore(btn, brand);
+			const overlay = document.createElement('div');
+			overlay.className = 'nav-overlay';
+			document.body.appendChild(overlay);
+			btn.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.toggle('open');
+				overlay.classList.toggle('show');
+			});
+			overlay.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.remove('open');
+				overlay.classList.remove('show');
+			});
+		}
+
 		document.addEventListener('DOMContentLoaded', async () => {
 			try {
 				const sessionResponse = await fetch('../backend/api/check-session.php', {
@@ -187,6 +283,8 @@
 					window.location.href = '../index.html';
 					return;
 				}
+
+				initMobileMenu();
 
 				// Tab click handlers
 				document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -317,17 +415,17 @@
 				const colorClass = pct < 50 ? 'occupancy-green' : pct < 80 ? 'occupancy-orange' : 'occupancy-red';
 
 				return `<tr>
-					<td class="no is-center">${rowNum}</td>
-					<td class="is-center">${escapeHtml(item.yearMonth)}</td>
-					<td class="is-center">${Number(v.cap).toLocaleString()}</td>
-					<td class="is-center">${Number(v.seats).toLocaleString()}</td>
-					<td class="is-center">
+					<td class="no is-center" data-label="No">${rowNum}</td>
+					<td class="is-center" data-label="Month">${escapeHtml(item.yearMonth)}</td>
+					<td class="is-center" data-label="Total Inventory">${Number(v.cap).toLocaleString()}</td>
+					<td class="is-center" data-label="Booked Seats">${Number(v.seats).toLocaleString()}</td>
+					<td class="is-center" data-label="Occupancy Rate">
 						<div class="occupancy-bar-wrap ${colorClass}">
 							<div class="occupancy-bar"><div class="occupancy-bar-fill" style="width:${Math.min(pct, 100)}%"></div></div>
 							<span class="occupancy-pct">${pct}%</span>
 						</div>
 					</td>
-					<td class="is-center">${Number(v.amt).toLocaleString()}</td>
+					<td class="is-center" data-label="Total Amount">${Number(v.amt).toLocaleString()}</td>
 				</tr>`;
 			}).join('');
 
@@ -336,17 +434,17 @@
 			const totalColor = totalPct < 50 ? 'occupancy-green' : totalPct < 80 ? 'occupancy-orange' : 'occupancy-red';
 
 			html += `<tr class="total-row">
-				<td class="no is-center"></td>
-				<td class="is-center">TOTAL</td>
-				<td class="is-center">${Number(totals.cap).toLocaleString()}</td>
-				<td class="is-center">${Number(totals.seats).toLocaleString()}</td>
-				<td class="is-center">
+				<td class="no is-center" data-label="No"></td>
+				<td class="is-center" data-label="Month">TOTAL</td>
+				<td class="is-center" data-label="Total Inventory">${Number(totals.cap).toLocaleString()}</td>
+				<td class="is-center" data-label="Booked Seats">${Number(totals.seats).toLocaleString()}</td>
+				<td class="is-center" data-label="Occupancy Rate">
 					<div class="occupancy-bar-wrap ${totalColor}">
 						<div class="occupancy-bar"><div class="occupancy-bar-fill" style="width:${Math.min(totalPct, 100)}%"></div></div>
 						<span class="occupancy-pct">${totalPct}%</span>
 					</div>
 				</td>
-				<td class="is-center">${Number(totals.amt).toLocaleString()}</td>
+				<td class="is-center" data-label="Total Amount">${Number(totals.amt).toLocaleString()}</td>
 			</tr>`;
 
 			tbody.innerHTML = html;

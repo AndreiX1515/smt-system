@@ -190,6 +190,95 @@
 			border-radius: 50%;
 			margin-right: 4px;
 		}
+
+		/* ===== Mobile Responsive ===== */
+		@media (max-width: 768px) {
+			/* Sidebar overlay */
+			.layout-nav {
+				position: fixed; left: -280px; top: 70px; bottom: 0;
+				width: 260px; z-index: 200; background: #fff;
+				transition: left 0.3s ease;
+				box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+				padding: 20px 12px; overflow-y: auto;
+			}
+			.layout-nav.open { left: 0; }
+			.nav-overlay {
+				display: none; position: fixed; inset: 0; top: 70px;
+				background: rgba(0,0,0,0.4); z-index: 199;
+			}
+			.nav-overlay.show { display: block; }
+			.hamburger-btn {
+				display: flex; align-items: center; justify-content: center;
+				width: 40px; height: 40px; background: none; border: none;
+				cursor: pointer; font-size: 24px;
+			}
+			.layout-content { padding: 16px; }
+			.page-title { font-size: 20px !important; }
+			.card-panel { padding: 16px; border-radius: 16px; }
+
+			/* Search/filter panel vertical stack */
+			.list-header { flex-direction: column; align-items: stretch; gap: 12px; }
+			.search-form { flex-wrap: wrap; }
+			.search-form .grid-item { width: 100%; }
+			.search-form .grid-item input[type="text"] { width: 100% !important; }
+			.search-field { width: 100%; min-width: unset; }
+
+			/* Tabs */
+			.tab-wrap { flex-wrap: wrap; gap: 0; }
+			.tab-btn { flex: 1; text-align: center; font-size: 13px; padding: 10px 12px; }
+
+			/* Table -> Card (both tables) */
+			.jw-tableA { border: none; }
+			.jw-tableA colgroup { display: none; }
+			.jw-tableA thead { display: none; }
+			.jw-tableA tbody tr {
+				display: block; border: 1px solid #e5e7eb; border-radius: 12px;
+				padding: 14px; margin-bottom: 10px; background: #fff;
+			}
+			.jw-tableA tbody td {
+				display: flex; justify-content: space-between; align-items: center;
+				padding: 6px 0; border: none; height: auto; white-space: normal;
+				text-overflow: unset; overflow: visible;
+			}
+			.jw-tableA tbody td::before {
+				content: attr(data-label);
+				font-weight: 600; color: #64748b; font-size: 13px;
+				flex-shrink: 0; margin-right: 12px; min-width: 100px;
+			}
+			.jw-tableA tbody td.no { display: none; }
+
+			/* Action buttons: full width, touch-friendly */
+			.jw-tableA tbody td[data-label="Action"] {
+				justify-content: flex-end; gap: 6px; flex-wrap: wrap;
+			}
+			.jw-tableA tbody td[data-label="Action"]::before { display: none; }
+			.btn-approve, .btn-reject {
+				padding: 8px 16px; font-size: 13px; flex: 1; text-align: center;
+			}
+
+			/* Status Change column */
+			.jw-tableA tbody td[data-label="Status Change"] {
+				flex-direction: column; align-items: flex-end;
+			}
+
+			/* Changed field */
+			.changed-field { font-size: 12px; }
+
+			/* Pagination */
+			.pagination-wrap { flex-wrap: wrap; justify-content: center; gap: 4px; }
+
+			/* Download button */
+			.controller { margin-top: 20px; }
+			.controller .jw-button { width: 100%; }
+		}
+		@media (min-width: 769px) {
+			.hamburger-btn { display: none; }
+			.nav-overlay { display: none !important; }
+		}
+		@media (max-width: 480px) {
+			.tab-btn { font-size: 12px; padding: 8px 8px; }
+			.badge { font-size: 10px; min-width: 16px; height: 16px; }
+		}
 	</style>
 </head>
 
@@ -329,6 +418,29 @@
 		let currentPendingPage = 1;
 		let currentUpdatePage = 1;
 
+		function initMobileMenu() {
+			const header = document.querySelector('.layout-header');
+			if (!header) return;
+			const brand = header.querySelector('.brand');
+			if (!brand) return;
+			const btn = document.createElement('button');
+			btn.className = 'hamburger-btn';
+			btn.innerHTML = '☰';
+			btn.setAttribute('aria-label', 'Menu');
+			brand.parentElement.insertBefore(btn, brand);
+			const overlay = document.createElement('div');
+			overlay.className = 'nav-overlay';
+			document.body.appendChild(overlay);
+			btn.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.toggle('open');
+				overlay.classList.toggle('show');
+			});
+			overlay.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.remove('open');
+				overlay.classList.remove('show');
+			});
+		}
+
 		document.addEventListener('DOMContentLoaded', async () => {
 			try {
 				const sessionResponse = await fetch('../backend/api/check-session.php', {
@@ -340,6 +452,8 @@
 					window.location.href = '../index.html';
 					return;
 				}
+
+				initMobileMenu();
 
 				// admin_kr 여부 설정
 				__isAdminKr = sessionData.userType === 'admin_kr';
@@ -450,7 +564,7 @@
 							if (!cr) return false;
 							// agent가 요청한 travelers 변경만
 							if (cr.requestedByType !== 'agent') return false;
-							if (cr.changeType !== 'travelers') return false;
+							if (cr.changeType !== 'travelers' && cr.changeType !== 'travelers_add_remove') return false;
 							// 출발 59일 이내만
 							const dep = booking.departureDate || booking.travelStartDate;
 							if (!dep) return false;
@@ -540,20 +654,19 @@
 
 				return `
 					<tr>
-						<td class="no is-center">${globalIndex + 1}</td>
-						<!-- (HTML 태그 수정) 디코딩 적용 -->
-						<td class="td-ellipsis" onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor:pointer;"><span>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</span></td>
-						<td class="is-center">${escapeHtml(booking.departureDate || booking.travelStartDate || '')}</td>
-						<td class="is-center">${escapeHtml(dateBooked)}</td>
-						<td class="is-center">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
-						<td class="is-center">${requestedByLabel ? `<span style="${requestedByStyle}">${requestedByLabel}</span>` : '-'}</td>
-						<td class="is-center">${Number(booking.numberOfPeople || 0)}</td>
-						<td class="is-center">${
+						<td class="no is-center" data-label="No">${globalIndex + 1}</td>
+						<td class="td-ellipsis" data-label="Product Name" onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor:pointer;"><span>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</span></td>
+						<td class="is-center" data-label="Travel Date">${escapeHtml(booking.departureDate || booking.travelStartDate || '')}</td>
+						<td class="is-center" data-label="Date Booked">${escapeHtml(dateBooked)}</td>
+						<td class="is-center" data-label="Agency">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
+						<td class="is-center" data-label="Requested By">${requestedByLabel ? `<span style="${requestedByStyle}">${requestedByLabel}</span>` : '-'}</td>
+						<td class="is-center" data-label="PAX">${Number(booking.numberOfPeople || 0)}</td>
+						<td class="is-center" data-label="Guide">${
 							booking.guideName
 								? escapeHtml(booking.guideName)
 								: '<span data-lan-eng="Unassigned">Unassigned</span>'
 						}</td>
-						<td class="is-center">
+						<td class="is-center" data-label="Action">
 							<button class="jw-button btn-approve" onclick="event.stopPropagation(); approveBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Approve">Approve</button>
 							<button class="jw-button btn-reject" onclick="event.stopPropagation(); rejectBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Reject">Reject</button>
 						</td>
@@ -614,19 +727,19 @@
 
 				return `
 					<tr>
-						<td class="no is-center">${globalIndex + 1}</td>
-						<td class="td-ellipsis" onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor:pointer;">
+						<td class="no is-center" data-label="No">${globalIndex + 1}</td>
+						<td class="td-ellipsis" data-label="Product Name" onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor:pointer;">
 							<span class="change-indicator"></span>
 							<span>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</span>
 						</td>
-						<td class="is-center">${renderChangeField(booking, 'departureDate', booking.departureDate || booking.travelStartDate || '')}</td>
-						<td class="is-center">${escapeHtml(dateBooked)}</td>
-						<td class="is-center">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
-						<td class="is-center">${requestedByLabel ? `<span style="${requestedByStyle}">${requestedByLabel}</span>` : '-'}</td>
-						<td class="is-center">
+						<td class="is-center" data-label="Travel Date">${renderChangeField(booking, 'departureDate', booking.departureDate || booking.travelStartDate || '')}</td>
+						<td class="is-center" data-label="Date Booked">${escapeHtml(dateBooked)}</td>
+						<td class="is-center" data-label="Agency">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
+						<td class="is-center" data-label="Requested By">${requestedByLabel ? `<span style="${requestedByStyle}">${requestedByLabel}</span>` : '-'}</td>
+						<td class="is-center" data-label="Status Change">
 							${statusChangeHtml}
 						</td>
-						<td class="is-center">
+						<td class="is-center" data-label="Action">
 							<button class="jw-button btn-approve" onclick="event.stopPropagation(); approveUpdateBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Approve Update">Approve Update</button>
 							<button class="jw-button btn-reject" onclick="event.stopPropagation(); rejectUpdateBooking('${escapeHtml(booking.bookingId)}')" data-lan-eng="Reject Update">Reject Update</button>
 						</td>
@@ -667,7 +780,7 @@
 				const changes = [];
 				if (cr.changeType === 'status') {
 					changes.push(`Status: ${getStatusLabel(cr.originalStatus)} → ${getStatusLabel(cr.targetStatus)}`);
-				} else if (cr.changeType === 'travelers') {
+				} else if (cr.changeType === 'travelers' || cr.changeType === 'travelers_add_remove') {
 					const originalCount = (cr.previousData?.originalTravelers || []).length;
 					const pendingCount = (cr.newData?.pendingTravelers || []).length;
 					changes.push(`Travelers: ${originalCount}명 → ${pendingCount}명`);
@@ -754,7 +867,7 @@
 					`;
 				}
 
-				if (cr.changeType === 'travelers') {
+				if (cr.changeType === 'travelers' || cr.changeType === 'travelers_add_remove') {
 					const originalCount = (cr.previousData?.originalTravelers || []).length;
 					const pendingCount = (cr.newData?.pendingTravelers || []).length;
 					return `

@@ -15,6 +15,28 @@
 	<link rel="stylesheet" href="./css/a_variables.css">
 	<link rel="stylesheet" href="./css/a_components.css">
 	<link rel="stylesheet" href="./css/a_contents.css">
+
+	<style>
+		@media (max-width: 768px) {
+			.layout-header { padding: 0 16px; }
+			.layout-content.jw-center { padding: 16px; }
+			.login-card {
+				width: 100%; height: auto;
+				padding: 40px 20px; gap: 36px;
+				border-radius: 16px;
+			}
+			.login-card > img { max-height: 80px; }
+			.login-card .field-wrap { width: 100%; }
+			.login-card .field { width: 100%; }
+			.login-card .row { width: 100%; flex-wrap: wrap; gap: 12px; }
+			.login-card .linkbar { gap: 16px; }
+			.login-card .linkbar .link { font-size: 13px; }
+			.login-button { width: 100%; height: 48px; }
+		}
+		@media (max-width: 380px) {
+			.login-card .row { flex-direction: column; align-items: flex-start; }
+		}
+	</style>
 </head>
 
 <body>
@@ -67,27 +89,6 @@
 		</section>
 
 	</main>
-	
-	<div class="temporary-guide">
-		<button type="button" class="jw-button" onclick="temp_link('super/overview.html')"><strong>super</strong></button>
-		
-		<button type="button" class="jw-button jw-mgt10" onclick="temp_link('agent/overview.html')"><strong>에이전트</strong></button>
-		<button type="button" class="jw-button" onclick="modal('member/agent-id-find.html', '580px', '582px')">(모달 1) 아이디 찾기</button>
-		<button type="button" class="jw-button" onclick="modal('member/agent-id-find-result.html', '580px', '358px')">(모달 2) 아이디 찾기 결과</button>
-		<button type="button" class="jw-button" onclick="modal('member/agent-password-reset.html', '580px', '582px')">(모달 3) 비밀번호 재설정</button>
-		<button type="button" class="jw-button" onclick="modal('member/agent-password-issued.html', '580px', '394px')">(팝업 1) 비밀번호 발급 완료</button>
-		
-		<button type="button" class="jw-button jw-mgt10" onclick="temp_link('guide/full-list.html')"><strong>가이드</strong></button>
-		<button type="button" class="jw-button" onclick="modal('member/guide-id-find.html', '580px', '470px')">(모달 4) 아이디 찾기</button>
-		<button type="button" class="jw-button" onclick="modal('member/guide-id-find-result.html', '580px', '358px')">(모달 2) 아이디 찾기 결과</button>
-		<button type="button" class="jw-button" onclick="modal('member/guide-password-reset.html', '580px', '582px')">(모달 5) 비밀번호 재설정</button>
-		<button type="button" class="jw-button" onclick="modal('member/guide-password-issued.html', '580px', '394px')">(팝업 1) 비밀번호 발급 완료</button>
-		
-		<button type="button" class="jw-button jw-mgt10" onclick="temp_link('cs/inquiry-list.html')"><strong>cs</strong></button>
-
-		<button type="button" class="jw-button" onclick="modal('popup/popupA.html', '600px', '252px')"><strong>팝업A</strong></button>
-		<button type="button" class="jw-button" onclick="modal('popup/popupB.html', '600px', '252px')"><strong>팝업B</strong></button>
-	</div>
 	
 	<script src="./js/default.js"></script>
 	<script src="./js/super.js?v=20251226_adminloginfix1"></script>
