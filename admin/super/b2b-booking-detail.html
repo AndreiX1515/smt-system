@@ -2116,15 +2116,25 @@
 			const age = calculateAge(dobInput.value);
 			ageInput.value = age;
 
+			let type = '';
 			if (age !== '') {
 				if (age < 2) {
+					type = 'infant';
 					typeSelect.value = 'infant';
 				} else if (age < 12) {
+					type = 'child';
 					typeSelect.value = 'child';
 				} else {
+					type = 'adult';
 					typeSelect.value = 'adult';
 				}
 			}
+
+			// Child Room / Infant Seat 컨테이너 표시/숨김
+			const childRoomContainer = document.getElementById(`child-room-container-${idx}`);
+			if (childRoomContainer) childRoomContainer.style.display = type === 'child' ? 'block' : 'none';
+			const infantSeatContainer = document.getElementById(`infant-seat-container-${idx}`);
+			if (infantSeatContainer) infantSeatContainer.style.display = type === 'infant' ? 'block' : 'none';
 		}
 
 		// 여행자 편집 카드 렌더링
@@ -2370,6 +2380,13 @@
 				html += '<select class="form-control" data-field="childRoom"' + disabledAttr + ' style="' + readonlyStyle + '">';
 				html += '<option value="no"' + (!t.childRoom ? ' selected' : '') + '>No</option>';
 				html += '<option value="yes"' + (t.childRoom ? ' selected' : '') + '>Yes</option></select></div>';
+
+				// Infant Seat (shown for infant type)
+				html += '<div class="form-group" id="infant-seat-container-' + idx + '" style="display:' + (travelerType === 'infant' ? 'block' : 'none') + ';">';
+				html += '<label>Infant Seat</label>';
+				html += '<select class="form-control" data-field="infantSeat"' + disabledAttr + ' style="' + readonlyStyle + '">';
+				html += '<option value="no"' + (!parseInt(t.infantSeat || 0) ? ' selected' : '') + '>No (Lap)</option>';
+				html += '<option value="yes"' + (parseInt(t.infantSeat || 0) ? ' selected' : '') + '>Yes (Seat)</option></select></div>';
 
 				// Profile/Source
 				html += '<div class="form-group">';

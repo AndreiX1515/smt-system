@@ -195,7 +195,7 @@ try {
                 $stmtConf = $conn->prepare("
                     SELECT MAX(t.cnt) AS maxBooked
                     FROM (
-                        SELECT departureDate, SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS cnt
+                        SELECT departureDate, SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS cnt
                         FROM bookings
                         WHERE packageId = ?
                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))

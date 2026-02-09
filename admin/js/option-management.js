@@ -146,11 +146,12 @@ function renderCategories(categories) {
                             <div class="option-info">
                                 <span class="option-name">${escapeHtml(opt.option_name)}</span>
                                 ${opt.option_name_en ? `<span class="option-name-en">(${escapeHtml(opt.option_name_en)})</span>` : ''}
+                                ${opt.is_infant_seat ? '<span style="background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:6px;">Infant Seat</span>' : ''}
                             </div>
                             <div class="option-info">
                                 <span class="option-price">PHP ${formatNumber(opt.price)}</span>
                                 <div class="option-actions">
-                                    <button class="btn-icon edit" onclick="openEditOptionModal(${opt.option_id}, ${cat.category_id}, '${escapeHtml(opt.option_name)}', '${escapeHtml(opt.option_name_en || '')}', ${opt.price})" title="Edit">
+                                    <button class="btn-icon edit" onclick="openEditOptionModal(${opt.option_id}, ${cat.category_id}, '${escapeHtml(opt.option_name)}', '${escapeHtml(opt.option_name_en || '')}', ${opt.price}, ${opt.is_infant_seat ? 1 : 0})" title="Edit">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -430,16 +431,18 @@ function openAddOptionModal(categoryId) {
     document.getElementById('optionName').value = '';
     document.getElementById('optionNameEn').value = '';
     document.getElementById('optionPrice').value = '0';
+    document.getElementById('optionIsInfantSeat').checked = false;
     document.getElementById('optionModal').style.display = 'flex';
 }
 
-function openEditOptionModal(optionId, categoryId, name, nameEn, price) {
+function openEditOptionModal(optionId, categoryId, name, nameEn, price, isInfantSeat) {
     document.getElementById('optionModalTitle').textContent = 'Edit Option';
     document.getElementById('editOptionId').value = optionId;
     document.getElementById('optionCategoryId').value = categoryId;
     document.getElementById('optionName').value = name;
     document.getElementById('optionNameEn').value = nameEn;
     document.getElementById('optionPrice').value = price;
+    document.getElementById('optionIsInfantSeat').checked = !!isInfantSeat;
     document.getElementById('optionModal').style.display = 'flex';
 }
 
@@ -471,6 +474,7 @@ async function saveOption() {
         formData.append('optionName', optionName);
         formData.append('optionNameEn', optionNameEn);
         formData.append('price', price);
+        formData.append('isInfantSeat', document.getElementById('optionIsInfantSeat').checked ? 1 : 0);
 
         const response = await fetch(API_URL, {
             method: 'POST',

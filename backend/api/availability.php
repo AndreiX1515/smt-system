@@ -71,7 +71,7 @@ function getPackageAvailability($package_id, $date_from = '', $date_to = '') {
                             SELECT
                                 packageId,
                                 departureDate,
-                                SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) as booked_seats
+                                SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                             FROM bookings
                             WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                               AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
@@ -168,7 +168,7 @@ function getFlightAvailability($flight_id) {
                       SELECT
                           packageId,
                           departureDate,
-                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) as booked_seats
+                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                       FROM bookings
                       WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                         AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
@@ -249,7 +249,7 @@ function getMonthlyAvailability($month) {
                       SELECT
                           packageId,
                           departureDate,
-                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) as booked_seats
+                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                       FROM bookings
                       WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                         AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
@@ -309,7 +309,7 @@ function getAllAvailability($date_from = '', $date_to = '') {
                       SELECT
                           packageId,
                           departureDate,
-                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) as booked_seats
+                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                       FROM bookings
                       WHERE (bookingStatus IS NULL OR bookingStatus IN ('pending','confirmed'))
                         AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')

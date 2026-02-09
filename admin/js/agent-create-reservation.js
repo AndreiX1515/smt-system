@@ -804,6 +804,7 @@ async function loadExistingReservation(bookingId) {
                 visaRequired: t.visaRequired || false,
                 visaType: t.visaType || 'with_visa',
                 childRoom: t.childRoom || false,
+                infantSeat: t.infantSeat || false,
                 profile_source: t.profile_source || t.profileSource || '',
                 remarks: t.specialRequests || '',
                 flightOptions: t.flightOptions || [],
@@ -936,6 +937,7 @@ async function loadEditReservationData() {
                 visaType: t.visaType || t.visa_type || 'with_visa',
                 visaDocumentUrl: t.visaDocument || t.visa_document || '',
                 childRoom: t.childRoom || t.child_room || false,
+                infantSeat: t.infantSeat || t.infant_seat || false,
                 profile_source: t.profile_source || t.profileSource || '',
                 remarks: t.specialRequests || t.special_requests || '',
                 flightOptions: t.flightOptions || t.flight_options || [],
@@ -1095,6 +1097,7 @@ async function loadEditReservationDataFromAPI(bookingId) {
                 visaType: t.visaType || t.visa_type || 'with_visa',
                 visaDocumentUrl: t.visaDocument || t.visa_document || '',
                 childRoom: t.childRoom || t.child_room || false,
+                infantSeat: t.infantSeat || t.infant_seat || false,
                 profile_source: t.profile_source || t.profileSource || '',
                 remarks: t.specialRequests || t.special_requests || '',
                 flightOptions: t.flightOptions || t.flight_options || [],
@@ -1742,6 +1745,7 @@ function convertToModalFormat(t) {
         passportPhotoUrl: t.passportImage || t.passportPhotoUrl || '',
         isPrimary: t.isMainTraveler || t.isPrimary || false,
         childRoom: t.childRoom || false,
+        infantSeat: t.infantSeat || false,
         profile_source: t.profile_source || t.profileSource || '',
         flightOptions: t.flightOptions || [],
         flightOptionPrices: t.flightOptionPrices || {}
@@ -1771,6 +1775,7 @@ function convertToTravelersFormat(t) {
         visaDocument: t.visaDocumentUrl || t.visaDocument || '',
         isMainTraveler: t.isPrimary || t.isMainTraveler || false,
         childRoom: t.childRoom || false,
+        infantSeat: t.infantSeat || false,
         profile_source: t.profile_source || t.profileSource || '',
         flightOptions: t.flightOptions || [],
         flightOptionPrices: t.flightOptionPrices || {}
@@ -1907,6 +1912,7 @@ function createTravelerFromContactPerson(contactPerson) {
         visaDocumentUrl: customer.visaDocument || '',
         isPrimary: true,
         childRoom: false,
+        infantSeat: false,
         profile_source: '',
         // Contact Person 연동 정보
         fromContactPerson: true,
@@ -2113,6 +2119,13 @@ function renderTravelerCards() {
                             <option value="yes" ${traveler.childRoom ? 'selected' : ''}>Yes</option>
                         </select>
                     </div>
+                    <div class="form-group" id="infant-seat-container-${index}" style="display: ${traveler.type === 'infant' ? 'block' : 'none'};">
+                        <label>Infant Seat</label>
+                        <select onchange="updateTravelerField(${index}, 'infantSeat', this.value === 'yes')">
+                            <option value="no" ${!traveler.infantSeat ? 'selected' : ''}>No (Lap)</option>
+                            <option value="yes" ${traveler.infantSeat ? 'selected' : ''}>Yes (Seat)</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Profile/Source</label>
                         <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
@@ -2289,11 +2302,21 @@ window.updateTravelerBirthDate = function(index, birthDate) {
                     travelerModalData[index].childRoom = false;
                 }
             }
+
+            // Infant Seat 컨테이너 표시/숨김
+            const infantSeatContainer = document.getElementById(`infant-seat-container-${index}`);
+            if (infantSeatContainer) {
+                infantSeatContainer.style.display = type === 'infant' ? 'block' : 'none';
+                if (type !== 'infant') {
+                    travelerModalData[index].infantSeat = false;
+                }
+            }
         } else {
             // 생년월일이 비어있으면 나이와 Type 초기화
             travelerModalData[index].age = null;
             travelerModalData[index].type = 'adult';
             travelerModalData[index].childRoom = false;
+            travelerModalData[index].infantSeat = false;
 
             const ageInput = document.getElementById(`traveler-age-${index}`);
             if (ageInput) ageInput.value = '-';
@@ -2305,6 +2328,12 @@ window.updateTravelerBirthDate = function(index, birthDate) {
             const childRoomContainer = document.getElementById(`child-room-container-${index}`);
             if (childRoomContainer) {
                 childRoomContainer.style.display = 'none';
+            }
+
+            // Infant Seat 컨테이너 숨김
+            const infantSeatContainer = document.getElementById(`infant-seat-container-${index}`);
+            if (infantSeatContainer) {
+                infantSeatContainer.style.display = 'none';
             }
         }
     }
@@ -2654,6 +2683,7 @@ function addTravelerCard() {
         visaDocumentUrl: null,
         isPrimary: travelerModalData.length === 0,
         childRoom: false,
+        infantSeat: false,
         profile_source: ''
     };
     travelerModalData.push(newTraveler);
@@ -4016,15 +4046,21 @@ function renderFlightOptionsForTraveler(travelerIndex) {
         `;
 
         (cat.options || []).forEach(opt => {
+            // is_infant_seat 옵션은 infant 타입 여행자에게만 표시
+            const traveler = travelerModalData[travelerIndex];
+            if (opt.is_infant_seat && (!traveler || traveler.type !== 'infant')) return;
+
             const optId = Number(opt.option_id);
             const isChecked = selectedOptionIds.includes(optId);
             const priceText = opt.price > 0 ? `+PHP ${formatNumber(opt.price)}` : 'Free';
+            const infantSeatAttr = opt.is_infant_seat ? 'data-is-infant-seat="1"' : '';
             html += `
                 <label class="option-checkbox">
                     <input type="checkbox"
                            data-option-id="${optId}"
                            data-option-price="${opt.price}"
                            data-category-id="${cat.category_id}"
+                           ${infantSeatAttr}
                            ${isChecked ? 'checked' : ''}
                            onchange="updateTravelerFlightOption(${travelerIndex}, ${optId}, ${opt.price}, this.checked)">
                     <span class="option-name">${escapeHtml(opt.option_name_en || opt.option_name)}</span>
@@ -4075,6 +4111,19 @@ window.updateTravelerFlightOption = function(travelerIndex, optionId, price, isC
         if (idx > -1) {
             options.splice(idx, 1);
             delete prices[numOptionId];
+        }
+    }
+
+    // is_infant_seat 옵션 체크/해제 시 infantSeat 연동
+    const isInfantSeatOpt = airlineOptionCategories.some(cat =>
+        (cat.options || []).some(o => Number(o.option_id) === numOptionId && o.is_infant_seat)
+    );
+    if (isInfantSeatOpt) {
+        travelerModalData[travelerIndex].infantSeat = isChecked;
+        // Infant Seat 셀렉트 UI도 동기화
+        const infantSeatSelect = document.querySelector(`#infant-seat-container-${travelerIndex} select`);
+        if (infantSeatSelect) {
+            infantSeatSelect.value = isChecked ? 'yes' : 'no';
         }
     }
 
@@ -5239,8 +5288,13 @@ function updateOrderSummary() {
 
             let key, label;
             if (type === 'infant') {
-                key = 'infant';
-                label = 'Infant';
+                if (t.infantSeat) {
+                    key = 'infant_seat';
+                    label = 'Infant (Seat)';
+                } else {
+                    key = 'infant_no_seat';
+                    label = 'Infant (No Seat)';
+                }
             } else if (type === 'child') {
                 if (t.childRoom === true) {
                     key = 'child_room_yes';
@@ -6185,6 +6239,7 @@ async function handleSave() {
                 visaType: t.visaType || '',
                 isMainTraveler: t.isMainTraveler,
                 childRoom: t.childRoom || false,
+                infantSeat: t.infantSeat || false,
                 profile_source: t.profile_source || '',
                 remarks: t.remarks || '',
                 // passportPhotoKey는 FormData 파일 필드명과 매칭(backend가 업로드 후 passportImage로 저장)

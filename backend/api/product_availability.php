@@ -270,7 +270,7 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
     $bookedByDate = [];
     try {
         $bst = $conn->prepare("
-            SELECT departureDate, SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+            SELECT departureDate, SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
             FROM bookings
             WHERE packageId = ?
               AND departureDate >= ?

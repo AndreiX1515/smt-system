@@ -123,12 +123,22 @@ try {
     //   (package_available_dates)
     $availability = [];
     if (table_exists($conn, 'package_available_dates')) {
-        $aq = "SELECT id AS availabilityId, available_date AS availableDate, price, b2b_price AS b2bPrice,
-                      childPrice, b2b_child_price AS b2bChildPrice, infant_price AS infantPrice, b2b_infant_price AS b2bInfantPrice,
-                      capacity AS availableSeats, booked_seats AS bookedSeats, status, flight_id AS flightId
-               FROM package_available_dates
-               WHERE package_id = ?
-               ORDER BY available_date ASC";
+        $aq = "SELECT pad.id AS availabilityId, pad.available_date AS availableDate, pad.price, pad.b2b_price AS b2bPrice,
+                      pad.childPrice, pad.b2b_child_price AS b2bChildPrice, pad.infant_price AS infantPrice, pad.b2b_infant_price AS b2bInfantPrice,
+                      pad.capacity AS availableSeats,
+                      COALESCE(bk.booked, 0) AS bookedSeats,
+                      pad.status, pad.flight_id AS flightId
+               FROM package_available_dates pad
+               LEFT JOIN (
+                   SELECT packageId, departureDate,
+                          SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
+                   FROM bookings
+                   WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                     AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
+                   GROUP BY packageId, departureDate
+               ) bk ON bk.packageId = pad.package_id AND bk.departureDate = pad.available_date
+               WHERE pad.package_id = ?
+               ORDER BY pad.available_date ASC";
         $ast = $conn->prepare($aq);
         $ast->bind_param('i', $packageId);
         $ast->execute();

@@ -32,7 +32,7 @@ $sql = "SELECT
             p.packageId,
             p.maxParticipants,
             p.minParticipants,
-            COALESCE(SUM(COALESCE(b.adults,0) + COALESCE(b.children,0) + COALESCE(b.infants,0)), 0) AS bookedSeats
+            COALESCE(SUM(COALESCE(b.adults,0) + COALESCE(b.children,0) + COALESCE(b.infantsWithSeat,0)), 0) AS bookedSeats
         FROM packages p
         LEFT JOIN bookings b
             ON p.packageId = b.packageId

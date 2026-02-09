@@ -988,8 +988,20 @@ function getWaitingCancelledBookings($conn) {
                 $graceRemainingSeconds = 0;
             }
 
-            // canExtend: paymentType IN (staged, middle) AND departure > 31 days
-            $canExtend = in_array($b['paymentType'], ['staged', 'middle']) && $daysUntilDeparture > 31;
+            // Check if deadline has already been extended before (max 1 time)
+            $extCountStmt = $conn->prepare("
+                SELECT COUNT(*) as cnt FROM booking_status_history
+                WHERE bookingId = ? AND previousStatus = 'waiting_cancelled' AND changeReason LIKE 'Payment deadline extended%'
+            ");
+            $extCountStmt->bind_param('s', $bookingId);
+            $extCountStmt->execute();
+            $extCountRow = $extCountStmt->get_result()->fetch_assoc();
+            $extCountStmt->close();
+            $extensionCount = (int)($extCountRow['cnt'] ?? 0);
+            $extensionExhausted = $extensionCount >= 1;
+
+            // canExtend: paymentType IN (staged, middle) AND departure > 31 days AND not already extended
+            $canExtend = in_array($b['paymentType'], ['staged', 'middle']) && $daysUntilDeparture > 31 && !$extensionExhausted;
 
             $items[] = [
                 'bookingId' => $bookingId,
@@ -1003,7 +1015,8 @@ function getWaitingCancelledBookings($conn) {
                 'daysUntilDeparture' => $daysUntilDeparture,
                 'graceDeadline' => $graceDeadline->format('Y-m-d H:i:s'),
                 'graceRemainingSeconds' => $graceRemainingSeconds,
-                'canExtend' => $canExtend
+                'canExtend' => $canExtend,
+                'extensionExhausted' => $extensionExhausted
             ];
         }
 
@@ -1048,6 +1061,19 @@ function extendPaymentDeadline($conn, $input) {
             send_error_response('Full payment bookings cannot be extended');
         }
 
+        // Check extension limit (max 1 time per booking)
+        $extCountStmt = $conn->prepare("
+            SELECT COUNT(*) as cnt FROM booking_status_history
+            WHERE bookingId = ? AND previousStatus = 'waiting_cancelled' AND changeReason LIKE 'Payment deadline extended%'
+        ");
+        $extCountStmt->bind_param('s', $bookingId);
+        $extCountStmt->execute();
+        $extCountRow = $extCountStmt->get_result()->fetch_assoc();
+        $extCountStmt->close();
+        if ((int)($extCountRow['cnt'] ?? 0) >= 1) {
+            send_error_response('This booking has already been extended once. Automatic extension is no longer available. Please contact the administrator.');
+        }
+
         $now = new DateTime();
         $depDate = new DateTime($booking['departureDate']);
         $daysUntilDeparture = (int)$now->diff($depDate)->format('%r%a');
@@ -1055,7 +1081,7 @@ function extendPaymentDeadline($conn, $input) {
             send_error_response('Cannot extend: departure is within 31 days');
         }
 
-        // Get next unpaid step
+        // Get next unpaid
         $payments = getPaymentsByBookingId($conn, $bookingId);
         $nextUnpaidStep = null;
         $currentDueDate = null;
@@ -1346,7 +1372,7 @@ function getBestPricePackages($conn) {
                 FROM package_available_dates pad2
                 LEFT JOIN (
                     SELECT packageId, departureDate,
-                           SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                           SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                     FROM bookings
                     WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                       AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
@@ -1365,7 +1391,7 @@ function getBestPricePackages($conn) {
                 AND pa.status IN ('available', 'confirmed', 'open')
             LEFT JOIN (
                 SELECT packageId, departureDate,
-                       SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                       SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
                 WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
@@ -2526,7 +2552,13 @@ function createReservation($conn, $input) {
             // 잔여 좌석 검증
             $packageId = (int)$input['packageId'];
             $departureDate = $input['departureDate'];
-            $travelerCount = count($input['travelers'] ?? []);
+            // 좌석 점유 인원만 카운트 (lap infant 제외)
+            $travelerCount = 0;
+            foreach (($input['travelers'] ?? []) as $t) {
+                $tType = strtolower($t['type'] ?? '');
+                if ($tType === 'infant' && empty($t['infantSeat'])) continue;
+                $travelerCount++;
+            }
 
             // 1) maxSeats 조회 (package_available_dates 또는 packages.maxParticipants)
             $maxSeats = 0;
@@ -2557,7 +2589,7 @@ function createReservation($conn, $input) {
             // 2) 이미 예약된 좌석 수 조회
             $bookedSeats = 0;
             $bkStmt = $conn->prepare("
-                SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
                 WHERE packageId = ? AND departureDate = ?
                   AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
@@ -3131,6 +3163,17 @@ function createReservation($conn, $input) {
                 }
             }
 
+            // infantSeat 컬럼 자동 생성 (없으면)
+            $infantSeatCheck = $conn->query("SHOW COLUMNS FROM booking_travelers LIKE 'infantSeat'");
+            if ($infantSeatCheck && $infantSeatCheck->num_rows === 0) {
+                try {
+                    $conn->query("ALTER TABLE booking_travelers ADD COLUMN infantSeat TINYINT(1) DEFAULT 0 COMMENT 'Infant seat option (1=occupies seat, 0=lap infant)'");
+                    error_log("Created infantSeat column in booking_travelers table");
+                } catch (Exception $e) {
+                    error_log("Failed to create infantSeat column: " . $e->getMessage());
+                }
+            }
+
             foreach ($input['travelers'] as $index => $traveler) {
                 // passport photo upload: create-reservation에서 FormData(passportPhoto_{idx})로 전송됨
                 // - 업로드가 있으면 traveler.passportImage로 저장하여 상세 화면에서 노출 가능 (요구사항 id 61-3, 66)
@@ -3466,6 +3509,14 @@ function createReservation($conn, $input) {
                     $travelerTypes .= 'i';
                 }
 
+                // infantSeat (infant 타입일 때만 의미 있음)
+                if (in_array('infantseat', $travelerColumns)) {
+                    $infantSeat = isset($traveler['infantSeat']) ? (int)$traveler['infantSeat'] : 0;
+                    $travelerFields[] = 'infantSeat';
+                    $travelerValues[] = $infantSeat;
+                    $travelerTypes .= 'i';
+                }
+
                 // profile_source
                 if (in_array('profile_source', $travelerColumns)) {
                     $profileSource = $traveler['profile_source'] ?? $traveler['profileSource'] ?? '';
@@ -3574,6 +3625,20 @@ function createReservation($conn, $input) {
                 }
 
                 $travelerStmt->close();
+            }
+
+            // infantsWithSeat 동기화: 좌석 점유 인팬트 수 계산 후 bookings 업데이트
+            $infantsWithSeat = 0;
+            foreach ($input['travelers'] as $t) {
+                if (strtolower($t['type'] ?? '') === 'infant' && !empty($t['infantSeat'])) {
+                    $infantsWithSeat++;
+                }
+            }
+            $iwsStmt = $conn->prepare("UPDATE bookings SET infantsWithSeat = ? WHERE bookingId = ?");
+            if ($iwsStmt) {
+                $iwsStmt->bind_param('is', $infantsWithSeat, $bookingId);
+                $iwsStmt->execute();
+                $iwsStmt->close();
             }
 
             $conn->commit();
@@ -8511,14 +8576,6 @@ function uploadPaymentProofFile($conn, $input) {
             send_error_response('Cannot upload payment proof in current reservation status', 403);
         }
 
-        // waiting_cancelled + 출발 31일 이내: 결제파일 업로드 차단
-        if (($row['bookingStatus'] ?? '') === 'waiting_cancelled' && !empty($row['departureDate'])) {
-            $daysUntilDep = (int)(new DateTime())->diff(new DateTime($row['departureDate']))->format('%r%a');
-            if ($daysUntilDep <= 31) {
-                send_error_response('Cannot upload payment proof: departure is within 31 days and booking is in waiting_cancelled status', 403);
-            }
-        }
-
         // 단계별 검증: Second는 Down 확인 후, Balance는 Second 확인 후
         if ($paymentType === 'second' && empty($row['downPaymentConfirmedAt'])) {
             send_error_response('Second Payment can only be uploaded after Down Payment is confirmed', 403);
@@ -8589,38 +8646,70 @@ function uploadPaymentProofFile($conn, $input) {
         $stmt->execute();
         $stmt->close();
 
-        // waiting_cancelled 상태에서 down/middle 결제증빙 업로드 시, 동일 기한인 나머지 단계 +3일 연장
+        // waiting_cancelled 상태에서 결제증빙 업로드 시 기한 연장
         $extendedSteps = [];
-        if (($row['bookingStatus'] ?? '') === 'waiting_cancelled' && $paymentType === 'down') {
+        if (($row['bookingStatus'] ?? '') === 'waiting_cancelled') {
+            $daysUntilDep = !empty($row['departureDate'])
+                ? (int)(new DateTime())->diff(new DateTime($row['departureDate']))->format('%r%a')
+                : 999;
+
             $payments = getPaymentsByBookingId($conn, $bookingId);
-            $uploadedDueDate = null;
-            foreach ($payments as $p) {
-                if ($p['paymentStep'] === 'down' || $p['paymentStep'] === 'middle') {
-                    $uploadedDueDate = $p['dueDate'] ?? null;
-                    break;
-                }
-            }
-            if ($uploadedDueDate) {
-                $newDueDate = date('Y-m-d', strtotime($uploadedDueDate . ' +3 days'));
+
+            if ($daysUntilDep <= 31) {
+                // 출발 31일 이내: 모든 미확인 결제 단계 기한을 내일(+1일)로 설정
+                $tomorrowDate = date('Y-m-d', strtotime('+1 day'));
                 $legacyDueDateMap = [
+                    'down' => 'downPaymentDueDate',
                     'second' => 'advancePaymentDueDate',
                     'balance' => 'balanceDueDate',
+                    'full' => 'fullPaymentDueDate',
+                    'middle' => 'downPaymentDueDate',
                     'middle_balance' => 'balanceDueDate'
                 ];
                 foreach ($payments as $p) {
                     $step = $p['paymentStep'];
-                    if ($step === 'down' || $step === 'middle' || $step === 'full') continue;
                     if ($p['status'] === 'confirmed') continue;
-                    if (($p['dueDate'] ?? '') === $uploadedDueDate) {
-                        upsertPayment($conn, $bookingId, $step, ['dueDate' => $newDueDate]);
-                        $legacyCol = $legacyDueDateMap[$step] ?? null;
-                        if ($legacyCol) {
-                            $legStmt = $conn->prepare("UPDATE bookings SET $legacyCol = ? WHERE bookingId = ?");
-                            $legStmt->bind_param('ss', $newDueDate, $bookingId);
-                            $legStmt->execute();
-                            $legStmt->close();
+                    upsertPayment($conn, $bookingId, $step, ['dueDate' => $tomorrowDate]);
+                    $legacyCol = $legacyDueDateMap[$step] ?? null;
+                    if ($legacyCol) {
+                        $legStmt = $conn->prepare("UPDATE bookings SET $legacyCol = ? WHERE bookingId = ?");
+                        $legStmt->bind_param('ss', $tomorrowDate, $bookingId);
+                        $legStmt->execute();
+                        $legStmt->close();
+                    }
+                    $extendedSteps[] = $step;
+                }
+            } elseif ($paymentType === 'down') {
+                // 기존 로직: down 업로드 시 동일 기한인 나머지 단계 +3일 연장
+                $uploadedDueDate = null;
+                foreach ($payments as $p) {
+                    if ($p['paymentStep'] === 'down' || $p['paymentStep'] === 'middle') {
+                        $uploadedDueDate = $p['dueDate'] ?? null;
+                        break;
+                    }
+                }
+                if ($uploadedDueDate) {
+                    $newDueDate = date('Y-m-d', strtotime($uploadedDueDate . ' +3 days'));
+                    $legacyDueDateMap = [
+                        'second' => 'advancePaymentDueDate',
+                        'balance' => 'balanceDueDate',
+                        'middle_balance' => 'balanceDueDate'
+                    ];
+                    foreach ($payments as $p) {
+                        $step = $p['paymentStep'];
+                        if ($step === 'down' || $step === 'middle' || $step === 'full') continue;
+                        if ($p['status'] === 'confirmed') continue;
+                        if (($p['dueDate'] ?? '') === $uploadedDueDate) {
+                            upsertPayment($conn, $bookingId, $step, ['dueDate' => $newDueDate]);
+                            $legacyCol = $legacyDueDateMap[$step] ?? null;
+                            if ($legacyCol) {
+                                $legStmt = $conn->prepare("UPDATE bookings SET $legacyCol = ? WHERE bookingId = ?");
+                                $legStmt->bind_param('ss', $newDueDate, $bookingId);
+                                $legStmt->execute();
+                                $legStmt->close();
+                            }
+                            $extendedSteps[] = $step;
                         }
-                        $extendedSteps[] = $step;
                     }
                 }
             }
@@ -8630,7 +8719,14 @@ function uploadPaymentProofFile($conn, $input) {
         $typeLabels = ['down' => 'Down Payment', 'second' => 'Second Payment', 'balance' => 'Balance', 'full' => 'Full Payment'];
         $historyMsg = $typeLabels[$paymentType] . ' proof file uploaded: ' . $originalFileName;
         if (!empty($extendedSteps)) {
-            $historyMsg .= ' | Due dates extended +3 days for: ' . implode(', ', $extendedSteps);
+            $daysUntilDep = !empty($row['departureDate'])
+                ? (int)(new DateTime())->diff(new DateTime($row['departureDate']))->format('%r%a')
+                : 999;
+            if ($daysUntilDep <= 31) {
+                $historyMsg .= ' | All pending due dates set to tomorrow (+1 day) for: ' . implode(', ', $extendedSteps);
+            } else {
+                $historyMsg .= ' | Due dates extended +3 days for: ' . implode(', ', $extendedSteps);
+            }
         }
         addReservationHistory($conn, $bookingId, $historyMsg);
 
@@ -10199,7 +10295,28 @@ function updateTravelerInfo($conn, $input) {
         $changeType = $isAddRemove ? 'travelers_add_remove' : 'travelers';
 
         // 인원 변경 시 재고 확인 (동적 계산: bookings 테이블 기반)
-        $seatDifference = count($travelers) - $currentTravelerCount;
+        // 좌석 점유 인원만 카운트 (lap infant 제외)
+        $newSeatCount = 0;
+        foreach ($travelers as $t) {
+            $tType = strtolower($t['type'] ?? '');
+            if ($tType === 'infant' && empty($t['infantSeat'])) continue; // lap infant
+            $newSeatCount++;
+        }
+        // 기존 좌석 점유 인원: 전체 여행자 중 lap infant 제외
+        $currentSeatCount = 0;
+        $existingTravStmt = $conn->prepare("SELECT travelerType, infantSeat FROM booking_travelers WHERE transactNo = ?");
+        if ($existingTravStmt) {
+            $existingTravStmt->bind_param('s', $travelerKey);
+            $existingTravStmt->execute();
+            $existingTravResult = $existingTravStmt->get_result();
+            while ($eRow = $existingTravResult->fetch_assoc()) {
+                $eType = strtolower($eRow['travelerType'] ?? '');
+                if ($eType === 'infant' && empty($eRow['infantSeat'])) continue;
+                $currentSeatCount++;
+            }
+            $existingTravStmt->close();
+        }
+        $seatDifference = $newSeatCount - $currentSeatCount;
 
         if (!$canDirectEdit) {
             // === pending_update 경로 (승인 필요) ===
@@ -10240,7 +10357,7 @@ function updateTravelerInfo($conn, $input) {
                     // 2) 실제 예약 수 동적 계산 (FOR UPDATE 잠금)
                     $bookedSeats = 0;
                     $bkStmt = $conn->prepare(
-                        "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                        "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                          FROM bookings
                          WHERE packageId = ? AND departureDate = ?
                            AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
@@ -10416,10 +10533,18 @@ function updateTravelerInfo($conn, $input) {
                 $changeRequestStmt->close();
 
                 // bookingStatus 업데이트: 증가 시 선차감, 감소 시 기존 유지
+                // infantsWithSeat 계산
+                $newInfantsWithSeat = 0;
+                foreach ($travelers as $t) {
+                    if (strtolower($t['type'] ?? '') === 'infant' && !empty($t['infantSeat'])) {
+                        $newInfantsWithSeat++;
+                    }
+                }
+
                 if ($isIncrease) {
                     // 증가: adults/children/infants/totalAmount/visaFee/flightOptionFee 즉시 반영 (선차감)
-                    $pendingStmt = $conn->prepare("UPDATE bookings SET adults = ?, children = ?, infants = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
-                    $pendingStmt->bind_param('iiiddds', $newAdults, $newChildren, $newInfants, $calculatedNewTotal, $calculatedVisaFee, $calculatedFlightOptionFee, $bookingId);
+                    $pendingStmt = $conn->prepare("UPDATE bookings SET adults = ?, children = ?, infants = ?, infantsWithSeat = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
+                    $pendingStmt->bind_param('iiiiddds', $newAdults, $newChildren, $newInfants, $newInfantsWithSeat, $calculatedNewTotal, $calculatedVisaFee, $calculatedFlightOptionFee, $bookingId);
                 } else {
                     // 감소 또는 동일: 원본 컬럼 유지, 상태만 변경
                     $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
@@ -10595,12 +10720,16 @@ function updateTravelerInfo($conn, $input) {
                 continue; // 이름이 없는 여행자는 건너뜀
             }
 
+            // childRoom, infantSeat 값 추출
+            $childRoomVal = isset($traveler['childRoom']) ? (int)$traveler['childRoom'] : 0;
+            $infantSeatVal = isset($traveler['infantSeat']) ? (int)$traveler['infantSeat'] : 0;
+
             $insertSql = "INSERT INTO booking_travelers
-                ($travelerBookingIdColumn, travelerType, title, firstName, lastName, gender, birthDate, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, isMainTraveler, visaStatus, visaType, specialRequests, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                ($travelerBookingIdColumn, travelerType, title, firstName, lastName, gender, birthDate, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, isMainTraveler, visaStatus, visaType, specialRequests, childRoom, infantSeat, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
             $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param('sssssssssssssisss',
+            $insertStmt->bind_param('sssssssssssssisssii',
                 $bookingId,
                 $travelerType,
                 $title,
@@ -10617,7 +10746,9 @@ function updateTravelerInfo($conn, $input) {
                 $isMainTraveler,
                 $visaStatus,
                 $travelerVisaType,
-                $specialRequests
+                $specialRequests,
+                $childRoomVal,
+                $infantSeatVal
             );
             $insertStmt->execute();
 
@@ -10704,6 +10835,20 @@ function updateTravelerInfo($conn, $input) {
             }
         } catch (Exception $e) {
             error_log("Failed to clean up orphan visa applications: " . $e->getMessage());
+        }
+
+        // infantsWithSeat 동기화: 좌석 점유 인팬트 수 계산 후 bookings 업데이트
+        $infantsWithSeatCount = 0;
+        foreach ($travelers as $t) {
+            if (strtolower($t['type'] ?? $t['travelerType'] ?? '') === 'infant' && !empty($t['infantSeat'])) {
+                $infantsWithSeatCount++;
+            }
+        }
+        $iwsStmt = $conn->prepare("UPDATE bookings SET infantsWithSeat = ? WHERE bookingId = ?");
+        if ($iwsStmt) {
+            $iwsStmt->bind_param('is', $infantsWithSeatCount, $bookingId);
+            $iwsStmt->execute();
+            $iwsStmt->close();
         }
 
         send_success_response([
@@ -10887,6 +11032,7 @@ function acknowledgeRejectionAgent($conn, $input) {
                     $isMainTraveler = (int)($tr['isMainTraveler'] ?? 0);
                     $reservationStatus = $tr['reservationStatus'] ?? null;
                     $childRoom = (int)($tr['childRoom'] ?? 0);
+                    $infantSeat = (int)($tr['infantSeat'] ?? 0);
                     $profileSource = $tr['profile_source'] ?? $tr['profileSource'] ?? '';
 
                     // null 또는 빈 날짜 값 처리
@@ -10894,15 +11040,15 @@ function acknowledgeRejectionAgent($conn, $input) {
                     $passportIssueDateVal = (!empty($passportIssueDate) && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
                     $passportExpiryVal = (!empty($passportExpiry) && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
 
-                    $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, visaStatus, visaType, specialRequests, isMainTraveler, reservationStatus, childRoom, profile_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $insertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaDocument, visaStatus, visaType, specialRequests, isMainTraveler, reservationStatus, childRoom, infantSeat, profile_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     $insertStmt = $conn->prepare($insertSql);
                     if ($insertStmt) {
-                        $insertStmt->bind_param('ssssssssssssssssssss',
+                        $insertStmt->bind_param('sssssssssssssssssssss',
                             $bookingId, $travelerType, $title, $firstName, $lastName,
                             $birthDateVal, $gender, $nationality, $passportNumber,
                             $passportIssueDateVal, $passportExpiryVal, $passportImage,
                             $visaDocument, $visaStatus, $visaType, $specialRequests,
-                            $isMainTraveler, $reservationStatus, $childRoom, $profileSource
+                            $isMainTraveler, $reservationStatus, $childRoom, $infantSeat, $profileSource
                         );
                         $insertStmt->execute();
                         $insertStmt->close();
@@ -12447,7 +12593,7 @@ function getSaleProducts($conn) {
             INNER JOIN packages p ON p.packageId = pad.package_id
             LEFT JOIN (
                 SELECT packageId, departureDate,
-                       SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS total_booked
+                       SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS total_booked
                 FROM bookings
                 WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')

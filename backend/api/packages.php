@@ -23,7 +23,7 @@ function calc_booked_seats_by_date(mysqli $conn, int $packageId, string $startDa
 
     $stmt = $conn->prepare("
         SELECT DATE(departureDate) AS d,
-               SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+               SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
         FROM bookings
         WHERE packageId = ?
           AND DATE(departureDate) >= ?
@@ -216,7 +216,7 @@ function handleGetPackages() {
                         FROM package_available_dates pa
                         LEFT JOIN (
                             SELECT packageId, DATE(departureDate) AS d,
-                                   SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infants,0)) AS booked
+                                   SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                             FROM bookings
                             WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
                               AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')

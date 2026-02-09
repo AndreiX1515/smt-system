@@ -768,6 +768,8 @@ function renderReservationDetail(data) {
             let childrenWithRoom = 0;
             let childrenNoRoom = 0;
             let infants = 0;
+            let infantsWithSeat = 0;
+            let infantsNoSeat = 0;
 
             if (Array.isArray(travelers)) {
                 travelers.forEach(t => {
@@ -783,6 +785,11 @@ function renderReservationDetail(data) {
                         }
                     } else if (type === 'infant') {
                         infants++;
+                        if (parseInt(t.infantSeat || 0) === 1) {
+                            infantsWithSeat++;
+                        } else {
+                            infantsNoSeat++;
+                        }
                     }
                 });
             }
@@ -800,8 +807,11 @@ function renderReservationDetail(data) {
             if (childrenNoRoom > 0 && childPrice > 0) {
                 items.push({ label: 'Child x ' + childrenNoRoom, amount: childrenNoRoom * childPrice });
             }
-            if (infants > 0) {
-                items.push({ label: 'Infant x ' + infants, amount: infants * infantPrice });
+            if (infantsWithSeat > 0) {
+                items.push({ label: 'Infant (Seat) x ' + infantsWithSeat, amount: infantsWithSeat * infantPrice });
+            }
+            if (infantsNoSeat > 0) {
+                items.push({ label: 'Infant (No Seat) x ' + infantsNoSeat, amount: infantsNoSeat * infantPrice });
             }
 
             // 룸 옵션 금액
@@ -1611,6 +1621,10 @@ function syncTravelerFormData() {
         const childRoomEl = document.getElementById(`edit_childroom_${i}`);
         if (childRoomEl) traveler.childRoom = (childRoomEl.value === 'yes');
 
+        // Infant Seat
+        const infantSeatEl = document.getElementById(`edit_infantseat_${i}`);
+        if (infantSeatEl) traveler.infantSeat = (infantSeatEl.value === 'yes');
+
         // Profile/Source
         const profileSourceEl = document.getElementById(`edit_profile_source_${i}`);
         if (profileSourceEl) traveler.profile_source = profileSourceEl.value;
@@ -1870,6 +1884,13 @@ function renderTravelerEditCards() {
                             <option value="yes" ${traveler.childRoom ? 'selected' : ''}>Yes</option>
                         </select>
                     </div>
+                    <div class="form-group" id="infant-seat-container-${index}" style="display: ${travelerType === 'infant' ? 'block' : 'none'};">
+                        <label>Infant Seat</label>
+                        <select id="edit_infantseat_${index}">
+                            <option value="no" ${!parseInt(traveler.infantSeat || 0) ? 'selected' : ''}>No (Lap)</option>
+                            <option value="yes" ${parseInt(traveler.infantSeat || 0) ? 'selected' : ''}>Yes (Seat)</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Profile/Source</label>
                         <input type="text" id="edit_profile_source_${index}" value="${escapeHtml(profileSource)}" placeholder="Profile/Source">
@@ -1921,6 +1942,12 @@ function updateTravelerAgeInEdit(index, birthDate) {
     const childRoomContainer = document.getElementById(`child-room-container-${index}`);
     if (childRoomContainer) {
         childRoomContainer.style.display = type.toLowerCase() === 'child' ? 'block' : 'none';
+    }
+
+    // Infant Seat 컨테이너 표시/숨김
+    const infantSeatContainer = document.getElementById(`infant-seat-container-${index}`);
+    if (infantSeatContainer) {
+        infantSeatContainer.style.display = type.toLowerCase() === 'infant' ? 'block' : 'none';
     }
 }
 
@@ -2250,6 +2277,10 @@ async function saveAllTravelers() {
         const childRoomEl = document.getElementById(`edit_childroom_${i}`);
         const childRoom = childRoomEl ? (childRoomEl.value === 'yes') : (original.childRoom || false);
 
+        // Infant Seat 값
+        const infantSeatEl = document.getElementById(`edit_infantseat_${i}`);
+        const infantSeat = infantSeatEl ? (infantSeatEl.value === 'yes') : !!(parseInt(original.infantSeat || 0));
+
         // Flight Options 값 (original에서 가져옴)
         const flightOptions = original.flightOptions || [];
         const flightOptionPrices = original.flightOptionPrices || {};
@@ -2283,6 +2314,7 @@ async function saveAllTravelers() {
             visaType: visaType,
             visaDocument: visaDocument,
             childRoom: childRoom,
+            infantSeat: infantSeat,
             flightOptions: flightOptions,
             flightOptionPrices: flightOptionPrices,
             isPrimary: original.isMainTraveler == 1,
@@ -2719,10 +2751,10 @@ function formatDateYMD(date) {
 
 // 3단계 결제 섹션 UI 상태 관리
 function updatePaymentSections(booking) {
-    // waiting_cancelled + 출발 31일 이내 → 업로드 차단
+    // waiting_cancelled 상태에서도 업로드 허용 (31일 이내 포함)
     const isWaitingCancelled = (booking.bookingStatus || '').toLowerCase() === 'waiting_cancelled';
     const daysUntilDep = booking.departureDate ? Math.ceil((new Date(booking.departureDate) - new Date()) / (1000 * 60 * 60 * 24)) : 999;
-    const blockUpload = isWaitingCancelled && daysUntilDep <= 31;
+    const blockUpload = false; // 31일 이내도 업로드 허용
 
     // Down Payment 확인 여부
     const downPaymentConfirmed = !!(booking.downPaymentConfirmedAt);
@@ -4736,10 +4768,10 @@ function renderFullPaymentInfo(booking, orderAmount) {
     const viewFullBtn = document.getElementById('viewFullFileBtn');
     const downloadFullBtn = document.getElementById('downloadFullFileBtn');
 
-    // waiting_cancelled + 출발 31일 이내 → 업로드 차단
+    // waiting_cancelled 상태에서도 업로드 허용 (31일 이내 포함)
     const isWaitingCancelled = (booking.bookingStatus || '').toLowerCase() === 'waiting_cancelled';
     const daysUntilDep = booking.departureDate ? Math.ceil((new Date(booking.departureDate) - new Date()) / (1000 * 60 * 60 * 24)) : 999;
-    const blockUpload = isWaitingCancelled && daysUntilDep <= 31;
+    const blockUpload = false; // 31일 이내도 업로드 허용
 
     // 파일 표시
     if (booking.fullPaymentFile) {
@@ -4913,10 +4945,10 @@ function renderMiddlePaymentInfo(booking, orderAmount) {
     const balanceConfirmed = !!(booking.balanceConfirmedAt);
     const bookingStatus = (booking.bookingStatus || '').toLowerCase();
 
-    // waiting_cancelled + 출발 31일 이내 → 업로드 차단
+    // waiting_cancelled 상태에서도 업로드 허용 (31일 이내 포함)
     const isWaitingCancelled = bookingStatus === 'waiting_cancelled';
     const daysUntilDep = booking.departureDate ? Math.ceil((new Date(booking.departureDate) - new Date()) / (1000 * 60 * 60 * 24)) : 999;
-    const blockUpload = isWaitingCancelled && daysUntilDep <= 31;
+    const blockUpload = false; // 31일 이내도 업로드 허용
 
     // Middle Payment 파일 (DB: downPaymentFile)
     const middleFile = booking.downPaymentFile || '';
