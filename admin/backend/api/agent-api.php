@@ -2309,7 +2309,9 @@ function getReservationDetail($conn, $input) {
                 'visaStatus' => $traveler['visaStatus'] ?? 'not_required',
                 'isMainTraveler' => isset($traveler['isMainTraveler']) ? (int)$traveler['isMainTraveler'] : 0,
                 'specialRequests' => $traveler['specialRequests'] ?? '',
-                'profile_source' => $traveler['profile_source'] ?? ''
+                'profile_source' => $traveler['profile_source'] ?? '',
+                'childRoom' => isset($traveler['childRoom']) ? (int)$traveler['childRoom'] : 0,
+                'infantSeat' => isset($traveler['infantSeat']) ? (int)$traveler['infantSeat'] : 0
             ];
         }
 
@@ -2679,7 +2681,7 @@ function createReservation($conn, $input) {
             // - 기획: "인원 옵션"은 상품에 등록된 인원별 요금(package_pricing_options)과 일치해야 함
             // - 우선순위: 날짜별 가격(package_available_dates) -> packages 기본가격
             // - Agent 예약은 항상 B2B 가격 사용
-            $packageSql = "SELECT packagePrice, b2b_price, childPrice, b2b_child_price, infantPrice, b2b_infant_price FROM packages WHERE packageId = ?";
+            $packageSql = "SELECT packagePrice, b2b_price, childPrice, b2b_child_price, infantPrice, b2b_infant_price, infant_seat_price, b2b_infant_seat_price FROM packages WHERE packageId = ?";
             $packageStmt = $conn->prepare($packageSql);
             $packageStmt->bind_param("i", $packageId);
             $packageStmt->execute();
@@ -2691,12 +2693,15 @@ function createReservation($conn, $input) {
             $childPrice = (!empty($package['b2b_child_price'])) ? $package['b2b_child_price'] : ($package['childPrice'] ?? ($adultPrice * 0.8));
             // Infant 가격: 설정 안되어 있으면 기본 10000페소
             $infantPrice = (!empty($package['b2b_infant_price'])) ? $package['b2b_infant_price'] : (!empty($package['infantPrice']) ? $package['infantPrice'] : 10000);
+            $infantSeatPrice = (!empty($package['b2b_infant_seat_price']))
+                ? $package['b2b_infant_seat_price']
+                : (!empty($package['infant_seat_price']) ? $package['infant_seat_price'] : $infantPrice);
 
             // 날짜별 B2B 가격 조회 (package_available_dates)
             // + Sale 할인 적용
             $saleDiscountAmount = 0;
             try {
-                $dateStmt = $conn->prepare("SELECT id, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price FROM package_available_dates WHERE package_id = ? AND available_date = ? LIMIT 1");
+                $dateStmt = $conn->prepare("SELECT id, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, infant_seat_price, b2b_infant_seat_price FROM package_available_dates WHERE package_id = ? AND available_date = ? LIMIT 1");
                 if ($dateStmt) {
                     $dateStmt->bind_param("is", $packageId, $departureDate);
                     $dateStmt->execute();
@@ -2752,6 +2757,11 @@ function createReservation($conn, $input) {
                         } elseif (!empty($dateRow['infant_price'])) {
                             $infantPrice = (float)$dateRow['infant_price'];
                         }
+                        if (!empty($dateRow['b2b_infant_seat_price'])) {
+                            $infantSeatPrice = (float)$dateRow['b2b_infant_seat_price'];
+                        } elseif (!empty($dateRow['infant_seat_price'])) {
+                            $infantSeatPrice = (float)$dateRow['infant_seat_price'];
+                        }
                     }
                     $dateStmt->close();
                 }
@@ -2806,7 +2816,11 @@ function createReservation($conn, $input) {
                     continue;
                 }
                 if (strpos($type, 'infant') !== false || strpos($type, 'baby') !== false || strpos($type, '유아') !== false) {
-                    $baseAmount += (float)$infantPrice;
+                    if (!empty($tr['infantSeat'])) {
+                        $baseAmount += (float)$infantSeatPrice;
+                    } else {
+                        $baseAmount += (float)$infantPrice;
+                    }
                 } elseif (strpos($type, 'child') !== false || strpos($type, 'kid') !== false || strpos($type, '아동') !== false) {
                     $baseAmount += (float)$childPrice;
                 } else {
@@ -3045,10 +3059,10 @@ function createReservation($conn, $input) {
                     advancePaymentAmount, advancePaymentDueDate,
                     balanceAmount, balanceDueDate,
                     fullPaymentAmount, fullPaymentDueDate,
-                    adultPrice, childPrice, infantPrice, visaFee, flightOptionFee,
+                    adultPrice, childPrice, infantPrice, infantSeatPrice, visaFee, flightOptionFee,
                     saleId, saleName, saleDiscountAmount,
                     createdAt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?{$customerColsValuesSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?{$customerColsValuesSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ";
 
             $insertStmt = $conn->prepare($insertSql);
@@ -3061,7 +3075,7 @@ function createReservation($conn, $input) {
             // accountId와 agentId 모두 agentAccountId로 저장
             if (!empty($customerAccountIdCol)) {
                 $insertStmt->bind_param(
-                    "siiisdsssiiidsssssidsdsdsdsdddddisd",
+                    "siiisdsssiiidsssssidsdsdsdsddddddisd",
                     $bookingId, $agentAccountId, $agentAccountId, $packageId, $packageName, $adultPrice, $priceTier,
                     $departureDate, $departureTime, $adults, $children, $infants,
                     $totalAmount, $paymentType, $selectedOptionsJson, $specialRequests,
@@ -3070,12 +3084,12 @@ function createReservation($conn, $input) {
                     $advancePaymentAmount, $advancePaymentDueDate,
                     $balanceAmount, $balanceDueDate,
                     $fullPaymentAmount, $fullPaymentDueDate,
-                    $adultPrice, $childPrice, $infantPrice, $visaFee, $flightOptionsTotal,
+                    $adultPrice, $childPrice, $infantPrice, $infantSeatPrice, $visaFee, $flightOptionsTotal,
                     $saleId, $saleName, $saleDiscountAmount
                 );
             } else {
                 $insertStmt->bind_param(
-                    "siiisdsssiiidsssssdsdsdsdsdddddisd",
+                    "siiisdsssiiidsssssdsdsdsdsddddddisd",
                     $bookingId, $agentAccountId, $agentAccountId, $packageId, $packageName, $adultPrice, $priceTier,
                     $departureDate, $departureTime, $adults, $children, $infants,
                     $totalAmount, $paymentType, $selectedOptionsJson, $specialRequests,
@@ -3084,7 +3098,7 @@ function createReservation($conn, $input) {
                     $advancePaymentAmount, $advancePaymentDueDate,
                     $balanceAmount, $balanceDueDate,
                     $fullPaymentAmount, $fullPaymentDueDate,
-                    $adultPrice, $childPrice, $infantPrice, $visaFee, $flightOptionsTotal,
+                    $adultPrice, $childPrice, $infantPrice, $infantSeatPrice, $visaFee, $flightOptionsTotal,
                     $saleId, $saleName, $saleDiscountAmount
                 );
             }
@@ -10298,7 +10312,7 @@ function updateTravelerInfo($conn, $input) {
         // 좌석 점유 인원만 카운트 (lap infant 제외)
         $newSeatCount = 0;
         foreach ($travelers as $t) {
-            $tType = strtolower($t['type'] ?? '');
+            $tType = strtolower($t['travelerType'] ?? $t['type'] ?? '');
             if ($tType === 'infant' && empty($t['infantSeat'])) continue; // lap infant
             $newSeatCount++;
         }
@@ -10306,7 +10320,7 @@ function updateTravelerInfo($conn, $input) {
         $currentSeatCount = 0;
         $existingTravStmt = $conn->prepare("SELECT travelerType, infantSeat FROM booking_travelers WHERE transactNo = ?");
         if ($existingTravStmt) {
-            $existingTravStmt->bind_param('s', $travelerKey);
+            $existingTravStmt->bind_param('s', $bookingId);
             $existingTravStmt->execute();
             $existingTravResult = $existingTravStmt->get_result();
             while ($eRow = $existingTravResult->fetch_assoc()) {

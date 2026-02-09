@@ -759,6 +759,7 @@ function renderReservationDetail(data) {
             const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
             const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
             const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+            const infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
             // 할인 전 원래 가격 계산 (adultPrice에 할인액 더하기)
             const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
@@ -808,7 +809,7 @@ function renderReservationDetail(data) {
                 items.push({ label: 'Child x ' + childrenNoRoom, amount: childrenNoRoom * childPrice });
             }
             if (infantsWithSeat > 0) {
-                items.push({ label: 'Infant (Seat) x ' + infantsWithSeat, amount: infantsWithSeat * infantPrice });
+                items.push({ label: 'Infant (Seat) x ' + infantsWithSeat, amount: infantsWithSeat * infantSeatPrice });
             }
             if (infantsNoSeat > 0) {
                 items.push({ label: 'Infant (No Seat) x ' + infantsNoSeat, amount: infantsNoSeat * infantPrice });
@@ -1628,7 +1629,20 @@ function syncTravelerFormData() {
         // Profile/Source
         const profileSourceEl = document.getElementById(`edit_profile_source_${i}`);
         if (profileSourceEl) traveler.profile_source = profileSourceEl.value;
+
+        // Passport Image: __tempPassportImages → __allTravelers 동기화
+        if (__tempPassportImages.hasOwnProperty(i)) {
+            traveler.passportImage = __tempPassportImages[i]; // base64 or null(삭제)
+        }
+
+        // Visa Document: __tempVisaDocuments → __allTravelers 동기화
+        if (typeof __tempVisaDocuments !== 'undefined' && __tempVisaDocuments.hasOwnProperty(i)) {
+            traveler.visaDocument = __tempVisaDocuments[i]; // base64 or null(삭제)
+        }
     }
+    // 동기화 후 임시 저장소 클리어 (재렌더시 __allTravelers에서 읽으므로)
+    __tempPassportImages = {};
+    if (typeof __tempVisaDocuments !== 'undefined') __tempVisaDocuments = {};
 }
 
 // 여행자 카드 추가 (모달 내)
@@ -1739,7 +1753,9 @@ function renderTravelerEditCards() {
         const typeLabel = travelerType === 'child' ? 'Child' : travelerType === 'infant' ? 'Infant' : 'Adult';
 
         const hasPassportPhoto = passportImage && passportImage.trim() !== '';
-        const photoFileName = hasPassportPhoto ? passportImage.split('/').pop() : '';
+        const photoFileName = hasPassportPhoto
+            ? (passportImage.startsWith('data:') ? 'Uploaded photo' : passportImage.split('/').pop())
+            : '';
         const profileSource = traveler.profile_source || traveler.profileSource || '';
 
         // Passport date warning
@@ -1862,7 +1878,7 @@ function renderTravelerEditCards() {
                                 <img src="../image/upload.svg" alt="" onerror="this.style.display='none'"> Upload Visa
                             </button>
                             <div class="visa-document-info ${traveler.visaDocument ? '' : 'hidden'}" id="visa-document-info-${index}">
-                                <span class="visa-filename">${escapeHtml(traveler.visaDocument ? traveler.visaDocument.split('/').pop() : '')}</span>
+                                <span class="visa-filename">${escapeHtml(traveler.visaDocument ? (traveler.visaDocument.startsWith('data:') ? 'Uploaded document' : traveler.visaDocument.split('/').pop()) : '')}</span>
                                 <div class="file-action-buttons">
                                     <button type="button" class="btn-file-action btn-preview" onclick="previewVisaDocumentInEdit(${index})" title="Preview">
                                         <img src="../image/search2.svg" alt="Preview">
@@ -1887,8 +1903,8 @@ function renderTravelerEditCards() {
                     <div class="form-group" id="infant-seat-container-${index}" style="display: ${travelerType === 'infant' ? 'block' : 'none'};">
                         <label>Infant Seat</label>
                         <select id="edit_infantseat_${index}">
-                            <option value="no" ${!parseInt(traveler.infantSeat || 0) ? 'selected' : ''}>No (Lap)</option>
-                            <option value="yes" ${parseInt(traveler.infantSeat || 0) ? 'selected' : ''}>Yes (Seat)</option>
+                            <option value="no" ${!(traveler.infantSeat === true || traveler.infantSeat === 'yes' || Number(traveler.infantSeat) === 1) ? 'selected' : ''}>No (Lap)</option>
+                            <option value="yes" ${(traveler.infantSeat === true || traveler.infantSeat === 'yes' || Number(traveler.infantSeat) === 1) ? 'selected' : ''}>Yes (Seat)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -2014,10 +2030,15 @@ function previewPassportPhotoInEdit(index) {
         imageUrl = __tempPassportImages[index];
         fileName = 'Uploaded Photo';
     }
-    // 기존 서버에 저장된 이미지인 경우
+    // 기존 서버에 저장된 이미지 또는 동기화된 base64
     else if (traveler.passportImage) {
-        imageUrl = normalizePassportImageUrl(traveler.passportImage);
-        fileName = traveler.passportImage.split('/').pop() || 'Passport Photo';
+        if (traveler.passportImage.startsWith('data:')) {
+            imageUrl = traveler.passportImage;
+            fileName = 'Uploaded Photo';
+        } else {
+            imageUrl = normalizePassportImageUrl(traveler.passportImage);
+            fileName = traveler.passportImage.split('/').pop() || 'Passport Photo';
+        }
     }
 
     if (!imageUrl) {
@@ -2050,10 +2071,15 @@ function downloadPassportPhotoInEdit(index) {
         downloadUrl = __tempPassportImages[index];
         fileName = 'passport_photo.jpg';
     }
-    // 기존 서버에 저장된 이미지인 경우
+    // 기존 서버에 저장된 이미지 또는 동기화된 base64
     else if (traveler.passportImage) {
-        downloadUrl = normalizePassportImageUrl(traveler.passportImage);
-        fileName = traveler.passportImage.split('/').pop() || 'passport_photo';
+        if (traveler.passportImage.startsWith('data:')) {
+            downloadUrl = traveler.passportImage;
+            fileName = 'passport_photo.jpg';
+        } else {
+            downloadUrl = normalizePassportImageUrl(traveler.passportImage);
+            fileName = traveler.passportImage.split('/').pop() || 'passport_photo';
+        }
     }
 
     if (!downloadUrl) {
@@ -2171,16 +2197,17 @@ function previewVisaDocumentInEdit(index) {
             fileType = 'image';
         }
     }
-    // 기존 서버에 저장된 파일인 경우
+    // 기존 서버에 저장된 파일 또는 동기화된 base64
     else if (traveler.visaDocument) {
-        fileUrl = normalizePassportImageUrl(traveler.visaDocument);
-        fileName = traveler.visaDocument.split('/').pop() || 'Visa Document';
-        // 확장자로 파일 타입 추정
-        const ext = fileName.split('.').pop().toLowerCase();
-        if (ext === 'pdf') {
-            fileType = 'application/pdf';
+        if (traveler.visaDocument.startsWith('data:')) {
+            fileUrl = traveler.visaDocument;
+            fileName = 'Uploaded Visa';
+            fileType = traveler.visaDocument.startsWith('data:application/pdf') ? 'application/pdf' : 'image';
         } else {
-            fileType = 'image';
+            fileUrl = normalizePassportImageUrl(traveler.visaDocument);
+            fileName = traveler.visaDocument.split('/').pop() || 'Visa Document';
+            const ext = fileName.split('.').pop().toLowerCase();
+            fileType = (ext === 'pdf') ? 'application/pdf' : 'image';
         }
     }
 
@@ -2226,10 +2253,15 @@ function downloadVisaDocumentInEdit(index) {
             fileName = 'visa_document.jpg';
         }
     }
-    // 기존 서버에 저장된 파일인 경우
+    // 기존 서버에 저장된 파일 또는 동기화된 base64
     else if (traveler.visaDocument) {
-        downloadUrl = normalizePassportImageUrl(traveler.visaDocument);
-        fileName = traveler.visaDocument.split('/').pop() || 'visa_document';
+        if (traveler.visaDocument.startsWith('data:')) {
+            downloadUrl = traveler.visaDocument;
+            fileName = traveler.visaDocument.startsWith('data:application/pdf') ? 'visa_document.pdf' : 'visa_document.jpg';
+        } else {
+            downloadUrl = normalizePassportImageUrl(traveler.visaDocument);
+            fileName = traveler.visaDocument.split('/').pop() || 'visa_document';
+        }
     }
 
     if (!downloadUrl) {
@@ -2582,6 +2614,7 @@ function renderPaymentInfo(booking, pricingOptions = []) {
 
     // Infant 가격 가져오기: pricingOptions에서 찾거나 booking에서 가져옴
     let infantPrice = parseFloat(booking.infantPrice || 0);
+    let infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
     if (infantPrice <= 0 && pricingOptions.length > 0) {
         for (const opt of pricingOptions) {
             const name = (opt.optionName || opt.option_name || '').toLowerCase();
@@ -2591,6 +2624,8 @@ function renderPaymentInfo(booking, pricingOptions = []) {
             }
         }
     }
+    const infantsWithSeatCount = Number(booking.infantsWithSeat || 0);
+    const infantsNoSeatCount = infantCount - infantsWithSeatCount;
 
     // 3단계 결제 정보 렌더링
     // Down Payment = 5000 × (Adult + Child 인원수) - 항상 인원수 기반 계산
@@ -2641,7 +2676,7 @@ function renderPaymentInfo(booking, pricingOptions = []) {
         let amount = 0;
         // 항상 계산: Order Amount - Down Payment - Second Payment + Infant Total
         if (orderAmount > 0) {
-            const infantTotal = infantPrice * infantCount;
+            const infantTotal = (infantsWithSeatCount * infantSeatPrice) + (infantsNoSeatCount * infantPrice);
             amount = orderAmount - downPaymentAmount - secondPaymentAmount + infantTotal;
         }
         balanceAmountInput.value = amount > 0 ? formatPriceNumber(amount) : '-';
@@ -5288,8 +5323,9 @@ function updateOrderSummary() {
     const childWithRoomPrice = adultPrice; // 성인가격 100%
     const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8); // 80%
     const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+    const infantSeatPriceVal = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
-    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWSeat = 0, infantsNSeat = 0;
     travelers.forEach(t => {
         const type = (t.travelerType || t.type || '').toLowerCase();
         if (type === 'adult') adults++;
@@ -5298,7 +5334,13 @@ function updateOrderSummary() {
             if (hasRoom) childrenWithRoom++;
             else childrenNoRoom++;
         }
-        else if (type === 'infant') infants++;
+        else if (type === 'infant') {
+            if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) {
+                infantsWSeat++;
+            } else {
+                infantsNSeat++;
+            }
+        }
     });
 
     // 여행자 가격 섹션
@@ -5318,10 +5360,15 @@ function updateOrderSummary() {
         totalAmount += childNoRoomTotal;
         summaryHtml += `<div class="order-summary-item"><span>Child x${childrenNoRoom}</span><span>₱${Math.round(childNoRoomTotal).toLocaleString()}</span></div>`;
     }
-    if (infants > 0) {
-        const infantTotal = infants * infantPrice;
-        totalAmount += infantTotal;
-        summaryHtml += `<div class="order-summary-item"><span>Infant x${infants}</span><span>₱${infantTotal.toLocaleString()}</span></div>`;
+    if (infantsWSeat > 0) {
+        const infantSeatTotal = infantsWSeat * infantSeatPriceVal;
+        totalAmount += infantSeatTotal;
+        summaryHtml += `<div class="order-summary-item"><span>Infant (Seat) x${infantsWSeat}</span><span>₱${infantSeatTotal.toLocaleString()}</span></div>`;
+    }
+    if (infantsNSeat > 0) {
+        const infantNoSeatTotal = infantsNSeat * infantPrice;
+        totalAmount += infantNoSeatTotal;
+        summaryHtml += `<div class="order-summary-item"><span>Infant (No Seat) x${infantsNSeat}</span><span>₱${infantNoSeatTotal.toLocaleString()}</span></div>`;
     }
 
     // 2. 룸 옵션 가격 섹션
@@ -5482,12 +5529,13 @@ function showChangeSummaryModal() {
     const childWithRoomPrice = adultPrice;
     const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
     const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+    const infantSeatPriceV = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
     // 할인 전 원래 가격 계산
     const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
     const originalChildWithRoomPrice = originalAdultPrice;
 
-    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWS = 0, infantsNS = 0;
     afterTravelers.forEach(t => {
         const type = (t.travelerType || t.type || '').toLowerCase();
         console.log('Processing traveler type:', type, 'visaType:', t.visaType);
@@ -5497,13 +5545,19 @@ function showChangeSummaryModal() {
             if (hasRoom) childrenWithRoom++;
             else childrenNoRoom++;
         }
-        else if (type === 'infant') infants++;
+        else if (type === 'infant') {
+            if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) {
+                infantsWS++;
+            } else {
+                infantsNS++;
+            }
+        }
     });
 
     // 할인 적용 대상 인원 (Adult + Child with Room)
     const discountableCount = adults + childrenWithRoom;
 
-    console.log('Breakdown counts:', { adults, childrenWithRoom, childrenNoRoom, infants, discountableCount });
+    console.log('Breakdown counts:', { adults, childrenWithRoom, childrenNoRoom, infantsWS, infantsNS, discountableCount });
 
     let breakdownHtml = '';
     let subtotal = 0;
@@ -5524,10 +5578,15 @@ function showChangeSummaryModal() {
         subtotal += amt;
         breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Child (no room) x${childrenNoRoom}</span><span>₱${amt.toLocaleString()}</span></div>`;
     }
-    if (infants > 0) {
-        const amt = infants * infantPrice;
+    if (infantsWS > 0) {
+        const amt = infantsWS * infantSeatPriceV;
         subtotal += amt;
-        breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Infant x${infants}</span><span>₱${amt.toLocaleString()}</span></div>`;
+        breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Infant (Seat) x${infantsWS}</span><span>₱${amt.toLocaleString()}</span></div>`;
+    }
+    if (infantsNS > 0) {
+        const amt = infantsNS * infantPrice;
+        subtotal += amt;
+        breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Infant (No Seat) x${infantsNS}</span><span>₱${amt.toLocaleString()}</span></div>`;
     }
 
     // Room prices
@@ -5749,12 +5808,13 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
     const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
     const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
     const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+    const infantSeatPriceC = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
     // 할인 전 원래 가격
     const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
 
     // 인원 수 계산
-    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeatC = 0, infantsNoSeatC = 0;
     let visaFeeTotal = 0;
     let flightOptionsTotal = 0;
 
@@ -5777,7 +5837,11 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
             if (hasRoom) childrenWithRoom++;
             else childrenNoRoom++;
         } else if (type === 'infant') {
-            infants++;
+            if (parseInt(t.infantSeat || 0) === 1) {
+                infantsWithSeatC++;
+            } else {
+                infantsNoSeatC++;
+            }
         }
 
         // Visa fee 계산 (group visa만)
@@ -5800,7 +5864,8 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
     packageTotal += adults * originalAdultPrice;
     packageTotal += childrenWithRoom * originalAdultPrice;
     packageTotal += childrenNoRoom * childPrice;
-    packageTotal += infants * infantPrice;
+    packageTotal += infantsWithSeatC * infantSeatPriceC;
+    packageTotal += infantsNoSeatC * infantPrice;
 
     // 할인 대상 인원
     const discountableCount = adults + childrenWithRoom;

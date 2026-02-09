@@ -2349,11 +2349,13 @@
 				}
 				html += '<div class="passport-photo-info ' + (hasPassportPhoto ? '' : 'hidden') + '" id="passport-photo-info-' + idx + '">';
 				html += '<span class="photo-filename">' + escapeHtml(passportFileName) + '</span>';
+				html += '<div class="file-action-buttons">';
+				html += '<button type="button" class="btn-file-action btn-preview" onclick="previewPassportPhotoInEditB2B(' + idx + ')" title="Preview"><img src="../image/search2.svg" alt="Preview"></button>';
+				html += '<button type="button" class="btn-file-action btn-download" onclick="downloadPassportPhotoInEditB2B(' + idx + ')" title="Download"><img src="../image/buttun-download.svg" alt="Download"></button>';
 				if (!isPendingTravelerChange) {
-					html += '<button type="button" class="btn-remove-photo" onclick="removePassportPhotoInEdit(' + idx + ')">';
-					html += '<img src="../image/button-close2.svg" alt=""></button>';
+					html += '<button type="button" class="btn-file-action btn-delete" onclick="removePassportPhotoInEdit(' + idx + ')" title="Delete"><img src="../image/button-close2.svg" alt="Delete"></button>';
 				}
-				html += '</div></div></div>';
+				html += '</div></div></div></div>';
 
 				// Visa Document (shown when visaType === 'with_visa')
 				var visaDocHighlight = changedFields.includes('visaDocument') ? 'background: #fde68a !important; border: 2px solid #f59e0b !important; border-radius: 8px; padding: 8px;' : '';
@@ -2368,11 +2370,13 @@
 				}
 				html += '<div class="visa-document-info ' + (hasVisaDoc ? '' : 'hidden') + '" id="visa-document-info-' + idx + '">';
 				html += '<span class="visa-filename">' + escapeHtml(visaFileName) + '</span>';
+				html += '<div class="file-action-buttons">';
+				html += '<button type="button" class="btn-file-action btn-preview" onclick="previewVisaDocumentInEditB2B(' + idx + ')" title="Preview"><img src="../image/search2.svg" alt="Preview"></button>';
+				html += '<button type="button" class="btn-file-action btn-download" onclick="downloadVisaDocumentInEditB2B(' + idx + ')" title="Download"><img src="../image/buttun-download.svg" alt="Download"></button>';
 				if (!isPendingTravelerChange) {
-					html += '<button type="button" class="btn-remove-photo" onclick="removeVisaDocumentInEdit(' + idx + ')">';
-					html += '<img src="../image/button-close2.svg" alt=""></button>';
+					html += '<button type="button" class="btn-file-action btn-delete" onclick="removeVisaDocumentInEdit(' + idx + ')" title="Delete"><img src="../image/button-close2.svg" alt="Delete"></button>';
 				}
-				html += '</div></div></div>';
+				html += '</div></div></div></div>';
 
 				// Child Room (shown for child type)
 				html += '<div class="form-group" id="child-room-container-' + idx + '" style="display:' + (travelerType === 'child' ? 'block' : 'none') + ';">';
@@ -2385,8 +2389,8 @@
 				html += '<div class="form-group" id="infant-seat-container-' + idx + '" style="display:' + (travelerType === 'infant' ? 'block' : 'none') + ';">';
 				html += '<label>Infant Seat</label>';
 				html += '<select class="form-control" data-field="infantSeat"' + disabledAttr + ' style="' + readonlyStyle + '">';
-				html += '<option value="no"' + (!parseInt(t.infantSeat || 0) ? ' selected' : '') + '>No (Lap)</option>';
-				html += '<option value="yes"' + (parseInt(t.infantSeat || 0) ? ' selected' : '') + '>Yes (Seat)</option></select></div>';
+				html += '<option value="no"' + (!(t.infantSeat === true || t.infantSeat === 'yes' || Number(t.infantSeat) === 1) ? ' selected' : '') + '>No (Lap)</option>';
+				html += '<option value="yes"' + ((t.infantSeat === true || t.infantSeat === 'yes' || Number(t.infantSeat) === 1) ? ' selected' : '') + '>Yes (Seat)</option></select></div>';
 
 				// Profile/Source
 				html += '<div class="form-group">';
@@ -2660,6 +2664,91 @@
 			if (fileInput) fileInput.value = '';
 		}
 
+		// 여권 사진 미리보기
+		function previewPassportPhotoInEditB2B(idx) {
+			var t = allTravelers[idx];
+			if (!t) return;
+			var path = t.passportImage || t.passportPhoto || '';
+			if (!path) { alert('No passport photo available'); return; }
+			if (path.startsWith('data:')) {
+				// base64 직접 표시
+				var modal = document.getElementById('fileViewerModal');
+				var content = document.getElementById('fileViewerContent');
+				var titleEl = document.getElementById('fileViewerTitle');
+				if (modal && content) {
+					titleEl.textContent = 'Passport Photo';
+					content.innerHTML = '<img src="' + path + '" alt="Passport Photo" style="max-width:100%; max-height:70vh; object-fit:contain;">';
+					modal.style.display = 'flex';
+					document.body.style.overflow = 'hidden';
+				}
+			} else {
+				openFileViewer(path, 'Passport Photo');
+			}
+		}
+
+		// 여권 사진 다운로드
+		function downloadPassportPhotoInEditB2B(idx) {
+			var t = allTravelers[idx];
+			if (!t) return;
+			var path = t.passportImage || t.passportPhoto || '';
+			if (!path) { alert('No passport photo available'); return; }
+			if (path.startsWith('data:')) {
+				var a = document.createElement('a');
+				a.href = path;
+				a.download = 'passport_photo.jpg';
+				a.style.display = 'none';
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+			} else {
+				window.open('/backend/api/download.php?file=' + encodeURIComponent(path), '_blank');
+			}
+		}
+
+		// 비자 문서 미리보기
+		function previewVisaDocumentInEditB2B(idx) {
+			var t = allTravelers[idx];
+			if (!t) return;
+			var path = t.visaDocument || t.visaDocumentUrl || '';
+			if (!path) { alert('No visa document available'); return; }
+			if (path.startsWith('data:')) {
+				var modal = document.getElementById('fileViewerModal');
+				var content = document.getElementById('fileViewerContent');
+				var titleEl = document.getElementById('fileViewerTitle');
+				if (modal && content) {
+					titleEl.textContent = 'Visa Document';
+					if (path.startsWith('data:application/pdf')) {
+						content.innerHTML = '<iframe src="' + path + '" style="width:100%; height:70vh; border:none;"></iframe>';
+					} else {
+						content.innerHTML = '<img src="' + path + '" alt="Visa Document" style="max-width:100%; max-height:70vh; object-fit:contain;">';
+					}
+					modal.style.display = 'flex';
+					document.body.style.overflow = 'hidden';
+				}
+			} else {
+				openFileViewer(path, 'Visa Document');
+			}
+		}
+
+		// 비자 문서 다운로드
+		function downloadVisaDocumentInEditB2B(idx) {
+			var t = allTravelers[idx];
+			if (!t) return;
+			var path = t.visaDocument || t.visaDocumentUrl || '';
+			if (!path) { alert('No visa document available'); return; }
+			if (path.startsWith('data:')) {
+				var a = document.createElement('a');
+				a.href = path;
+				a.download = path.startsWith('data:application/pdf') ? 'visa_document.pdf' : 'visa_document.jpg';
+				a.style.display = 'none';
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+			} else {
+				window.open('/backend/api/download.php?file=' + encodeURIComponent(path), '_blank');
+			}
+		}
+
 		// Flight Option 업데이트
 		function updateTravelerFlightOptionInEdit(travelerIndex, optionId, price, isChecked) {
 			if (!allTravelers[travelerIndex]) return;
@@ -2872,14 +2961,15 @@
 			const childWithRoomPrice = adultPrice;
 			const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
 			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+			const infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
 			// Before Amount
-			const beforeBreakdown = calculateBreakdown(beforeTravelers, beforeRooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice);
+			const beforeBreakdown = calculateBreakdown(beforeTravelers, beforeRooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice, infantSeatPrice);
 			document.getElementById('summary-breakdown-before').innerHTML = beforeBreakdown.html || '<div style="color:#999;">-</div>';
 			document.getElementById('summary-total-before').textContent = `₱${beforeBreakdown.total.toLocaleString()}`;
 
 			// After Amount
-			const afterBreakdown = calculateBreakdown(afterTravelers, afterRooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice);
+			const afterBreakdown = calculateBreakdown(afterTravelers, afterRooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice, infantSeatPrice);
 			document.getElementById('summary-breakdown-after').innerHTML = afterBreakdown.html || '<div style="color:#999;">-</div>';
 			document.getElementById('summary-total-after').textContent = `₱${afterBreakdown.total.toLocaleString()}`;
 
@@ -2905,11 +2995,11 @@
 		}
 
 		// Amount breakdown 계산 헬퍼 함수
-		function calculateBreakdown(travelers, rooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice) {
+		function calculateBreakdown(travelers, rooms, adultPrice, childWithRoomPrice, childNoRoomPrice, infantPrice, infantSeatPrice) {
 			let html = '';
 			let total = 0;
 
-			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeat = 0, infantsNoSeat = 0;
 			travelers.forEach(t => {
 				const type = (t.travelerType || t.type || '').toLowerCase();
 				if (type === 'adult') adults++;
@@ -2918,7 +3008,10 @@
 					if (hasRoom) childrenWithRoom++;
 					else childrenNoRoom++;
 				}
-				else if (type === 'infant') infants++;
+				else if (type === 'infant') {
+					if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) infantsWithSeat++;
+					else infantsNoSeat++;
+				}
 			});
 
 			if (adults > 0) {
@@ -2936,10 +3029,16 @@
 				total += amt;
 				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Child (no room) x${childrenNoRoom}</span><span>₱${amt.toLocaleString()}</span></div>`;
 			}
-			if (infants > 0) {
-				const amt = infants * infantPrice;
+			if (infantsWithSeat > 0) {
+				const isp = infantSeatPrice || infantPrice;
+				const amt = infantsWithSeat * isp;
 				total += amt;
-				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Infant x${infants}</span><span>₱${amt.toLocaleString()}</span></div>`;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Infant (Seat) x${infantsWithSeat}</span><span>₱${amt.toLocaleString()}</span></div>`;
+			}
+			if (infantsNoSeat > 0) {
+				const amt = infantsNoSeat * infantPrice;
+				total += amt;
+				html += `<div style="display:flex; justify-content:space-between; padding: 4px 0;"><span>Infant (No Seat) x${infantsNoSeat}</span><span>₱${amt.toLocaleString()}</span></div>`;
 			}
 
 			// Room prices
@@ -3542,6 +3641,7 @@
 			const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
 			const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
 			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+			const infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
 			// 할인 전 원래 가격 계산 (saleDiscountAmount는 인당 할인금액)
 			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
@@ -3550,7 +3650,8 @@
 			let adults = 0;
 			let childrenWithRoom = 0;
 			let childrenNoRoom = 0;
-			let infants = 0;
+			let infantsWithSeat = 0;
+			let infantsNoSeat = 0;
 
 			if (Array.isArray(travelers)) {
 				travelers.forEach(t => {
@@ -3565,7 +3666,8 @@
 							childrenNoRoom++;
 						}
 					} else if (type === 'infant') {
-						infants++;
+						if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) infantsWithSeat++;
+						else infantsNoSeat++;
 					}
 				});
 			}
@@ -3583,8 +3685,11 @@
 			if (childrenNoRoom > 0 && childPrice > 0) {
 				items.push({ label: 'Child x ' + childrenNoRoom, amount: childrenNoRoom * childPrice });
 			}
-			if (infants > 0) {
-				items.push({ label: 'Infant x ' + infants, amount: infants * infantPrice });
+			if (infantsWithSeat > 0) {
+				items.push({ label: 'Infant (Seat) x ' + infantsWithSeat, amount: infantsWithSeat * infantSeatPrice });
+			}
+			if (infantsNoSeat > 0) {
+				items.push({ label: 'Infant (No Seat) x ' + infantsNoSeat, amount: infantsNoSeat * infantPrice });
 			}
 
 			// 옵션 금액 (Room Options)
@@ -3687,12 +3792,13 @@
 			const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
 			const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
 			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+			const infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
 			// 할인 전 원래 가격 (saleDiscountAmount는 인당 할인금액)
 			const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
 
 			// 인원 수 계산
-			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeat = 0, infantsNoSeat = 0;
 			let visaFeeTotal = 0;
 			let flightOptionsTotal = 0;
 
@@ -3715,7 +3821,8 @@
 					if (hasRoom) childrenWithRoom++;
 					else childrenNoRoom++;
 				} else if (type === 'infant') {
-					infants++;
+					if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) infantsWithSeat++;
+					else infantsNoSeat++;
 				}
 
 				// Visa fee 계산 (group visa만)
@@ -3738,7 +3845,8 @@
 			packageTotal += adults * originalAdultPrice;
 			packageTotal += childrenWithRoom * originalAdultPrice;
 			packageTotal += childrenNoRoom * childPrice;
-			packageTotal += infants * infantPrice;
+			packageTotal += infantsWithSeat * infantSeatPrice;
+			packageTotal += infantsNoSeat * infantPrice;
 
 			// 할인 대상 인원 (새 travelers 기준)
 			const discountableCount = adults + childrenWithRoom;
@@ -4525,8 +4633,9 @@
 			const childWithRoomPrice = adultPrice; // 성인가격 100%
 			const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8); // 80%
 			const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+			const infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
-			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+			let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeat = 0, infantsNoSeat = 0;
 			(allTravelers || []).forEach(t => {
 				const type = (t.type || t.travelerType || '').toLowerCase();
 				if (type === 'adult') adults++;
@@ -4535,7 +4644,10 @@
 					if (hasRoom) childrenWithRoom++;
 					else childrenNoRoom++;
 				}
-				else if (type === 'infant') infants++;
+				else if (type === 'infant') {
+					if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) infantsWithSeat++;
+					else infantsNoSeat++;
+				}
 			});
 
 			// 여행자 가격 섹션
@@ -4555,10 +4667,15 @@
 				totalAmount += childNoRoomTotal;
 				summaryHtml += `<div class="order-summary-item"><span>Child x${childrenNoRoom}</span><span>₱${Math.round(childNoRoomTotal).toLocaleString()}</span></div>`;
 			}
-			if (infants > 0) {
-				const infantTotal = infants * infantPrice;
+			if (infantsWithSeat > 0) {
+				const infantSeatTotal = infantsWithSeat * infantSeatPrice;
+				totalAmount += infantSeatTotal;
+				summaryHtml += `<div class="order-summary-item"><span>Infant (Seat) x${infantsWithSeat}</span><span>₱${infantSeatTotal.toLocaleString()}</span></div>`;
+			}
+			if (infantsNoSeat > 0) {
+				const infantTotal = infantsNoSeat * infantPrice;
 				totalAmount += infantTotal;
-				summaryHtml += `<div class="order-summary-item"><span>Infant x${infants}</span><span>₱${infantTotal.toLocaleString()}</span></div>`;
+				summaryHtml += `<div class="order-summary-item"><span>Infant (No Seat) x${infantsNoSeat}</span><span>₱${infantTotal.toLocaleString()}</span></div>`;
 			}
 
 			// 2. 룸 옵션 가격 섹션
@@ -4681,6 +4798,7 @@
 					adultPrice: lastLoadedBooking?.adultPrice || lastLoadedBooking?.packagePrice || 0,
 					childPrice: lastLoadedBooking?.childPrice || 0,
 					infantPrice: lastLoadedBooking?.infantPrice || 0,
+					infantSeatPrice: lastLoadedBooking?.infantSeatPrice || 0,
 					saleId: lastLoadedBooking?.saleId || null,
 					saleName: lastLoadedBooking?.saleName || '',
 					saleDiscountAmount: lastLoadedBooking?.saleDiscountAmount || 0

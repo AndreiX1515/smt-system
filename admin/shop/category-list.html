@@ -77,6 +77,16 @@
                 <div id="categoryList">
                     <!-- 카테고리 목록 -->
                 </div>
+                <hr style="border: none; border-top: 2px solid #eee; margin: 40px 0;">
+
+                <div class="page-header">
+                    <h1 class="page-title">배송지 관리</h1>
+                    <button class="btn-add" onclick="openAddrModal()">+ 배송지 추가</button>
+                </div>
+
+                <div id="addressList">
+                    <!-- 배송지 목록 -->
+                </div>
             </div>
         </section>
     </main>
@@ -97,6 +107,28 @@
                 </div>
                 <div class="modal-btns">
                     <button type="button" class="btn-cancel" onclick="closeModal()">취소</button>
+                    <button type="submit" class="btn-save">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 배송지 모달 -->
+    <div class="modal-overlay" id="addrModal">
+        <div class="modal-box">
+            <div class="modal-title" id="addrModalTitle">배송지 추가</div>
+            <form id="addrForm">
+                <input type="hidden" id="addrId">
+                <div class="form-group">
+                    <label class="form-label">배송지명</label>
+                    <input type="text" class="form-input" id="addrName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">정렬 순서</label>
+                    <input type="number" class="form-input" id="addrOrder" value="0">
+                </div>
+                <div class="modal-btns">
+                    <button type="button" class="btn-cancel" onclick="closeAddrModal()">취소</button>
                     <button type="submit" class="btn-save">저장</button>
                 </div>
             </form>
@@ -211,6 +243,105 @@
         });
 
         loadCategories();
+
+        // ===== 배송지 관리 =====
+        async function loadAddresses() {
+            try {
+                const res = await fetch(`${API_BASE}/addresses.php`);
+                const data = await res.json();
+
+                const container = document.getElementById('addressList');
+                if (data.success && data.addresses.length > 0) {
+                    container.innerHTML = data.addresses.map(addr => `
+                        <div class="category-card">
+                            <div class="category-icon">📍</div>
+                            <div class="category-info">
+                                <div class="category-name">${addr.name}</div>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn-edit" onclick='editAddr(${JSON.stringify(addr)})'>수정</button>
+                                <button class="btn-delete" onclick="deleteAddr(${addr.id}, '${addr.name}')">삭제</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align:center;color:#888;padding:40px;">배송지가 없습니다.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function openAddrModal(addr = null) {
+            document.getElementById('addrModal').classList.add('show');
+            if (addr) {
+                document.getElementById('addrModalTitle').textContent = '배송지 수정';
+                document.getElementById('addrId').value = addr.id;
+                document.getElementById('addrName').value = addr.name;
+                document.getElementById('addrOrder').value = addr.sort_order;
+            } else {
+                document.getElementById('addrModalTitle').textContent = '배송지 추가';
+                document.getElementById('addrForm').reset();
+                document.getElementById('addrId').value = '';
+            }
+        }
+
+        function closeAddrModal() {
+            document.getElementById('addrModal').classList.remove('show');
+        }
+
+        function editAddr(addr) {
+            openAddrModal(addr);
+        }
+
+        async function deleteAddr(id, name) {
+            if (!confirm(`"${name}" 배송지를 삭제하시겠습니까?`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/addresses.php?id=${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    alert('삭제되었습니다.');
+                    loadAddresses();
+                } else {
+                    alert(data.error || '삭제 실패');
+                }
+            } catch (e) {
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+        document.getElementById('addrForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('addrId').value;
+            const formData = {
+                name: document.getElementById('addrName').value,
+                sort_order: parseInt(document.getElementById('addrOrder').value) || 0
+            };
+
+            if (id) formData.id = id;
+
+            try {
+                const res = await fetch(`${API_BASE}/addresses.php`, {
+                    method: id ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    closeAddrModal();
+                    loadAddresses();
+                } else {
+                    alert(data.error || '저장 실패');
+                }
+            } catch (e) {
+                alert('오류가 발생했습니다.');
+            }
+        });
+
+        loadAddresses();
     </script>
 </body>
 </html>

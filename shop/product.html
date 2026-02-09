@@ -133,6 +133,43 @@
             padding: 20px;
         }
 
+        /* 설명 이미지 펼치기/접기 */
+        .desc-image-wrapper {
+            position: relative;
+            max-height: 400px;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+        .desc-image-wrapper.expanded {
+            max-height: none;
+        }
+        .desc-image-wrapper:not(.expanded)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(transparent, #fff);
+            pointer-events: none;
+        }
+        .desc-toggle-btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: none;
+            border: 1px solid #eee;
+            border-radius: 0 0 8px 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0065F8;
+            cursor: pointer;
+            text-align: center;
+        }
+        .desc-toggle-btn:hover {
+            background: #f8f9fa;
+        }
+
         /* 리뷰 섹션 */
         .reviews-section { padding: 20px; }
         .reviews-summary {
@@ -583,7 +620,20 @@
 
             // 설명 (이미지 우선, 없으면 텍스트)
             if (product.description_image) {
-                document.getElementById('productDesc').innerHTML = `<img src="${product.description_image}" style="width:100%; display:block;">`;
+                document.getElementById('productDesc').innerHTML = `
+                    <div class="desc-image-wrapper" id="descImageWrapper">
+                        <img src="${product.description_image}" style="width:100%; display:block;">
+                    </div>
+                    <button class="desc-toggle-btn" id="descToggleBtn" onclick="toggleDescImage()">View More ▼</button>
+                `;
+                // 이미지 로드 후 높이 체크 - 짧으면 버튼 숨기기
+                const img = document.querySelector('#descImageWrapper img');
+                img.onload = function() {
+                    if (this.offsetHeight <= 400) {
+                        document.getElementById('descImageWrapper').classList.add('expanded');
+                        document.getElementById('descToggleBtn').style.display = 'none';
+                    }
+                };
             } else {
                 document.getElementById('productDesc').textContent = description;
             }
@@ -745,6 +795,20 @@
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        // 설명 이미지 펼치기/접기
+        function toggleDescImage() {
+            const wrapper = document.getElementById('descImageWrapper');
+            const btn = document.getElementById('descToggleBtn');
+            if (wrapper.classList.contains('expanded')) {
+                wrapper.classList.remove('expanded');
+                btn.textContent = 'View More ▼';
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                wrapper.classList.add('expanded');
+                btn.textContent = 'Collapse ▲';
             }
         }
 

@@ -261,6 +261,95 @@ function logAutoCancellation($conn, $bookingId, $previousStatus) {
 }
 
 /**
+ * 44일 이내 + 무결제 예약 → Full Payment 자동 전환
+ * waiting_cancelled 설정 직후 호출하여, 출발 44일 이내이고 결제증빙이 전혀 없는 경우
+ * paymentType을 full로 변경하고 기한을 +3일로 설정
+ */
+function convertToFullPaymentIfNeeded($conn, $bookingId) {
+    try {
+        // 예약 정보 조회
+        $bStmt = $conn->prepare("SELECT departureDate, totalAmount, paymentType FROM bookings WHERE bookingId = ?");
+        $bStmt->bind_param('s', $bookingId);
+        $bStmt->execute();
+        $bRow = $bStmt->get_result()->fetch_assoc();
+        $bStmt->close();
+        if (!$bRow || empty($bRow['departureDate'])) return;
+
+        // 이미 full인 경우 스킵
+        if (($bRow['paymentType'] ?? '') === 'full') return;
+
+        // 출발일까지 44일 이내인지 체크
+        $daysUntilDep = (int)(new DateTime())->diff(new DateTime($bRow['departureDate']))->format('%r%a');
+        if ($daysUntilDep > 44) return;
+
+        // booking_payments 테이블에서 파일 존재 확인
+        $payments = getPaymentsByBookingId($conn, $bookingId);
+        $hasAnyFile = false;
+        foreach ($payments as $p) {
+            if (!empty($p['filePath'])) {
+                $hasAnyFile = true;
+                break;
+            }
+        }
+
+        // 레거시 컬럼에서도 파일 확인
+        if (!$hasAnyFile) {
+            $legacyStmt = $conn->prepare("SELECT downPaymentFile, advancePaymentFile, balanceFile, fullPaymentFile FROM bookings WHERE bookingId = ?");
+            $legacyStmt->bind_param('s', $bookingId);
+            $legacyStmt->execute();
+            $legacyRow = $legacyStmt->get_result()->fetch_assoc();
+            $legacyStmt->close();
+            if ($legacyRow) {
+                if (!empty($legacyRow['downPaymentFile']) || !empty($legacyRow['advancePaymentFile']) ||
+                    !empty($legacyRow['balanceFile']) || !empty($legacyRow['fullPaymentFile'])) {
+                    $hasAnyFile = true;
+                }
+            }
+        }
+
+        if ($hasAnyFile) return;
+
+        // Full Payment로 전환
+        $totalAmount = $bRow['totalAmount'] ?? 0;
+        $fullDueDate = date('Y-m-d', strtotime('+3 days'));
+
+        // bookings 테이블 업데이트
+        $updStmt = $conn->prepare("UPDATE bookings SET
+            paymentType = 'full',
+            fullPaymentAmount = ?,
+            fullPaymentDueDate = ?,
+            downPaymentAmount = 0,
+            advancePaymentAmount = 0,
+            balanceAmount = 0,
+            downPaymentDueDate = NULL,
+            advancePaymentDueDate = NULL,
+            balanceDueDate = NULL
+            WHERE bookingId = ?");
+        $updStmt->bind_param('dss', $totalAmount, $fullDueDate, $bookingId);
+        $updStmt->execute();
+        $updStmt->close();
+
+        // booking_payments 테이블: 기존 삭제 → full 1건 생성
+        deletePaymentsForBooking($conn, $bookingId);
+        createPaymentsForBooking($conn, $bookingId, 'full',
+            ['full' => $totalAmount],
+            ['full' => $fullDueDate]
+        );
+
+        // 이력 기록
+        $histMsg = "Auto-converted to Full Payment (departure within 44 days, no payment proof). Due: $fullDueDate";
+        try {
+            $hStmt = $conn->prepare("INSERT INTO booking_history (bookingId, description, createdAt) VALUES (?, ?, NOW())");
+            if ($hStmt) {
+                $hStmt->bind_param('ss', $bookingId, $histMsg);
+                $hStmt->execute();
+                $hStmt->close();
+            }
+        } catch (Throwable $e) { }
+    } catch (Throwable $e) { }
+}
+
+/**
  * B2B 자동취소:
  * - 선금/잔금 기한 경과 + 증빙 미업로드 -> cancelled
  *   overview 페이지 로드 시 일괄 적용.
@@ -321,6 +410,9 @@ function applyB2BAutoCancellation($conn) {
             $cancelStmt->bind_param('s', $bookingId);
             $cancelStmt->execute();
             $cancelStmt->close();
+
+            // 44일 이내 + 무결제 → full payment 전환
+            convertToFullPaymentIfNeeded($conn, $bookingId);
 
             $processedBookingIds[] = $bookingId;
         }
@@ -396,6 +488,7 @@ function applyB2BAutoCancellation($conn) {
         $stmt->execute();
         $result = $stmt->get_result();
 
+        $legacyBookingIds = [];
         if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
                 logAutoCancellation($conn, $row['bookingId'], $row['bookingStatus'] ?? '');
@@ -404,6 +497,7 @@ function applyB2BAutoCancellation($conn) {
                     $reason = 'Payment deadline has passed without payment proof submission.';
                     send_pending_cancellation_email($conn, $row['bookingId'], $reason);
                 }
+                $legacyBookingIds[] = $row['bookingId'];
             }
         }
         $stmt->close();
@@ -425,6 +519,11 @@ function applyB2BAutoCancellation($conn) {
         }
         $updateStmt->execute();
         $updateStmt->close();
+
+        // 레거시 처리된 예약에 대해서도 44일 이내 + 무결제 → full payment 전환
+        foreach ($legacyBookingIds as $legacyBid) {
+            convertToFullPaymentIfNeeded($conn, $legacyBid);
+        }
     } catch (Throwable $e) {
         // ignore
     }

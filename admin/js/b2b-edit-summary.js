@@ -172,22 +172,29 @@ function renderAmountBreakdown() {
 	const childWithRoomPrice = adultPrice;
 	const childNoRoomPrice = parseFloat(bookingData.childPrice || 0) || (adultPrice * 0.8);
 	const infantPrice = parseFloat(bookingData.infantPrice || 0) || 10000;
+	const infantSeatPrice = parseFloat(bookingData.infantSeatPrice || 0) || infantPrice;
 
 	// 할인 전 원래 가격 계산
 	const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
 	const originalChildWithRoomPrice = originalAdultPrice;
 
 	// 인원별 계산
-	let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infants = 0;
+	let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeat = 0, infantsNoSeat = 0;
 	travelers.forEach(t => {
 		const type = (t.travelerType || t.type || '').toLowerCase();
 		if (type === 'adult') adults++;
 		else if (type === 'child') {
-			const hasRoom = parseInt(t.childRoom || 0) === 1;
+			const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || parseInt(t.childRoom || 0) === 1;
 			if (hasRoom) childrenWithRoom++;
 			else childrenNoRoom++;
 		}
-		else if (type === 'infant') infants++;
+		else if (type === 'infant') {
+			if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) {
+				infantsWithSeat++;
+			} else {
+				infantsNoSeat++;
+			}
+		}
 	});
 
 	// 할인 적용 대상 인원 (Adult + Child with Room)
@@ -209,10 +216,15 @@ function renderAmountBreakdown() {
 		subtotal += amount;
 		items.push({ label: `Child x ${childrenNoRoom}`, amount: Math.round(amount) });
 	}
-	if (infants > 0) {
-		const amount = infants * infantPrice;
+	if (infantsWithSeat > 0) {
+		const amount = infantsWithSeat * infantSeatPrice;
 		subtotal += amount;
-		items.push({ label: `Infant x ${infants}`, amount });
+		items.push({ label: `Infant (Seat) x ${infantsWithSeat}`, amount });
+	}
+	if (infantsNoSeat > 0) {
+		const amount = infantsNoSeat * infantPrice;
+		subtotal += amount;
+		items.push({ label: `Infant (No Seat) x ${infantsNoSeat}`, amount });
 	}
 
 	// Room Options

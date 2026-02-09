@@ -344,15 +344,18 @@ try {
         $seats = $_POST['availabilitySeats'] ?? [];
         $prices = $_POST['availabilityPrice'] ?? [];
         $b2bPrices = $_POST['availabilityB2bPrice'] ?? [];
+        $infantSeatPrices = $_POST['availabilityInfantSeatPrice'] ?? [];
         for ($i = 0; $i < count($dates); $i++) {
             $d = sanitize_input($dates[$i] ?? '');
             if ($d === '') continue;
             $b2bVal = isset($b2bPrices[$i]) && $b2bPrices[$i] !== '' ? floatval($b2bPrices[$i]) : null;
+            $infantSeatVal = isset($infantSeatPrices[$i]) && $infantSeatPrices[$i] !== '' && $infantSeatPrices[$i] !== '0' ? floatval($infantSeatPrices[$i]) : null;
             $availabilityRows[] = [
                 'date' => $d,
                 'seats' => intval($seats[$i] ?? 0),
                 'price' => floatval($prices[$i] ?? 0),
-                'b2bPrice' => $b2bVal
+                'b2bPrice' => $b2bVal,
+                'infantSeatPrice' => $infantSeatVal
             ];
         }
     }
@@ -433,6 +436,8 @@ try {
     $b2bAdultPrice = !empty($_POST['b2bAdultPrice']) ? floatval($_POST['b2bAdultPrice']) : $b2bBasePrice;
     $b2bChildPrice = !empty($_POST['b2bChildPrice']) ? floatval($_POST['b2bChildPrice']) : null;
     $b2bInfantPrice = !empty($_POST['b2bInfantPrice']) ? floatval($_POST['b2bInfantPrice']) : null;
+    $infantSeatPrice = !empty($_POST['infantSeatPrice']) ? floatval($_POST['infantSeatPrice']) : null;
+    $b2bInfantSeatPrice = !empty($_POST['b2bInfantSeatPrice']) ? floatval($_POST['b2bInfantSeatPrice']) : null;
 
     // 가격 텍스트 (문자열로 표시할 가격)
     $priceDisplayText = isset($_POST['priceDisplayText']) ? trim((string)$_POST['priceDisplayText']) : null;
@@ -891,6 +896,8 @@ try {
                 b2b_child_price = ?,
                 infantPrice = ?,
                 b2b_infant_price = ?,
+                infant_seat_price = ?,
+                b2b_infant_seat_price = ?,
                 sales_period = ?,
                 minParticipants = ?,
                 maxParticipants = ?,
@@ -924,7 +931,7 @@ try {
         }
 
         $stmt->bind_param(
-            "sssssdsdsddddsiidssssssssdissisdsssss" . "i",
+            "sssssdsdsddddddsiidssssssssdissisdsssss" . "i",
             $productName,
             $salesTarget,
             $mainCategory,
@@ -938,6 +945,8 @@ try {
             $b2bChildPrice,
             $infantPrice,
             $b2bInfantPrice,
+            $infantSeatPrice,
+            $b2bInfantSeatPrice,
             $salesPeriod,
             $minParticipants,
             $maxParticipants,
@@ -984,6 +993,8 @@ try {
                 b2b_child_price,
                 infantPrice,
                 b2b_infant_price,
+                infant_seat_price,
+                b2b_infant_seat_price,
                 sales_period,
                 minParticipants,
                 maxParticipants,
@@ -1009,7 +1020,7 @@ try {
                 common_accommodation_image,
                 common_transportation_description,
                 createdAt
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         if (!$stmt) {
@@ -1017,7 +1028,7 @@ try {
         }
 
         $stmt->bind_param(
-            "sssssdsdsddddsiidssssssssdissisdsssss",
+            "sssssdsdsddddddsiidssssssssdissisdsssss",
             $productName,
             $salesTarget,
             $mainCategory,
@@ -1031,6 +1042,8 @@ try {
             $b2bChildPrice,
             $infantPrice,
             $b2bInfantPrice,
+            $infantSeatPrice,
+            $b2bInfantSeatPrice,
             $salesPeriod,
             $minParticipants,
             $maxParticipants,
@@ -1511,11 +1524,12 @@ try {
     //   (package_available_dates)  (upsert)
     if (!empty($availabilityRows)) {
         $stmtAvail = $conn->prepare("
-            INSERT INTO package_available_dates (package_id, available_date, price, b2b_price, capacity, status)
-            VALUES (?, ?, ?, ?, ?, 'open')
+            INSERT INTO package_available_dates (package_id, available_date, price, b2b_price, b2b_infant_seat_price, capacity, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'open')
             ON DUPLICATE KEY UPDATE
                 price = VALUES(price),
                 b2b_price = VALUES(b2b_price),
+                b2b_infant_seat_price = VALUES(b2b_infant_seat_price),
                 capacity = VALUES(capacity),
                 status = 'open'
         ");
@@ -1525,7 +1539,8 @@ try {
             $seats = intval($row['seats']);
             $price = floatval($row['price']);
             $b2bPrice = $row['b2bPrice'];
-            $stmtAvail->bind_param('isddi', $packageId, $d, $price, $b2bPrice, $seats);
+            $infantSeatPriceVal = $row['infantSeatPrice'];
+            $stmtAvail->bind_param('isdddi', $packageId, $d, $price, $b2bPrice, $infantSeatPriceVal, $seats);
             if (!$stmtAvail->execute()) {
                 throw new Exception('   : ' . $stmtAvail->error);
             }
@@ -1540,7 +1555,13 @@ try {
         $sqlCleanup = "DELETE FROM package_available_dates
                        WHERE package_id = ?
                          AND available_date NOT IN ($placeholders)
-                         AND (booked_seats IS NULL OR booked_seats = 0)";
+                         AND NOT EXISTS (
+                             SELECT 1 FROM bookings b
+                             WHERE b.packageId = package_available_dates.package_id
+                               AND b.departureDate = package_available_dates.available_date
+                               AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','rejected'))
+                               AND (b.paymentStatus IS NULL OR b.paymentStatus <> 'refunded')
+                         )";
         $stmtCl = $conn->prepare($sqlCleanup);
         if ($stmtCl) {
             $refs = [];

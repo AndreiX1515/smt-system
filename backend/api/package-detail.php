@@ -125,6 +125,7 @@ try {
     if (table_exists($conn, 'package_available_dates')) {
         $aq = "SELECT pad.id AS availabilityId, pad.available_date AS availableDate, pad.price, pad.b2b_price AS b2bPrice,
                       pad.childPrice, pad.b2b_child_price AS b2bChildPrice, pad.infant_price AS infantPrice, pad.b2b_infant_price AS b2bInfantPrice,
+                      pad.infant_seat_price AS infantSeatPrice, pad.b2b_infant_seat_price AS b2bInfantSeatPrice,
                       pad.capacity AS availableSeats,
                       COALESCE(bk.booked, 0) AS bookedSeats,
                       pad.status, pad.flight_id AS flightId

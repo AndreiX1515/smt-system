@@ -52,6 +52,47 @@
         .desc-img-preview:hover { border-color: #0065F8; }
         .desc-img-preview img { width: 100%; display: block; }
         .desc-img-preview .upload-hint { padding: 40px 20px; }
+        .desc-img-preview.has-image {
+            max-height: 300px;
+            position: relative;
+            cursor: default;
+        }
+        .desc-img-preview.has-image.expanded { max-height: none; }
+        .desc-img-preview.has-image:not(.expanded)::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #f5f5f5);
+            pointer-events: none;
+        }
+        .desc-img-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .desc-img-actions button {
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-desc-toggle {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+        .btn-desc-change {
+            background: #fff;
+            border: 1px solid #0065F8;
+            color: #0065F8;
+        }
+        .btn-desc-remove {
+            background: #fff;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -107,13 +148,19 @@
                     </div>
 
                     <div class="form-section">
-                        <div class="section-title">상품 설명</div>
+                        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>상품 설명</span>
+                            <div class="desc-img-actions" id="descImgActions" style="display:none; gap:6px;">
+                                <button type="button" class="btn-desc-toggle" id="btnDescToggle" onclick="toggleDescPreview()">펼치기 ▼</button>
+                                <button type="button" class="btn-desc-change" onclick="document.getElementById('descImageFile').click()">변경</button>
+                                <button type="button" class="btn-desc-remove" onclick="removeDescImage()">삭제</button>
+                            </div>
+                        </div>
 
                         <div class="form-group">
-                            <label class="form-label">상세 설명 이미지 (PNG)</label>
                             <div class="upload-area">
                                 <input type="file" id="descImageFile" accept="image/png" style="display:none;">
-                                <div class="desc-img-preview" id="descImgPreview" onclick="document.getElementById('descImageFile').click()">
+                                <div class="desc-img-preview" id="descImgPreview" onclick="onDescPreviewClick()">
                                     <span class="upload-hint">클릭하여 상세 설명 이미지 선택<br><small>세로로 긴 PNG 파일 (최대 10MB)</small></span>
                                 </div>
                                 <div class="upload-progress" id="descUploadProgress" style="display:none;">업로드 중...</div>
@@ -220,7 +267,7 @@
                     document.getElementById('isFeatured').checked = p.is_featured == 1;
 
                     if (p.description_image) {
-                        document.getElementById('descImgPreview').innerHTML = `<img src="${p.description_image}">`;
+                        showDescImage(p.description_image);
                     }
                     if (p.thumbnail) {
                         document.getElementById('imgPreview').innerHTML = `<img src="${p.thumbnail}">`;
@@ -344,7 +391,7 @@
 
                 if (data.success) {
                     document.getElementById('descriptionImage').value = data.url;
-                    descImgPreview.innerHTML = `<img src="${data.url}">`;
+                    showDescImage(data.url);
                     descUploadProgress.style.display = 'none';
                 } else {
                     alert(data.error || '업로드 실패');
@@ -357,19 +404,50 @@
             }
         }
 
+        function showDescImage(url) {
+            descImgPreview.innerHTML = `<img src="${url}">`;
+            descImgPreview.classList.add('has-image');
+            descImgPreview.classList.remove('expanded');
+            document.getElementById('descImgActions').style.display = 'flex';
+            document.getElementById('btnDescToggle').textContent = '펼치기 ▼';
+        }
+
+        function onDescPreviewClick() {
+            if (descImgPreview.classList.contains('has-image')) return;
+            document.getElementById('descImageFile').click();
+        }
+
+        function toggleDescPreview() {
+            const btn = document.getElementById('btnDescToggle');
+            if (descImgPreview.classList.contains('expanded')) {
+                descImgPreview.classList.remove('expanded');
+                btn.textContent = '펼치기 ▼';
+            } else {
+                descImgPreview.classList.add('expanded');
+                btn.textContent = '접기 ▲';
+            }
+        }
+
+        function removeDescImage() {
+            if (!confirm('상세 설명 이미지를 삭제하시겠습니까?')) return;
+            document.getElementById('descriptionImage').value = '';
+            descImgPreview.innerHTML = `<span class="upload-hint">클릭하여 상세 설명 이미지 선택<br><small>세로로 긴 PNG 파일 (최대 10MB)</small></span>`;
+            descImgPreview.classList.remove('has-image', 'expanded');
+            document.getElementById('descImgActions').style.display = 'none';
+        }
+
         // 폼 제출
         document.getElementById('productForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const name = document.getElementById('name').value;
-            const description = document.getElementById('description').value;
             const formData = {
                 category_id: document.getElementById('categoryId').value,
                 name: name,
                 price: parseFloat(document.getElementById('price').value),
                 sale_price: document.getElementById('salePrice').value ? parseFloat(document.getElementById('salePrice').value) : null,
                 stock: parseInt(document.getElementById('stock').value),
-                description: description,
+                description: '',
                 description_image: document.getElementById('descriptionImage').value || null,
                 thumbnail: document.getElementById('thumbnail').value,
                 is_active: document.getElementById('isActive').checked ? 1 : 0,

@@ -14981,6 +14981,7 @@ function approveB2BBooking($conn, $input) {
                     }
 
                     // 새 여행자 삽입
+                    $travelerIdx = 0;
                     foreach ($pendingTravelers as $tr) {
                         if (!is_array($tr)) continue;
 
@@ -15009,8 +15010,27 @@ function approveB2BBooking($conn, $input) {
                         $passportExpiryVal = ($passportExpiry !== '' && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
                         $profileSourceVal = ($profileSource !== '') ? $profileSource : null;
                         $visaTypeVal = in_array($visaType, ['with_visa', 'group', 'individual', 'foreign']) ? $visaType : null;
-                        // passportImage: base64는 저장하지 않고 URL 경로만 저장
-                        $passportImageVal = ($passportImage !== '' && !str_starts_with($passportImage, 'data:')) ? $passportImage : null;
+                        // passportImage: base64면 파일로 저장, URL 경로면 그대로 유지
+                        $passportImageVal = null;
+                        if ($passportImage !== '' && str_starts_with($passportImage, 'data:image')) {
+                            // Base64 이미지 디코딩 후 파일 저장
+                            $ppUploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/passports/';
+                            if (!is_dir($ppUploadDir)) { @mkdir($ppUploadDir, 0755, true); }
+                            $ppMatches = [];
+                            if (preg_match('/^data:image\/(\w+);base64,/', $passportImage, $ppMatches)) {
+                                $ppExt = $ppMatches[1];
+                                $ppBase64 = substr($passportImage, strpos($passportImage, ',') + 1);
+                                $ppData = base64_decode($ppBase64);
+                                if ($ppData !== false) {
+                                    $ppFilename = $bookingId . '_' . $travelerIdx . '_' . time() . '.' . $ppExt;
+                                    if (file_put_contents($ppUploadDir . $ppFilename, $ppData)) {
+                                        $passportImageVal = '/uploads/passports/' . $ppFilename;
+                                    }
+                                }
+                            }
+                        } elseif ($passportImage !== '' && (strpos($passportImage, '/uploads/') !== false || strpos($passportImage, 'uploads/') === 0)) {
+                            $passportImageVal = $passportImage;
+                        }
                         // childRoom: 'yes', '1', true 등을 1로 변환
                         $childRoomVal = ($childRoom === 'yes' || $childRoom === 'Yes' || $childRoom === '1' || $childRoom === 1 || $childRoom === true) ? 1 : 0;
 
@@ -15054,6 +15074,7 @@ function approveB2BBooking($conn, $input) {
                             $stInsert->execute();
                             $stInsert->close();
                         }
+                        $travelerIdx++;
                     }
 
                     // 새 flight options 삽입
@@ -16281,6 +16302,7 @@ function getInventoryCalendar($conn, $input) {
                    price, b2b_price AS b2bPrice,
                    childPrice, b2b_child_price AS b2bChildPrice,
                    infant_price AS infantPrice, b2b_infant_price AS b2bInfantPrice,
+                   infant_seat_price AS infantSeatPrice, b2b_infant_seat_price AS b2bInfantSeatPrice,
                    singlePrice, flight_id AS flightId, departure_time AS departureTime, status
             FROM package_available_dates
             WHERE package_id = ? AND available_date >= ? AND available_date <= ?
@@ -16437,6 +16459,7 @@ function updateInventory($conn, $input) {
         $b2bPrice = isset($input['b2bPrice']) ? floatval($input['b2bPrice']) : null;
         $b2bChildPrice = isset($input['b2bChildPrice']) ? floatval($input['b2bChildPrice']) : null;
         $b2bInfantPrice = isset($input['b2bInfantPrice']) ? floatval($input['b2bInfantPrice']) : null;
+        $b2bInfantSeatPrice = isset($input['b2bInfantSeatPrice']) ? floatval($input['b2bInfantSeatPrice']) : null;
         // 상태 (open/closed)
         $status = isset($input['status']) ? trim($input['status']) : null;
         if ($status !== null && !in_array($status, ['open', 'closed'])) {
@@ -16506,6 +16529,11 @@ function updateInventory($conn, $input) {
                 $types .= 'd';
                 $params[] = $b2bInfantPrice;
             }
+            if ($b2bInfantSeatPrice !== null) {
+                $updates[] = 'b2b_infant_seat_price = ?';
+                $types .= 'd';
+                $params[] = $b2bInfantSeatPrice;
+            }
             // 상태 (open/closed)
             if ($status !== null) {
                 $updates[] = 'status = ?';
@@ -16539,13 +16567,14 @@ function updateInventory($conn, $input) {
             $b2bPrc = $b2bPrice;
             $b2bCPrc = $b2bChildPrice;
             $b2bIPrc = $b2bInfantPrice;
+            $b2bISPrc = $b2bInfantSeatPrice;
 
             $insertStatus = $status ?? 'open';
             $insertStmt = $conn->prepare("
-                INSERT INTO package_available_dates (package_id, available_date, capacity, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, singlePrice, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO package_available_dates (package_id, available_date, capacity, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, b2b_infant_seat_price, singlePrice, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
-            $insertStmt->bind_param('isiddddddds', $packageId, $availableDate, $seats, $prc, $b2bPrc, $cPrc, $b2bCPrc, $iPrc, $b2bIPrc, $sPrc, $insertStatus);
+            $insertStmt->bind_param('isidddddddds', $packageId, $availableDate, $seats, $prc, $b2bPrc, $cPrc, $b2bCPrc, $iPrc, $b2bIPrc, $b2bISPrc, $sPrc, $insertStatus);
             $insertStmt->execute();
             $insertStmt->close();
 
@@ -18072,7 +18101,7 @@ function getAirlineOptions($conn, $input) {
     $categories = [];
     while ($cat = $catResult->fetch_assoc()) {
         // 각 카테고리의 옵션 조회
-        $optSql = "SELECT option_id, option_name, option_name_en, price, sort_order, is_active, is_infant_seat
+        $optSql = "SELECT option_id, option_name, option_name_en, price, sort_order, is_active
                    FROM airline_options
                    WHERE category_id = ?
                    ORDER BY sort_order, option_id";
@@ -18085,7 +18114,6 @@ function getAirlineOptions($conn, $input) {
         while ($opt = $optResult->fetch_assoc()) {
             $opt['price'] = floatval($opt['price']);
             $opt['is_active'] = (bool)$opt['is_active'];
-            $opt['is_infant_seat'] = (bool)($opt['is_infant_seat'] ?? 0);
             $options[] = $opt;
         }
         $optStmt->close();
@@ -18204,7 +18232,6 @@ function createAirlineOption($conn, $input) {
     $optionName = $input['optionName'] ?? '';
     $optionNameEn = $input['optionNameEn'] ?? '';
     $price = floatval($input['price'] ?? 0);
-    $isInfantSeat = intval($input['isInfantSeat'] ?? 0);
 
     if ($categoryId <= 0 || empty($optionName)) {
         send_error_response('Category ID and option name are required', 400);
@@ -18219,9 +18246,9 @@ function createAirlineOption($conn, $input) {
     $sortOrder = $orderStmt->get_result()->fetch_assoc()['next_order'];
     $orderStmt->close();
 
-    $sql = "INSERT INTO airline_options (category_id, option_name, option_name_en, price, sort_order, is_infant_seat) VALUES (?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO airline_options (category_id, option_name, option_name_en, price, sort_order) VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('issdii', $categoryId, $optionName, $optionNameEn, $price, $sortOrder, $isInfantSeat);
+    $stmt->bind_param('issdi', $categoryId, $optionName, $optionNameEn, $price, $sortOrder);
 
     if ($stmt->execute()) {
         $optionId = $conn->insert_id;
@@ -18241,16 +18268,15 @@ function updateAirlineOption($conn, $input) {
     $optionName = $input['optionName'] ?? '';
     $optionNameEn = $input['optionNameEn'] ?? '';
     $price = floatval($input['price'] ?? 0);
-    $isInfantSeat = intval($input['isInfantSeat'] ?? 0);
 
     if ($optionId <= 0 || empty($optionName)) {
         send_error_response('Option ID and name are required', 400);
         return;
     }
 
-    $sql = "UPDATE airline_options SET option_name = ?, option_name_en = ?, price = ?, is_infant_seat = ?, updated_at = NOW() WHERE option_id = ?";
+    $sql = "UPDATE airline_options SET option_name = ?, option_name_en = ?, price = ?, updated_at = NOW() WHERE option_id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ssdii', $optionName, $optionNameEn, $price, $isInfantSeat, $optionId);
+    $stmt->bind_param('ssdi', $optionName, $optionNameEn, $price, $optionId);
 
     if ($stmt->execute()) {
         $stmt->close();

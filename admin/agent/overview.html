@@ -492,6 +492,11 @@
 							nearDepartureWarning = '<div style="color: #ef4444; font-weight: 600; font-size: 12px; margin-top: 6px;">&#9888; Departure within 31 days - Extension not available</div>';
 						}
 
+						let extensionExhaustedWarning = '';
+						if (item.extensionExhausted && !isNearDeparture) {
+							extensionExhaustedWarning = '<div style="color: #dc2626; font-weight: 600; font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px;">&#9888; This booking cannot be automatically extended. Please contact the administrator.</div>';
+						}
+
 						return '<div style="background: #fff; border-radius: 8px; padding: 14px 18px; ' + cardBorder + '">' +
 							'<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">' +
 								'<div style="flex: 1; min-width: 200px;">' +
@@ -506,6 +511,7 @@
 										' &nbsp;|&nbsp; Next Due: ' + escapeHtml(item.nextUnpaidStep || '-') + (item.nextUnpaidDueDate ? ' (' + escapeHtml(item.nextUnpaidDueDate) + ')' : '') +
 									'</div>' +
 									nearDepartureWarning +
+									extensionExhaustedWarning +
 								'</div>' +
 								'<div>' + extendBtn + '</div>' +
 							'</div>' +

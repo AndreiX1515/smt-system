@@ -27,7 +27,7 @@
             </div>
 
             <!-- Price Fields Grid -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:24px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:24px;">
                 <div>
                     <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Adult Price">B2B Adult Price</label>
                     <input type="number" id="editPrice" min="0" placeholder="0"
@@ -41,6 +41,11 @@
                 <div>
                     <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Infant Price">B2B Infant Price</label>
                     <input type="number" id="editInfantPrice" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Infant Seat Price">B2B Infant Seat Price</label>
+                    <input type="number" id="editInfantSeatPrice" min="0" placeholder="0"
                            style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
                 </div>
                 <div>
@@ -127,6 +132,7 @@ document.addEventListener('modal:loaded', (evt) => {
     const priceInput = dialog.querySelector('#editPrice');
     const childPriceInput = dialog.querySelector('#editChildPrice');
     const infantPriceInput = dialog.querySelector('#editInfantPrice');
+    const infantSeatPriceInput = dialog.querySelector('#editInfantSeatPrice');
     const singlePriceInput = dialog.querySelector('#editSinglePrice');
     const cancelBtn = dialog.querySelector('#cancelBtn');
     const saveBtn = dialog.querySelector('#saveBtn');
@@ -142,6 +148,7 @@ document.addEventListener('modal:loaded', (evt) => {
         priceInput.value = data.price ?? '';
         childPriceInput.value = data.childPrice ?? '';
         infantPriceInput.value = data.infantPrice ?? '';
+        infantSeatPriceInput.value = data.infantSeatPrice ?? '';
         singlePriceInput.value = data.singlePrice ?? '';
     }
 
@@ -213,6 +220,7 @@ document.addEventListener('modal:loaded', (evt) => {
         const price = priceInput.value !== '' ? parseFloat(priceInput.value) : null;
         const childPrice = childPriceInput.value !== '' ? parseFloat(childPriceInput.value) : null;
         const infantPrice = infantPriceInput.value !== '' ? parseFloat(infantPriceInput.value) : null;
+        const infantSeatPrice = infantSeatPriceInput.value !== '' ? parseFloat(infantSeatPriceInput.value) : null;
         const singlePrice = singlePriceInput.value !== '' ? parseFloat(singlePriceInput.value) : null;
 
         if (!packageId || !availableDate) {
@@ -233,6 +241,7 @@ document.addEventListener('modal:loaded', (evt) => {
             if (price !== null) fd.append('b2bPrice', price);
             if (childPrice !== null) fd.append('b2bChildPrice', childPrice);
             if (infantPrice !== null) fd.append('b2bInfantPrice', infantPrice);
+            if (infantSeatPrice !== null) fd.append('b2bInfantSeatPrice', infantSeatPrice);
             if (singlePrice !== null) fd.append('singlePrice', singlePrice);
 
             const response = await fetch('../backend/api/super-api.php', {

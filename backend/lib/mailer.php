@@ -9,6 +9,10 @@
  */
 
 function mailer_send(string $toEmail, string $subject, string $htmlBody, string $textBody = ''): array {
+    // [TEST SERVER] 실제 이메일 발송 비활성화 - 로그만 기록
+    error_log("[MAIL-DRY-RUN] To: {$toEmail} | Subject: {$subject}");
+    return ['ok' => true, 'via' => 'dry-run', 'message_id' => 'dry-run-' . uniqid()];
+
     $apiToken = trim((string)getenv('POSTMARK_API_TOKEN'));
     $from = trim((string)getenv('MAIL_FROM'));
     $fromName = trim((string)getenv('MAIL_FROM_NAME')) ?: 'SMT Escape';

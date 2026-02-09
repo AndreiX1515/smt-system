@@ -43,6 +43,48 @@
             box-sizing: border-box;
             background: #fff;
         }
+        .custom-select-wrap {
+            position: relative;
+            width: 100%;
+        }
+        .custom-select-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 36px 14px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;
+            text-align: left;
+            cursor: pointer;
+            color: #333;
+        }
+        .custom-select-btn.placeholder { color: #999; }
+        .custom-select-btn:focus { border-color: #000; outline: none; }
+        .custom-select-list {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 10;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .custom-select-list.open { display: block; }
+        .custom-select-item {
+            padding: 12px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .custom-select-item:hover { background: #f5f5f5; }
+        .custom-select-item.selected { font-weight: 600; color: #000; }
         .form-group .form-input:focus { border-color: #000; outline: none; }
         .form-group .form-textarea {
             display: block !important;
@@ -184,7 +226,11 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Address *</label>
-                <input type="text" class="form-input" id="receiverAddress" placeholder="Enter shipping address">
+                <div class="custom-select-wrap" id="addressSelectWrap">
+                    <button type="button" class="custom-select-btn placeholder" id="addressSelectBtn">Select delivery address</button>
+                    <div class="custom-select-list" id="addressSelectList"></div>
+                    <input type="hidden" id="receiverAddress" value="">
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label">Delivery Notes</label>
@@ -245,6 +291,47 @@
                 return false;
             }
         }
+
+        async function loadAddresses() {
+            try {
+                const res = await fetch(`${API_BASE}/addresses.php`);
+                const data = await res.json();
+                if (data.success) {
+                    const list = document.getElementById('addressSelectList');
+                    data.addresses.forEach(addr => {
+                        const item = document.createElement('div');
+                        item.className = 'custom-select-item';
+                        item.textContent = addr.name;
+                        item.dataset.value = addr.name;
+                        item.addEventListener('click', () => selectAddress(addr.name));
+                        list.appendChild(item);
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function selectAddress(value) {
+            document.getElementById('receiverAddress').value = value;
+            const btn = document.getElementById('addressSelectBtn');
+            btn.textContent = value;
+            btn.classList.remove('placeholder');
+            document.getElementById('addressSelectList').classList.remove('open');
+            document.querySelectorAll('.custom-select-item').forEach(el => {
+                el.classList.toggle('selected', el.dataset.value === value);
+            });
+        }
+
+        // 드롭다운 토글
+        document.getElementById('addressSelectBtn').addEventListener('click', () => {
+            document.getElementById('addressSelectList').classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#addressSelectWrap')) {
+                document.getElementById('addressSelectList').classList.remove('open');
+            }
+        });
 
         async function loadCart() {
             const loggedIn = await checkLogin();
@@ -363,6 +450,7 @@
             }
         };
 
+        loadAddresses();
         loadCart();
     </script>
 </body>

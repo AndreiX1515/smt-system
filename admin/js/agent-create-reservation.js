@@ -76,6 +76,8 @@ function __applyPackagePricingOptions(pkg) {
         if (Number.isFinite(childFallback) && childFallback > 0) __pricingByTravelerType['child'] = childFallback;
         const infantFallback = Number(pkg?.b2bInfantPrice ?? pkg?.b2b_infant_price ?? pkg?.infantPrice);
         if (Number.isFinite(infantFallback) && infantFallback > 0) __pricingByTravelerType['infant'] = infantFallback;
+        const infantSeatFallback = Number(pkg?.b2bInfantSeatPrice ?? pkg?.b2b_infant_seat_price ?? pkg?.infantSeatPrice ?? pkg?.infant_seat_price);
+        if (Number.isFinite(infantSeatFallback) && infantSeatFallback > 0) __pricingByTravelerType['infant_seat'] = infantSeatFallback;
     }
 }
 
@@ -100,6 +102,12 @@ function __applyDateSpecificPricing(dateInfo) {
     const infantPrice = Number(dateInfo.b2bInfantPrice ?? dateInfo.infantPrice);
     if (Number.isFinite(infantPrice) && infantPrice > 0) {
         __pricingByTravelerType['infant'] = infantPrice;
+    }
+
+    // infant seat 가격: b2bInfantSeatPrice 우선
+    const infantSeatPrice = Number(dateInfo.b2bInfantSeatPrice ?? dateInfo.infantSeatPrice);
+    if (Number.isFinite(infantSeatPrice) && infantSeatPrice > 0) {
+        __pricingByTravelerType['infant_seat'] = infantSeatPrice;
     }
 
     // single 가격 (singlePrice는 싱글룸 추가요금으로 사용)
@@ -127,6 +135,10 @@ function __getTravelerPrice(traveler) {
     const adultPrice = __getUnitPrice('adult');
 
     if (type === 'infant') {
+        if (traveler.infantSeat) {
+            const seatPrice = __pricingByTravelerType['infant_seat'];
+            if (Number.isFinite(seatPrice) && seatPrice > 0) return seatPrice;
+        }
         const dbPrice = __pricingByTravelerType['infant'];
         return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : 10000;
     }
@@ -4046,21 +4058,15 @@ function renderFlightOptionsForTraveler(travelerIndex) {
         `;
 
         (cat.options || []).forEach(opt => {
-            // is_infant_seat 옵션은 infant 타입 여행자에게만 표시
-            const traveler = travelerModalData[travelerIndex];
-            if (opt.is_infant_seat && (!traveler || traveler.type !== 'infant')) return;
-
             const optId = Number(opt.option_id);
             const isChecked = selectedOptionIds.includes(optId);
             const priceText = opt.price > 0 ? `+PHP ${formatNumber(opt.price)}` : 'Free';
-            const infantSeatAttr = opt.is_infant_seat ? 'data-is-infant-seat="1"' : '';
             html += `
                 <label class="option-checkbox">
                     <input type="checkbox"
                            data-option-id="${optId}"
                            data-option-price="${opt.price}"
                            data-category-id="${cat.category_id}"
-                           ${infantSeatAttr}
                            ${isChecked ? 'checked' : ''}
                            onchange="updateTravelerFlightOption(${travelerIndex}, ${optId}, ${opt.price}, this.checked)">
                     <span class="option-name">${escapeHtml(opt.option_name_en || opt.option_name)}</span>
@@ -4111,19 +4117,6 @@ window.updateTravelerFlightOption = function(travelerIndex, optionId, price, isC
         if (idx > -1) {
             options.splice(idx, 1);
             delete prices[numOptionId];
-        }
-    }
-
-    // is_infant_seat 옵션 체크/해제 시 infantSeat 연동
-    const isInfantSeatOpt = airlineOptionCategories.some(cat =>
-        (cat.options || []).some(o => Number(o.option_id) === numOptionId && o.is_infant_seat)
-    );
-    if (isInfantSeatOpt) {
-        travelerModalData[travelerIndex].infantSeat = isChecked;
-        // Infant Seat 셀렉트 UI도 동기화
-        const infantSeatSelect = document.querySelector(`#infant-seat-container-${travelerIndex} select`);
-        if (infantSeatSelect) {
-            infantSeatSelect.value = isChecked ? 'yes' : 'no';
         }
     }
 

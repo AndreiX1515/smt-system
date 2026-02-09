@@ -2154,6 +2154,7 @@
 						// 소수점 이하 제거 후 정수만 추출 (DB에서 "27000.00" 형태로 올 때 "2700000"이 되는 문제 방지)
 						const priceInt = parseInt(String(data.price || '0').split('.')[0].replace(/[^0-9]/g, ''), 10) || 0;
 						const b2bPriceInt = parseInt(String(data.b2bPrice || '0').split('.')[0].replace(/[^0-9]/g, ''), 10) || 0;
+						const infantSeatPriceInt = parseInt(String(data.infantSeatPrice || '0').split('.')[0].replace(/[^0-9]/g, ''), 10) || 0;
 
 						fd.append('availabilityDate[]', date);
 						fd.append('availabilitySeats[]', seats || '0');
@@ -2161,6 +2162,8 @@
 						fd.append('availabilityPrice[]', String(priceInt || parseInt(b2cDefault, 10) || 0));
 						// B2B 가격 (정수만) - 0이면 기본값
 						fd.append('availabilityB2bPrice[]', String(b2bPriceInt || parseInt(b2bDefault, 10) || 0));
+						// Infant Seat 가격
+						fd.append('availabilityInfantSeatPrice[]', String(infantSeatPriceInt));
 					});
 
 					// 삭제된 날짜 전송
@@ -2795,6 +2798,7 @@
 							availableSeats: a.availableSeats,
 							price: a.price,
 							b2bPrice: a.b2bPrice ?? a.b2b_price,
+							infantSeatPrice: a.b2bInfantSeatPrice ?? a.infantSeatPrice ?? '',
 							bookedSeats: a.bookedSeats
 						};
 					});
@@ -4170,6 +4174,7 @@
 				if (!priceInt || priceInt === '0') priceInt = defaults.b2c;
 				let b2bPriceInt = String(data.b2bPrice || '').split('.')[0].replace(/[^0-9]/g, '');
 				if (!b2bPriceInt || b2bPriceInt === '0') b2bPriceInt = defaults.b2b;
+				let infantSeatPriceInt = String(data.infantSeatPrice || '').split('.')[0].replace(/[^0-9]/g, '');
 
 				const isChecked = state.selectedDates.has(date);
 
@@ -4183,6 +4188,7 @@
 					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-seats" data-date="${date}" value="${seats.replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
 					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-b2c" data-date="${date}" value="${String(priceInt || '').replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
 					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-b2b" data-date="${date}" value="${String(b2bPriceInt || '').replace(/"/g, '&quot;')}" inputmode="numeric"></div></td>
+					<td class="is-center"><div class="cell"><input type="text" class="form-control modal-infant-seat" data-date="${date}" value="${String(infantSeatPriceInt || '').replace(/"/g, '&quot;')}" inputmode="numeric" placeholder="0"></div></td>
 					<td class="is-center"><button type="button" class="jw-button typeB btn-modal-delete-date" data-date="${date}" style="padding:4px 8px;font-size:12px;color:#e74c3c;">X</button></td>
 				`;
 				tbody.appendChild(tr);
@@ -4198,7 +4204,7 @@
 				});
 			});
 
-			tbody.querySelectorAll('.modal-seats, .modal-b2c, .modal-b2b').forEach(input => {
+			tbody.querySelectorAll('.modal-seats, .modal-b2c, .modal-b2b, .modal-infant-seat').forEach(input => {
 				input.addEventListener('change', function() {
 					const d = this.dataset.date;
 					if (!state.dataMap[d]) state.dataMap[d] = {};
@@ -4208,6 +4214,8 @@
 						state.dataMap[d].price = this.value;
 					} else if (this.classList.contains('modal-b2b')) {
 						state.dataMap[d].b2bPrice = this.value;
+					} else if (this.classList.contains('modal-infant-seat')) {
+						state.dataMap[d].infantSeatPrice = this.value;
 					}
 				});
 			});
@@ -4324,6 +4332,7 @@
 			document.getElementById('bulkSeats').value = '';
 			document.getElementById('bulkB2cPrice').value = '';
 			document.getElementById('bulkB2bPrice').value = '';
+			document.getElementById('bulkInfantSeatPrice').value = '';
 			document.getElementById('bulkEditModal').style.display = 'flex';
 		}
 
@@ -4338,12 +4347,14 @@
 			const seats = document.getElementById('bulkSeats').value.trim();
 			const b2c = document.getElementById('bulkB2cPrice').value.trim();
 			const b2b = document.getElementById('bulkB2bPrice').value.trim();
+			const infantSeat = document.getElementById('bulkInfantSeatPrice').value.trim();
 
 			state.selectedDates.forEach(date => {
 				if (!state.dataMap[date]) state.dataMap[date] = {};
 				if (seats) state.dataMap[date].availableSeats = seats;
 				if (b2c) state.dataMap[date].price = b2c;
 				if (b2b) state.dataMap[date].b2bPrice = b2b;
+				if (infantSeat) state.dataMap[date].infantSeatPrice = infantSeat;
 			});
 
 			closeBulkEditModal();
@@ -4362,10 +4373,12 @@
 				const seatsInput = tr.querySelector('.modal-seats');
 				const b2cInput = tr.querySelector('.modal-b2c');
 				const b2bInput = tr.querySelector('.modal-b2b');
+				const infantSeatInput = tr.querySelector('.modal-infant-seat');
 				if (!state.dataMap[date]) state.dataMap[date] = {};
 				if (seatsInput) state.dataMap[date].availableSeats = seatsInput.value;
 				if (b2cInput) state.dataMap[date].price = b2cInput.value;
 				if (b2bInput) state.dataMap[date].b2bPrice = b2bInput.value;
+				if (infantSeatInput) state.dataMap[date].infantSeatPrice = infantSeatInput.value;
 			});
 
 			// Store state on panel for save logic
@@ -4416,6 +4429,7 @@
 							<col>
 							<col>
 							<col>
+							<col>
 							<col style="width:60px">
 						</colgroup>
 						<thead>
@@ -4427,6 +4441,7 @@
 								<th data-lan-eng="Max Seats">Max Seats</th>
 								<th data-lan-eng="B2C Price">B2C Price</th>
 								<th data-lan-eng="B2B Price">B2B Price</th>
+								<th data-lan-eng="Infant Seat Price">Infant Seat Price</th>
 								<th data-lan-eng="Delete">Del</th>
 							</tr>
 						</thead>
@@ -4464,6 +4479,10 @@
 					<div class="grid-item jw-mgt12">
 						<label>B2B Price</label>
 						<input type="text" id="bulkB2bPrice" class="form-control" placeholder="Leave empty to keep current" inputmode="numeric">
+					</div>
+					<div class="grid-item jw-mgt12">
+						<label>Infant Seat Price</label>
+						<input type="text" id="bulkInfantSeatPrice" class="form-control" placeholder="Leave empty to keep current" inputmode="numeric">
 					</div>
 				</div>
 			</div>

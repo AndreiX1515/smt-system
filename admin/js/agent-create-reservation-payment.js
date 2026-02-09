@@ -235,6 +235,7 @@ function displayAmountBreakdown(data) {
 
     const childPrice = parseFloat(data.childPrice) || 0;
     const infantPrice = parseFloat(data.infantPrice) || 0;
+    const infantSeatPrice = parseFloat(data.infantSeatPrice) || 0;
 
     let packageTotal = 0;  // 할인 전 가격 기준
     let adultCount = 0;    // 할인 적용 대상 인원 (성인)
@@ -243,8 +244,12 @@ function displayAmountBreakdown(data) {
         travelersArr.forEach(t => {
             const type = (t.travelerType || t.type || 'adult').toLowerCase();
             if (type.includes('infant') || type.includes('baby')) {
-                // Infant: DB price or 10,000
-                packageTotal += (infantPrice > 0) ? infantPrice : 10000;
+                const hasInfantSeat = t.infantSeat === true || t.infantSeat === 1 || t.infantSeat === '1' || t.infantSeat === 'yes';
+                if (hasInfantSeat && infantSeatPrice > 0) {
+                    packageTotal += infantSeatPrice;
+                } else {
+                    packageTotal += (infantPrice > 0) ? infantPrice : 10000;
+                }
             } else if (type.includes('child') || type.includes('kid')) {
                 // Child: Room Yes → adult price, Room No → childPrice or adult×80%
                 const childRoom = t.childRoom === true || t.childRoom === 1 || t.childRoom === '1';

@@ -250,9 +250,11 @@
 								<option value="confirmed" data-lan-eng="Reservation Confirmed">Reservation Confirmed</option>
 								<option value="completed" data-lan-eng="Trip Completed">Trip Completed</option>
 							</optgroup>
+							<optgroup label="Waiting Cancelled">
+								<option value="waiting_cancelled" data-lan-eng="Waiting for Cancellation">Waiting for Cancellation</option>
+							</optgroup>
 							<optgroup label="Cancelled">
 								<option value="cancelled" data-lan-eng="Reservation Cancelled">Reservation Cancelled</option>
-								<option value="waiting_cancelled" data-lan-eng="Waiting for Cancellation">Waiting for Cancellation</option>
 								<option value="refunded" data-lan-eng="Refund Completed">Refund Completed</option>
 							</optgroup>
 						</select>
@@ -285,6 +287,10 @@
 					<button type="button" class="tab-btn" data-tab="checking" onclick="switchTab('checking')">
 						<span data-lan-eng="Checking Payment">Checking Payment</span>
 						<span class="badge" id="checkingCount" style="background:#f59e0b;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="waiting_cancelled" onclick="switchTab('waiting_cancelled')">
+						<span data-lan-eng="Waiting Cancelled">Waiting Cancelled</span>
+						<span class="badge" id="waiting_cancelledCount" style="background:#f97316;">0</span>
 					</button>
 					<button type="button" class="tab-btn" data-tab="rejected" onclick="switchTab('rejected')">
 						<span data-lan-eng="Rejected">Rejected</span>
@@ -421,6 +427,39 @@
 						<tbody id="tbody-checking"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
 					</table>
 					<div class="pagination-wrap" id="pagination-checking"></div>
+				</div>
+
+				<!-- Tab Content: Waiting Cancelled -->
+				<div class="tab-content" id="tab-waiting_cancelled">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-waiting_cancelled"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-waiting_cancelled"></div>
 				</div>
 
 				<!-- Tab Content: Rejected -->
@@ -592,9 +631,10 @@
 			pending: ['pending', 'pending_update'],
 			waiting: ['waiting_down_payment', 'waiting_second_payment', 'waiting_balance', 'waiting_full_payment'],
 			checking: ['checking_down_payment', 'checking_second_payment', 'checking_balance', 'checking_full_payment'],
+			waiting_cancelled: ['waiting_cancelled'],
 			rejected: ['rejected'],
 			confirmed: ['confirmed', 'completed'],
-			cancelled: ['cancelled', 'refunded', 'waiting_cancelled'],
+			cancelled: ['cancelled', 'refunded'],
 			check_reject: ['check_reject']
 		};
 
@@ -607,6 +647,7 @@
 			pending: [],
 			waiting: [],
 			checking: [],
+			waiting_cancelled: [],
 			rejected: [],
 			confirmed: [],
 			cancelled: [],
@@ -616,6 +657,7 @@
 			pending: 1,
 			waiting: 1,
 			checking: 1,
+			waiting_cancelled: 1,
 			rejected: 1,
 			confirmed: 1,
 			cancelled: 1,
@@ -767,7 +809,7 @@
 
 		async function loadAllBookings() {
 			// 모든 섹션 로딩 상태로 변경
-			['pending', 'waiting', 'checking', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
+			['pending', 'waiting', 'checking', 'waiting_cancelled', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
 				const tbody = document.getElementById('tbody-' + section);
 				if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="is-center">Loading...</td></tr>';
 			});
@@ -803,6 +845,7 @@
 						pending: [],
 						waiting: [],
 						checking: [],
+						waiting_cancelled: [],
 						rejected: [],
 						confirmed: [],
 						cancelled: [],
@@ -843,14 +886,14 @@
 						if (typeof language_apply === 'function') language_apply(lang);
 					} catch (_) { }
 				} else {
-					['pending', 'waiting', 'checking', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
+					['pending', 'waiting', 'checking', 'waiting_cancelled', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
 						const tbody = document.getElementById('tbody-' + section);
 						if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="is-center">Failed to load data.</td></tr>';
 					});
 				}
 			} catch (error) {
 				console.error('Error loading bookings:', error);
-				['pending', 'waiting', 'checking', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
+				['pending', 'waiting', 'checking', 'waiting_cancelled', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
 					const tbody = document.getElementById('tbody-' + section);
 					if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="is-center">Error loading data.</td></tr>';
 				});

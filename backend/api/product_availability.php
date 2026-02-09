@@ -206,7 +206,7 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
         $hasPkgAvail = ($tbl && $tbl->num_rows > 0);
         if ($hasPkgAvail) {
             $st = $conn->prepare("
-                SELECT id, available_date, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, singlePrice, capacity, flight_id, departure_time, status
+                SELECT id, available_date, price, b2b_price, childPrice, b2b_child_price, infant_price, b2b_infant_price, infant_seat_price, b2b_infant_seat_price, singlePrice, capacity, flight_id, departure_time, status
                 FROM package_available_dates
                 WHERE package_id = ?
                   AND available_date >= ?
@@ -251,6 +251,8 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
                         'b2bChildPrice' => isset($r['b2b_child_price']) && $r['b2b_child_price'] !== null ? floatval($r['b2b_child_price']) : null,
                         'infantPrice' => isset($r['infant_price']) ? floatval($r['infant_price']) : null,
                         'b2bInfantPrice' => isset($r['b2b_infant_price']) && $r['b2b_infant_price'] !== null ? floatval($r['b2b_infant_price']) : null,
+                        'infantSeatPrice' => isset($r['infant_seat_price']) && $r['infant_seat_price'] !== null ? floatval($r['infant_seat_price']) : null,
+                        'b2bInfantSeatPrice' => isset($r['b2b_infant_seat_price']) && $r['b2b_infant_seat_price'] !== null ? floatval($r['b2b_infant_seat_price']) : null,
                         'singlePrice' => isset($r['singlePrice']) ? floatval($r['singlePrice']) : null,
                         'flightId' => isset($r['flight_id']) ? (int)$r['flight_id'] : 0,
                         'departureTime' => substr((string)($r['departure_time'] ?? ''), 0, 5),
@@ -390,6 +392,8 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
         $b2bPrice = null;
         $b2bChildPrice = null;
         $b2bInfantPrice = null;
+        $infantSeatPrice = null;
+        $b2bInfantSeatPrice = null;
 
         // package_available_dates    /
         if (isset($availabilityByDate[$dateStr])) {
@@ -408,6 +412,8 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
             $b2bPrice = $availabilityByDate[$dateStr]['b2bPrice'];
             $b2bChildPrice = $availabilityByDate[$dateStr]['b2bChildPrice'];
             $b2bInfantPrice = $availabilityByDate[$dateStr]['b2bInfantPrice'];
+            $infantSeatPrice = $availabilityByDate[$dateStr]['infantSeatPrice'] ?? null;
+            $b2bInfantSeatPrice = $availabilityByDate[$dateStr]['b2bInfantSeatPrice'] ?? null;
             // package_available_dates.flightId   ,  flight   
             $fid = intval($availabilityByDate[$dateStr]['flightId'] ?? 0);
             $flightId = $fid > 0 ? $fid : (intval($flightIdByDate[$dateStr] ?? 0) ?: null);
@@ -453,6 +459,8 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
                 'originalB2bPrice' => $originalB2bPrice !== null ? round($originalB2bPrice, 0) : null,
                 'b2bChildPrice' => $b2bChildPrice,
                 'b2bInfantPrice' => $b2bInfantPrice,
+                'infantSeatPrice' => $infantSeatPrice,
+                'b2bInfantSeatPrice' => $b2bInfantSeatPrice,
                 'remainingSeats' => $remainingSeats,
                 'maxSeats' => $maxSeats,
                 'flightId' => $flightId,
