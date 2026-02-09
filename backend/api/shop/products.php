@@ -131,6 +131,7 @@ try {
             $price = floatval($input['price'] ?? 0);
             $sale_price = isset($input['sale_price']) && $input['sale_price'] !== null ? floatval($input['sale_price']) : null;
             $stock = intval($input['stock'] ?? 0);
+            $description_image = $input['description_image'] ?? null;
             $thumbnail = $input['thumbnail'] ?? '';
             $is_active = intval($input['is_active'] ?? 1);
             $is_featured = intval($input['is_featured'] ?? 0);
@@ -142,10 +143,10 @@ try {
             }
 
             $stmt = $conn->prepare("INSERT INTO shop_products
-                (category_id, name, description, price, sale_price, stock, thumbnail, is_active, is_featured)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('issddisii',
-                $category_id, $name, $description,
+                (category_id, name, description, description_image, price, sale_price, stock, thumbnail, is_active, is_featured)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('isssddisii',
+                $category_id, $name, $description, $description_image,
                 $price, $sale_price, $stock, $thumbnail, $is_active, $is_featured);
             $stmt->execute();
 
@@ -183,6 +184,11 @@ try {
             if (isset($input['description'])) {
                 $updates[] = "description = ?";
                 $params[] = $input['description'];
+                $types .= "s";
+            }
+            if (array_key_exists('description_image', $input)) {
+                $updates[] = "description_image = ?";
+                $params[] = $input['description_image'];
                 $types .= "s";
             }
             if (isset($input['price'])) {

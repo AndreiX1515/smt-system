@@ -61,8 +61,9 @@ if (!$extValid && !$mimeValid) {
     exit();
 }
 
-// 파일 크기 제한 (5MB)
-$maxSize = 5 * 1024 * 1024;
+// 파일 크기 제한
+$uploadType = $_POST['type'] ?? '';
+$maxSize = ($uploadType === 'description') ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
 if ($file['size'] > $maxSize) {
     http_response_code(400);
     echo json_encode(['error' => 'File size must be less than 5MB']);

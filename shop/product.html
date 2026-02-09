@@ -180,10 +180,57 @@
             line-height: 1.6;
             color: #333;
         }
+        .review-photos {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .review-photos img {
+            width: 72px;
+            height: 72px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .review-photos img:hover { opacity: 0.85; }
         .no-reviews {
             text-align: center;
             padding: 40px 20px;
             color: #888;
+        }
+        /* 사진 라이트박스 */
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .lightbox-overlay.show { display: flex; }
+        .lightbox-overlay img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 8px;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .quantity-box {
@@ -343,6 +390,12 @@
         </div>
 
         <div class="toast" id="toast"></div>
+
+        <!-- 사진 라이트박스 -->
+        <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+            <button class="lightbox-close" onclick="closeLightbox()">×</button>
+            <img id="lightboxImg" src="" alt="">
+        </div>
     </div>
 
     <script>
@@ -528,8 +581,12 @@
                 stockEl.textContent = `${product.stock} in stock`;
             }
 
-            // 설명
-            document.getElementById('productDesc').textContent = description;
+            // 설명 (이미지 우선, 없으면 텍스트)
+            if (product.description_image) {
+                document.getElementById('productDesc').innerHTML = `<img src="${product.description_image}" style="width:100%; display:block;">`;
+            } else {
+                document.getElementById('productDesc').textContent = description;
+            }
 
             // 수량 최대값 설정
             document.getElementById('quantity').max = product.stock;
@@ -658,6 +715,17 @@
                         document.getElementById('reviewsList').innerHTML = data.reviews.map(r => {
                             const date = new Date(r.created_at);
                             const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+                            let photosHtml = '';
+                            if (r.photos) {
+                                try {
+                                    const photos = JSON.parse(r.photos);
+                                    if (photos.length > 0) {
+                                        photosHtml = `<div class="review-photos">${photos.map(p =>
+                                            `<img src="${p}" onclick="openLightbox('${p}')" alt="Review photo">`
+                                        ).join('')}</div>`;
+                                    }
+                                } catch(e) {}
+                            }
                             return `
                             <div class="review-item">
                                 <div class="review-header">
@@ -666,6 +734,7 @@
                                     <span class="review-date">${dateStr}</span>
                                 </div>
                                 <div class="review-content">${r.content || ''}</div>
+                                ${photosHtml}
                             </div>
                             `;
                         }).join('');
@@ -677,6 +746,15 @@
             } catch (e) {
                 console.error(e);
             }
+        }
+
+        // 라이트박스
+        function openLightbox(src) {
+            document.getElementById('lightboxImg').src = src;
+            document.getElementById('lightbox').classList.add('show');
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('show');
         }
 
         // 초기화

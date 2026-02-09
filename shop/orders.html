@@ -178,6 +178,69 @@
         }
         .review-textarea:focus { outline: none; border-color: #0065F8; }
 
+        /* 사진 업로드 */
+        .photo-upload-area {
+            margin-top: 16px;
+            margin-bottom: 4px;
+        }
+        .photo-upload-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .photo-upload-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .photo-add-btn {
+            width: 72px;
+            height: 72px;
+            border: 1.5px dashed #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .photo-add-btn:hover { border-color: #0065F8; }
+        .photo-add-btn .icon { font-size: 22px; color: #aaa; line-height: 1; }
+        .photo-add-btn .text { font-size: 10px; color: #aaa; margin-top: 2px; }
+        .photo-preview {
+            width: 72px;
+            height: 72px;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-preview .remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
         .modal-btns {
             display: flex;
             gap: 12px;
@@ -224,6 +287,16 @@
                 <span class="rating-star active" data-rating="5">★</span>
             </div>
             <textarea class="review-textarea" id="reviewContent" placeholder="Share your experience with this product..."></textarea>
+            <div class="photo-upload-area">
+                <span class="photo-upload-label">Photos (max 3)</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden id="photoInput">
+                <div class="photo-upload-row" id="photoUploadRow">
+                    <label class="photo-add-btn" onclick="document.getElementById('photoInput').click()">
+                        <span class="icon">+</span>
+                        <span class="text">Photo</span>
+                    </label>
+                </div>
+            </div>
             <div class="modal-btns">
                 <button class="btn-cancel" onclick="closeReviewModal()">Cancel</button>
                 <button class="btn-submit" onclick="submitReview()">Submit</button>
@@ -247,6 +320,7 @@
 
         let currentReviewItem = null;
         let selectedRating = 5;
+        let selectedPhotos = []; // File 객체 배열
 
         // 로그인 상태 확인
         async function checkLogin() {
@@ -379,8 +453,10 @@
             // 별점 초기화
             updateStars(5);
 
-            // 내용 초기화
+            // 내용 및 사진 초기화
             document.getElementById('reviewContent').value = '';
+            selectedPhotos = [];
+            renderPhotoPreview();
 
             document.getElementById('reviewModal').classList.add('show');
         }
@@ -402,23 +478,60 @@
             star.onclick = () => updateStars(parseInt(star.dataset.rating));
         });
 
+        // 사진 선택 처리
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const remaining = 3 - selectedPhotos.length;
+            const toAdd = files.slice(0, remaining);
+            selectedPhotos.push(...toAdd);
+            renderPhotoPreview();
+            e.target.value = ''; // 초기화
+        });
+
+        function removePhoto(index) {
+            selectedPhotos.splice(index, 1);
+            renderPhotoPreview();
+        }
+
+        function renderPhotoPreview() {
+            const row = document.getElementById('photoUploadRow');
+            let html = selectedPhotos.map((file, i) => {
+                const url = URL.createObjectURL(file);
+                return `<div class="photo-preview">
+                    <img src="${url}">
+                    <button class="remove-btn" onclick="removePhoto(${i})">×</button>
+                </div>`;
+            }).join('');
+
+            if (selectedPhotos.length < 3) {
+                html += `<label class="photo-add-btn" onclick="document.getElementById('photoInput').click()">
+                    <span class="icon">+</span>
+                    <span class="text">Photo</span>
+                </label>`;
+            }
+            row.innerHTML = html;
+        }
+
         async function submitReview() {
             if (!currentReviewItem) return;
 
             const content = document.getElementById('reviewContent').value.trim();
 
+            const formData = new FormData();
+            formData.append('order_id', currentReviewItem.order_id);
+            formData.append('order_item_id', currentReviewItem.order_item_id);
+            formData.append('product_id', currentReviewItem.product_id);
+            formData.append('rating', selectedRating);
+            formData.append('content', content);
+            selectedPhotos.forEach(file => {
+                formData.append('photos[]', file);
+            });
+
             try {
                 const res = await fetch(`${API_BASE}/reviews.php`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({
-                        order_id: currentReviewItem.order_id,
-                        order_item_id: currentReviewItem.order_item_id,
-                        product_id: currentReviewItem.product_id,
-                        rating: selectedRating,
-                        content: content
-                    })
+                    body: formData
                 });
                 const data = await res.json();
 

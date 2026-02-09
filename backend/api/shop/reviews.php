@@ -89,14 +89,23 @@ try {
             break;
 
         case 'POST':
-            $input = json_decode(file_get_contents('php://input'), true);
+            // FormData 또는 JSON 둘 다 지원
+            if (isset($_POST['order_id'])) {
+                $order_id = intval($_POST['order_id']);
+                $order_item_id = intval($_POST['order_item_id'] ?? 0);
+                $product_id = intval($_POST['product_id'] ?? 0);
+                $rating = intval($_POST['rating'] ?? 5);
+                $content = trim($_POST['content'] ?? '');
+            } else {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $order_id = intval($input['order_id'] ?? 0);
+                $order_item_id = intval($input['order_item_id'] ?? 0);
+                $product_id = intval($input['product_id'] ?? 0);
+                $rating = intval($input['rating'] ?? 5);
+                $content = trim($input['content'] ?? '');
+            }
 
-            $order_id = intval($input['order_id'] ?? 0);
-            $order_item_id = intval($input['order_item_id'] ?? 0);
-            $product_id = intval($input['product_id'] ?? 0);
-            $user_id = $session_user_id; // 세션에서 가져옴
-            $rating = intval($input['rating'] ?? 5);
-            $content = trim($input['content'] ?? '');
+            $user_id = $session_user_id;
 
             if (!$order_id || !$order_item_id || !$product_id) {
                 http_response_code(400);
@@ -130,8 +139,41 @@ try {
                 exit();
             }
 
-            $stmt = $conn->prepare("INSERT INTO shop_reviews (order_id, order_item_id, product_id, user_id, rating, content) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('iiisis', $order_id, $order_item_id, $product_id, $user_id, $rating, $content);
+            // 사진 업로드 처리 (최대 3장)
+            $photoPaths = [];
+            if (!empty($_FILES['photos'])) {
+                $uploadDir = __DIR__ . '/../../../uploads/reviews/';
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                $maxSize = 5 * 1024 * 1024; // 5MB
+
+                $files = $_FILES['photos'];
+                $fileCount = is_array($files['name']) ? count($files['name']) : 1;
+                $fileCount = min($fileCount, 3); // 최대 3장
+
+                for ($i = 0; $i < $fileCount; $i++) {
+                    $tmpName = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
+                    $fileName = is_array($files['name']) ? $files['name'][$i] : $files['name'];
+                    $fileSize = is_array($files['size']) ? $files['size'][$i] : $files['size'];
+                    $fileType = is_array($files['type']) ? $files['type'][$i] : $files['type'];
+                    $fileError = is_array($files['error']) ? $files['error'][$i] : $files['error'];
+
+                    if ($fileError !== UPLOAD_ERR_OK || empty($tmpName)) continue;
+                    if (!in_array($fileType, $allowedTypes)) continue;
+                    if ($fileSize > $maxSize) continue;
+
+                    $ext = pathinfo($fileName, PATHINFO_EXTENSION);
+                    $newName = 'review_' . time() . '_' . $i . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+                    if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
+                        $photoPaths[] = '/uploads/reviews/' . $newName;
+                    }
+                }
+            }
+
+            $photosJson = !empty($photoPaths) ? json_encode($photoPaths) : null;
+
+            $stmt = $conn->prepare("INSERT INTO shop_reviews (order_id, order_item_id, product_id, user_id, rating, content, photos) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('iiisiss', $order_id, $order_item_id, $product_id, $user_id, $rating, $content, $photosJson);
             $stmt->execute();
 
             echo json_encode([
