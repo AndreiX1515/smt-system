@@ -2022,11 +2022,11 @@ function renderTravelerCards() {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>First Name</label>
+                        <label>First Name <span style="color:#DC2626;">*</span></label>
                         <input type="text" value="${escapeHtml(traveler.firstName || '')}" onchange="updateTravelerField(${index}, 'firstName', this.value)" placeholder="First Name">
                     </div>
                     <div class="form-group">
-                        <label>Last Name</label>
+                        <label>Last Name <span style="color:#DC2626;">*</span></label>
                         <input type="text" value="${escapeHtml(traveler.lastName || '')}" onchange="updateTravelerField(${index}, 'lastName', this.value)" placeholder="Last Name">
                     </div>
 
@@ -2139,7 +2139,7 @@ function renderTravelerCards() {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Profile/Source</label>
+                        <label>Profile/Source <span style="color:#DC2626;">*</span></label>
                         <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
                     </div>
                 </div>
@@ -2733,8 +2733,12 @@ function saveTravelersFromModal() {
     // 유효성 검사
     for (let i = 0; i < travelerModalData.length; i++) {
         const t = travelerModalData[i];
-        if (!t.firstName || !t.lastName) {
-            alert(`Traveler ${i + 1}: First Name and Last Name are required.`);
+        const missing = [];
+        if (!t.firstName) missing.push('First Name');
+        if (!t.lastName) missing.push('Last Name');
+        if (!t.profile_source || !t.profile_source.trim()) missing.push('Profile/Source');
+        if (missing.length > 0) {
+            alert(`Traveler ${i + 1}: ${missing.join(', ')} is required.`);
             return;
         }
     }
