@@ -88,11 +88,6 @@
 				</div>
 			</div>
 
-			<!-- Product Edit pending banner (shown when pending_update with product_edit changeType) -->
-			<div id="productEditBanner" style="display: none; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
-				<!-- Content will be populated by JavaScript -->
-			</div>
-
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">Product and Reservation Information</p>
 				<a href="#" id="messagesLink" style="cursor:pointer;"><span data-lan-eng="Send to Agent">Send to Agent</span><img src="../image/linkout.svg" alt=""></a>
@@ -1101,71 +1096,6 @@
 					rejectBanner.style.display = 'none';
 				}
 
-				// Product Edit pending 배너 표시
-				const productEditBanner = document.getElementById('productEditBanner');
-				if (productEditBanner) {
-					const isProductEdit = currentChangeRequest && currentChangeRequest.changeType === 'product_edit';
-					if ((booking.bookingStatus || '').toLowerCase() === 'pending_update' && isProductEdit) {
-						const previousData = currentChangeRequest.previousData || {};
-						const newData = currentChangeRequest.newData || null;
-						const requestedByType = currentChangeRequest.requestedByType || 'agent';
-						const requestedByLabel = requestedByType === 'employee' ? 'Employee' : 'Agent';
-						const requestedByColor = requestedByType === 'employee' ? '#7c3aed' : '#0891b2';
-
-						let bannerContent = `
-							<div style="display: flex; align-items: flex-start; gap: 12px;">
-								<span style="font-size: 24px;">📦</span>
-								<div style="flex: 1;">
-									<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-										<div style="font-weight: 700; color: #1e40af; font-size: 16px;">Product/Date Change Request</div>
-										<span style="background: ${requestedByColor}; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">by ${requestedByLabel}</span>
-									</div>
-						`;
-
-						if (newData) {
-							// newData가 있는 경우 변경 정보 표시
-							const prevPkgName = previousData.packageName || '-';
-							const newPkgName = newData.packageName || '-';
-							const prevDate = previousData.departureDate || '-';
-							const newDate = newData.departureDate || '-';
-							const packageChanged = prevPkgName !== newPkgName;
-							const dateChanged = prevDate !== newDate;
-
-							bannerContent += `<div style="color: #1e3a8a; font-size: 14px; margin-bottom: 8px;">`;
-							if (packageChanged || dateChanged) {
-								if (packageChanged) {
-									bannerContent += `<div><b>Package:</b> ${escapeHtml(prevPkgName)} → <span style="color: #059669; font-weight: 600;">${escapeHtml(newPkgName)}</span></div>`;
-								}
-								if (dateChanged) {
-									bannerContent += `<div><b>Date:</b> ${prevDate} → <span style="color: #059669; font-weight: 600;">${newDate}</span></div>`;
-								}
-							} else {
-								bannerContent += `<div>Review the change details below</div>`;
-							}
-							bannerContent += `</div>`;
-							bannerContent += `<div style="color: #6b7280; font-size: 12px;">If approved, the current booking will be cancelled and a new booking will be created.</div>`;
-						} else {
-							// newData가 없는 경우 (Agent가 아직 입력 중)
-							bannerContent += `
-								<div style="color: #dc2626; font-size: 14px;">
-									<b>⚠️ Edit in progress</b> - Agent has not completed the edit yet.
-								</div>
-								<div style="color: #6b7280; font-size: 12px; margin-top: 4px;">The agent needs to complete and save the new reservation data.</div>
-							`;
-						}
-
-						bannerContent += `
-								</div>
-							</div>
-						`;
-
-						productEditBanner.innerHTML = bannerContent;
-						productEditBanner.style.display = 'block';
-					} else {
-						productEditBanner.style.display = 'none';
-					}
-				}
-
 				// Edit Allowed 상태 반영
 				const isEditAllowed = parseInt(booking.edit_allowed || 0) === 1;
 				updateEditAllowedUI(isEditAllowed);
@@ -1477,12 +1407,9 @@
 		// Pending/Pending Update 상태 예약 승인
 		async function handleApproveBooking() {
 			const isPendingUpdate = lastLoadedBooking && lastLoadedBooking.bookingStatus === 'pending_update';
-			const isProductEdit = currentChangeRequest && currentChangeRequest.changeType === 'product_edit';
 
 			let confirmMsg = 'Approve this booking?';
-			if (isPendingUpdate && isProductEdit) {
-				confirmMsg = 'Approve this product/date change?\n\nThis will:\n- Cancel the original booking\n- Create a new booking with the updated information';
-			} else if (isPendingUpdate) {
+			if (isPendingUpdate) {
 				confirmMsg = 'Approve this change request?';
 			}
 

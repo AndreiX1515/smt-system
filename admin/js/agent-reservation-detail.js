@@ -445,50 +445,11 @@ function renderReservationDetail(data) {
         }
     }
 
-    // pending_update 상태 + product_edit changeType + newData가 null인 경우: Edit in Progress
     const pendingChangeRequest = data.pendingChangeRequest || null;
-    const isProductEditInProgress = bookingStatus === 'pending_update' &&
-        pendingChangeRequest &&
-        pendingChangeRequest.changeType === 'product_edit' &&
-        !pendingChangeRequest.newData;
 
-    // Edit in Progress 배너 (product_edit + newData=null)
-    if (editInProgressBanner) {
-        if (isProductEditInProgress) {
-            editInProgressBanner.style.display = 'block';
-            editInProgressBanner.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 12px;">
-                    <span style="font-size: 24px;">🔄</span>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 700; color: #1e40af; font-size: 16px; margin-bottom: 4px;">Edit in Progress</div>
-                        <div style="color: #1e3a8a; font-size: 14px;">You have an unsaved product edit. Please complete or cancel the edit.</div>
-                        <div style="margin-top: 12px; display: flex; gap: 8px;">
-                            <button type="button" class="jw-button typeB" onclick="continueProductEdit('${currentBookingId}')" style="background: #2563eb; color: white; padding: 8px 16px; border-radius: 6px;">
-                                Continue Edit
-                            </button>
-                            <button type="button" class="jw-button typeC" onclick="cancelPendingProductEdit('${currentBookingId}')" style="background: #dc2626; color: white; padding: 8px 16px; border-radius: 6px;">
-                                Cancel Edit
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            editInProgressBanner.style.display = 'none';
-        }
-    }
-
-    // 일반 pending_update 배너 (product_edit가 아니거나 newData가 있는 경우)
     if (pendingUpdateBanner) {
-        if (bookingStatus === 'pending_update' && !isProductEditInProgress) {
+        if (bookingStatus === 'pending_update') {
             pendingUpdateBanner.style.display = 'block';
-            // product_edit이고 newData가 있는 경우 메시지 커스터마이즈
-            if (pendingChangeRequest && pendingChangeRequest.changeType === 'product_edit' && pendingChangeRequest.newData) {
-                const bannerText = document.getElementById('pendingUpdateBannerText');
-                if (bannerText) {
-                    bannerText.textContent = 'Product/date change request is awaiting admin approval.';
-                }
-            }
         } else {
             pendingUpdateBanner.style.display = 'none';
         }

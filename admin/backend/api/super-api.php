@@ -14719,7 +14719,7 @@ function approveB2BBooking($conn, $input) {
 
             $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
 
-            // status, deadline, product_edit changeType은 admin_kr만 승인 가능
+            // status, deadline changeType은 admin_kr만 승인 가능
             if ($changeRequest['changeType'] === 'deadline') {
                 if ($adminUserType !== 'admin_kr') {
                     send_error_response('Only admin_kr can approve this change type', 403);
@@ -15174,174 +15174,6 @@ function approveB2BBooking($conn, $input) {
                 ];
                 send_success_response(['priceAdjustment' => $adjustmentInfo], 'Traveler changes approved and applied successfully. Amount adjusted: ' . ($priceAdjustment >= 0 ? '+' : '') . number_format($priceAdjustment) . ' PHP');
 
-            } else if ($changeRequest['changeType'] === 'product_edit') {
-                // Product Edit 요청 승인: 기존 예약 취소 + 새 예약 생성
-                $newData = json_decode($changeRequest['newData'], true);
-
-                if (!$newData) {
-                    send_error_response('No new data found for product edit request. The edit may not have been completed.');
-                }
-
-                // 1. 기존 예약을 cancelled로 변경
-                $cancelSql = "UPDATE bookings SET bookingStatus = 'cancelled', cancelledAt = NOW(), updatedAt = NOW() WHERE bookingId = ?";
-                $cancelStmt = $conn->prepare($cancelSql);
-                $cancelStmt->bind_param('s', $bookingId);
-                $cancelStmt->execute();
-                $cancelStmt->close();
-
-                // 2. 새 bookingId 생성
-                $newBookingId = generateBookingId($conn);
-
-                // 3. 기존 예약 정보 조회 (메타 정보 복사를 위해)
-                $oldBookingSql = "SELECT * FROM bookings WHERE bookingId = ?";
-                $oldBookingStmt = $conn->prepare($oldBookingSql);
-                $oldBookingStmt->bind_param('s', $bookingId);
-                $oldBookingStmt->execute();
-                $oldBookingResult = $oldBookingStmt->get_result();
-                $oldBooking = $oldBookingResult->fetch_assoc();
-                $oldBookingStmt->close();
-
-                // 4. 새 예약 생성
-                $newStatus = $changeRequest['originalStatus'] ?? 'waiting_down_payment';
-                $newPaymentStatus = $changeRequest['originalPaymentStatus'] ?? 'pending';
-
-                $insertSql = "INSERT INTO bookings (
-                    bookingId, transactNo, packageId, departureDate, returnDate,
-                    adults, children, infants, totalAmount,
-                    meetingTime, meetingLocation, otherRequest,
-                    contactEmail, contactPhone, contactName,
-                    agentId, accountId, customerAccountId,
-                    bookingStatus, paymentStatus, paymentType,
-                    createdAt, updatedAt
-                ) VALUES (
-                    ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?,
-                    ?, ?, ?,
-                    ?, ?, ?,
-                    ?, ?, ?,
-                    ?, ?, ?,
-                    NOW(), NOW()
-                )";
-
-                $transactNo = $newBookingId;
-                $packageId = $newData['packageId'] ?? $oldBooking['packageId'];
-                $departureDate = $newData['departureDate'] ?? $oldBooking['departureDate'];
-                $returnDate = $newData['returnDate'] ?? '';
-                $adults = (int)($newData['adults'] ?? 0);
-                $children = (int)($newData['children'] ?? 0);
-                $infants = (int)($newData['infants'] ?? 0);
-                $totalAmount = (float)($newData['totalAmount'] ?? 0);
-                $meetingTime = $newData['meetingTime'] ?? '';
-                $meetingLocation = $newData['meetingLocation'] ?? '';
-                $otherRequest = $newData['otherRequest'] ?? '';
-                $contactEmail = $newData['contactEmail'] ?? ($newData['customerInfo']['email'] ?? '');
-                $contactPhone = $newData['contactPhone'] ?? ($newData['customerInfo']['phone'] ?? '');
-                $contactName = '';
-                if (!empty($newData['customerInfo'])) {
-                    $contactName = trim(($newData['customerInfo']['firstName'] ?? '') . ' ' . ($newData['customerInfo']['lastName'] ?? ''));
-                }
-                $agentId = $oldBooking['agentId'];
-                $accountId = $oldBooking['accountId'];
-                $customerAccountId = $newData['customerAccountId'] ?? ($newData['customerInfo']['accountId'] ?? $oldBooking['customerAccountId']);
-                $paymentType = $newData['paymentType'] ?? 'staged';
-
-                $insertStmt = $conn->prepare($insertSql);
-                $insertStmt->bind_param('ssissiiidssssssiissss',
-                    $newBookingId, $transactNo, $packageId, $departureDate, $returnDate,
-                    $adults, $children, $infants, $totalAmount,
-                    $meetingTime, $meetingLocation, $otherRequest,
-                    $contactEmail, $contactPhone, $contactName,
-                    $agentId, $accountId, $customerAccountId,
-                    $newStatus, $newPaymentStatus, $paymentType
-                );
-                $insertStmt->execute();
-                $insertStmt->close();
-
-                // 5. 여행자 정보 복사 (newData에서)
-                $newTravelers = $newData['travelers'] ?? [];
-                if (!empty($newTravelers)) {
-                    foreach ($newTravelers as $idx => $tr) {
-                        if (!is_array($tr)) continue;
-
-                        $travelerType = strtolower(trim((string)($tr['type'] ?? $tr['travelerType'] ?? 'adult')));
-                        $title = trim((string)($tr['title'] ?? ''));
-                        $firstName = trim((string)($tr['firstName'] ?? ''));
-                        $lastName = trim((string)($tr['lastName'] ?? ''));
-                        $birthDate = trim((string)($tr['birthDate'] ?? ''));
-                        $gender = strtolower(trim((string)($tr['gender'] ?? '')));
-                        $nationality = trim((string)($tr['nationality'] ?? ''));
-                        $passportNumber = trim((string)($tr['passportNumber'] ?? ''));
-                        $passportIssueDate = trim((string)($tr['passportIssueDate'] ?? ''));
-                        $passportExpiry = trim((string)($tr['passportExpiry'] ?? ''));
-                        $isMainTraveler = intval($tr['isMainTraveler'] ?? ($idx === 0 ? 1 : 0));
-
-                        $titleVal = in_array($title, ['MR','MRS','MS','DR']) ? $title : null;
-                        $genderVal = in_array($gender, ['male','female']) ? $gender : null;
-                        $birthDateVal = ($birthDate !== '' && $birthDate !== '0000-00-00') ? $birthDate : null;
-                        $passportIssueDateVal = ($passportIssueDate !== '' && $passportIssueDate !== '0000-00-00') ? $passportIssueDate : null;
-                        $passportExpiryVal = ($passportExpiry !== '' && $passportExpiry !== '0000-00-00') ? $passportExpiry : null;
-
-                        $travelersInsertSql = "INSERT INTO booking_travelers (transactNo, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, isMainTraveler, reservationStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                        $tInsert = $conn->prepare($travelersInsertSql);
-                        if ($tInsert) {
-                            $tInsert->bind_param('sssssssssssis', $newBookingId, $travelerType, $titleVal, $firstName, $lastName, $birthDateVal, $genderVal, $nationality, $passportNumber, $passportIssueDateVal, $passportExpiryVal, $isMainTraveler, $newStatus);
-                            $tInsert->execute();
-                            $tInsert->close();
-                        }
-                    }
-                }
-
-                // 6. 객실 옵션 복사 (newData에서) - 테이블이 없을 수 있음
-                $newRooms = $newData['selectedRooms'] ?? [];
-                if (!empty($newRooms)) {
-                    try {
-                        $tableCheck = $conn->query("SHOW TABLES LIKE 'booking_room_options'");
-                        if ($tableCheck && $tableCheck->num_rows > 0) {
-                            foreach ($newRooms as $room) {
-                                if (!is_array($room)) continue;
-
-                                $roomId = $room['roomId'] ?? $room['room_id'] ?? null;
-                                $roomType = $room['roomType'] ?? $room['room_type'] ?? '';
-                                $roomPrice = (float)($room['roomPrice'] ?? $room['room_price'] ?? 0);
-                                $capacity = (int)($room['capacity'] ?? 1);
-                                $count = (int)($room['count'] ?? $room['quantity'] ?? 1);
-
-                                if ($roomId) {
-                                    $roomInsertSql = "INSERT INTO booking_room_options (bookingId, roomId, roomType, roomPrice, capacity, count) VALUES (?, ?, ?, ?, ?, ?)";
-                                    $rInsert = $conn->prepare($roomInsertSql);
-                                    if ($rInsert) {
-                                        $rInsert->bind_param('sisdii', $newBookingId, $roomId, $roomType, $roomPrice, $capacity, $count);
-                                        $rInsert->execute();
-                                        $rInsert->close();
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Throwable $e) {
-                        // 테이블이 없거나 오류 시 무시하고 계속 진행
-                    }
-                }
-
-                // 7. change_request 상태 업데이트
-                $updateReqSql = "UPDATE booking_change_requests SET status = 'approved', processedBy = ?, processedAt = NOW() WHERE id = ?";
-                $updateReqStmt = $conn->prepare($updateReqSql);
-                $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
-                $updateReqStmt->execute();
-                $updateReqStmt->close();
-
-                // 8. 예약 이력 추가
-                __addBookingHistory($conn, $bookingId, 'Product edit approved - old booking cancelled');
-                __addBookingHistory($conn, $newBookingId, 'Created from product edit approval (original: ' . $bookingId . ')');
-
-                // 상태 변경 히스토리 저장
-                __log_booking_status_change($conn, $bookingId, 'pending_update', 'cancelled', null, null, 'Product edit approved - old booking cancelled');
-                __log_booking_status_change($conn, $newBookingId, 'pending', $newStatus, null, null, 'New booking created from product edit approval');
-
-                send_success_response([
-                    'oldBookingId' => $bookingId,
-                    'newBookingId' => $newBookingId
-                ], 'Product edit approved. Old booking cancelled, new booking created.');
-
             } else if ($changeRequest['changeType'] === 'deadline') {
                 // Deadline 변경 요청 승인: admin_kr만 승인 가능
                 $currentAdminType = $_SESSION['admin_userType'] ?? '';
@@ -15510,7 +15342,7 @@ function rejectB2BBooking($conn, $input) {
                 send_error_response('No pending change request found for this booking');
             }
 
-            // status, deadline, product_edit changeType은 admin_kr만 거절 가능
+            // status, deadline changeType은 admin_kr만 거절 가능
             if ($changeRequest['changeType'] === 'deadline') {
                 if ($adminUserType !== 'admin_kr') {
                     send_error_response('Only admin_kr can reject this change type', 403);
@@ -15621,37 +15453,6 @@ function rejectB2BBooking($conn, $input) {
                 __log_booking_status_change($conn, $bookingId, 'pending_update', 'check_reject', null, null, 'Traveler change rejected' . (!empty($reason) ? ': ' . $reason : ''));
 
                 send_success_response([], 'Traveler change rejected successfully');
-
-            } else if ($changeRequest['changeType'] === 'product_edit') {
-                // Product Edit 요청 거절: pending_update → check_reject (에이전트가 거절 사유 확인 필요)
-                if ($hasRemarks && !empty($reason)) {
-                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', remarks = CONCAT(COALESCE(remarks, ''), '\n[Product Edit Rejected] ', ?), updatedAt = NOW() WHERE bookingId = ?";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param('ss', $reason, $bookingId);
-                } else {
-                    $sql = "UPDATE bookings SET bookingStatus = 'check_reject', updatedAt = NOW() WHERE bookingId = ?";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param('s', $bookingId);
-                }
-                $stmt->execute();
-                $stmt->close();
-
-                // 변경 요청 거절 처리
-                $updateReqSql = "UPDATE booking_change_requests SET status = 'rejected', processedBy = ?, processedAt = NOW(), rejectReason = ? WHERE id = ?";
-                $updateReqStmt = $conn->prepare($updateReqSql);
-                $updateReqStmt->bind_param('ssi', $processedBy, $reason, $changeRequest['id']);
-                $updateReqStmt->execute();
-                $updateReqStmt->close();
-
-                // Send rejection notification email
-                if (function_exists('send_rejection_notification_email')) {
-                    send_rejection_notification_email($conn, $bookingId, 'change_request', $reason);
-                }
-
-                // 상태 변경 히스토리 저장
-                __log_booking_status_change($conn, $bookingId, 'pending_update', 'check_reject', null, null, 'Product edit rejected' . (!empty($reason) ? ': ' . $reason : ''));
-
-                send_success_response([], 'Product edit rejected successfully');
 
             } else if ($changeRequest['changeType'] === 'deadline') {
                 // Deadline 변경 요청 거절: 원래 상태로 복원 (deadline은 변경하지 않음)
