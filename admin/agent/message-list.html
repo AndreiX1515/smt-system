@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+<body>
+	<header class="layout-header"></header>
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Messages">Messages</h1>
+
+			<div class="card-panel jw-mgt32">
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" id="filterForm">
+						<select class="select" id="statusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="All Status">All Status</option>
+							<option value="open" data-lan-eng="Open">Open</option>
+							<option value="in_progress" data-lan-eng="In Progress">In Progress</option>
+							<option value="resolved" data-lan-eng="Resolved">Resolved</option>
+							<option value="closed" data-lan-eng="Closed">Closed</option>
+						</select>
+						<select class="select" id="sortFilter" onchange="applyFilters()">
+							<option value="latest" data-lan-eng="Latest">Latest</option>
+							<option value="oldest" data-lan-eng="Oldest">Oldest</option>
+						</select>
+					</form>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60">
+						<col style="width:200px;">
+						<col>
+						<col class="col-160">
+						<col class="col-120">
+						<col class="col-120">
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th class="is-center" data-lan-eng="Subject">Subject</th>
+							<th class="is-center" data-lan-eng="Last Message">Last Message</th>
+							<th class="is-center" data-lan-eng="Date">Date</th>
+							<th class="is-center" data-lan-eng="Status">Status</th>
+							<th class="is-center" data-lan-eng="Unread">Unread</th>
+						</tr>
+					</thead>
+					<tbody id="threadsTableBody">
+						<tr><td colspan="6" class="is-center">Loading...</td></tr>
+					</tbody>
+				</table>
+
+				<div class="jw-pagebox" role="navigation">
+					<div class="contents">
+						<button type="button" class="first"><img src="../image/first.svg" alt=""></button>
+						<button type="button" class="prev"><img src="../image/prev.svg" alt=""></button>
+						<div class="page" role="list"></div>
+						<button type="button" class="next"><img src="../image/next.svg" alt=""></button>
+						<button type="button" class="last"><img src="../image/last.svg" alt=""></button>
+					</div>
+				</div>
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeB" id="newMessageBtn" data-lan-eng="New Message">New Message</button>
+			</div>
+
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/agent.js"></script>
+
+	<script>
+		init({ headerUrl: '../inc/header.html', navUrl: '../inc/nav_agent.html' });
+
+		let currentPage = 1;
+		const limit = 10;
+		let currentFilters = { status: '', sortOrder: 'latest' };
+
+		function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+		const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+
+		function renderTable(threads) {
+			const tbody = document.getElementById('threadsTableBody');
+			if (!threads || !threads.length) {
+				tbody.innerHTML = '<tr><td colspan="6" class="is-center">No messages found.</td></tr>';
+				return;
+			}
+			tbody.innerHTML = threads.map(t => {
+				const date = (t.lastMessageAt || t.createdAt || '').split(' ')[0];
+				const unread = t.unreadCount > 0 ? `<span class="unread-badge">${t.unreadCount}</span>` : '';
+				return `<tr onclick="location.href='message-detail.html?id=${t.threadId}'" style="cursor:pointer;">
+					<td class="no is-center">${t.rowNum || ''}</td>
+					<td class="is-center" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.subject || '')}</td>
+					<td class="is-center" style="color:#666; font-size:13px;">${escapeHtml(t.lastMessage || '')}</td>
+					<td class="is-center">${escapeHtml(date)}</td>
+					<td class="is-center"><span class="msg-status-badge ${t.status}">${statusLabels[t.status] || t.status}</span></td>
+					<td class="is-center">${unread}</td>
+				</tr>`;
+			}).join('');
+		}
+
+		function applyFilters() {
+			currentFilters.status = document.getElementById('statusFilter').value;
+			currentFilters.sortOrder = document.getElementById('sortFilter').value;
+			currentPage = 1;
+			loadThreads();
+		}
+
+		async function loadThreads(page) {
+			if (page) currentPage = page;
+			try {
+				const params = new URLSearchParams({
+					action: 'getMessageThreads',
+					page: currentPage,
+					limit: limit,
+					sortOrder: currentFilters.sortOrder
+				});
+				if (currentFilters.status) params.append('status', currentFilters.status);
+
+				const res = await fetch(`../backend/api/agent-api.php?${params}`, { credentials: 'same-origin' });
+				if (res.status === 401) { location.href = '../index.html'; return; }
+				const json = await res.json();
+				if (json.success && json.data) {
+					document.getElementById('totalCount').textContent = json.data.pagination.totalCount || 0;
+					renderTable(json.data.threads);
+					updatePagination(json.data.pagination);
+				}
+			} catch (e) {
+				console.error(e);
+				document.getElementById('threadsTableBody').innerHTML = '<tr><td colspan="6" class="is-center">Failed to load.</td></tr>';
+			}
+		}
+
+		function updatePagination(p) {
+			const box = document.querySelector('.jw-pagebox');
+			if (!box) return;
+			const wrap = box.querySelector('.page');
+			const total = Math.max(1, p.totalPages);
+			const cur = Math.max(1, p.currentPage);
+			const gs = 5;
+			const start = Math.floor((cur - 1) / gs) * gs + 1;
+			const end = Math.min(total, start + gs - 1);
+			wrap.innerHTML = '';
+			for (let i = start; i <= end; i++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (i === cur ? ' show' : '');
+				btn.textContent = i;
+				btn.onclick = () => loadThreads(i);
+				wrap.appendChild(btn);
+			}
+			box.querySelector('.first').onclick = () => loadThreads(1);
+			box.querySelector('.last').onclick = () => loadThreads(total);
+			box.querySelector('.prev').onclick = () => loadThreads(Math.max(1, start - gs));
+			box.querySelector('.next').onclick = () => loadThreads(Math.min(total, start + gs));
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				await loadThreads();
+			} catch (e) { console.error(e); }
+
+			document.getElementById('newMessageBtn').addEventListener('click', () => {
+				location.href = 'message-detail.html?new=true';
+			});
+		});
+	</script>
+</body>
+</html>

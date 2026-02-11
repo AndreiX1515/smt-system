@@ -729,7 +729,30 @@ try {
         case 'downloadAgentInquiries':
             downloadAgentInquiries($conn, $input);
             break;
-            
+
+        // ========== 메시지 관리 ==========
+        case 'getMessageThreads':
+            getMessageThreads($conn, $input);
+            break;
+        case 'getMessageThreadDetail':
+            getMessageThreadDetail($conn, $input);
+            break;
+        case 'createMessageThread':
+            createMessageThread($conn, $input);
+            break;
+        case 'sendMessage':
+            handleSendMessage($conn, $input);
+            break;
+        case 'updateMessageThreadStatus':
+            updateMessageThreadStatus($conn, $input);
+            break;
+        case 'getAgentListForMessage':
+            getAgentListForMessage($conn, $input);
+            break;
+        case 'getMessageUnreadCount':
+            getMessageUnreadCount($conn, $input);
+            break;
+
         // 회원 관리
         case 'getMembers':
             getMembers($conn, $input);
@@ -19557,5 +19580,457 @@ function getMonthlyInvoiceData($conn, $input) {
     } catch (Exception $e) {
         error_log("getMonthlyInvoiceData error: " . $e->getMessage());
         send_error_response('Failed to get monthly invoice data: ' . $e->getMessage());
+    }
+}
+
+// ========== 메시지 관리 함수 ==========
+
+function generateThreadNo($conn) {
+    $prefix = 'MSG' . date('Ymd');
+    $result = $conn->query("SELECT MAX(CAST(SUBSTRING(threadNo, 12) AS UNSIGNED)) AS maxSeq FROM message_threads WHERE threadNo LIKE '{$prefix}%'");
+    $row = $result ? $result->fetch_assoc() : null;
+    $seq = ($row && $row['maxSeq']) ? intval($row['maxSeq']) + 1 : 1;
+    return $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+}
+
+function getMessageThreads($conn, $input) {
+    try {
+        $page = max(1, intval($input['page'] ?? 1));
+        $limit = max(1, min(100, intval($input['limit'] ?? 10)));
+        $offset = ($page - 1) * $limit;
+        $status = $input['status'] ?? '';
+        $search = trim($input['search'] ?? '');
+        $sortOrder = ($input['sortOrder'] ?? 'latest') === 'oldest' ? 'ASC' : 'DESC';
+
+        $where = [];
+        $params = [];
+        $types = '';
+
+        if ($status && in_array($status, ['open','in_progress','resolved','closed'])) {
+            $where[] = 't.status = ?';
+            $params[] = $status;
+            $types .= 's';
+        }
+        if ($search !== '') {
+            $where[] = '(t.subject LIKE ? OR ag.agencyName LIKE ?)';
+            $searchLike = '%' . $search . '%';
+            $params[] = $searchLike;
+            $params[] = $searchLike;
+            $types .= 'ss';
+        }
+
+        $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        // Count
+        $countSql = "SELECT COUNT(*) AS cnt FROM message_threads t LEFT JOIN agent ag ON t.agentAccountId = ag.accountId {$whereClause}";
+        if ($params) {
+            $stmt = $conn->prepare($countSql);
+            $bindParams = [];
+            foreach ($params as $k => &$v) $bindParams[] = &$params[$k];
+            array_unshift($bindParams, $types);
+            call_user_func_array([$stmt, 'bind_param'], $bindParams);
+            $stmt->execute();
+            $totalCount = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
+            $stmt->close();
+        } else {
+            $totalCount = intval($conn->query($countSql)->fetch_assoc()['cnt'] ?? 0);
+        }
+
+        // List
+        $sql = "SELECT t.threadId, t.threadNo, t.subject, t.status, t.category, t.lastMessageAt, t.createdAt,
+                    ag.agencyName AS agentName,
+                    (SELECT COUNT(*) FROM message_items mi WHERE mi.threadId = t.threadId AND mi.isRead = 0 AND mi.senderType = 'agent') AS unreadCount,
+                    (SELECT mi.content FROM message_items mi WHERE mi.threadId = t.threadId ORDER BY mi.createdAt DESC LIMIT 1) AS lastMessage
+                FROM message_threads t
+                LEFT JOIN agent ag ON t.agentAccountId = ag.accountId
+                {$whereClause}
+                ORDER BY t.lastMessageAt {$sortOrder}, t.createdAt {$sortOrder}
+                LIMIT ? OFFSET ?";
+
+        $listTypes = $types . 'ii';
+        $listParams = array_merge($params, [$limit, $offset]);
+
+        $stmt = $conn->prepare($sql);
+        $bindParams = [];
+        foreach ($listParams as $k => &$v) $bindParams[] = &$listParams[$k];
+        array_unshift($bindParams, $listTypes);
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $threads = [];
+        $rowNum = $totalCount - $offset;
+        while ($row = $result->fetch_assoc()) {
+            $lastMsg = strip_tags($row['lastMessage'] ?? '');
+            if (mb_strlen($lastMsg) > 50) $lastMsg = mb_substr($lastMsg, 0, 50) . '...';
+            $threads[] = [
+                'threadId' => intval($row['threadId']),
+                'threadNo' => $row['threadNo'],
+                'subject' => $row['subject'],
+                'agentName' => $row['agentName'] ?? '',
+                'status' => $row['status'],
+                'category' => $row['category'],
+                'unreadCount' => intval($row['unreadCount']),
+                'lastMessage' => $lastMsg,
+                'lastMessageAt' => $row['lastMessageAt'],
+                'createdAt' => $row['createdAt'],
+                'rowNum' => $rowNum--
+            ];
+        }
+        $stmt->close();
+
+        send_success_response([
+            'threads' => $threads,
+            'pagination' => [
+                'totalCount' => intval($totalCount),
+                'currentPage' => $page,
+                'totalPages' => max(1, ceil($totalCount / $limit)),
+                'limit' => $limit
+            ]
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get message threads: ' . $e->getMessage());
+    }
+}
+
+function getMessageThreadDetail($conn, $input) {
+    try {
+        $threadId = intval($input['threadId'] ?? $input['id'] ?? 0);
+        if (!$threadId) send_error_response('Thread ID is required');
+
+        // Thread info
+        $stmt = $conn->prepare("SELECT t.*, ag.agencyName AS agentName, COALESCE(NULLIF(TRIM(ag.personInCharge),''), TRIM(CONCAT(IFNULL(ag.fName,''),' ',IFNULL(ag.lName,'')))) AS managerName, ag.personInChargeEmail AS managerEmail, ag.contactNo AS managerContact
+            FROM message_threads t
+            LEFT JOIN agent ag ON t.agentAccountId = ag.accountId
+            WHERE t.threadId = ?");
+        $stmt->bind_param('i', $threadId);
+        $stmt->execute();
+        $thread = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$thread) send_error_response('Thread not found', 404);
+
+        // Mark agent messages as read
+        $stmtRead = $conn->prepare("UPDATE message_items SET isRead = 1, readAt = NOW() WHERE threadId = ? AND senderType = 'agent' AND isRead = 0");
+        $stmtRead->bind_param('i', $threadId);
+        $stmtRead->execute();
+        $stmtRead->close();
+
+        // All messages
+        $stmtMsg = $conn->prepare("SELECT mi.messageId, mi.senderId, mi.senderType, mi.content, mi.isRead, mi.readAt, mi.createdAt,
+                a.firstName AS senderFirstName, a.lastName AS senderLastName
+            FROM message_items mi
+            LEFT JOIN accounts a ON mi.senderId = a.accountId
+            WHERE mi.threadId = ?
+            ORDER BY mi.createdAt ASC");
+        $stmtMsg->bind_param('i', $threadId);
+        $stmtMsg->execute();
+        $msgResult = $stmtMsg->get_result();
+
+        $messages = [];
+        $messageIds = [];
+        while ($row = $msgResult->fetch_assoc()) {
+            $messageIds[] = intval($row['messageId']);
+            $messages[] = [
+                'messageId' => intval($row['messageId']),
+                'senderId' => intval($row['senderId']),
+                'senderType' => $row['senderType'],
+                'senderName' => trim(($row['senderFirstName'] ?? '') . ' ' . ($row['senderLastName'] ?? '')) ?: ($row['senderType'] === 'admin' ? 'Admin' : 'Agent'),
+                'content' => $row['content'],
+                'isRead' => intval($row['isRead']),
+                'readAt' => $row['readAt'],
+                'createdAt' => $row['createdAt'],
+                'attachments' => []
+            ];
+        }
+        $stmtMsg->close();
+
+        // Attachments for all messages
+        if ($messageIds) {
+            $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+            $stmtAtt = $conn->prepare("SELECT attachmentId, messageId, fileName, filePath, fileSize, fileType FROM message_attachments WHERE messageId IN ({$placeholders})");
+            $attTypes = str_repeat('i', count($messageIds));
+            $bindParams = [];
+            foreach ($messageIds as $k => &$v) $bindParams[] = &$messageIds[$k];
+            array_unshift($bindParams, $attTypes);
+            call_user_func_array([$stmtAtt, 'bind_param'], $bindParams);
+            $stmtAtt->execute();
+            $attResult = $stmtAtt->get_result();
+            $attMap = [];
+            while ($att = $attResult->fetch_assoc()) {
+                $mid = intval($att['messageId']);
+                if (!isset($attMap[$mid])) $attMap[$mid] = [];
+                $ext = strtolower(pathinfo($att['fileName'], PATHINFO_EXTENSION));
+                $attMap[$mid][] = [
+                    'attachmentId' => intval($att['attachmentId']),
+                    'fileName' => $att['fileName'],
+                    'filePath' => $att['filePath'],
+                    'fileSize' => intval($att['fileSize']),
+                    'fileType' => $att['fileType'],
+                    'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp'])
+                ];
+            }
+            $stmtAtt->close();
+
+            foreach ($messages as &$msg) {
+                $msg['attachments'] = $attMap[$msg['messageId']] ?? [];
+            }
+            unset($msg);
+        }
+
+        send_success_response([
+            'thread' => [
+                'threadId' => intval($thread['threadId']),
+                'threadNo' => $thread['threadNo'],
+                'subject' => $thread['subject'],
+                'status' => $thread['status'],
+                'category' => $thread['category'],
+                'agentName' => $thread['agentName'] ?? '',
+                'region' => '',
+                'managerName' => $thread['managerName'] ?? '',
+                'managerEmail' => $thread['managerEmail'] ?? '',
+                'managerContact' => $thread['managerContact'] ?? '',
+                'createdAt' => $thread['createdAt']
+            ],
+            'messages' => $messages
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get thread detail: ' . $e->getMessage());
+    }
+}
+
+function createMessageThread($conn, $input) {
+    try {
+        $adminAccountId = intval($_SESSION['admin_accountId'] ?? 0);
+        if (!$adminAccountId) send_error_response('Admin login required', 401);
+
+        $agentAccountId = intval($input['agentAccountId'] ?? 0);
+        $subject = trim($input['subject'] ?? '');
+        $content = trim($input['content'] ?? '');
+        $category = $input['category'] ?? 'general';
+
+        if (!$agentAccountId) send_error_response('Agent selection is required');
+        if ($subject === '') send_error_response('Subject is required');
+        if ($content === '' || $content === '<p><br></p>') send_error_response('Message content is required');
+
+        if (!in_array($category, ['general','product','booking','payment','cancellation','other'])) {
+            $category = 'general';
+        }
+
+        $conn->begin_transaction();
+
+        $threadNo = generateThreadNo($conn);
+
+        $stmtThread = $conn->prepare("INSERT INTO message_threads (threadNo, subject, createdBy, agentAccountId, category, status, lastMessageAt, createdAt) VALUES (?, ?, ?, ?, ?, 'open', NOW(), NOW())");
+        $stmtThread->bind_param('ssiss', $threadNo, $subject, $adminAccountId, $agentAccountId, $category);
+        if (!$stmtThread->execute()) {
+            $conn->rollback();
+            send_error_response('Failed to create thread: ' . $stmtThread->error);
+        }
+        $threadId = $conn->insert_id;
+        $stmtThread->close();
+
+        $stmtMsg = $conn->prepare("INSERT INTO message_items (threadId, senderId, senderType, content, createdAt) VALUES (?, ?, 'admin', ?, NOW())");
+        $stmtMsg->bind_param('iis', $threadId, $adminAccountId, $content);
+        if (!$stmtMsg->execute()) {
+            $conn->rollback();
+            send_error_response('Failed to create message: ' . $stmtMsg->error);
+        }
+        $messageId = $conn->insert_id;
+        $stmtMsg->close();
+
+        // Handle file attachments
+        $attachments = handleMessageAttachments($conn, $threadId, $messageId, $adminAccountId);
+
+        $conn->commit();
+
+        send_success_response([
+            'threadId' => $threadId,
+            'threadNo' => $threadNo,
+            'messageId' => $messageId,
+            'attachments' => $attachments
+        ], 'Message thread created successfully');
+    } catch (Exception $e) {
+        $conn->rollback();
+        send_error_response('Failed to create thread: ' . $e->getMessage());
+    }
+}
+
+function handleSendMessage($conn, $input) {
+    try {
+        $adminAccountId = intval($_SESSION['admin_accountId'] ?? 0);
+        if (!$adminAccountId) send_error_response('Admin login required', 401);
+
+        $threadId = intval($input['threadId'] ?? 0);
+        $content = trim($input['content'] ?? '');
+
+        if (!$threadId) send_error_response('Thread ID is required');
+
+        $hasFiles = !empty($_FILES['files']) && is_array($_FILES['files']['name']) && $_FILES['files']['error'][0] === UPLOAD_ERR_OK;
+        $hasContent = $content !== '' && $content !== '<p><br></p>';
+        if (!$hasContent && !$hasFiles) send_error_response('Please enter a message or attach a file');
+
+        // Verify thread exists
+        $stmtCheck = $conn->prepare("SELECT threadId, status FROM message_threads WHERE threadId = ?");
+        $stmtCheck->bind_param('i', $threadId);
+        $stmtCheck->execute();
+        $thread = $stmtCheck->get_result()->fetch_assoc();
+        $stmtCheck->close();
+        if (!$thread) send_error_response('Thread not found', 404);
+        if ($thread['status'] === 'closed') send_error_response('Cannot send message to a closed thread');
+
+        $conn->begin_transaction();
+
+        $stmtMsg = $conn->prepare("INSERT INTO message_items (threadId, senderId, senderType, content, createdAt) VALUES (?, ?, 'admin', ?, NOW())");
+        $stmtMsg->bind_param('iis', $threadId, $adminAccountId, $content);
+        if (!$stmtMsg->execute()) {
+            $conn->rollback();
+            send_error_response('Failed to send message: ' . $stmtMsg->error);
+        }
+        $messageId = $conn->insert_id;
+        $stmtMsg->close();
+
+        $conn->query("UPDATE message_threads SET lastMessageAt = NOW() WHERE threadId = {$threadId}");
+
+        $attachments = handleMessageAttachments($conn, $threadId, $messageId, $adminAccountId);
+
+        $conn->commit();
+
+        send_success_response([
+            'messageId' => $messageId,
+            'attachments' => $attachments
+        ], 'Message sent successfully');
+    } catch (Exception $e) {
+        $conn->rollback();
+        send_error_response('Failed to send message: ' . $e->getMessage());
+    }
+}
+
+function handleMessageAttachments($conn, $threadId, $messageId, $uploadedBy) {
+    $attachments = [];
+    if (!empty($_FILES['files']) && is_array($_FILES['files']['name'])) {
+        $uploadDir = realpath(__DIR__ . '/../../../uploads/messages');
+        if (!$uploadDir) {
+            $uploadDir = __DIR__ . '/../../../uploads/messages';
+            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
+        }
+
+        $allowedExts = ['jpg','jpeg','png','gif','pdf'];
+        $maxSize = 10 * 1024 * 1024; // 10MB
+        $maxFiles = 5;
+
+        $fileCount = min(count($_FILES['files']['name']), $maxFiles);
+        for ($i = 0; $i < $fileCount; $i++) {
+            if ($_FILES['files']['error'][$i] !== UPLOAD_ERR_OK) continue;
+
+            $originalName = $_FILES['files']['name'][$i];
+            $tmpPath = $_FILES['files']['tmp_name'][$i];
+            $fileSize = $_FILES['files']['size'][$i];
+            $fileType = $_FILES['files']['type'][$i];
+
+            if ($fileSize > $maxSize) continue;
+
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExts)) continue;
+
+            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+            $storedName = 'msg_' . date('YmdHis') . '_' . mt_rand(1000, 9999) . '_' . $safeName;
+            $destPath = $uploadDir . '/' . $storedName;
+
+            if (move_uploaded_file($tmpPath, $destPath)) {
+                $relPath = 'uploads/messages/' . $storedName;
+                $stmtAtt = $conn->prepare("INSERT INTO message_attachments (messageId, threadId, fileName, filePath, fileSize, fileType, uploadedBy, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmtAtt->bind_param('iissisi', $messageId, $threadId, $originalName, $relPath, $fileSize, $fileType, $uploadedBy);
+                $stmtAtt->execute();
+                $attachments[] = [
+                    'attachmentId' => $conn->insert_id,
+                    'fileName' => $originalName,
+                    'filePath' => $relPath,
+                    'fileSize' => $fileSize,
+                    'fileType' => $fileType
+                ];
+                $stmtAtt->close();
+            }
+        }
+    }
+    return $attachments;
+}
+
+function updateMessageThreadStatus($conn, $input) {
+    try {
+        $threadId = intval($input['threadId'] ?? 0);
+        $status = $input['status'] ?? '';
+        if (!$threadId) send_error_response('Thread ID is required');
+        if (!in_array($status, ['open','in_progress','resolved','closed'])) {
+            send_error_response('Invalid status');
+        }
+
+        $stmt = $conn->prepare("UPDATE message_threads SET status = ? WHERE threadId = ?");
+        $stmt->bind_param('si', $status, $threadId);
+        if (!$stmt->execute()) send_error_response('Failed to update status: ' . $stmt->error);
+        $stmt->close();
+
+        send_success_response([], 'Status updated successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to update status: ' . $e->getMessage());
+    }
+}
+
+function getAgentListForMessage($conn, $input) {
+    try {
+        $keyword = trim($input['keyword'] ?? '');
+
+        $sql = "SELECT a.accountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName, ag.contactNo
+            FROM accounts a
+            INNER JOIN agent ag ON a.accountId = ag.accountId
+            WHERE (a.accountStatus = 'active' OR a.accountStatus IS NULL)";
+
+        $params = [];
+        $types = '';
+
+        if ($keyword !== '') {
+            $like = '%' . $keyword . '%';
+            $sql .= " AND (ag.agencyName LIKE ? OR ag.personInCharge LIKE ? OR ag.fName LIKE ? OR ag.lName LIKE ? OR CONCAT(ag.fName, ' ', ag.lName) LIKE ?)";
+            $types .= 'sssss';
+            $params = [$like, $like, $like, $like, $like];
+        }
+
+        $sql .= " ORDER BY ag.agencyName ASC LIMIT 50";
+
+        $stmt = $conn->prepare($sql);
+        if ($params) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $agents = [];
+        while ($row = $result->fetch_assoc()) {
+            $name = trim($row['agencyName'] ?? '');
+            $manager = trim($row['personInCharge'] ?? '');
+            $fullName = trim(($row['fName'] ?? '') . ' ' . ($row['lName'] ?? ''));
+            if ($name === '' && $fullName === '') continue;
+
+            $agents[] = [
+                'accountId' => intval($row['accountId']),
+                'branchName' => $name,
+                'managerName' => $manager ?: $fullName,
+                'contactNo' => $row['contactNo'] ?? ''
+            ];
+        }
+        $stmt->close();
+
+        send_success_response(['agents' => $agents]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get agent list: ' . $e->getMessage());
+    }
+}
+
+function getMessageUnreadCount($conn, $input) {
+    try {
+        $result = $conn->query("SELECT COUNT(*) AS cnt FROM message_items WHERE isRead = 0 AND senderType = 'agent'");
+        $count = $result ? intval($result->fetch_assoc()['cnt'] ?? 0) : 0;
+        send_success_response(['unreadCount' => $count]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get unread count: ' . $e->getMessage());
     }
 }

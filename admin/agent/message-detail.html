@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+<body>
+	<header class="layout-header"></header>
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="message-list.html" class="jw-button">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+			</div>
+
+			<!-- New Message Form (shown when ?new=true) -->
+			<div id="newMessageSection" style="display:none;">
+				<h1 class="page-title" data-lan-eng="New Message">New Message</h1>
+
+				<div class="card-panel jw-mgt32">
+					<div class="grid-wrap">
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Category">Category</label>
+							<select class="select" id="newCategory">
+								<option value="general">General</option>
+								<option value="product">Product</option>
+								<option value="booking">Booking</option>
+								<option value="payment">Payment</option>
+								<option value="cancellation">Cancellation</option>
+								<option value="other">Other</option>
+							</select>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Subject">Subject</label>
+							<input type="text" class="form-control" id="newSubject" placeholder="Enter subject">
+						</div>
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Message">Message</label>
+							<div id="newEditor" style="height:200px;"></div>
+						</div>
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Attachments">Attachments</label>
+							<input type="file" id="newFiles" multiple accept=".jpg,.jpeg,.png,.gif,.pdf" style="font-size:13px;">
+							<div style="font-size:11px; color:#999; margin-top:4px;">Max 5 files, 10MB each (jpg, png, gif, pdf)</div>
+						</div>
+					</div>
+				</div>
+				<div class="controller jw-mgt32">
+					<button type="button" class="jw-button typeB" id="submitNewBtn" data-lan-eng="Submit">Submit</button>
+				</div>
+			</div>
+
+			<!-- Existing Thread Detail (shown when ?id=X) -->
+			<div id="detailSection" style="display:none;">
+				<h1 class="page-title" id="threadSubject" data-lan-eng="Message Detail">Message Detail</h1>
+
+				<div class="card-panel jw-mgt16" style="display:flex; align-items:center; gap:16px;">
+					<span style="font-size:13px; color:#666;" data-lan-eng="Status">Status:</span>
+					<span class="msg-status-badge" id="threadStatusBadge">Open</span>
+					<span style="font-size:13px; color:#666;" data-lan-eng="Category">Category:</span>
+					<span class="msg-category-badge" id="threadCategory"></span>
+					<span style="font-size:13px; color:#666; margin-left:auto;" id="threadDate"></span>
+				</div>
+
+				<!-- Chat Timeline -->
+				<div class="card-panel jw-mgt16" style="padding:0;">
+					<div class="message-timeline" id="messageTimeline">
+						<div style="text-align:center; color:#999; padding:40px;">Loading...</div>
+					</div>
+				</div>
+
+				<!-- Input Area -->
+				<div class="jw-mgt16" id="inputSection">
+					<div class="message-input-area">
+						<div id="replyEditor" style="height:120px;"></div>
+						<div class="message-file-preview" id="filePreview"></div>
+						<div class="message-input-actions">
+							<div class="file-attach-wrap">
+								<input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif,.pdf" style="display:none;">
+								<button type="button" class="file-attach-btn" id="attachBtn">
+									<img src="../image/upload.svg" alt="" style="width:16px;height:16px;"> Attach
+								</button>
+								<span id="fileCount" style="font-size:12px; color:#999;"></span>
+							</div>
+							<button type="button" class="send-btn" id="sendBtn" data-lan-eng="Send">Send</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/agent.js"></script>
+
+	<script>
+		init({ headerUrl: '../inc/header.html', navUrl: '../inc/nav_agent.html' });
+
+		let threadId = null;
+		let replyEditor = null;
+		let newEditor = null;
+		let selectedFiles = [];
+
+		function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+		function formatTime(dt) {
+			if (!dt) return '';
+			const d = new Date(dt);
+			const pad = n => String(n).padStart(2, '0');
+			return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+		}
+
+		function formatDate(dt) { return dt ? dt.split(' ')[0] : ''; }
+
+		const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+		const categoryLabels = { general: 'General', product: 'Product', booking: 'Booking', payment: 'Payment', cancellation: 'Cancellation', other: 'Other' };
+
+		function renderMessages(messages) {
+			const timeline = document.getElementById('messageTimeline');
+			if (!messages || !messages.length) {
+				timeline.innerHTML = '<div style="text-align:center; color:#999; padding:40px;">No messages yet.</div>';
+				return;
+			}
+
+			let html = '';
+			let lastDate = '';
+			messages.forEach(msg => {
+				const msgDate = formatDate(msg.createdAt);
+				if (msgDate !== lastDate) {
+					html += `<div class="message-date-separator">${escapeHtml(msgDate)}</div>`;
+					lastDate = msgDate;
+				}
+
+				const isMine = msg.senderType === 'agent';
+				const wrapClass = isMine ? 'mine' : 'theirs';
+				const senderLabel = isMine ? 'Me' : 'Admin';
+
+				let attachHtml = '';
+				if (msg.attachments && msg.attachments.length) {
+					attachHtml = '<div class="message-bubble-attachments">' +
+						msg.attachments.map(att => {
+							if (att.isImage) {
+								return `<img class="message-attachment-thumb" src="../../backend/api/download.php?file=${encodeURIComponent(att.filePath)}&inline=1" alt="${escapeHtml(att.fileName)}" onclick="window.open('../../backend/api/download.php?file=${encodeURIComponent(att.filePath)}&inline=1','_blank')">`;
+							}
+							return `<a class="message-attachment-item" href="../../backend/api/download.php?file=${encodeURIComponent(att.filePath)}" download="${escapeHtml(att.fileName)}">
+								<img class="att-icon" src="../image/file.svg" alt=""> ${escapeHtml(att.fileName)}
+							</a>`;
+						}).join('') + '</div>';
+				}
+
+				html += `
+					<div class="message-bubble-wrap ${wrapClass}">
+						<div class="message-bubble-sender">${senderLabel}</div>
+						<div class="message-bubble">${msg.content || ''}${attachHtml}</div>
+						<div class="message-bubble-meta">
+							<span>${formatTime(msg.createdAt)}</span>
+							${isMine && msg.isRead ? '<span class="read-status">Read</span>' : ''}
+						</div>
+					</div>`;
+			});
+
+			timeline.innerHTML = html;
+			timeline.scrollTop = timeline.scrollHeight;
+		}
+
+		async function loadDetail() {
+			try {
+				const res = await fetch(`../backend/api/agent-api.php?action=getMessageThreadDetail&threadId=${threadId}`, { credentials: 'same-origin' });
+				if (res.status === 401) { location.href = '../index.html'; return; }
+				const json = await res.json();
+				if (!json.success || !json.data) { alert('Failed to load'); return; }
+
+				const { thread, messages } = json.data;
+				document.getElementById('threadSubject').textContent = thread.subject || 'Message Detail';
+				const badge = document.getElementById('threadStatusBadge');
+				badge.textContent = statusLabels[thread.status] || thread.status;
+				badge.className = 'msg-status-badge ' + thread.status;
+				document.getElementById('threadCategory').textContent = categoryLabels[thread.category] || thread.category || '-';
+				document.getElementById('threadDate').textContent = formatDate(thread.createdAt);
+
+				renderMessages(messages);
+
+				const inputSection = document.getElementById('inputSection');
+				if (thread.status === 'closed') {
+					inputSection.innerHTML = '<div class="message-closed-notice">This thread has been closed.</div>';
+				}
+			} catch (e) { console.error(e); }
+		}
+
+		async function handleSend() {
+			const content = replyEditor ? replyEditor.root.innerHTML : '';
+			if ((!content || content.trim() === '' || content === '<p><br></p>') && !selectedFiles.length) {
+				return alert('Please enter a message.');
+			}
+
+			const formData = new FormData();
+			formData.append('action', 'sendMessage');
+			formData.append('threadId', threadId);
+			formData.append('content', content);
+			selectedFiles.forEach(f => formData.append('files[]', f));
+
+			const btn = document.getElementById('sendBtn');
+			btn.disabled = true;
+			btn.textContent = 'Sending...';
+			try {
+				const res = await fetch('../backend/api/agent-api.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+				const json = await res.json();
+				if (json.success) {
+					replyEditor.setText('');
+					selectedFiles = [];
+					document.getElementById('filePreview').innerHTML = '';
+					document.getElementById('fileCount').textContent = '';
+					await loadDetail();
+				} else {
+					alert(json.message || 'Failed to send');
+				}
+			} catch (e) { alert('Error: ' + e.message); }
+			finally { btn.disabled = false; btn.textContent = 'Send'; }
+		}
+
+		async function handleSubmitNew() {
+			const subject = document.getElementById('newSubject').value.trim();
+			const content = newEditor ? newEditor.root.innerHTML : '';
+			const category = document.getElementById('newCategory').value;
+
+			if (!subject) return alert('Please enter a subject.');
+			if (!content || content === '<p><br></p>') return alert('Please enter a message.');
+
+			const formData = new FormData();
+			formData.append('action', 'createMessageThread');
+			formData.append('subject', subject);
+			formData.append('content', content);
+			formData.append('category', category);
+
+			const files = document.getElementById('newFiles').files;
+			for (let i = 0; i < Math.min(files.length, 5); i++) {
+				formData.append('files[]', files[i]);
+			}
+
+			const btn = document.getElementById('submitNewBtn');
+			btn.disabled = true;
+			btn.textContent = 'Submitting...';
+			try {
+				const res = await fetch('../backend/api/agent-api.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+				const json = await res.json();
+				if (json.success) {
+					location.href = 'message-detail.html?id=' + json.data.threadId;
+				} else {
+					alert(json.message || 'Failed to create');
+				}
+			} catch (e) { alert('Error: ' + e.message); }
+			finally { btn.disabled = false; btn.textContent = 'Submit'; }
+		}
+
+		function updateFilePreview() {
+			const preview = document.getElementById('filePreview');
+			const countEl = document.getElementById('fileCount');
+			if (!preview || !countEl) return;
+			if (!selectedFiles.length) { preview.innerHTML = ''; countEl.textContent = ''; return; }
+			countEl.textContent = `${selectedFiles.length} file(s)`;
+			preview.innerHTML = selectedFiles.map((f, i) =>
+				`<div class="message-file-preview-item">
+					<span>${escapeHtml(f.name)}</span>
+					<button class="remove-file" onclick="removeFile(${i})">x</button>
+				</div>`
+			).join('');
+		}
+
+		function removeFile(idx) { selectedFiles.splice(idx, 1); updateFilePreview(); }
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			const params = new URLSearchParams(location.search);
+			const isNew = params.get('new') === 'true';
+			threadId = params.get('id');
+
+			if (isNew) {
+				document.getElementById('newMessageSection').style.display = '';
+				document.getElementById('detailSection').style.display = 'none';
+
+				newEditor = new Quill('#newEditor', {
+					theme: 'snow',
+					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
+				});
+
+				document.getElementById('submitNewBtn').addEventListener('click', handleSubmitNew);
+			} else if (threadId) {
+				document.getElementById('newMessageSection').style.display = 'none';
+				document.getElementById('detailSection').style.display = '';
+
+				replyEditor = new Quill('#replyEditor', {
+					theme: 'snow',
+					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
+				});
+
+				document.getElementById('sendBtn').addEventListener('click', handleSend);
+				document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+				document.getElementById('fileInput').addEventListener('change', e => {
+					selectedFiles = selectedFiles.concat(Array.from(e.target.files)).slice(0, 5);
+					updateFilePreview();
+					e.target.value = '';
+				});
+
+				await loadDetail();
+			} else {
+				location.href = 'message-list.html';
+			}
+		});
+	</script>
+</body>
+</html>
