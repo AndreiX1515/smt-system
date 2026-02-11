@@ -192,7 +192,7 @@ if (!function_exists('check_capacity')) {
                 FROM bookings b
                 WHERE b.packageId = ?
                   AND DATE(b.departureDate) = ?
-                  AND b.bookingStatus NOT IN ('cancelled','rejected')
+                  AND b.bookingStatus NOT IN ('cancelled')
                   AND b.paymentStatus <> 'refunded'
                   {$excludeCond}";
         // bind order: packageId, departureDate, [excludeBookingId]
