@@ -261,9 +261,9 @@ function logAutoCancellation($conn, $bookingId, $previousStatus) {
 }
 
 /**
- * 44일 이내 + 무결제 예약 → Full Payment 자동 전환
- * waiting_cancelled 설정 직후 호출하여, 출발 44일 이내이고 결제증빙이 전혀 없는 경우
- * paymentType을 full로 변경하고 기한을 +3일로 설정
+ * 31일 이내 + 무결제 예약 → Full Payment 자동 전환
+ * waiting_cancelled 설정 직후 호출하여, 출발 31일 이내이고 결제증빙이 전혀 없는 경우
+ * paymentType을 full로 변경하고 기한은 기존 dueDate 유지
  */
 function convertToFullPaymentIfNeeded($conn, $bookingId) {
     try {
@@ -278,9 +278,9 @@ function convertToFullPaymentIfNeeded($conn, $bookingId) {
         // 이미 full인 경우 스킵
         if (($bRow['paymentType'] ?? '') === 'full') return;
 
-        // 출발일까지 44일 이내인지 체크
+        // 출발일까지 31일 이내인지 체크
         $daysUntilDep = (int)(new DateTime())->diff(new DateTime($bRow['departureDate']))->format('%r%a');
-        if ($daysUntilDep > 44) return;
+        if ($daysUntilDep > 31) return;
 
         // booking_payments 테이블에서 파일 존재 확인
         $payments = getPaymentsByBookingId($conn, $bookingId);
@@ -311,7 +311,35 @@ function convertToFullPaymentIfNeeded($conn, $bookingId) {
 
         // Full Payment로 전환
         $totalAmount = $bRow['totalAmount'] ?? 0;
-        $fullDueDate = date('Y-m-d', strtotime('+3 days'));
+
+        // 기존 미결제 단계의 dueDate를 그대로 유지 (가장 빠른 기한 사용)
+        $fullDueDate = null;
+        foreach ($payments as $p) {
+            if (($p['status'] ?? '') !== 'confirmed' && !empty($p['dueDate'])) {
+                if ($fullDueDate === null || $p['dueDate'] < $fullDueDate) {
+                    $fullDueDate = $p['dueDate'];
+                }
+            }
+        }
+        // payments에 dueDate가 없으면 레거시 컬럼에서 조회
+        if (!$fullDueDate) {
+            $dueDateStmt = $conn->prepare("SELECT downPaymentDueDate, advancePaymentDueDate, balanceDueDate FROM bookings WHERE bookingId = ?");
+            $dueDateStmt->bind_param('s', $bookingId);
+            $dueDateStmt->execute();
+            $dueDateRow = $dueDateStmt->get_result()->fetch_assoc();
+            $dueDateStmt->close();
+            if ($dueDateRow) {
+                foreach (['downPaymentDueDate', 'advancePaymentDueDate', 'balanceDueDate'] as $col) {
+                    if (!empty($dueDateRow[$col]) && ($fullDueDate === null || $dueDateRow[$col] < $fullDueDate)) {
+                        $fullDueDate = $dueDateRow[$col];
+                    }
+                }
+            }
+        }
+        // 그래도 없으면 오늘 날짜 (이미 기한 초과 상태이므로)
+        if (!$fullDueDate) {
+            $fullDueDate = date('Y-m-d');
+        }
 
         // bookings 테이블 업데이트
         $updStmt = $conn->prepare("UPDATE bookings SET
@@ -337,7 +365,7 @@ function convertToFullPaymentIfNeeded($conn, $bookingId) {
         );
 
         // 이력 기록
-        $histMsg = "Auto-converted to Full Payment (departure within 44 days, no payment proof). Due: $fullDueDate";
+        $histMsg = "Auto-converted to Full Payment (departure within 31 days, no payment proof). Due kept: $fullDueDate";
         try {
             $hStmt = $conn->prepare("INSERT INTO booking_history (bookingId, description, createdAt) VALUES (?, ?, NOW())");
             if ($hStmt) {
