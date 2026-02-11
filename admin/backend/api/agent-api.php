@@ -10358,8 +10358,9 @@ function updateTravelerInfo($conn, $input) {
                         }
                         $capStmt->close();
                     }
-                    // capacity fallback: packages.maxParticipants
-                    if ($maxSeats <= 0) {
+                    // capacity fallback: package_available_dates 행이 없을 때만 packages.maxParticipants
+                    // (행이 있고 capacity=0이면 마감 → fallback하지 않음)
+                    if (!$capRow) {
                         $pkgStmt = $conn->prepare("SELECT maxParticipants FROM packages WHERE packageId = ? LIMIT 1");
                         if ($pkgStmt) {
                             $pkgStmt->bind_param('i', $packageId);
