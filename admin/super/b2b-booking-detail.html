@@ -2241,7 +2241,7 @@
 				var hasVisaDoc = !!visaDoc;
 				var visaFileName = visaDoc ? visaDoc.split('/').pop() : '';
 
-				// Profile/Source
+				// Profile/Source of Income
 				var profileSource = String(t.profile_source || t.profileSource || '');
 
 				// Flight options
@@ -2392,10 +2392,10 @@
 				html += '<option value="no"' + (!(t.infantSeat === true || t.infantSeat === 'yes' || Number(t.infantSeat) === 1) ? ' selected' : '') + '>No (Lap)</option>';
 				html += '<option value="yes"' + ((t.infantSeat === true || t.infantSeat === 'yes' || Number(t.infantSeat) === 1) ? ' selected' : '') + '>Yes (Seat)</option></select></div>';
 
-				// Profile/Source
+				// Profile/Source of Income
 				html += '<div class="form-group">';
-				html += '<label>Profile/Source</label>';
-				html += '<input type="text" class="form-control" data-field="profile_source" value="' + escapeHtml(profileSource) + '" placeholder="Profile/Source" style="' + highlightStyle('profile_source') + readonlyStyle + '"' + disabledAttr + '></div>';
+				html += '<label>Profile/Source of Income</label>';
+				html += '<input type="text" class="form-control" data-field="profile_source" value="' + escapeHtml(profileSource) + '" placeholder="Profile/Source of Income" style="' + highlightStyle('profile_source') + readonlyStyle + '"' + disabledAttr + '></div>';
 
 				html += '</div>'; // traveler-card-body
 				html += flightOptionsHtml;

@@ -1626,7 +1626,7 @@ function syncTravelerFormData() {
         const infantSeatEl = document.getElementById(`edit_infantseat_${i}`);
         if (infantSeatEl) traveler.infantSeat = (infantSeatEl.value === 'yes');
 
-        // Profile/Source
+        // Profile/Source of Income
         const profileSourceEl = document.getElementById(`edit_profile_source_${i}`);
         if (profileSourceEl) traveler.profile_source = profileSourceEl.value;
 
@@ -1908,8 +1908,8 @@ function renderTravelerEditCards() {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Profile/Source</label>
-                        <input type="text" id="edit_profile_source_${index}" value="${escapeHtml(profileSource)}" placeholder="Profile/Source">
+                        <label>Profile/Source of Income</label>
+                        <input type="text" id="edit_profile_source_${index}" value="${escapeHtml(profileSource)}" placeholder="Profile/Source of Income">
                     </div>
                 </div>
                 ${renderFlightOptionsInEdit(index, traveler.flightOptions || [])}

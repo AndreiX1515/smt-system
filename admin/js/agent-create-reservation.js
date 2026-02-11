@@ -2139,8 +2139,8 @@ function renderTravelerCards() {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Profile/Source <span style="color:#DC2626;">*</span></label>
-                        <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
+                        <label>Profile/Source of Income <span style="color:#DC2626;">*</span></label>
+                        <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source of Income" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
                     </div>
                 </div>
                 ${renderFlightOptionsForTraveler(index)}
@@ -2736,7 +2736,7 @@ function saveTravelersFromModal() {
         const missing = [];
         if (!t.firstName) missing.push('First Name');
         if (!t.lastName) missing.push('Last Name');
-        if (!t.profile_source || !t.profile_source.trim()) missing.push('Profile/Source');
+        if (!t.profile_source || !t.profile_source.trim()) missing.push('Profile/Source of Income');
         if (missing.length > 0) {
             alert(`Traveler ${i + 1}: ${missing.join(', ')} is required.`);
             return;
