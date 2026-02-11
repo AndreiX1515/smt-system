@@ -102,10 +102,10 @@ try {
     $status = $_GET['status'] ?? 'all'; // all, confirmed, pending, cancelled, completed
 
     // accountId OR customerAccountId 로 조회 (B2B 예약도 고객에게 노출)
-    $whereClause = "WHERE (b.accountId = ? OR b.customerAccountId = ?)";
+    $whereClause = "WHERE (b.accountId = ? OR b.customerAccountId = ?) AND b.bookingStatus != 'draft'";
     $params = [$accountId, $accountId];
     $paramTypes = "ii";
-    
+
     if ($status !== 'all') {
         $whereClause .= " AND b.bookingStatus = ?";
         $params[] = $status;

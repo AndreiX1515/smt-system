@@ -73,7 +73,7 @@ function getPackageAvailability($package_id, $date_from = '', $date_to = '') {
                                 departureDate,
                                 SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                             FROM bookings
-                            WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                            WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                               AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                             GROUP BY packageId, departureDate
                         ) b ON f.packageId = b.packageId AND DATE(f.flightDepartureDate) = b.departureDate
@@ -170,7 +170,7 @@ function getFlightAvailability($flight_id) {
                           departureDate,
                           SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                       FROM bookings
-                      WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                      WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                         AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                       GROUP BY packageId, departureDate
                   ) b ON f.packageId = b.packageId AND DATE(f.flightDepartureDate) = b.departureDate
@@ -251,7 +251,7 @@ function getMonthlyAvailability($month) {
                           departureDate,
                           SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) as booked_seats
                       FROM bookings
-                      WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                      WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                         AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                       GROUP BY packageId, departureDate
                   ) b ON f.packageId = b.packageId AND DATE(f.flightDepartureDate) = b.departureDate

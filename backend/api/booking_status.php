@@ -36,7 +36,7 @@ $sql = "SELECT
         FROM packages p
         LEFT JOIN bookings b
             ON p.packageId = b.packageId
-           AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled'))
+           AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','draft'))
            AND (b.paymentStatus IS NULL OR b.paymentStatus <> 'refunded')
            AND DATE(b.departureDate) = ?
         WHERE p.packageId = ?

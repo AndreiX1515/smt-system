@@ -198,7 +198,7 @@ try {
                         SELECT departureDate, SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS cnt
                         FROM bookings
                         WHERE packageId = ?
-                          AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                          AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                           AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                           AND departureDate >= CURDATE()
                         GROUP BY departureDate

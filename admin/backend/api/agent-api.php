@@ -819,6 +819,7 @@ function getOverview($conn) {
             FROM bookings b
             WHERE b.agentId = ?
             AND COALESCE(b.bookingStatus, '') != ''
+            AND b.bookingStatus != 'draft'
         ";
         $bst = $conn->prepare($bookingStatusSql);
         if (!$bst) throw new Exception('Failed to prepare booking status query: ' . $conn->error);
@@ -1365,7 +1366,7 @@ function getBestPricePackages($conn) {
                     SELECT packageId, departureDate,
                            SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                     FROM bookings
-                    WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                    WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                       AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                     GROUP BY packageId, departureDate
                 ) bk2 ON bk2.packageId = pad2.package_id AND bk2.departureDate = pad2.available_date
@@ -1384,7 +1385,7 @@ function getBestPricePackages($conn) {
                 SELECT packageId, departureDate,
                        SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
-                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                 GROUP BY packageId, departureDate
             ) bk ON bk.packageId = pa.package_id AND bk.departureDate = pa.available_date
@@ -1522,6 +1523,9 @@ function getReservations($conn, $input) {
         $where[] = "b.agentId = ?";
         $params[] = (int)$agentAccountId;
         $types .= 'i';
+
+        // draft 예약 제외
+        $where[] = "b.bookingStatus != 'draft'";
 
         // 검색 조건(기본: All) + 검색 타입(퍼블리싱: Product Name / Reservation Name)
         if (!empty($input['search'])) {
@@ -2591,7 +2595,7 @@ function createReservation($conn, $input) {
                 SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
                 WHERE packageId = ? AND departureDate = ?
-                  AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                  AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
             ");
             if ($bkStmt) {
@@ -3047,7 +3051,7 @@ function createReservation($conn, $input) {
                     adultPrice, childPrice, infantPrice, infantSeatPrice, visaFee, flightOptionFee,
                     saleId, saleName, saleDiscountAmount,
                     createdAt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?{$customerColsValuesSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 'pending', ?, ?, ?, ?, ?{$customerColsValuesSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ";
 
             $insertStmt = $conn->prepare($insertSql);
@@ -9438,7 +9442,7 @@ function updateTravelerInfo($conn, $input) {
                         "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                          FROM bookings
                          WHERE packageId = ? AND departureDate = ?
-                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                            AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                          FOR UPDATE"
                     );
@@ -10740,6 +10744,12 @@ function deleteIncompleteReservation($conn, $input) {
             send_error_response('Unauthorized access to this booking', 403);
         }
 
+        // draft 상태인 경우만 삭제 허용
+        if ($booking['bookingStatus'] !== 'draft') {
+            send_success_response(['deleted' => false, 'reason' => 'Only draft bookings can be deleted']);
+            return;
+        }
+
         // 트랜잭션 시작
         $conn->begin_transaction();
 
@@ -11844,7 +11854,7 @@ function getSaleProducts($conn) {
                 SELECT packageId, departureDate,
                        SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS total_booked
                 FROM bookings
-                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                 GROUP BY packageId, departureDate
             ) booked ON booked.packageId = p.packageId AND booked.departureDate = pad.available_date

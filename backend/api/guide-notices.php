@@ -66,7 +66,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
             WHERE b.guideId = ?
               AND DATE(b.departureDate) <= CURDATE()
               AND DATE(DATE_ADD(b.departureDate, INTERVAL COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, 0) DAY)) >= CURDATE()
-              AND (b.bookingStatus IS NULL OR b.bookingStatus <> 'cancelled')
+              AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','draft'))
             ORDER BY b.departureTime DESC, b.createdAt DESC
             LIMIT 1
         ");
@@ -90,7 +90,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
             WHERE bg.guideId = ?
               AND DATE(b.departureDate) <= CURDATE()
               AND DATE(DATE_ADD(b.departureDate, INTERVAL COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, 0) DAY)) >= CURDATE()
-              AND (b.bookingStatus IS NULL OR b.bookingStatus <> 'cancelled')
+              AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','draft'))
             ORDER BY b.departureTime DESC, b.createdAt DESC
             LIMIT 1
         ");

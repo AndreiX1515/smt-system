@@ -346,7 +346,7 @@ function getOverduePayments($conn, $agentId = null, $limit = 100) {
         JOIN bookings b ON bp.bookingId = b.bookingId
         WHERE bp.dueDate < CURDATE()
         AND bp.status NOT IN ('confirmed')
-        AND b.bookingStatus NOT IN ('cancelled', 'confirmed', 'refunded', 'completed', 'rejected', 'waiting_cancelled')
+        AND b.bookingStatus NOT IN ('cancelled', 'confirmed', 'refunded', 'completed', 'rejected', 'waiting_cancelled', 'draft')
     ";
 
     $types = "";
@@ -395,7 +395,7 @@ function getPendingPaymentReminders($conn, $daysBeforeDue = 3) {
         LEFT JOIN accounts a ON b.agentId = a.id
         WHERE bp.dueDate BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
         AND bp.status = 'pending'
-        AND b.bookingStatus NOT IN ('cancelled', 'refunded', 'completed', 'rejected', 'confirmed', 'waiting_cancelled')
+        AND b.bookingStatus NOT IN ('cancelled', 'refunded', 'completed', 'rejected', 'confirmed', 'waiting_cancelled', 'draft')
         ORDER BY bp.dueDate ASC
     ");
     $stmt->bind_param("i", $daysBeforeDue);

@@ -28,7 +28,7 @@ function calc_booked_seats_by_date(mysqli $conn, int $packageId, string $startDa
         WHERE packageId = ?
           AND DATE(departureDate) >= ?
           AND DATE(departureDate) <= ?
-          AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+          AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
           AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
         GROUP BY DATE(departureDate)
     ");
@@ -218,7 +218,7 @@ function handleGetPackages() {
                             SELECT packageId, DATE(departureDate) AS d,
                                    SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                             FROM bookings
-                            WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                            WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                               AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                             GROUP BY packageId, DATE(departureDate)
                         ) b

@@ -169,7 +169,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
                         0
                     ) DAY
               )) >= CURDATE()
-              AND (b.bookingStatus IS NULL OR b.bookingStatus <> 'cancelled')
+              AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','draft'))
             ORDER BY b.departureDate ASC, b.departureTime ASC, b.createdAt DESC
             LIMIT 1
         ");
@@ -201,7 +201,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
                         0
                     ) DAY
               )) >= CURDATE()
-              AND (b.bookingStatus IS NULL OR b.bookingStatus <> 'cancelled')
+              AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','draft'))
             ORDER BY b.departureDate ASC, b.departureTime ASC, b.createdAt DESC
             LIMIT 1
         ");

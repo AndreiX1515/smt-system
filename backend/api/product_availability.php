@@ -277,7 +277,7 @@ function generateAvailableDates($year, $month, $package, $conn, $isB2B = false) 
             WHERE packageId = ?
               AND departureDate >= ?
               AND departureDate <= ?
-              AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+              AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
               AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
             GROUP BY departureDate
         ");

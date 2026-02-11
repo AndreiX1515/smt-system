@@ -66,7 +66,7 @@ if (!function_exists('check_capacity')) {
                 FROM bookings b
                 WHERE b.packageId = ?
                   AND DATE(b.departureDate) = ?
-                  AND b.bookingStatus NOT IN ('cancelled')
+                  AND b.bookingStatus NOT IN ('cancelled','draft')
                   AND b.paymentStatus <> 'refunded'
                   {$excludeCond}";
         $st3 = $db->prepare($sql);

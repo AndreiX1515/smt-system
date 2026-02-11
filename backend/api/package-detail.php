@@ -134,7 +134,7 @@ try {
                    SELECT packageId, departureDate,
                           SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                    FROM bookings
-                   WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
+                   WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','draft'))
                      AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                    GROUP BY packageId, departureDate
                ) bk ON bk.packageId = pad.package_id AND bk.departureDate = pad.available_date
