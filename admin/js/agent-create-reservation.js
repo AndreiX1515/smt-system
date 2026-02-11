@@ -5824,7 +5824,13 @@ async function handleSave() {
                 return;
             }
         }
-        
+
+        // Room Options 필수 검증
+        if (!selectedRooms || selectedRooms.length === 0) {
+            alert(getText('requiredFields') + '\nPlease select room options.');
+            return;
+        }
+
         // 고객 정보
         const nameParts = userNameInput.value.trim().split(' ');
         const customerInfo = {
