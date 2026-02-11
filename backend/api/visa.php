@@ -617,7 +617,7 @@ function handleGetVisaApplication($input) {
                 b.infants,
                 p.packageName,
                 p.packageDestination,
-                p.duration_days
+                COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, 1) as duration_days
             FROM visa_applications va
             LEFT JOIN bookings b ON va.bookingId = b.bookingId
             LEFT JOIN packages p ON b.packageId = p.packageId

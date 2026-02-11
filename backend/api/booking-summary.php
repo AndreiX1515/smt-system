@@ -37,6 +37,19 @@ try {
         
         if ($result->num_rows > 0) {
             $packageInfo = $result->fetch_assoc();
+            // package_schedules 기준으로 durationDays 보정
+            $schStmt = $conn->prepare("SELECT MAX(day_number) AS maxDay FROM package_schedules WHERE package_id = ?");
+            if ($schStmt) {
+                $schStmt->bind_param('i', $packageId);
+                $schStmt->execute();
+                $schRow = $schStmt->get_result()->fetch_assoc();
+                $schStmt->close();
+                $maxDay = (int)($schRow['maxDay'] ?? 0);
+                if ($maxDay > 0) {
+                    $packageInfo['durationDays'] = $maxDay;
+                    $packageInfo['duration_days'] = $maxDay;
+                }
+            }
         }
     }
     
@@ -69,11 +82,12 @@ try {
     }
     
     if ($infants > 0) {
-        $infantPrice = $basePrice * 0.1 * $infants; // 10% of adult price
+        $infantUnitPrice = 10000;
+        $infantPrice = $infantUnitPrice * $infants;
         $guestPricing[] = [
             'type' => '',
             'count' => $infants,
-            'unitPrice' => $basePrice * 0.1,
+            'unitPrice' => $infantUnitPrice,
             'totalPrice' => $infantPrice
         ];
     }

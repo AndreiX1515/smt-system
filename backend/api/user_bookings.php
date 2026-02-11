@@ -178,7 +178,7 @@ try {
             b.createdAt,
             COALESCE(NULLIF(p.packageName,''), NULLIF(b.packageName,''), CONCAT('Deleted product #', b.packageId)) as productName,
             COALESCE(NULLIF(p.packageName,''), NULLIF(b.packageName,''), CONCAT('Deleted product #', b.packageId)) as productNameEn,
-            p.duration_days as duration,
+            COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1) as duration,
             p.product_images as thumbnail,
             COALESCE(NULLIF(p.meeting_location,''), NULLIF(p.meetingPoint,''), '') as meetingLocation,
             COALESCE(p.meeting_time, p.meetingTime) as meetingTime

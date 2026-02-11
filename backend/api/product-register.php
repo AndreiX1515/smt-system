@@ -1400,6 +1400,18 @@ try {
     $stmt->close();
     if ($stmtAttr) $stmtAttr->close();
 
+    // package_schedules 기준으로 packages.durationDays, duration_days 자동 동기화
+    $syncStmt = $conn->prepare("
+        UPDATE packages SET durationDays = COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = ?), durationDays),
+                            duration_days = COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = ?), duration_days)
+        WHERE packageId = ?
+    ");
+    if ($syncStmt) {
+        $syncStmt->bind_param('iii', $packageId, $packageId, $packageId);
+        $syncStmt->execute();
+        $syncStmt->close();
+    }
+
     //
     if (isset($_POST['optionName']) && is_array($_POST['optionName'])) {
         $optionNames = $_POST['optionName'];

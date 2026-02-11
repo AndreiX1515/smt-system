@@ -4316,7 +4316,7 @@ function getB2BBookings($conn, $input) {
             DATE(b.departureDate) as departureDate,
             DATE_ADD(
                 DATE(b.departureDate),
-                INTERVAL GREATEST(COALESCE(p.durationDays, p.duration_days, 1) - 1, 0) DAY
+                INTERVAL GREATEST(COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.durationDays, p.duration_days, 1) - 1, 0) DAY
             ) as returnDate,
             '' as branchName,
             '' as companyName,
@@ -4671,7 +4671,7 @@ function exportB2BBookingsCsv($conn, $input) {
                     DATE(b.departureDate) as departureDate,
                     DATE_ADD(
                         DATE(b.departureDate),
-                        INTERVAL GREATEST(COALESCE(p.durationDays, p.duration_days, 1) - 1, 0) DAY
+                        INTERVAL GREATEST(COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.durationDays, p.duration_days, 1) - 1, 0) DAY
                     ) as returnDate,
                     '' as branchName,
                     '' as companyName,
@@ -12661,16 +12661,7 @@ function getB2BBookingDetail($conn, $input) {
             DATE(b.departureDate) as departureDate,
             DATE_ADD(
                 DATE(b.departureDate),
-                INTERVAL GREATEST(
-                    (
-                        CASE
-                            WHEN COALESCE(p.duration_days, 0) > 0 THEN p.duration_days
-                            WHEN COALESCE(p.durationDays, 0) > 0 THEN p.durationDays
-                            ELSE 1
-                        END
-                    ) - 1,
-                    0
-                ) DAY
+                INTERVAL GREATEST(COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1) - 1, 0) DAY
             ) as returnDate,
             {$customerNameExpr} as customerName,
             {$customerEmailExpr} as customerEmail,

@@ -65,7 +65,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
             LEFT JOIN packages p ON b.packageId = p.packageId
             WHERE b.guideId = ?
               AND DATE(b.departureDate) <= CURDATE()
-              AND DATE(DATE_ADD(b.departureDate, INTERVAL COALESCE(p.duration_days, 0) DAY)) >= CURDATE()
+              AND DATE(DATE_ADD(b.departureDate, INTERVAL COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, 0) DAY)) >= CURDATE()
               AND (b.bookingStatus IS NULL OR b.bookingStatus <> 'cancelled')
             ORDER BY b.departureTime DESC, b.createdAt DESC
             LIMIT 1
@@ -89,7 +89,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
             JOIN booking_guides bg ON b.bookingId = bg.bookingId
             WHERE bg.guideId = ?
               AND DATE(b.departureDate) <= CURDATE()
-              AND DATE(DATE_ADD(b.departureDate, INTERVAL COALESCE(p.duration_days, 0) DAY)) >= CURDATE()
+              AND DATE(DATE_ADD(b.departureDate, INTERVAL COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, 0) DAY)) >= CURDATE()
               AND (b.bookingStatus IS NULL OR b.bookingStatus <> 'cancelled')
             ORDER BY b.departureTime DESC, b.createdAt DESC
             LIMIT 1

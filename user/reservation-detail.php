@@ -173,9 +173,9 @@ try {
             $duration = 0;
             if (!empty($bookingInfo['packageId'])) {
                 $pid = (int)$bookingInfo['packageId'];
-                $dstmt = $conn->prepare("SELECT duration_days FROM packages WHERE packageId = ? LIMIT 1");
+                $dstmt = $conn->prepare("SELECT COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = ?), p.duration_days, 1) as duration_days FROM packages p WHERE p.packageId = ? LIMIT 1");
                 if ($dstmt) {
-                    $dstmt->bind_param('i', $pid);
+                    $dstmt->bind_param('ii', $pid, $pid);
                     $dstmt->execute();
                     $dRow = $dstmt->get_result()->fetch_assoc();
                     $dstmt->close();
@@ -438,10 +438,11 @@ try {
             <div class="text fz14 fw400 lh22 black12 mt4" id="tripDates">
                 <?php 
                 if ($bookingInfo['departureDate']) {
-                    // 패키지에서 duration_days 가져오기
-                    $durationSql = "SELECT duration_days FROM packages WHERE packageId = ?";
+                    // 패키지에서 duration 가져오기 (package_schedules 우선)
+                    $durationSql = "SELECT COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = ?), p.duration_days, 1) as duration_days FROM packages p WHERE p.packageId = ?";
                     $durationStmt = $conn->prepare($durationSql);
-                    $durationStmt->bind_param("i", $bookingInfo['packageId']);
+                    $pkgIdForDur = (int)$bookingInfo['packageId'];
+                    $durationStmt->bind_param("ii", $pkgIdForDur, $pkgIdForDur);
                     $durationStmt->execute();
                     $durationResult = $durationStmt->get_result();
                     $duration = 5; // 기본값

@@ -515,23 +515,15 @@ function getAssignedBookings($conn, $input) {
             $reserverNameSelect = "CONCAT(COALESCE(c.fName, ''), ' ', COALESCE(c.lName, '')) as reserverName";
         }
         
-        // duration 계산 (진행 상태 결정에 필요)
-        $durationDays = 'NULL';
-        if ($hasPackagesTable) {
-            if (in_array('duration_days', $packagesColumns)) $durationDays = 'p.duration_days';
-            elseif (in_array('durationdays', $packagesColumns)) $durationDays = 'p.durationDays';
-            elseif (in_array('duration', $packagesColumns)) $durationDays = 'p.duration';
-        }
-        
+        // duration 계산 (진행 상태 결정에 필요) - package_schedules 우선 사용
+        $durationDays = "COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1)";
+
         // returnDate 계산식 (진행 상태 결정에 사용)
         $returnDateExpression = '';
         if ($returnDateColumn) {
             $returnDateExpression = "DATE($returnDateColumn)";
-        } elseif ($durationDays !== 'NULL') {
-            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         } else {
-            // duration 정보가 없으면 기본값으로 시작일 + 6일 (7일 여행)
-            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL 6 DAY)";
+            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         }
         
         // 진행 상태 결정 (여행 시작일과 종료일을 비교)
@@ -749,22 +741,14 @@ function getTodayBookings($conn, $input) {
             ? "COALESCE(NULLIF($bPackageNameExpr,''), $pPackageNameExpr)"
             : ($bPackageNameExpr !== '' ? $bPackageNameExpr : $pPackageNameExpr);
 
-        // duration 계산
-        $durationDays = 'NULL';
-        if ($hasPackagesTable) {
-            if (in_array('duration_days', $packagesColumns)) $durationDays = 'p.duration_days';
-            elseif (in_array('durationdays', $packagesColumns)) $durationDays = 'p.durationDays';
-            elseif (in_array('duration', $packagesColumns)) $durationDays = 'p.duration';
-        }
+        // duration 계산 - package_schedules 우선 사용
+        $durationDays = "COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1)";
 
         // returnDate 계산식 (진행 상태 결정에 사용)
         if ($returnDateColumn) {
             $returnDateExpression = "DATE($returnDateColumn)";
-        } elseif ($durationDays !== 'NULL') {
-            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         } else {
-            // duration 정보가 없으면 기본값으로 시작일 + 6일 (7일 여행)
-            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL 6 DAY)";
+            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         }
 
         $joinPackages = $hasPackagesTable ? "LEFT JOIN packages p ON b.packageId = p.packageId" : "";
@@ -898,26 +882,15 @@ function getAssignedBookingDetail($conn, $input) {
             else if (in_array('meetingaddress', $packagesColumns, true)) $meetingAddressSelect = 'p.meetingAddress as meetingAddress';
         }
         
-        // duration 계산
-        $durationDays = 'NULL';
-        if ($hasPackagesTable) {
-            if (in_array('duration_days', $packagesColumns)) {
-                $durationDays = 'p.duration_days';
-            } elseif (in_array('durationdays', $packagesColumns)) {
-                $durationDays = 'p.durationDays';
-            } elseif (in_array('duration', $packagesColumns)) {
-                $durationDays = 'p.duration';
-            }
-        }
-        
+        // duration 계산 - package_schedules 우선 사용
+        $durationDays = "COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1)";
+
         // returnDate 계산식
         $returnDateExpression = '';
         if ($returnDateColumn) {
             $returnDateExpression = $returnDateColumn;
-        } elseif ($durationDays !== 'NULL') {
-            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         } else {
-            $returnDateExpression = "DATE($dateColumn)";
+            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         }
         
         // guide 배정 매핑: bookings.guideId 우선, 없으면 booking_guides로 fallback
@@ -1216,26 +1189,15 @@ function getTodayScheduleDetail($conn, $input) {
             ? "COALESCE(NULLIF($bPackageNameExpr,''), $pPackageNameExpr)"
             : ($bPackageNameExpr !== '' ? $bPackageNameExpr : $pPackageNameExpr);
         
-        // duration 계산
-        $durationDays = 'NULL';
-        if ($hasPackagesTable) {
-            if (in_array('duration_days', $packagesColumns)) {
-                $durationDays = 'p.duration_days';
-            } elseif (in_array('durationdays', $packagesColumns)) {
-                $durationDays = 'p.durationDays';
-            } elseif (in_array('duration', $packagesColumns)) {
-                $durationDays = 'p.duration';
-            }
-        }
-        
+        // duration 계산 - package_schedules 우선 사용
+        $durationDays = "COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1)";
+
         // returnDate 계산식
         $returnDateExpression = '';
         if ($returnDateColumn) {
             $returnDateExpression = $returnDateColumn;
-        } elseif ($durationDays !== 'NULL') {
-            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         } else {
-            $returnDateExpression = "DATE($dateColumn)";
+            $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL ($durationDays - 1) DAY)";
         }
         
         // guide 배정 매핑: bookings.guideId 우선, 없으면 booking_guides로 fallback

@@ -106,7 +106,7 @@ function getBookingData($bookingId) {
                 COALESCE(NULLIF(p.packageName,''), NULLIF(b.packageName,''), CONCAT('Deleted product #', b.packageId)) AS packageName,
                 p.packageDestination,
                 p.packageImage,
-                p.duration_days,
+                COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1) as duration_days,
                 p.packagePrice,
                 p.childPrice,
                 p.infantPrice,

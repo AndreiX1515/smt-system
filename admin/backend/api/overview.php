@@ -696,17 +696,8 @@ try {
         $endDateColumnExpr = "DATE(b.endDate)";
     }
 
-    // returnDate  (fallback:   )
-    $hasDurationDays = in_array('duration_days', $packagesColumns) || in_array('durationdays', $packagesColumns);
-    $hasDuration = in_array('duration', $packagesColumns);
-    $returnDateExpression = '';
-    if ($hasDurationDays) {
-        $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL (COALESCE(p.duration_days, p.durationDays, 0) - 1) DAY)";
-    } elseif ($hasDuration) {
-        $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL (COALESCE(p.duration, 0) - 1) DAY)";
-    } else {
-        $returnDateExpression = "DATE($dateColumn)";
-    }
+    // returnDate  (package_schedules 우선 사용)
+    $returnDateExpression = "DATE_ADD(DATE($dateColumn), INTERVAL (COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1) - 1) DAY)";
 
     $effectiveEndDateExpr = $endDateColumnExpr ? $endDateColumnExpr : $returnDateExpression;
     

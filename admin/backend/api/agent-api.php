@@ -1228,17 +1228,9 @@ function getTodayItineraries($conn) {
         $hasDuration = in_array('duration', $packagesColumns);
         
         // returnDate 계산식 (WHERE 절에서도 사용)
-        $returnDateExpression = '';
-        if ($hasDurationDays) {
-            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (p.duration_days - 1) DAY)";
-        } elseif (in_array('durationdays', $packagesColumns)) {
-            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (p.durationDays - 1) DAY)";
-        } elseif ($hasDuration) {
-            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (p.duration - 1) DAY)";
-        } else {
-            $returnDateExpression = "b.departureDate";
-        }
-        
+        // package_schedules의 MAX(day_number)를 우선 사용하고, 없으면 duration_days fallback
+        $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1) - 1) DAY)";
+
         // SELECT 절 구성
         $selectFields = [
             'b.bookingId',
@@ -1505,16 +1497,9 @@ function getReservations($conn, $input) {
 
         if ($hasReturnDateCol) {
             $returnDateExpression = "b.returnDate";
-        } elseif ($hasDurationDaysSnake) {
-            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (p.duration_days - 1) DAY)";
-        } elseif ($hasDurationDaysCamel) {
-            // durationDays 컬럼이 camelCase로 존재하는 경우
-            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (p.durationDays - 1) DAY)";
-        } elseif ($hasDuration) {
-            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (p.duration - 1) DAY)";
         } else {
-            // fallback: 왕복일이 없으면 출발일로 대체
-            $returnDateExpression = "b.departureDate";
+            // package_schedules의 MAX(day_number)를 우선 사용
+            $returnDateExpression = "DATE_ADD(b.departureDate, INTERVAL (COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 1) - 1) DAY)";
         }
         
         $where = [];
@@ -2127,7 +2112,18 @@ function getReservationDetail($conn, $input) {
                     $pf->close();
 
                     $departureDate = (string)($booking['departureDate'] ?? '');
-                    $duration = (int)($booking['duration_days'] ?? 0);
+                    // package_schedules 기준으로 duration 조회
+                    $duration = 0;
+                    $durationStmt = $conn->prepare("SELECT MAX(day_number) AS maxDay FROM package_schedules WHERE package_id = ?");
+                    if ($durationStmt) {
+                        $pkgIdForDur = (int)($booking['packageId'] ?? 0);
+                        $durationStmt->bind_param('i', $pkgIdForDur);
+                        $durationStmt->execute();
+                        $durRow = $durationStmt->get_result()->fetch_assoc();
+                        $duration = (int)($durRow['maxDay'] ?? 0);
+                        $durationStmt->close();
+                    }
+                    if ($duration <= 0) $duration = (int)($booking['duration_days'] ?? 0);
                     if ($duration <= 0) $duration = 5;
                     $returnDate = $departureDate;
                     try {
@@ -2564,6 +2560,7 @@ function createReservation($conn, $input) {
 
             // 1) maxSeats 조회 (package_available_dates 또는 packages.maxParticipants)
             $maxSeats = 0;
+            $paRow = null;
             $paStmt = $conn->prepare("SELECT capacity FROM package_available_dates WHERE package_id = ? AND available_date = ? LIMIT 1");
             if ($paStmt) {
                 $paStmt->bind_param('is', $packageId, $departureDate);
@@ -2574,8 +2571,9 @@ function createReservation($conn, $input) {
                 }
                 $paStmt->close();
             }
-            // package_available_dates에 없으면 packages.maxParticipants 사용
-            if ($maxSeats <= 0) {
+            // package_available_dates에 행이 없을 때만 packages.maxParticipants fallback
+            // (행이 있고 capacity=0이면 마감 → fallback하지 않음)
+            if (!$paRow) {
                 $pkgStmt = $conn->prepare("SELECT maxParticipants FROM packages WHERE packageId = ? LIMIT 1");
                 if ($pkgStmt) {
                     $pkgStmt->bind_param('i', $packageId);
@@ -2921,7 +2919,7 @@ function createReservation($conn, $input) {
             
             // 레거시 deposit* 컬럼 대신 downPayment* 컬럼 사용 (이미 테이블에 존재해야 함)
             
-            $packageNameSql = "SELECT packageName, destination, duration_days FROM packages WHERE packageId = ?";
+            $packageNameSql = "SELECT packageName, destination, COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = packageId), duration_days, 1) as duration_days FROM packages WHERE packageId = ?";
             $packageNameStmt = $conn->prepare($packageNameSql);
             $packageNameStmt->bind_param("i", $packageId);
             $packageNameStmt->execute();
@@ -3854,7 +3852,7 @@ function updateReservation($conn, $input) {
 
         $packagePrice = (float)($pkgRow['packagePrice'] ?? 0);
         $childPrice = (float)($pkgRow['childPrice'] ?? $packagePrice);
-        $infantPrice = (float)($pkgRow['infantPrice'] ?? 0);
+        $infantPrice = (float)($pkgRow['infantPrice'] ?? 0) ?: 10000;
 
         $baseAmount = 0;
         foreach ($travelerRows as $tr) {
@@ -10219,7 +10217,7 @@ function updateTravelerInfo($conn, $input) {
                             b.bookingStatus, b.paymentStatus, COALESCE(b.edit_allowed, 0) as edit_allowed,
                             COALESCE(b.customerAccountId, b.accountId) as customerAccountId,
                             p.destination as packageDestination,
-                            COALESCE(p.duration_days, p.durationDays, 3) as packageDurationDays
+                            COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, p.durationDays, 3) as packageDurationDays
                      FROM bookings b
                      LEFT JOIN packages p ON b.packageId = p.packageId
                      WHERE b.bookingId = ? AND b.agentId = ?";
@@ -10887,7 +10885,7 @@ function searchPackagesForAgent($conn, $input) {
         }
 
         $searchTerm = '%' . $keyword . '%';
-        $sql = "SELECT packageId, packageName, duration_days
+        $sql = "SELECT packageId, packageName, COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = packageId), duration_days, 1) as duration_days
                 FROM packages
                 WHERE packageName LIKE ? AND isActive = 1
                 ORDER BY packageName ASC

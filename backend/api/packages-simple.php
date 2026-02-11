@@ -88,7 +88,7 @@ if ($use_database && $conn) {
             // Get package list
             $whereClause = $category !== 'all' ? "WHERE packageCategory = ?" : "";
             $query = "SELECT p.packageId, p.packageName, p.packageDescription, p.packageCategory, 
-                     p.packageImageUrl, p.destination, p.durationDays, p.packagePrice, p.rating, p.reviewCount,
+                     p.packageImageUrl, p.destination, COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.durationDays, 1) as durationDays, p.packagePrice, p.rating, p.reviewCount,
                      (SELECT imageUrl FROM package_images WHERE packageId = p.packageId AND isPrimary = 1 LIMIT 1) as primaryImage
                      FROM packages p $whereClause 
                      ORDER BY p.rating DESC, p.packageId 

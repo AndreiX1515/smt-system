@@ -163,6 +163,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
               AND DATE(DATE_ADD(
                     b.departureDate,
                     INTERVAL COALESCE(
+                        (SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId),
                         NULLIF(p.duration_days, 0),
                         NULLIF(p.durationDays, 0),
                         0
@@ -194,6 +195,7 @@ function resolve_today_booking_id(mysqli $conn, int $guideId): ?string {
               AND DATE(DATE_ADD(
                     b.departureDate,
                     INTERVAL COALESCE(
+                        (SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId),
                         NULLIF(p.duration_days, 0),
                         NULLIF(p.durationDays, 0),
                         0

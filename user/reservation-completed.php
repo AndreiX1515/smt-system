@@ -30,7 +30,7 @@ if ($bookingId && $bookingId !== 'undefined') {
                     b.packageName,
                     b.packagePrice,
                     p.product_images,
-                    p.duration_days
+                    COALESCE((SELECT MAX(day_number) FROM package_schedules WHERE package_id = p.packageId), p.duration_days, 1) as duration_days
                 FROM bookings b
                 LEFT JOIN packages p ON b.packageId = p.packageId
                 WHERE b.bookingId = ?";
