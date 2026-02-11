@@ -236,8 +236,22 @@ function handlePaymentProcessing($input) {
         $paymentRowStatus = ($paymentMethodEnum === 'bank_transfer') ? 'pending' : 'completed';
         // SMT  
 
+        // Capacity 검증 — 결제 직전 서버사이드 재고 확인
+        $paxAdults = (int)($bookingData['adults'] ?? 0);
+        $paxChildren = (int)($bookingData['children'] ?? 0);
+        $totalPax = $paxAdults + $paxChildren;
+        $capPackageId = (int)($bookingData['packageId'] ?? 0);
+        $capDate = normalize_date_ymd((string)($bookingData['departureDate'] ?? ''));
+        $capExclude = trim((string)($bookingData['bookingId'] ?? ($bookingData['tempId'] ?? ($bookingData['tempBookingId'] ?? ''))));
+        if ($totalPax > 0 && $capPackageId > 0 && $capDate !== '') {
+            $cap = check_capacity($conn, $capPackageId, $capDate, $totalPax, $capExclude !== '' ? $capExclude : null);
+            if (!$cap['ok']) {
+                throw new Exception($cap['message']);
+            }
+        }
+
         // Create/update booking record
-        // - (save-temp-booking.php)  pending    bookingId  UPDATE 
+        // - (save-temp-booking.php)  pending    bookingId  UPDATE
         //   pending   (B2C)  2   .
         $bookingId = createBooking($bookingData, $userId, $bookingStatus, $bookingPaymentStatus);
         

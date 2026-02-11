@@ -256,6 +256,15 @@ try {
     }
 
     if ($bookingId !== '') {
+        // capacity 검증 (UPDATE 경로 — 자기 자신 제외)
+        $totalPax = $adults + $children; // infants without seat 제외
+        if ($totalPax > 0) {
+            $cap = check_capacity($conn, $packageId, $departureDate, $totalPax, $bookingId);
+            if (!$cap['ok']) {
+                send_json_response(['success' => false, 'message' => $cap['message']], 400);
+            }
+        }
+
         // merge guestOptions into selectedOptions JSON (schema-safe)
         if ($guestOptionsArr !== null) {
             $existing = [];
@@ -318,7 +327,16 @@ try {
         send_json_response(['success' => true, 'bookingId' => $bookingId]);
     }
 
-    //  
+    //
+    // capacity 검증 (INSERT 경로)
+    $totalPax = $adults + $children; // infants without seat 제외
+    if ($totalPax > 0) {
+        $cap = check_capacity($conn, $packageId, $departureDate, $totalPax);
+        if (!$cap['ok']) {
+            send_json_response(['success' => false, 'message' => $cap['message']], 400);
+        }
+    }
+
     // merge guestOptions into selectedOptions JSON on insert (schema-safe)
     if ($guestOptionsArr !== null) {
         $base = [

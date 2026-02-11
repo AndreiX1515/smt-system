@@ -173,8 +173,17 @@ function createBooking($mysqli, $data) {
         ]);
         return;
     }
-    
-    //  
+
+    // Capacity 검증 (레거시 경로)
+    if (function_exists('check_capacity')) {
+        $cap = check_capacity($mysqli, (int)$packageId, $departureDate, (int)$numberOfPeople);
+        if (!$cap['ok']) {
+            echo json_encode(['success' => false, 'message' => $cap['message']]);
+            return;
+        }
+    }
+
+    //
     $query = "
         INSERT INTO bookings (
             user_id, package_id, departure_date, return_date,
