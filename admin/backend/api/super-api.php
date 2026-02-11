@@ -200,7 +200,7 @@ if (!function_exists('__is_super_admin')) {
 
 // 예약 이력 추가 헬퍼 함수
 if (!function_exists('__addBookingHistory')) {
-    function __addBookingHistory(mysqli $conn, string $bookingId, string $description): void {
+    function __addBookingHistory(mysqli $conn, string $bookingId, string $description, array $extra = []): void {
         try {
             // booking_history 테이블 존재 확인
             $tableCheck = $conn->query("SHOW TABLES LIKE 'booking_history'");
@@ -209,15 +209,28 @@ if (!function_exists('__addBookingHistory')) {
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     bookingId VARCHAR(50) NOT NULL,
                     description TEXT,
+                    changeType VARCHAR(50) NULL,
+                    changedBy VARCHAR(100) NULL,
+                    changedByType VARCHAR(20) NULL,
+                    previousData LONGTEXT NULL,
+                    newData LONGTEXT NULL,
+                    reason TEXT NULL,
                     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_bookingId (bookingId)
                 )");
             }
 
-            $sql = "INSERT INTO booking_history (bookingId, description) VALUES (?, ?)";
+            $changeType = $extra['changeType'] ?? null;
+            $changedBy = $extra['changedBy'] ?? null;
+            $changedByType = $extra['changedByType'] ?? null;
+            $previousData = $extra['previousData'] ?? null;
+            $newData = $extra['newData'] ?? null;
+            $reason = $extra['reason'] ?? null;
+
+            $sql = "INSERT INTO booking_history (bookingId, description, changeType, changedBy, changedByType, previousData, newData, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $conn->prepare($sql);
             if ($stmt) {
-                $stmt->bind_param("ss", $bookingId, $description);
+                $stmt->bind_param("ssssssss", $bookingId, $description, $changeType, $changedBy, $changedByType, $previousData, $newData, $reason);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -647,9 +660,6 @@ try {
         case 'rejectB2BBooking':
             rejectB2BBooking($conn, $input);
             break;
-        case 'updateBookingWithApproval':
-            updateBookingWithApproval($conn, $input);
-            break;
         case 'acknowledgeRejection':
             acknowledgeRejection($conn, $input);
             break;
@@ -739,6 +749,9 @@ try {
             break;
         case 'createMessageThread':
             createMessageThread($conn, $input);
+            break;
+        case 'getMessageThreadByBookingId':
+            getMessageThreadByBookingId($conn, $input);
             break;
         case 'sendMessage':
             handleSendMessage($conn, $input);
@@ -13253,14 +13266,6 @@ function updateB2BBooking($conn, $input) {
                 'waiting_balance', 'checking_balance', 'rejected'
             ];
 
-            // 상태 변경 시 pending_update 플로우 적용: cancelled ↔ 다른 상태 양방향 적용
-            // admin_kr은 cancelled 전환도 직접 변경 가능, admin_ph만 pending_update 필요
-            $adminUserType = $_SESSION['admin_userType'] ?? 'admin_ph';
-            $shouldUsePendingUpdate = ($adminUserType !== 'admin_kr') && (
-                ($currentBook === 'cancelled' && $k !== 'cancelled')
-                || ($currentBook !== 'cancelled' && $k === 'cancelled')
-            );
-
             // 모든 상태 변경 시 사유 필수
             if ($currentBook !== $k) {
                 if (empty($statusChangeReason)) {
@@ -13268,85 +13273,47 @@ function updateB2BBooking($conn, $input) {
                 }
             }
 
-            if ($shouldUsePendingUpdate) {
-                $changedToPendingUpdate = true; // 응답에서 사용
-                // 상태가 실제로 변경되는 경우 - pending_update 플로우 적용
-                // targetStatus와 targetPaymentStatus 결정
-                $targetStatus = $k;
-                $targetPaymentStatus = null;
-
-                if (in_array($k, $elevenStepStatuses, true)) {
-                    $targetPaymentStatus = 'pending';
-                } elseif ($k === 'pending' || $k === 'partial') {
-                    $targetStatus = 'pending';
-                    $targetPaymentStatus = 'pending';
-                } elseif ($k === 'confirmed' || $k === 'completed') {
-                    $targetPaymentStatus = 'paid';
-                } elseif ($k === 'refunded') {
-                    $targetPaymentStatus = 'refunded';
-                }
-
-                // booking_change_requests 테이블에 변경 요청 저장 (사유 포함)
-                $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
-                $changeRequestNewData = json_encode(['reason' => $statusChangeReason]);
-                $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, targetStatus, targetPaymentStatus, newData, requestedBy, requestedByType, status) VALUES (?, 'status', ?, ?, ?, ?, ?, ?, 'employee', 'pending')";
-                $changeRequestStmt = $conn->prepare($changeRequestSql);
-                if ($changeRequestStmt) {
-                    $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                    $changeRequestStmt->bind_param('sssssss', $bookingId, $trueOriginalStatus, $currentPay, $targetStatus, $targetPaymentStatus, $changeRequestNewData, $requestedBy);
-                    $changeRequestStmt->execute();
-                    $changeRequestStmt->close();
-                }
-
-                // bookingStatus를 pending_update로 설정
-                $updates[] = "bookingStatus = 'pending_update'";
-
-            } else {
-                // pending_update 플로우를 건너뛰는 경우 - 기존 직접 저장 로직
-                if (in_array($k, $elevenStepStatuses, true)) {
-                    // 11단계 상태는 bookingStatus에 직접 저장
-                    $updates[] = "bookingStatus = ?";
-                    $values[] = $k;
-                    $types .= 's';
-                    $updates[] = "paymentStatus = ?";
-                    $values[] = 'pending';
-                    $types .= 's';
-                } elseif ($k === 'pending' || $k === 'partial') {
-                    $updates[] = "bookingStatus = ?";
-                    $values[] = 'pending';
-                    $types .= 's';
-                    $updates[] = "paymentStatus = ?";
-                    $values[] = 'pending';
-                    $types .= 's';
-
-                    // partial은 downPaymentFile이 있어야 UI에서 의미가 있으므로,
-                    // 파일이 없으면 저장은 허용하되(환경별), 실제 표시 상태는 getB2BBookings/getB2BBookingDetail 로직에서 결정됨.
-                } elseif ($k === 'confirmed') {
-                    $updates[] = "bookingStatus = ?";
-                    $values[] = 'confirmed';
-                    $types .= 's';
-                    $updates[] = "paymentStatus = ?";
-                    $values[] = 'paid';
-                    $types .= 's';
-                } elseif ($k === 'completed') {
-                    $updates[] = "bookingStatus = ?";
-                    $values[] = 'completed';
-                    $types .= 's';
-                    $updates[] = "paymentStatus = ?";
-                    $values[] = 'paid';
-                    $types .= 's';
-                } elseif ($k === 'cancelled') {
-                    $updates[] = "bookingStatus = ?";
-                    $values[] = 'cancelled';
-                    $types .= 's';
-                } elseif ($k === 'refunded') {
-                    $updates[] = "bookingStatus = ?";
-                    $values[] = 'refunded';
-                    $types .= 's';
-                    $updates[] = "paymentStatus = ?";
-                    $values[] = 'refunded';
-                    $types .= 's';
-                }
+            // 직접 저장 로직 (pending_update 플로우 제거)
+            if (in_array($k, $elevenStepStatuses, true)) {
+                // 11단계 상태는 bookingStatus에 직접 저장
+                $updates[] = "bookingStatus = ?";
+                $values[] = $k;
+                $types .= 's';
+                $updates[] = "paymentStatus = ?";
+                $values[] = 'pending';
+                $types .= 's';
+            } elseif ($k === 'pending' || $k === 'partial') {
+                $updates[] = "bookingStatus = ?";
+                $values[] = 'pending';
+                $types .= 's';
+                $updates[] = "paymentStatus = ?";
+                $values[] = 'pending';
+                $types .= 's';
+            } elseif ($k === 'confirmed') {
+                $updates[] = "bookingStatus = ?";
+                $values[] = 'confirmed';
+                $types .= 's';
+                $updates[] = "paymentStatus = ?";
+                $values[] = 'paid';
+                $types .= 's';
+            } elseif ($k === 'completed') {
+                $updates[] = "bookingStatus = ?";
+                $values[] = 'completed';
+                $types .= 's';
+                $updates[] = "paymentStatus = ?";
+                $values[] = 'paid';
+                $types .= 's';
+            } elseif ($k === 'cancelled') {
+                $updates[] = "bookingStatus = ?";
+                $values[] = 'cancelled';
+                $types .= 's';
+            } elseif ($k === 'refunded') {
+                $updates[] = "bookingStatus = ?";
+                $values[] = 'refunded';
+                $types .= 's';
+                $updates[] = "paymentStatus = ?";
+                $values[] = 'refunded';
+                $types .= 's';
             }
         }
 
@@ -13386,6 +13353,15 @@ function updateB2BBooking($conn, $input) {
             $oldStatus = $currentBook;
             if ($newStatus !== $oldStatus) {
                 __log_booking_status_change($conn, $bookingId, $oldStatus, $newStatus, null, null, $statusChangeReason);
+                // booking_history에도 확장된 이력 추가
+                __addBookingHistory($conn, $bookingId, "Status changed: {$oldStatus} → {$newStatus}", [
+                    'changeType' => 'status',
+                    'changedBy' => $_SESSION['admin_username'] ?? 'admin',
+                    'changedByType' => $_SESSION['admin_userType'] ?? 'admin_ph',
+                    'previousData' => json_encode(['bookingStatus' => $oldStatus, 'paymentStatus' => $currentPay]),
+                    'newData' => json_encode(['bookingStatus' => $newStatus]),
+                    'reason' => $statusChangeReason
+                ]);
             }
         }
 
@@ -13576,48 +13552,49 @@ function updateB2BBooking($conn, $input) {
                 }
             }
 
-            // 실제 변경이 없으면 pending_update 플로우 건너뜀
+            // 실제 변경이 없으면 건너뜀
             if (!$hasActualChanges) {
                 // 변경 없이 저장 - 기존 상태 유지하고 정상 응답
                 // (guideId, balanceDueDate 등 다른 필드는 이미 위에서 처리됨)
                 send_success_response([], 'Booking updated successfully (no customer/traveler changes detected)');
             }
 
-            // booking_change_requests 테이블에 통합 저장 (changeType = 'travelers' 유지)
+            // Customer Info가 변경된 경우 직접 저장
+            if ($hasCustomerInfo) {
+                $ci = $input['customerInfo'];
+                $ciUpdates = []; $ciVals = []; $ciTypes = '';
+                if (isset($ci['name']))  { $ciUpdates[] = "contactName = ?";  $ciVals[] = $ci['name'];  $ciTypes .= 's'; }
+                if (isset($ci['email'])) { $ciUpdates[] = "contactEmail = ?"; $ciVals[] = $ci['email']; $ciTypes .= 's'; }
+                if (isset($ci['phone'])) { $ciUpdates[] = "contactPhone = ?"; $ciVals[] = $ci['phone']; $ciTypes .= 's'; }
+                if (!empty($ciUpdates)) {
+                    $ciVals[] = $bookingId; $ciTypes .= 's';
+                    $ciSql = "UPDATE bookings SET " . implode(', ', $ciUpdates) . ", updatedAt = NOW() WHERE bookingId = ?";
+                    $ciStmt = $conn->prepare($ciSql);
+                    mysqli_bind_params_by_ref($ciStmt, $ciTypes, $ciVals);
+                    $ciStmt->execute();
+                    $ciStmt->close();
+                }
+            }
+
+            // 이력 로깅 (확장된 함수)
             $previousDataJson = json_encode([
                 'originalCustomerInfo' => $currentCustomerInfo,
                 'originalTravelers' => $currentTravelers
             ], JSON_UNESCAPED_UNICODE);
 
-            $newDataJson = json_encode([
-                'pendingCustomerInfo' => $hasCustomerInfo ? $input['customerInfo'] : null,
-                'pendingTravelers' => $hasTravelers ? $input['travelers'] : null
-            ], JSON_UNESCAPED_UNICODE);
-
-            $trueOriginalStatus = __get_true_original_status($conn, $bookingId, $currentBook);
-            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'travelers', ?, ?, ?, ?, ?, 'employee', 'pending')";
-            $changeRequestStmt = $conn->prepare($changeRequestSql);
-            if ($changeRequestStmt) {
-                $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-                $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentPay, $previousDataJson, $newDataJson, $requestedBy);
-                $changeRequestStmt->execute();
-                $changeRequestStmt->close();
-            }
-
-            // bookingStatus를 pending_update로 변경
-            $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
-            if ($pendingStmt) {
-                $pendingStmt->bind_param('s', $bookingId);
-                $pendingStmt->execute();
-                $pendingStmt->close();
-            }
-
-            // 여기서 바로 성공 응답 반환 (실제 수정은 승인 시 실행)
-            send_success_response(['pendingUpdate' => true, 'newStatus' => 'pending_update'], 'Changes saved for approval');
+            __addBookingHistory($conn, $bookingId, 'Customer/Traveler info updated directly by admin', [
+                'changeType' => 'travelers',
+                'changedBy' => $_SESSION['admin_username'] ?? 'admin',
+                'changedByType' => $_SESSION['admin_userType'] ?? 'admin_ph',
+                'previousData' => $previousDataJson,
+                'newData' => json_encode([
+                    'customerInfo' => $hasCustomerInfo ? $input['customerInfo'] : null,
+                    'travelers' => $hasTravelers ? $input['travelers'] : null
+                ], JSON_UNESCAPED_UNICODE)
+            ]);
         }
 
         // Travelers 저장(인원옵션 travelerType은 read-only)
-        // 주의: hasCustomerOrTravelerChanges가 true면 위에서 이미 응답했으므로 이 아래 코드는 실행되지 않음
         if ($hasTravelers) {
             __ensure_booking_travelers_status_columns($conn);
 
@@ -14743,7 +14720,7 @@ function approveB2BBooking($conn, $input) {
             $processedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
 
             // status, deadline, product_edit changeType은 admin_kr만 승인 가능
-            if (in_array($changeRequest['changeType'], ['status', 'deadline', 'product_edit'])) {
+            if ($changeRequest['changeType'] === 'deadline') {
                 if ($adminUserType !== 'admin_kr') {
                     send_error_response('Only admin_kr can approve this change type', 403);
                 }
@@ -15534,7 +15511,7 @@ function rejectB2BBooking($conn, $input) {
             }
 
             // status, deadline, product_edit changeType은 admin_kr만 거절 가능
-            if (in_array($changeRequest['changeType'], ['status', 'deadline', 'product_edit'])) {
+            if ($changeRequest['changeType'] === 'deadline') {
                 if ($adminUserType !== 'admin_kr') {
                     send_error_response('Only admin_kr can reject this change type', 403);
                 }
@@ -15744,84 +15721,6 @@ function rejectB2BBooking($conn, $input) {
     }
 }
 
-// 에이전트가 예약 수정 시 pending_update 상태로 변경하는 함수
-function updateBookingWithApproval($conn, $input) {
-    try {
-        $bookingId = $input['bookingId'] ?? $input['id'] ?? null;
-        if (empty($bookingId)) {
-            send_error_response('Booking ID is required');
-        }
-
-        // 현재 예약 데이터 조회
-        $checkSql = "SELECT * FROM bookings WHERE bookingId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('s', $bookingId);
-        $checkStmt->execute();
-        $result = $checkStmt->get_result();
-        $booking = $result->fetch_assoc();
-        $checkStmt->close();
-
-        if (!$booking) {
-            send_error_response('Booking not found');
-        }
-
-        // 이미 pending_update 상태인 경우 거부
-        if ($booking['bookingStatus'] === 'pending_update' || $booking['bookingStatus'] === 'check_reject') {
-            send_error_response('This booking already has a pending update request. Current status: ' . $booking['bookingStatus']);
-        }
-
-        // 현재 데이터를 previousData에 저장할 JSON 생성
-        $previousData = json_encode([
-            'departureDate' => $booking['departureDate'] ?? null,
-            'adults' => $booking['adults'] ?? 0,
-            'children' => $booking['children'] ?? 0,
-            'infants' => $booking['infants'] ?? 0,
-            'totalAmount' => $booking['totalAmount'] ?? 0,
-            'selectedOptions' => $booking['selectedOptions'] ?? null,
-            'specialRequests' => $booking['specialRequests'] ?? null,
-            'contactName' => $booking['contactName'] ?? null,
-            'contactEmail' => $booking['contactEmail'] ?? null,
-            'contactPhone' => $booking['contactPhone'] ?? null,
-            'savedAt' => date('Y-m-d H:i:s')
-        ], JSON_UNESCAPED_UNICODE);
-
-        // 새 데이터 JSON 생성
-        $newData = json_encode([
-            'departureDate' => $input['departureDate'] ?? $booking['departureDate'],
-            'adults' => $input['adults'] ?? $booking['adults'],
-            'children' => $input['children'] ?? $booking['children'],
-            'infants' => $input['infants'] ?? $booking['infants'],
-            'totalAmount' => $input['totalAmount'] ?? $booking['totalAmount'],
-            'selectedOptions' => $input['selectedOptions'] ?? $booking['selectedOptions'],
-            'specialRequests' => $input['specialRequests'] ?? $booking['specialRequests'],
-            'contactName' => $input['contactName'] ?? $booking['contactName'],
-            'contactEmail' => $input['contactEmail'] ?? $booking['contactEmail'],
-            'contactPhone' => $input['contactPhone'] ?? $booking['contactPhone']
-        ], JSON_UNESCAPED_UNICODE);
-
-        // booking_change_requests 테이블에 변경 요청 저장
-        $requestedBy = $_SESSION['admin_username'] ?? $_SESSION['username'] ?? 'admin';
-        $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'other', ?, ?, ?, ?, ?, 'employee', 'pending')";
-        $changeRequestStmt = $conn->prepare($changeRequestSql);
-        if ($changeRequestStmt) {
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $booking['bookingStatus'], $booking['paymentStatus'], $previousData, $newData, $requestedBy);
-            $changeRequestStmt->execute();
-            $changeRequestStmt->close();
-        }
-
-        // bookingStatus만 pending_update로 변경
-        $sql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('s', $bookingId);
-        $stmt->execute();
-        $stmt->close();
-
-        send_success_response([], 'Booking update request submitted successfully');
-    } catch (Exception $e) {
-        send_error_response('Failed to submit booking update: ' . $e->getMessage());
-    }
-}
-
 // 사용자가 거부 확인 시 booking_change_requests에서 원래 상태로 복원하는 함수
 function acknowledgeRejection($conn, $input) {
     try {
@@ -16017,80 +15916,24 @@ function setPaymentDeadline($conn, $input) {
             $daysUntilDeparture = (int)$today->diff($depDate)->format('%r%a');
         }
 
-        // 44일 규칙: 44일 이상 OR admin_kr → 직접 변경, 44일 미만 AND admin_ph → pending_update
-        $shouldDirectUpdate = ($daysUntilDeparture === null || $daysUntilDeparture >= 44)
-                           || ($adminUserType === 'admin_kr');
+        // 모든 admin이 항상 직접 deadline 업데이트 (pending_update 플로우 제거)
+        $updateSql = "UPDATE bookings SET $fieldName = ?, updatedAt = NOW() WHERE bookingId = ?";
+        $updateStmt = $conn->prepare($updateSql);
+        $updateStmt->bind_param("ss", $deadlineDate, $bookingId);
+        $updateStmt->execute();
+        $updateStmt->close();
 
-        if ($shouldDirectUpdate) {
-            // 직접 deadline 업데이트
-            $updateSql = "UPDATE bookings SET $fieldName = ?, updatedAt = NOW() WHERE bookingId = ?";
-            $updateStmt = $conn->prepare($updateSql);
-            $updateStmt->bind_param("ss", $deadlineDate, $bookingId);
-            $updateStmt->execute();
-            $updateStmt->close();
+        // 예약 이력 추가
+        $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' changed directly: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
+        __addBookingHistory($conn, $bookingId, $historyMsg, [
+            'changeType' => 'deadline',
+            'changedBy' => $_SESSION['admin_username'] ?? 'admin',
+            'changedByType' => $_SESSION['admin_userType'] ?? 'admin_ph',
+            'previousData' => json_encode(['type' => $deadlineType, 'deadline' => $currentDeadline]),
+            'newData' => json_encode(['type' => $deadlineType, 'deadline' => $deadlineDate])
+        ]);
 
-            // 예약 이력 추가
-            $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' changed directly: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
-            __addBookingHistory($conn, $bookingId, $historyMsg);
-
-            send_success_response(['directUpdate' => true], 'Payment deadline updated successfully.');
-        } else {
-            // pending_update 경로 (기존 로직)
-            // previousData와 newData 구성
-            $previousData = json_encode([
-                'type' => $deadlineType,
-                'deadline' => $currentDeadline,
-                'fieldName' => $fieldName
-            ]);
-
-            $newData = json_encode([
-                'type' => $deadlineType,
-                'deadline' => $deadlineDate,
-                'fieldName' => $fieldName
-            ]);
-
-            // 기존 pending deadline 변경 요청이 있으면 업데이트, 없으면 신규 생성
-            $existingReq = null;
-            $existStmt = $conn->prepare("SELECT id FROM booking_change_requests WHERE bookingId = ? AND changeType = 'deadline' AND status = 'pending' LIMIT 1");
-            $existStmt->bind_param("s", $bookingId);
-            $existStmt->execute();
-            $existingReq = $existStmt->get_result()->fetch_assoc();
-            $existStmt->close();
-
-            if ($existingReq) {
-                // 기존 pending 요청의 newData만 업데이트
-                $updateReqStmt = $conn->prepare("UPDATE booking_change_requests SET newData = ?, requestedBy = ?, requestedAt = NOW() WHERE id = ?");
-                $updateReqStmt->bind_param("ssi", $newData, $requestedBy, $existingReq['id']);
-                $updateReqStmt->execute();
-                $updateReqStmt->close();
-            } else {
-                $insertReqSql = "INSERT INTO booking_change_requests
-                    (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
-                    VALUES (?, 'deadline', ?, ?, ?, ?, 'employee', 'pending')";
-                $insertReqStmt = $conn->prepare($insertReqSql);
-                $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $requestedBy);
-                $insertReqStmt->execute();
-                $insertReqStmt->close();
-            }
-
-            // bookingStatus를 pending_update로 변경
-            $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
-            $updateStmt = $conn->prepare($updateSql);
-            $updateStmt->bind_param("s", $bookingId);
-            $updateStmt->execute();
-            $updateStmt->close();
-
-            // 예약 이력 추가
-            $historyMsg = ($historyLabels[$deadlineType] ?? 'Payment deadline') . ' change requested: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
-            __addBookingHistory($conn, $bookingId, $historyMsg);
-
-            // 상태 변경 이력 (booking_status_history) 기록
-            if ($originalStatus !== 'pending_update') {
-                __log_booking_status_change($conn, $bookingId, $originalStatus, 'pending_update', null, null, $historyMsg);
-            }
-
-            send_success_response(['directUpdate' => false], 'Payment deadline change request submitted. Waiting for admin_kr approval.');
-        }
+        send_success_response(['directUpdate' => true], 'Payment deadline updated successfully.');
     } catch (Exception $e) {
         send_error_response('Failed to set payment deadline: ' . $e->getMessage());
     }
@@ -19786,6 +19629,7 @@ function getMessageThreadDetail($conn, $input) {
                 'subject' => $thread['subject'],
                 'status' => $thread['status'],
                 'category' => $thread['category'],
+                'bookingId' => $thread['bookingId'] ?? null,
                 'agentName' => $thread['agentName'] ?? '',
                 'region' => '',
                 'managerName' => $thread['managerName'] ?? '',
@@ -19800,6 +19644,46 @@ function getMessageThreadDetail($conn, $input) {
     }
 }
 
+function getMessageThreadByBookingId($conn, $input) {
+    try {
+        $adminAccountId = intval($_SESSION['admin_accountId'] ?? 0);
+        if (!$adminAccountId) send_error_response('Admin login required', 401);
+
+        $bookingId = trim($input['bookingId'] ?? '');
+        if ($bookingId === '') send_error_response('Booking ID is required');
+
+        $stmt = $conn->prepare("SELECT threadId FROM message_threads WHERE bookingId = ? LIMIT 1");
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        // Get agent info from booking
+        $agentInfo = null;
+        $stmtAgent = $conn->prepare("SELECT b.accountId, COALESCE(ag.agencyName, TRIM(CONCAT(IFNULL(ag.fName,''),' ',IFNULL(ag.lName,'')))) AS agentName, COALESCE(NULLIF(TRIM(ag.personInCharge),''), TRIM(CONCAT(IFNULL(ag.fName,''),' ',IFNULL(ag.lName,'')))) AS managerName FROM bookings b LEFT JOIN agent ag ON b.accountId = ag.accountId WHERE b.bookingId = ? LIMIT 1");
+        $stmtAgent->bind_param('s', $bookingId);
+        $stmtAgent->execute();
+        $agentRow = $stmtAgent->get_result()->fetch_assoc();
+        $stmtAgent->close();
+
+        if ($agentRow) {
+            $agentInfo = [
+                'agentAccountId' => intval($agentRow['accountId']),
+                'agentName' => $agentRow['agentName'] ?? '',
+                'managerName' => $agentRow['managerName'] ?? ''
+            ];
+        }
+
+        send_success_response([
+            'exists' => !!$row,
+            'threadId' => $row ? intval($row['threadId']) : null,
+            'agentInfo' => $agentInfo
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to check thread: ' . $e->getMessage());
+    }
+}
+
 function createMessageThread($conn, $input) {
     try {
         $adminAccountId = intval($_SESSION['admin_accountId'] ?? 0);
@@ -19809,6 +19693,7 @@ function createMessageThread($conn, $input) {
         $subject = trim($input['subject'] ?? '');
         $content = trim($input['content'] ?? '');
         $category = $input['category'] ?? 'general';
+        $bookingId = trim($input['bookingId'] ?? '') ?: null;
 
         if (!$agentAccountId) send_error_response('Agent selection is required');
         if ($subject === '') send_error_response('Subject is required');
@@ -19822,8 +19707,8 @@ function createMessageThread($conn, $input) {
 
         $threadNo = generateThreadNo($conn);
 
-        $stmtThread = $conn->prepare("INSERT INTO message_threads (threadNo, subject, createdBy, agentAccountId, category, status, lastMessageAt, createdAt) VALUES (?, ?, ?, ?, ?, 'open', NOW(), NOW())");
-        $stmtThread->bind_param('ssiss', $threadNo, $subject, $adminAccountId, $agentAccountId, $category);
+        $stmtThread = $conn->prepare("INSERT INTO message_threads (threadNo, subject, createdBy, agentAccountId, bookingId, category, status, lastMessageAt, createdAt) VALUES (?, ?, ?, ?, ?, ?, 'open', NOW(), NOW())");
+        $stmtThread->bind_param('ssisss', $threadNo, $subject, $adminAccountId, $agentAccountId, $bookingId, $category);
         if (!$stmtThread->execute()) {
             $conn->rollback();
             send_error_response('Failed to create thread: ' . $stmtThread->error);

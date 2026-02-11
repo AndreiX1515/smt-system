@@ -198,7 +198,25 @@
       "Bash(git commit:*)",
       "Bash(git pull:*)",
       "mcp__ide__executeCode",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(/dev/null <<'SQL'\nSELECT bookingId, paymentType, advancePaymentAmount, advancePaymentDueDate, balanceAmount, balanceDueDate, orderAmount, downPaymentAmount, downPaymentDueDate, bookingStatus FROM bookings WHERE bookingId='BK20260205006';\nSQL)",
+      "Bash(node -e:*)",
+      "Bash(git status:*)",
+      "Bash(git -C /var/www/html add:*)",
+      "Bash(git -C /var/www/html commit -m \"$\\(cat <<''EOF''\nDeadline 승인 후 pending_update 유지 버그 수정: 중복 pending 요청 자동 정리 및 dedup 추가\n\n- super-api.php: deadline approve 시 같은 bookingId의 다른 pending deadline 요청을 자동 rejected 처리\n- agent-api.php: deadline 요청 생성 시 기존 pending 요청이 있으면 newData만 UPDATE \\(super-api.php와 동일 dedup 패턴\\)\n- BK20260204003 DB 데이터 교정 \\(stale pending 요청 3건 rejected, bookingStatus → waiting_full_payment 복원\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(/dev/null <<'SQL'\nALTER TABLE packages\n  ADD COLUMN infant_seat_price DECIMAL\\(10,2\\) DEFAULT NULL AFTER b2b_infant_price,\n  ADD COLUMN b2b_infant_seat_price DECIMAL\\(12,2\\) DEFAULT NULL AFTER infant_seat_price;\n\nALTER TABLE package_available_dates\n  ADD COLUMN infant_seat_price DECIMAL\\(10,2\\) DEFAULT NULL AFTER b2b_infant_price,\n  ADD COLUMN b2b_infant_seat_price DECIMAL\\(12,2\\) DEFAULT NULL AFTER infant_seat_price;\n\nALTER TABLE bookings\n  ADD COLUMN infantSeatPrice DECIMAL\\(10,2\\) DEFAULT NULL AFTER infantPrice;\nSQL)",
+      "Bash(/dev/null <<'SQL'\nSHOW TABLES;\nSQL)",
+      "Bash(apache2:*)",
+      "Bash(printf:*)",
+      "Bash(bash:*)",
+      "Bash(/dev/null << 'EOSQL'\nSELECT a.accountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName\nFROM accounts a\nINNER JOIN agent ag ON a.accountId = ag.accountId\nWHERE a.accountStatus = 'active'\n  AND ag.agencyName IS NOT NULL\n  AND TRIM\\(ag.agencyName\\) <> ''\nORDER BY ag.agencyName ASC\nLIMIT 15;\nEOSQL)",
+      "Bash(/dev/null << 'EOSQL'\nSELECT COUNT\\(*\\) as total,\n  SUM\\(CASE WHEN TRIM\\(IFNULL\\(ag.agencyName,''\\)\\) != '' THEN 1 ELSE 0 END\\) as has_name,\n  SUM\\(CASE WHEN TRIM\\(IFNULL\\(ag.agencyName,''\\)\\) = '' THEN 1 ELSE 0 END\\) as no_name\nFROM accounts a\nINNER JOIN agent ag ON a.accountId = ag.accountId\nWHERE a.accountStatus = 'active' OR a.accountStatus IS NULL;\nEOSQL)",
+      "Bash(/dev/null << 'EOSQL'\nSELECT a.accountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName, ag.contactNo\nFROM accounts a\nINNER JOIN agent ag ON a.accountId = ag.accountId\nWHERE \\(a.accountStatus = 'active' OR a.accountStatus IS NULL\\)\n  AND \\(ag.agencyName LIKE '%SMART%' OR ag.personInCharge LIKE '%SMART%' OR ag.fName LIKE '%SMART%' OR ag.lName LIKE '%SMART%' OR CONCAT\\(ag.fName, ' ', ag.lName\\) LIKE '%SMART%'\\)\nORDER BY ag.agencyName ASC\nLIMIT 50;\nEOSQL)",
+      "Bash(/dev/null << 'EOSQL'\nSELECT a.accountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName, ag.contactNo\nFROM accounts a\nINNER JOIN agent ag ON a.accountId = ag.accountId\nWHERE \\(a.accountStatus = 'active' OR a.accountStatus IS NULL\\)\n  AND \\(ag.agencyName LIKE '%travel%' OR ag.personInCharge LIKE '%travel%' OR ag.fName LIKE '%travel%' OR ag.lName LIKE '%travel%' OR CONCAT\\(ag.fName, ' ', ag.lName\\) LIKE '%travel%'\\)\nORDER BY ag.agencyName ASC\nLIMIT 10;\nEOSQL)",
+      "Bash(/dev/null << 'EOSQL'\nSELECT t.threadId, t.agentAccountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName\nFROM message_threads t\nLEFT JOIN agent ag ON t.agentAccountId = ag.accountId\nWHERE t.threadId = 2;\nEOSQL)",
+      "Bash(xxd:*)"
     ]
   }
 }

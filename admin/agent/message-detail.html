@@ -24,9 +24,9 @@
 				</a>
 			</div>
 
-			<!-- New Message Form (shown when ?new=true) -->
+			<!-- New Message Form (legacy, hidden) -->
 			<div id="newMessageSection" style="display:none;">
-				<h1 class="page-title" data-lan-eng="New Message">New Message</h1>
+				<h1 class="page-title" data-lan-eng="New Inquiry">New Inquiry</h1>
 
 				<div class="card-panel jw-mgt32">
 					<div class="grid-wrap">
@@ -63,16 +63,41 @@
 				</div>
 			</div>
 
-			<!-- Existing Thread Detail (shown when ?id=X) -->
+			<!-- Existing Thread Detail (shown when ?id=X or ?new=true) -->
 			<div id="detailSection" style="display:none;">
-				<h1 class="page-title" id="threadSubject" data-lan-eng="Message Detail">Message Detail</h1>
+				<h1 class="page-title" id="threadSubject" data-lan-eng="Inquiry Detail">Inquiry Detail</h1>
 
-				<div class="card-panel jw-mgt16" style="display:flex; align-items:center; gap:16px;">
-					<span style="font-size:13px; color:#666;" data-lan-eng="Status">Status:</span>
-					<span class="msg-status-badge" id="threadStatusBadge">Open</span>
-					<span style="font-size:13px; color:#666;" data-lan-eng="Category">Category:</span>
-					<span class="msg-category-badge" id="threadCategory"></span>
-					<span style="font-size:13px; color:#666; margin-left:auto;" id="threadDate"></span>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Status">Status</label>
+							<input type="text" class="form-control" id="threadStatusField" disabled>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Category">Category</label>
+							<input type="text" class="form-control" id="threadCategory" disabled>
+							<select id="threadCategorySelect" style="display:none; height:46px; border-radius:10px; border:1px solid #D4D4D4; padding:0 12px; background:#fff; font-size:14px; width:100%;">
+								<option value="general">General</option>
+								<option value="product">Product</option>
+								<option value="booking">Booking</option>
+								<option value="payment">Payment</option>
+								<option value="cancellation">Cancellation</option>
+								<option value="other">Other</option>
+							</select>
+						</div>
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Date">Date</label>
+							<input type="text" class="form-control" id="threadDate" disabled>
+						</div>
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Subject">Subject</label>
+							<input type="text" class="form-control" id="threadSubjectField" disabled>
+						</div>
+						<div class="grid-item" id="threadBookingIdWrap" style="display:none;">
+							<label class="label-name" data-lan-eng="Booking ID">Booking ID</label>
+							<a id="threadBookingIdLink" href="#" style="display:inline-block; color:#2563EB; text-decoration:underline; padding:8px 0; font-size:14px;"></a>
+						</div>
+					</div>
 				</div>
 
 				<!-- Chat Timeline -->
@@ -112,7 +137,6 @@
 
 		let threadId = null;
 		let replyEditor = null;
-		let newEditor = null;
 		let selectedFiles = [];
 
 		function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -185,12 +209,22 @@
 				if (!json.success || !json.data) { alert('Failed to load'); return; }
 
 				const { thread, messages } = json.data;
-				document.getElementById('threadSubject').textContent = thread.subject || 'Message Detail';
-				const badge = document.getElementById('threadStatusBadge');
-				badge.textContent = statusLabels[thread.status] || thread.status;
-				badge.className = 'msg-status-badge ' + thread.status;
-				document.getElementById('threadCategory').textContent = categoryLabels[thread.category] || thread.category || '-';
-				document.getElementById('threadDate').textContent = formatDate(thread.createdAt);
+				document.getElementById('threadSubject').textContent = 'Inquiry Detail';
+				document.getElementById('threadSubjectField').value = thread.subject || '';
+				document.getElementById('threadStatusField').value = statusLabels[thread.status] || thread.status;
+				document.getElementById('threadCategory').value = categoryLabels[thread.category] || thread.category || '-';
+				document.getElementById('threadDate').value = formatDate(thread.createdAt);
+
+				// Show bookingId link if present
+				if (thread.bookingId) {
+					const wrap = document.getElementById('threadBookingIdWrap');
+					const link = document.getElementById('threadBookingIdLink');
+					if (wrap && link) {
+						link.textContent = thread.bookingId;
+						link.href = `reservation-detail.html?bookingId=${encodeURIComponent(thread.bookingId)}`;
+						wrap.style.display = '';
+					}
+				}
 
 				renderMessages(messages);
 
@@ -232,28 +266,29 @@
 			finally { btn.disabled = false; btn.textContent = 'Send'; }
 		}
 
-		async function handleSubmitNew() {
-			const subject = document.getElementById('newSubject').value.trim();
-			const content = newEditor ? newEditor.root.innerHTML : '';
-			const category = document.getElementById('newCategory').value;
+		let currentBookingId = null;
+
+		async function handleSendNew() {
+			const subject = document.getElementById('threadSubjectField').value.trim();
+			const content = replyEditor ? replyEditor.root.innerHTML : '';
+			const category = document.getElementById('threadCategorySelect').value;
 
 			if (!subject) return alert('Please enter a subject.');
-			if (!content || content === '<p><br></p>') return alert('Please enter a message.');
+			if ((!content || content.trim() === '' || content === '<p><br></p>') && !selectedFiles.length) {
+				return alert('Please enter a message.');
+			}
 
 			const formData = new FormData();
 			formData.append('action', 'createMessageThread');
 			formData.append('subject', subject);
 			formData.append('content', content);
 			formData.append('category', category);
+			if (currentBookingId) formData.append('bookingId', currentBookingId);
+			selectedFiles.forEach(f => formData.append('files[]', f));
 
-			const files = document.getElementById('newFiles').files;
-			for (let i = 0; i < Math.min(files.length, 5); i++) {
-				formData.append('files[]', files[i]);
-			}
-
-			const btn = document.getElementById('submitNewBtn');
+			const btn = document.getElementById('sendBtn');
 			btn.disabled = true;
-			btn.textContent = 'Submitting...';
+			btn.textContent = 'Sending...';
 			try {
 				const res = await fetch('../backend/api/agent-api.php', { method: 'POST', body: formData, credentials: 'same-origin' });
 				const json = await res.json();
@@ -263,7 +298,7 @@
 					alert(json.message || 'Failed to create');
 				}
 			} catch (e) { alert('Error: ' + e.message); }
-			finally { btn.disabled = false; btn.textContent = 'Submit'; }
+			finally { btn.disabled = false; btn.textContent = 'Send'; }
 		}
 
 		function updateFilePreview() {
@@ -286,19 +321,60 @@
 			const params = new URLSearchParams(location.search);
 			const isNew = params.get('new') === 'true';
 			threadId = params.get('id');
+			currentBookingId = params.get('bookingId') || null;
 
 			if (isNew) {
-				document.getElementById('newMessageSection').style.display = '';
-				document.getElementById('detailSection').style.display = 'none';
+				// New message mode — chat-style UI
+				document.getElementById('detailSection').style.display = '';
+				document.getElementById('threadSubject').textContent = 'New Inquiry';
 
-				newEditor = new Quill('#newEditor', {
+				// Show empty conversation timeline with guidance
+				document.getElementById('messageTimeline').innerHTML =
+					'<div style="text-align:center; color:#999; padding:40px;">Send your first message to start the conversation.</div>';
+
+				// Make subject field editable
+				const subjectField = document.getElementById('threadSubjectField');
+				subjectField.disabled = false;
+				subjectField.placeholder = 'Enter subject';
+
+				// Show category select instead of disabled input
+				document.getElementById('threadCategory').style.display = 'none';
+				const catSelect = document.getElementById('threadCategorySelect');
+				catSelect.style.display = '';
+
+				// Hide status and date (not yet created)
+				document.getElementById('threadStatusField').value = 'New';
+				document.getElementById('threadDate').value = '-';
+
+				// Auto-set category and subject if bookingId is present
+				if (currentBookingId) {
+					catSelect.value = 'booking';
+					subjectField.value = `[${currentBookingId}] `;
+
+					// Show bookingId link
+					const wrap = document.getElementById('threadBookingIdWrap');
+					const link = document.getElementById('threadBookingIdLink');
+					if (wrap && link) {
+						link.textContent = currentBookingId;
+						link.href = `reservation-detail.html?bookingId=${encodeURIComponent(currentBookingId)}`;
+						wrap.style.display = '';
+					}
+				}
+
+				// Initialize reply editor (same as existing thread mode)
+				replyEditor = new Quill('#replyEditor', {
 					theme: 'snow',
 					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
 				});
 
-				document.getElementById('submitNewBtn').addEventListener('click', handleSubmitNew);
+				document.getElementById('sendBtn').addEventListener('click', handleSendNew);
+				document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+				document.getElementById('fileInput').addEventListener('change', e => {
+					selectedFiles = selectedFiles.concat(Array.from(e.target.files)).slice(0, 5);
+					updateFilePreview();
+					e.target.value = '';
+				});
 			} else if (threadId) {
-				document.getElementById('newMessageSection').style.display = 'none';
 				document.getElementById('detailSection').style.display = '';
 
 				replyEditor = new Quill('#replyEditor', {

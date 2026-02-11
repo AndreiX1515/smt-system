@@ -95,8 +95,7 @@
 
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">Product and Reservation Information</p>
-				<a href="../common/reservation-location.html" target="_blank" id="meetingLocationLink"><span data-lan-eng="Meeting location">Meeting location</span><img src="../image/linkout.svg" alt=""></a>
-				<a href="../common/reservation-notices.html" target="_blank" id="announcementsLink"><span data-lan-eng="Announcements">Announcements</span><img src="../image/linkout.svg" alt=""></a>
+				<a href="#" id="messagesLink" style="cursor:pointer;"><span data-lan-eng="Send to Agent">Send to Agent</span><img src="../image/linkout.svg" alt=""></a>
 			</div>
 
 			<h2 class="section-title jw-mgt32" id="section-product" data-lan-eng="Product Information">Product Information</h2>
@@ -906,6 +905,25 @@
 					const noti = document.getElementById('announcementsLink');
 					if (loc) loc.href = `../common/reservation-location.html?bookingId=${encodeURIComponent(bookingId)}`;
 					if (noti) noti.href = `../common/reservation-notices.html?bookingId=${encodeURIComponent(bookingId)}`;
+
+					const msgLink = document.getElementById('messagesLink');
+					if (msgLink) {
+						msgLink.addEventListener('click', async function(e) {
+							e.preventDefault();
+							try {
+								const res = await fetch(`../backend/api/super-api.php?action=getMessageThreadByBookingId&bookingId=${encodeURIComponent(bookingId)}`, { credentials: 'same-origin' });
+								const json = await res.json();
+								if (json.success && json.data.exists) {
+									location.href = `agent-message-detail.html?id=${json.data.threadId}`;
+								} else {
+									location.href = `agent-message-detail.html?new=true&bookingId=${encodeURIComponent(bookingId)}`;
+								}
+							} catch (err) {
+								console.error(err);
+								location.href = `agent-message-detail.html?new=true&bookingId=${encodeURIComponent(bookingId)}`;
+							}
+						});
+					}
 				} catch (_) { }
 
 				const saveBtn = document.getElementById('saveBtn');
@@ -1702,14 +1720,7 @@
 					}
 				}
 
-				// pending_update 플로우 대상인지 확인 (cancelled ↔ 다른 상태)
-				// admin_kr은 cancelled 전환도 직접 변경 가능, admin_ph만 pending_update 필요
-				const isPendingUpdateFlow = !__isAdminKr && (
-					(currentStatus === 'cancelled' && statusKey !== 'cancelled') ||
-					(currentStatus !== 'cancelled' && statusKey === 'cancelled')
-				);
-
-				// 모든 상태 변경 시 사유 필수 (pending_update 포함)
+				// 모든 상태 변경 시 사유 필수
 				let statusChangeReason = null;
 				if (statusKey !== currentStatus) {
 					statusChangeReason = await promptForStatusChangeReason();
@@ -1815,18 +1826,8 @@
 						}
 					}
 
-					if (deadlineChanged) {
-						alert(deadlineDirectUpdate ? 'Saved. Deadline updated.' : 'Saved. Deadline change request submitted.');
-					} else {
-						alert('Saved.');
-					}
-					// pending_update로 변경되었거나, 현재 상태가 pending_update인 경우 목록으로 돌아가기
-					const currentStatusCheck = lastLoadedBooking?.bookingStatus;
-					if ((deadlineChanged && !deadlineDirectUpdate) || (result.data && result.data.newStatus === 'pending_update') || currentStatusCheck === 'pending_update') {
-						window.history.back();
-					} else {
-						window.location.reload();
-					}
+					alert(deadlineChanged ? 'Saved. Deadline updated.' : 'Saved.');
+					window.location.reload();
 					return;
 				}
 				alert(result.message ? String(result.message) : 'Save failed.');

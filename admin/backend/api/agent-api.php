@@ -361,10 +361,6 @@ try {
             createReservation($conn, $input);
             break;
             
-        case 'updateReservation':
-            updateReservation($conn, $input);
-            break;
-
         case 'updatePaymentInfo':
             updatePaymentInfo($conn, $input);
             break;
@@ -395,19 +391,6 @@ try {
             
         case 'cancelReservation':
             cancelReservation($conn, $input);
-            break;
-
-        // Product Edit 관련 (승인 필요 플로우)
-        case 'requestProductEdit':
-            requestProductEdit($conn, $input);
-            break;
-
-        case 'saveEditReservationData':
-            saveEditReservationData($conn, $input);
-            break;
-
-        case 'cancelProductEdit':
-            cancelProductEdit($conn, $input);
             break;
 
         case 'uploadProofFile':
@@ -508,6 +491,9 @@ try {
         case 'createMessageThread':
             createAgentMessageThread($conn, $input);
             break;
+        case 'getMessageThreadByBookingId':
+            getAgentMessageThreadByBookingId($conn, $input);
+            break;
         case 'sendMessage':
             handleAgentSendMessage($conn, $input);
             break;
@@ -527,10 +513,6 @@ try {
         case 'updateCustomerInfo':
             updateCustomerInfo($conn, $input);
             break;
-        case 'updateProductInfo':
-            updateProductInfo($conn, $input);
-            break;
-
         case 'searchPackages':
             searchPackagesForAgent($conn, $input);
             break;
@@ -3672,343 +3654,6 @@ function createReservation($conn, $input) {
 
     } catch (Exception $e) {
         send_error_response('Failed to create reservation: ' . $e->getMessage());
-    }
-}
-
-function updateReservation($conn, $input) {
-    try {
-        // 세션 확인
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
-        if (empty($agentAccountId)) {
-            send_error_response('Agent login required', 401);
-        }
-
-        $bookingId = $input['bookingId'] ?? '';
-        if (empty($bookingId)) {
-            send_error_response('Booking ID is required');
-        }
-
-        // 예약 소유권 및 현재 상태 확인
-        $checkSql = "SELECT b.*, COALESCE(b.edit_allowed, 0) as edit_allowed FROM bookings b WHERE b.bookingId = ? AND b.accountId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
-        $checkStmt->execute();
-        $checkResult = $checkStmt->get_result();
-        if ($checkResult->num_rows === 0) {
-            send_error_response('Reservation not found or access denied', 404);
-        }
-        $currentBooking = $checkResult->fetch_assoc();
-        $checkStmt->close();
-
-        // pending_update 또는 check_reject 상태에서는 추가 수정 불가
-        $currentStatus = strtolower($currentBooking['bookingStatus'] ?? '');
-        if ($currentStatus === 'pending_update') {
-            send_error_response('There is already a pending change request. Please wait for approval.', 400);
-        }
-        if ($currentStatus === 'check_reject') {
-            send_error_response('Previous change request was rejected. Please confirm the rejection first.', 400);
-        }
-
-        // 에이전트는 항상 승인 필요 (edit_allowed 무관)
-        $editAllowed = false;
-
-        // pending_update 요청 생성 (edit_allowed가 아닌 경우)
-        if (!$editAllowed) {
-            // 현재 여행자 정보 조회
-            $travelerColumns = [];
-            $travelerColumnResult = $conn->query("SHOW COLUMNS FROM booking_travelers");
-            if ($travelerColumnResult) {
-                while ($col = $travelerColumnResult->fetch_assoc()) {
-                    $travelerColumns[] = strtolower($col['Field']);
-                }
-            }
-            $travelerBookingIdColumn = in_array('transactno', $travelerColumns) ? 'transactNo' : 'bookingId';
-
-            $currentTravelersSql = "SELECT * FROM booking_travelers WHERE $travelerBookingIdColumn = ?";
-            $currentTravelersStmt = $conn->prepare($currentTravelersSql);
-            $currentTravelersStmt->bind_param('s', $bookingId);
-            $currentTravelersStmt->execute();
-            $currentTravelersResult = $currentTravelersStmt->get_result();
-            $currentTravelers = [];
-            while ($row = $currentTravelersResult->fetch_assoc()) {
-                $currentTravelers[] = $row;
-            }
-            $currentTravelersStmt->close();
-
-            // previousData 구성
-            $previousData = json_encode([
-                'departureDate' => $currentBooking['departureDate'] ?? null,
-                'adults' => $currentBooking['adults'] ?? 0,
-                'children' => $currentBooking['children'] ?? 0,
-                'infants' => $currentBooking['infants'] ?? 0,
-                'totalAmount' => $currentBooking['totalAmount'] ?? 0,
-                'selectedOptions' => $currentBooking['selectedOptions'] ?? null,
-                'originalTravelers' => $currentTravelers
-            ], JSON_UNESCAPED_UNICODE);
-
-            // newData 구성
-            $newData = json_encode([
-                'departureDate' => $input['departureDate'] ?? $currentBooking['departureDate'],
-                'adults' => $input['adults'] ?? $currentBooking['adults'],
-                'children' => $input['children'] ?? $currentBooking['children'],
-                'infants' => $input['infants'] ?? $currentBooking['infants'],
-                'selectedRooms' => $input['selectedRooms'] ?? [],
-                'selectedOptions' => $input['selectedOptions'] ?? [],
-                'customerInfo' => $input['customerInfo'] ?? [],
-                'otherRequest' => $input['otherRequest'] ?? '',
-                'pendingTravelers' => $input['travelers'] ?? []
-            ], JSON_UNESCAPED_UNICODE);
-
-            // booking_change_requests에 변경 요청 저장
-            $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';
-            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'other', ?, ?, ?, ?, ?, 'agent', 'pending')";
-            $changeRequestStmt = $conn->prepare($changeRequestSql);
-            $trueOriginalStatus = __get_true_original_status_agent($conn, $bookingId, $currentBooking['bookingStatus']);
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentBooking['paymentStatus'], $previousData, $newData, $requestedBy);
-            $changeRequestStmt->execute();
-            $changeRequestStmt->close();
-
-            // bookingStatus를 pending_update로 변경
-            $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
-            $pendingStmt->bind_param('s', $bookingId);
-            $pendingStmt->execute();
-            $pendingStmt->close();
-
-            send_success_response(['bookingId' => $bookingId, 'status' => 'pending_update'], 'Change request submitted. Waiting for approval.');
-            return;
-        }
-
-        // edit_allowed = 1인 경우 직접 수정 진행
-        $conn->begin_transaction();
-
-        // 1. 기본 예약 정보 업데이트
-        $updates = [];
-        $params = [];
-        $types = '';
-
-        // 날짜 업데이트
-        if (isset($input['departureDate'])) {
-            $updates[] = "departureDate = ?";
-            $params[] = $input['departureDate'];
-            $types .= 's';
-        }
-
-        // 인원 수 업데이트
-        if (isset($input['adults'])) {
-            $updates[] = "adults = ?";
-            $params[] = (int)$input['adults'];
-            $types .= 'i';
-        }
-        if (isset($input['children'])) {
-            $updates[] = "children = ?";
-            $params[] = (int)$input['children'];
-            $types .= 'i';
-        }
-        if (isset($input['infants'])) {
-            $updates[] = "infants = ?";
-            $params[] = (int)$input['infants'];
-            $types .= 'i';
-        }
-
-        // 고객 정보 업데이트
-        $customerInfo = $input['customerInfo'] ?? null;
-        if ($customerInfo) {
-            // contactEmail, contactPhone 컬럼 업데이트 (customerName은 bookings 테이블에 없음)
-            if (!empty($customerInfo['email'])) {
-                $updates[] = "contactEmail = ?";
-                $params[] = $customerInfo['email'];
-                $types .= 's';
-            }
-            if (!empty($customerInfo['phone'])) {
-                $updates[] = "contactPhone = ?";
-                $params[] = $customerInfo['phone'];
-                $types .= 's';
-            }
-        }
-
-        // selectedOptions 업데이트 (rooms, otherRequest 등)
-        $selectedOptionsData = [
-            'selectedRooms' => $input['selectedRooms'] ?? [],
-            'selectedOptions' => $input['selectedOptions'] ?? [],
-            'customerInfo' => $customerInfo ?? [],
-            'seatRequest' => $input['seatRequest'] ?? '',
-            'otherRequest' => $input['otherRequest'] ?? '',
-            'memo' => $input['memo'] ?? ''
-        ];
-        $updates[] = "selectedOptions = ?";
-        $params[] = json_encode($selectedOptionsData);
-        $types .= 's';
-
-        // totalAmount 재계산
-        $travelerRows = $input['travelers'] ?? [];
-        $selectedRooms = $input['selectedRooms'] ?? [];
-
-        // 패키지 가격 조회
-        $pkgSql = "SELECT packagePrice, childPrice, infantPrice FROM packages WHERE packageId = (SELECT packageId FROM bookings WHERE bookingId = ?)";
-        $pkgStmt = $conn->prepare($pkgSql);
-        $pkgStmt->bind_param('s', $bookingId);
-        $pkgStmt->execute();
-        $pkgResult = $pkgStmt->get_result();
-        $pkgRow = $pkgResult->fetch_assoc();
-        $pkgStmt->close();
-
-        $packagePrice = (float)($pkgRow['packagePrice'] ?? 0);
-        $childPrice = (float)($pkgRow['childPrice'] ?? $packagePrice);
-        $infantPrice = (float)($pkgRow['infantPrice'] ?? 0) ?: 10000;
-
-        $baseAmount = 0;
-        foreach ($travelerRows as $tr) {
-            if (!is_array($tr)) continue;
-            $type = strtolower(trim((string)($tr['type'] ?? 'adult')));
-            if (strpos($type, 'infant') !== false) {
-                $baseAmount += $infantPrice;
-            } else if (strpos($type, 'child') !== false) {
-                $baseAmount += $childPrice;
-            } else {
-                $baseAmount += $packagePrice;
-            }
-        }
-
-        // Room 금액
-        $roomAmount = 0;
-        foreach ($selectedRooms as $room) {
-            if (!is_array($room)) continue;
-            $roomAmount += (float)($room['roomPrice'] ?? $room['price'] ?? 0) * (int)($room['count'] ?? 1);
-        }
-
-        // Flight options 금액
-        $flightOptionsAmount = 0;
-        foreach ($travelerRows as $tr) {
-            if (!is_array($tr)) continue;
-            if (!empty($tr['flightOptionPrices']) && is_array($tr['flightOptionPrices'])) {
-                foreach ($tr['flightOptionPrices'] as $price) {
-                    $flightOptionsAmount += (float)$price;
-                }
-            }
-        }
-
-        // Visa 금액
-        $visaAmount = 0;
-        foreach ($travelerRows as $tr) {
-            if (!is_array($tr)) continue;
-            $visaType = strtolower(trim((string)($tr['visaType'] ?? 'with_visa')));
-            if ($visaType === 'group') {
-                $visaAmount += 1500;
-            } elseif ($visaType === 'individual') {
-                $visaAmount += 1900;
-            }
-        }
-
-        $totalAmount = $baseAmount + $roomAmount + $flightOptionsAmount + $visaAmount;
-        $updates[] = "totalAmount = ?";
-        $params[] = $totalAmount;
-        $types .= 'd';
-
-        // bookings 테이블 업데이트
-        if (!empty($updates)) {
-            $params[] = $bookingId;
-            $types .= 's';
-            $sql = "UPDATE bookings SET " . implode(', ', $updates) . " WHERE bookingId = ?";
-            $stmt = $conn->prepare($sql);
-            mysqli_bind_params_by_ref($stmt, $types, $params);
-            $stmt->execute();
-            $stmt->close();
-        }
-
-        // 2. 여행자 정보 업데이트 (기존 삭제 후 새로 삽입)
-        if (!empty($travelerRows)) {
-            // booking_travelers 컬럼 확인
-            $travelerColumns = [];
-            $travelerColumnResult = $conn->query("SHOW COLUMNS FROM booking_travelers");
-            if ($travelerColumnResult) {
-                while ($col = $travelerColumnResult->fetch_assoc()) {
-                    $travelerColumns[] = strtolower($col['Field']);
-                }
-            }
-            $travelerBookingIdColumn = in_array('transactno', $travelerColumns) ? 'transactNo' : 'bookingId';
-
-            // 기존 여행자 삭제
-            $deleteSql = "DELETE FROM booking_travelers WHERE $travelerBookingIdColumn = ?";
-            $deleteStmt = $conn->prepare($deleteSql);
-            $deleteStmt->bind_param('s', $bookingId);
-            $deleteStmt->execute();
-            $deleteStmt->close();
-
-            // 기존 항공 옵션 삭제
-            $delOptSql = "DELETE FROM booking_traveler_options WHERE booking_id = ?";
-            $delOptStmt = $conn->prepare($delOptSql);
-            $delOptStmt->bind_param('s', $bookingId);
-            $delOptStmt->execute();
-            $delOptStmt->close();
-
-            // 새 여행자 삽입
-            $travelerInsertSql = "INSERT INTO booking_travelers ($travelerBookingIdColumn, travelerType, title, firstName, lastName, birthDate, gender, nationality, passportNumber, passportIssueDate, passportExpiry, passportImage, visaStatus, visaType, isMainTraveler, specialRequests) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $travelerStmt = $conn->prepare($travelerInsertSql);
-
-            foreach ($travelerRows as $index => $traveler) {
-                if (!is_array($traveler)) continue;
-
-                $travelerType = $traveler['type'] ?? 'adult';
-                $title = $traveler['title'] ?? 'MR';
-                $firstName = $traveler['firstName'] ?? '';
-                $lastName = $traveler['lastName'] ?? '';
-                $birthDate = !empty($traveler['birthDate']) ? $traveler['birthDate'] : null;
-                $gender = $traveler['gender'] ?? 'male';
-                $nationality = $traveler['nationality'] ?? '';
-                $passportNumber = $traveler['passportNumber'] ?? '';
-                $passportIssueDate = !empty($traveler['passportIssueDate']) ? $traveler['passportIssueDate'] : null;
-                $passportExpiry = !empty($traveler['passportExpiry']) ? $traveler['passportExpiry'] : null;
-                $passportImage = $traveler['passportImage'] ?? '';
-                $visaRequired = $traveler['visaRequired'] ?? false;
-                $visaStatus = $visaRequired ? 'applied' : 'not_required';
-                $visaType = $traveler['visaType'] ?? 'with_visa';
-                if (!in_array($visaType, ['group', 'individual', 'with_visa', 'foreign'])) {
-                    $visaType = 'with_visa';
-                }
-                $isMainTraveler = ($index === 0 || !empty($traveler['isMainTraveler'])) ? 1 : 0;
-                $specialRequests = $traveler['remarks'] ?? '';
-
-                $travelerStmt->bind_param('ssssssssssssssss',
-                    $bookingId, $travelerType, $title, $firstName, $lastName,
-                    $birthDate, $gender, $nationality, $passportNumber,
-                    $passportIssueDate, $passportExpiry, $passportImage,
-                    $visaStatus, $visaType, $isMainTraveler, $specialRequests
-                );
-                $travelerStmt->execute();
-
-                // 항공 옵션 저장
-                if (!empty($traveler['flightOptions']) && is_array($traveler['flightOptions'])) {
-                    foreach ($traveler['flightOptions'] as $optionId) {
-                        if (empty($optionId)) continue;
-                        $optionPrice = 0;
-                        if (!empty($traveler['flightOptionPrices']) && is_array($traveler['flightOptionPrices'])) {
-                            if (isset($traveler['flightOptionPrices'][$optionId])) {
-                                $optionPrice = (float)$traveler['flightOptionPrices'][$optionId];
-                            }
-                        }
-                        $optionInsertSql = "INSERT INTO booking_traveler_options (booking_id, traveler_index, option_id, price) VALUES (?, ?, ?, ?)";
-                        $optionStmt = $conn->prepare($optionInsertSql);
-                        $optionStmt->bind_param('siid', $bookingId, $index, $optionId, $optionPrice);
-                        $optionStmt->execute();
-                        $optionStmt->close();
-                    }
-                }
-            }
-            $travelerStmt->close();
-        }
-
-        $conn->commit();
-
-        send_success_response(['bookingId' => $bookingId], 'Reservation updated successfully');
-
-    } catch (Exception $e) {
-        if ($conn->inTransaction ?? false) {
-            $conn->rollback();
-        }
-        send_error_response('Failed to update reservation: ' . $e->getMessage());
     }
 }
 
@@ -7828,131 +7473,6 @@ function getPackageFlights($conn, $input) {
     }
 }
 
-// 입금 기한 설정 (3단계 결제: down, second, balance)
-// 변경 시 pending_update 상태로 전환되며 Super Admin 승인 필요
-function setPaymentDeadline($conn, $input) {
-    try {
-        $bookingId = $input['bookingId'] ?? '';
-        $type = $input['type'] ?? ''; // 'down', 'second', 'balance' (or legacy 'deposit')
-        $deadline = $input['deadline'] ?? '';
-
-        if (empty($bookingId) || empty($type) || empty($deadline)) {
-            send_error_response('Booking ID, type, and deadline are required');
-        }
-
-        // 3단계 결제에 맞는 컬럼명 매핑
-        $columnMap = [
-            'down' => 'downPaymentDueDate',
-            'second' => 'advancePaymentDueDate',
-            'balance' => 'balanceDueDate',
-            'deposit' => 'downPaymentDueDate' // legacy support
-        ];
-
-        $historyLabels = [
-            'down' => 'Down Payment deadline',
-            'second' => 'Second Payment deadline',
-            'balance' => 'Balance deadline',
-            'deposit' => 'Down Payment deadline'
-        ];
-
-        if (!isset($columnMap[$type])) {
-            send_error_response('Invalid payment type. Must be: down, second, or balance');
-        }
-
-        $columnName = $columnMap[$type];
-
-        // 컬럼 존재 확인 및 생성
-        $columns = [];
-        $columnResult = $conn->query("SHOW COLUMNS FROM bookings");
-        while ($col = $columnResult->fetch_assoc()) {
-            $columns[] = strtolower($col['Field']);
-        }
-
-        if (!in_array(strtolower($columnName), $columns)) {
-            $conn->query("ALTER TABLE bookings ADD COLUMN $columnName DATE NULL");
-        }
-
-        // 에이전트 세션 확인
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
-        if (empty($agentAccountId)) {
-            send_error_response('Agent login required', 401);
-        }
-
-        // 예약 존재 및 권한 확인
-        $checkSql = "SELECT bookingId, bookingStatus, $columnName as currentDeadline FROM bookings WHERE bookingId = ? AND accountId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param("si", $bookingId, $agentAccountId);
-        $checkStmt->execute();
-        $result = $checkStmt->get_result();
-        $booking = $result->fetch_assoc();
-        $checkStmt->close();
-
-        if (!$booking) {
-            send_error_response('Booking not found or no permission', 404);
-        }
-
-        // deadline을 DATE 형식으로 변환 (YYYY-MM-DD HH:MM -> YYYY-MM-DD)
-        $deadlineDate = substr(trim($deadline), 0, 10);
-        $currentDeadline = $booking['currentDeadline'] ?? null;
-        $originalStatus = __get_true_original_status_agent($conn, $bookingId, $booking['bookingStatus']);
-
-        // previousData와 newData 구성
-        $previousData = json_encode([
-            'type' => $type,
-            'deadline' => $currentDeadline,
-            'fieldName' => $columnName
-        ]);
-
-        $newData = json_encode([
-            'type' => $type,
-            'deadline' => $deadlineDate,
-            'fieldName' => $columnName
-        ]);
-
-        // 기존 pending deadline 변경 요청이 있으면 업데이트, 없으면 신규 생성
-        $existingReq = null;
-        $existStmt = $conn->prepare("SELECT id FROM booking_change_requests WHERE bookingId = ? AND changeType = 'deadline' AND status = 'pending' LIMIT 1");
-        $existStmt->bind_param("s", $bookingId);
-        $existStmt->execute();
-        $existingReq = $existStmt->get_result()->fetch_assoc();
-        $existStmt->close();
-
-        if ($existingReq) {
-            // 기존 pending 요청의 newData만 업데이트
-            $updateReqStmt = $conn->prepare("UPDATE booking_change_requests SET newData = ?, requestedBy = ?, requestedAt = NOW() WHERE id = ?");
-            $updateReqStmt->bind_param("ssi", $newData, $agentAccountId, $existingReq['id']);
-            $updateReqStmt->execute();
-            $updateReqStmt->close();
-        } else {
-            $insertReqSql = "INSERT INTO booking_change_requests
-                (bookingId, changeType, originalStatus, previousData, newData, requestedBy, requestedByType, status)
-                VALUES (?, 'deadline', ?, ?, ?, ?, 'agent', 'pending')";
-            $insertReqStmt = $conn->prepare($insertReqSql);
-            $insertReqStmt->bind_param("sssss", $bookingId, $originalStatus, $previousData, $newData, $agentAccountId);
-            $insertReqStmt->execute();
-            $insertReqStmt->close();
-        }
-
-        // bookingStatus를 pending_update로 변경
-        $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
-        $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->bind_param("s", $bookingId);
-        $updateStmt->execute();
-        $updateStmt->close();
-
-        // 예약 이력 추가
-        $historyMsg = $historyLabels[$type] . ' change requested: ' . ($currentDeadline ?? 'none') . ' → ' . $deadlineDate;
-        addReservationHistory($conn, $bookingId, $historyMsg);
-
-        send_success_response([], 'Payment deadline change request submitted. Waiting for admin approval.');
-    } catch (Exception $e) {
-        send_error_response('Failed to set payment deadline: ' . $e->getMessage());
-    }
-}
-
 // 예약 취소
 function cancelReservation($conn, $input) {
     try {
@@ -7983,300 +7503,6 @@ function cancelReservation($conn, $input) {
 }
 
 // ========== Product Edit (승인 필요 플로우) ==========
-
-/**
- * Product Edit 요청 시작
- * - 예약 상태를 pending_update로 변경
- * - booking_change_requests 테이블에 product_edit 레코드 생성
- */
-function requestProductEdit($conn, $input) {
-    try {
-        $bookingId = $input['bookingId'] ?? '';
-
-        if (empty($bookingId)) {
-            send_error_response('Booking ID is required');
-        }
-
-        // 예약 정보 조회
-        $sql = "SELECT b.*, p.packageName, p.durationDays
-                FROM bookings b
-                LEFT JOIN packages p ON b.packageId = p.packageId
-                WHERE b.bookingId = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('s', $bookingId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $booking = $result->fetch_assoc();
-        $stmt->close();
-
-        if (!$booking) {
-            send_error_response('Booking not found');
-        }
-
-        // edit_allowed 체크
-        if (empty($booking['edit_allowed']) || $booking['edit_allowed'] != 1) {
-            send_error_response('Edit is not allowed for this booking. Please contact admin.');
-        }
-
-        // 이미 pending_update 상태인 경우 거부
-        if ($booking['bookingStatus'] === 'pending_update') {
-            send_error_response('This booking already has a pending change request.');
-        }
-
-        // 여행자 정보 조회
-        $travelerKey = $booking['transactNo'] ?: $bookingId;
-        $travelersSql = "SELECT * FROM booking_travelers WHERE transactNo = ?";
-        $tStmt = $conn->prepare($travelersSql);
-        $tStmt->bind_param('s', $travelerKey);
-        $tStmt->execute();
-        $tResult = $tStmt->get_result();
-        $travelers = [];
-        while ($row = $tResult->fetch_assoc()) {
-            $travelers[] = $row;
-        }
-        $tStmt->close();
-
-        // 객실 옵션 정보 조회 (테이블이 없을 수 있음)
-        $roomOptions = [];
-        try {
-            $tableCheck = $conn->query("SHOW TABLES LIKE 'booking_room_options'");
-            if ($tableCheck && $tableCheck->num_rows > 0) {
-                $roomOptionsSql = "SELECT * FROM booking_room_options WHERE bookingId = ?";
-                $rStmt = $conn->prepare($roomOptionsSql);
-                if ($rStmt) {
-                    $rStmt->bind_param('s', $bookingId);
-                    $rStmt->execute();
-                    $rResult = $rStmt->get_result();
-                    while ($row = $rResult->fetch_assoc()) {
-                        $roomOptions[] = $row;
-                    }
-                    $rStmt->close();
-                }
-            }
-        } catch (Throwable $e) {
-            // 테이블이 없거나 오류 시 빈 배열로 진행
-            $roomOptions = [];
-        }
-
-        // previousData JSON 생성
-        $previousData = json_encode([
-            'packageId' => $booking['packageId'],
-            'packageName' => $booking['packageName'] ?? '',
-            'departureDate' => $booking['departureDate'],
-            'returnDate' => $booking['returnDate'] ?? '',
-            'durationDays' => $booking['durationDays'] ?? '',
-            'meetingTime' => $booking['meetingTime'] ?? '',
-            'meetingLocation' => $booking['meetingLocation'] ?? '',
-            'totalAmount' => $booking['totalAmount'],
-            'adults' => $booking['adults'] ?? 0,
-            'children' => $booking['children'] ?? 0,
-            'infants' => $booking['infants'] ?? 0,
-            'travelers' => $travelers,
-            'selectedRooms' => $roomOptions,
-            'contactEmail' => $booking['contactEmail'] ?? '',
-            'contactPhone' => $booking['contactPhone'] ?? '',
-            'otherRequest' => $booking['otherRequest'] ?? '',
-            'customerAccountId' => $booking['customerAccountId'] ?? null
-        ], JSON_UNESCAPED_UNICODE);
-
-        // 현재 상태 저장 (pending_update 오염 방지)
-        $originalStatus = __get_true_original_status_agent($conn, $bookingId, $booking['bookingStatus']);
-        $originalPaymentStatus = $booking['paymentStatus'] ?? 'pending';
-
-        // Agent 정보 가져오기
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['admin_username'] ?? 'system';
-        $requestedByType = isset($_SESSION['agent_username']) ? 'agent' : 'employee';
-
-        // 트랜잭션 시작 (둘 다 성공하거나 둘 다 실패하도록)
-        $conn->begin_transaction();
-
-        try {
-            // 예약 상태를 pending_update로 변경
-            $updateSql = "UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?";
-            $updateStmt = $conn->prepare($updateSql);
-            $updateStmt->bind_param('s', $bookingId);
-            $updateStmt->execute();
-            $updateStmt->close();
-
-            // booking_change_requests 테이블에 레코드 생성
-            $insertSql = "INSERT INTO booking_change_requests
-                          (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status, requestedAt)
-                          VALUES (?, 'product_edit', ?, ?, ?, NULL, ?, ?, 'pending', NOW())";
-            $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param('ssssss', $bookingId, $originalStatus, $originalPaymentStatus, $previousData, $requestedBy, $requestedByType);
-            $insertStmt->execute();
-            $changeRequestId = $conn->insert_id;
-            $insertStmt->close();
-
-            // 예약 이력 추가
-            addReservationHistory($conn, $bookingId, 'Product edit request initiated');
-
-            // 트랜잭션 커밋
-            $conn->commit();
-
-            send_success_response([
-                'bookingId' => $bookingId,
-                'changeRequestId' => $changeRequestId,
-                'message' => 'Product edit request started. Please complete the edit on the reservation page.'
-            ], 'Product edit request started successfully');
-
-        } catch (Exception $innerEx) {
-            // 에러 발생 시 롤백
-            $conn->rollback();
-            throw $innerEx;
-        }
-
-    } catch (Exception $e) {
-        send_error_response('Failed to start product edit: ' . $e->getMessage());
-    }
-}
-
-/**
- * Edit 모드에서 신규 예약 정보 저장 (실제 예약 생성 없이 newData에만 저장)
- */
-function saveEditReservationData($conn, $input) {
-    try {
-        $bookingId = $input['bookingId'] ?? '';
-
-        if (empty($bookingId)) {
-            send_error_response('Booking ID is required');
-        }
-
-        // pending인 product_edit 레코드 찾기
-        $findSql = "SELECT * FROM booking_change_requests
-                    WHERE bookingId = ? AND changeType = 'product_edit' AND status = 'pending'
-                    ORDER BY requestedAt DESC LIMIT 1";
-        $findStmt = $conn->prepare($findSql);
-        $findStmt->bind_param('s', $bookingId);
-        $findStmt->execute();
-        $findResult = $findStmt->get_result();
-        $changeRequest = $findResult->fetch_assoc();
-        $findStmt->close();
-
-        if (!$changeRequest) {
-            send_error_response('No pending product edit request found for this booking');
-        }
-
-        // 예약이 pending_update 상태인지 확인
-        $checkSql = "SELECT bookingStatus FROM bookings WHERE bookingId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('s', $bookingId);
-        $checkStmt->execute();
-        $checkResult = $checkStmt->get_result();
-        $bookingCheck = $checkResult->fetch_assoc();
-        $checkStmt->close();
-
-        if (!$bookingCheck || $bookingCheck['bookingStatus'] !== 'pending_update') {
-            send_error_response('Booking is not in pending_update status');
-        }
-
-        // newData 구성
-        $newData = [
-            'packageId' => $input['packageId'] ?? null,
-            'packageName' => $input['packageName'] ?? '',
-            'departureDate' => $input['departureDate'] ?? '',
-            'returnDate' => $input['returnDate'] ?? '',
-            'durationDays' => $input['durationDays'] ?? 0,
-            'meetingTime' => $input['meetingTime'] ?? '',
-            'meetingLocation' => $input['meetingLocation'] ?? '',
-            'totalAmount' => $input['totalAmount'] ?? 0,
-            'adults' => $input['adults'] ?? 0,
-            'children' => $input['children'] ?? 0,
-            'infants' => $input['infants'] ?? 0,
-            'travelers' => $input['travelers'] ?? [],
-            'selectedRooms' => $input['selectedRooms'] ?? [],
-            'contactEmail' => $input['contactEmail'] ?? '',
-            'contactPhone' => $input['contactPhone'] ?? '',
-            'otherRequest' => $input['otherRequest'] ?? '',
-            'seatRequest' => $input['seatRequest'] ?? '',
-            'memo' => $input['memo'] ?? '',
-            'customerAccountId' => $input['customerAccountId'] ?? null,
-            'customerInfo' => $input['customerInfo'] ?? null,
-            'paymentType' => $input['paymentType'] ?? 'staged'
-        ];
-
-        $newDataJson = json_encode($newData, JSON_UNESCAPED_UNICODE);
-
-        // booking_change_requests의 newData 업데이트
-        $updateSql = "UPDATE booking_change_requests SET newData = ? WHERE id = ?";
-        $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->bind_param('si', $newDataJson, $changeRequest['id']);
-        $updateStmt->execute();
-        $updateStmt->close();
-
-        // 예약 이력 추가
-        addReservationHistory($conn, $bookingId, 'Product edit data saved - awaiting admin approval');
-
-        send_success_response([
-            'bookingId' => $bookingId,
-            'changeRequestId' => $changeRequest['id'],
-            'message' => 'Edit data saved. Awaiting admin approval.'
-        ], 'Edit reservation data saved successfully');
-
-    } catch (Exception $e) {
-        send_error_response('Failed to save edit reservation data: ' . $e->getMessage());
-    }
-}
-
-/**
- * Product Edit 취소 (예약을 원래 상태로 복원)
- */
-function cancelProductEdit($conn, $input) {
-    try {
-        $bookingId = $input['bookingId'] ?? '';
-
-        if (empty($bookingId)) {
-            send_error_response('Booking ID is required');
-        }
-
-        // pending인 product_edit 레코드 찾기
-        $findSql = "SELECT * FROM booking_change_requests
-                    WHERE bookingId = ? AND changeType = 'product_edit' AND status = 'pending'
-                    ORDER BY requestedAt DESC LIMIT 1";
-        $findStmt = $conn->prepare($findSql);
-        $findStmt->bind_param('s', $bookingId);
-        $findStmt->execute();
-        $findResult = $findStmt->get_result();
-        $changeRequest = $findResult->fetch_assoc();
-        $findStmt->close();
-
-        if (!$changeRequest) {
-            send_error_response('No pending product edit request found for this booking');
-        }
-
-        // 예약 상태를 originalStatus로 복원
-        $originalStatus = $changeRequest['originalStatus'] ?? 'confirmed';
-        $originalPaymentStatus = $changeRequest['originalPaymentStatus'] ?? 'pending';
-
-        $updateSql = "UPDATE bookings SET bookingStatus = ?, paymentStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
-        $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->bind_param('sss', $originalStatus, $originalPaymentStatus, $bookingId);
-        $updateStmt->execute();
-        $updateStmt->close();
-
-        // booking_change_requests 레코드 상태를 rejected로 변경 (product edit 취소)
-        $cancelSql = "UPDATE booking_change_requests SET status = 'rejected', processedAt = NOW(), rejectReason = 'Cancelled by agent' WHERE id = ?";
-        $cancelStmt = $conn->prepare($cancelSql);
-        $cancelStmt->bind_param('i', $changeRequest['id']);
-        $cancelStmt->execute();
-        $cancelStmt->close();
-
-        // 예약 이력 추가
-        addReservationHistory($conn, $bookingId, 'Product edit request cancelled by agent');
-
-        send_success_response([
-            'bookingId' => $bookingId,
-            'restoredStatus' => $originalStatus,
-            'message' => 'Product edit cancelled. Booking restored to original status.'
-        ], 'Product edit cancelled successfully');
-
-    } catch (Exception $e) {
-        send_error_response('Failed to cancel product edit: ' . $e->getMessage());
-    }
-}
 
 // 증빙 파일 업로드 (레거시 - 현행 컬럼명 사용으로 통일)
 function uploadProofFile($conn, $input) {
@@ -9026,7 +8252,7 @@ function __get_true_original_status_agent($conn, $bookingId, $currentStatus) {
 }
 
 // 예약 이력 추가 헬퍼 함수
-function addReservationHistory($conn, $bookingId, $description) {
+function addReservationHistory($conn, $bookingId, $description, $extra = []) {
     try {
         // booking_history 테이블 존재 확인
         $tableCheck = $conn->query("SHOW TABLES LIKE 'booking_history'");
@@ -9035,15 +8261,29 @@ function addReservationHistory($conn, $bookingId, $description) {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 bookingId VARCHAR(50) NOT NULL,
                 description TEXT,
+                changeType VARCHAR(50) NULL,
+                changedBy VARCHAR(100) NULL,
+                changedByType VARCHAR(20) NULL,
+                previousData LONGTEXT NULL,
+                newData LONGTEXT NULL,
+                reason TEXT NULL,
                 createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_bookingId (bookingId)
             )");
         }
-        
-        $sql = "INSERT INTO booking_history (bookingId, description) VALUES (?, ?)";
+
+        $changeType = $extra['changeType'] ?? null;
+        $changedBy = $extra['changedBy'] ?? null;
+        $changedByType = $extra['changedByType'] ?? null;
+        $previousData = $extra['previousData'] ?? null;
+        $newData = $extra['newData'] ?? null;
+        $reason = $extra['reason'] ?? null;
+
+        $sql = "INSERT INTO booking_history (bookingId, description, changeType, changedBy, changedByType, previousData, newData, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ss", $bookingId, $description);
+        $stmt->bind_param("ssssssss", $bookingId, $description, $changeType, $changedBy, $changedByType, $previousData, $newData, $reason);
         $stmt->execute();
+        $stmt->close();
     } catch (Exception $e) {
         error_log('Failed to add reservation history: ' . $e->getMessage());
     }
@@ -10023,176 +9263,7 @@ function updateCustomerInfo($conn, $input) {
 }
 
 /**
- * 상품 정보 수정 (에이전트용)
- */
-function updateProductInfo($conn, $input) {
-    try {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
-        if (empty($agentAccountId)) {
-            send_error_response('Agent login required', 401);
-        }
-
-        $bookingId = $input['bookingId'] ?? '';
-        if (empty($bookingId)) {
-            send_error_response('Booking ID is required', 400);
-        }
-
-        // 예약 정보 조회 및 소유권 확인
-        $checkSql = "SELECT b.*, COALESCE(b.edit_allowed, 0) as edit_allowed FROM bookings b WHERE b.bookingId = ? AND b.accountId = ?";
-        $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
-        $checkStmt->execute();
-        $result = $checkStmt->get_result();
-
-        if ($result->num_rows === 0) {
-            send_error_response('Reservation not found or access denied', 404);
-        }
-        $currentBooking = $result->fetch_assoc();
-        $checkStmt->close();
-
-        // pending_update 또는 check_reject 상태에서는 추가 수정 불가
-        $currentStatus = strtolower($currentBooking['bookingStatus'] ?? '');
-        if ($currentStatus === 'pending_update') {
-            send_error_response('There is already a pending change request. Please wait for approval.', 400);
-        }
-        if ($currentStatus === 'check_reject') {
-            send_error_response('Previous change request was rejected. Please confirm the rejection first.', 400);
-        }
-
-        // 에이전트는 항상 승인 필요 (edit_allowed 무관)
-        $editAllowed = false;
-        if (!$editAllowed) {
-            // previousData 구성
-            $previousData = json_encode([
-                'packageId' => $currentBooking['packageId'] ?? null,
-                'packageName' => $currentBooking['packageName'] ?? null,
-                'departureDate' => $currentBooking['departureDate'] ?? null,
-                'departureTime' => $currentBooking['departureTime'] ?? null,
-                'meetingLocation' => $currentBooking['meetingLocation'] ?? null
-            ], JSON_UNESCAPED_UNICODE);
-
-            // newData 구성
-            $newData = json_encode([
-                'packageId' => $input['packageId'] ?? $currentBooking['packageId'],
-                'packageName' => $input['packageName'] ?? $currentBooking['packageName'],
-                'departureDate' => $input['departureDate'] ?? $currentBooking['departureDate'],
-                'meetingTime' => $input['meetingTime'] ?? null,
-                'meetingPlace' => $input['meetingPlace'] ?? null
-            ], JSON_UNESCAPED_UNICODE);
-
-            // booking_change_requests에 변경 요청 저장
-            $requestedBy = $_SESSION['agent_username'] ?? $_SESSION['username'] ?? 'agent';
-            $trueOriginalStatus = __get_true_original_status_agent($conn, $bookingId, $currentBooking['bookingStatus']);
-            $changeRequestSql = "INSERT INTO booking_change_requests (bookingId, changeType, originalStatus, originalPaymentStatus, previousData, newData, requestedBy, requestedByType, status) VALUES (?, 'other', ?, ?, ?, ?, ?, 'agent', 'pending')";
-            $changeRequestStmt = $conn->prepare($changeRequestSql);
-            $changeRequestStmt->bind_param('ssssss', $bookingId, $trueOriginalStatus, $currentBooking['paymentStatus'], $previousData, $newData, $requestedBy);
-            $changeRequestStmt->execute();
-            $changeRequestStmt->close();
-
-            // bookingStatus를 pending_update로 변경
-            $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
-            $pendingStmt->bind_param('s', $bookingId);
-            $pendingStmt->execute();
-            $pendingStmt->close();
-
-            send_success_response(['bookingId' => $bookingId, 'status' => 'pending_update'], 'Product change request submitted. Waiting for approval.');
-            return;
-        }
-
-        // edit_allowed = 1인 경우 직접 수정 진행
-
-        // 업데이트할 필드 수집
-        $updates = [];
-        $types = '';
-        $values = [];
-
-        if (isset($input['packageName']) && $input['packageName'] !== '') {
-            $updates[] = "packageName = ?";
-            $types .= 's';
-            $values[] = trim($input['packageName']);
-        }
-
-        if (isset($input['departureDate']) && $input['departureDate'] !== '') {
-            $updates[] = "departureDate = ?";
-            $types .= 's';
-            $values[] = trim($input['departureDate']);
-        }
-
-        if (isset($input['returnDate']) && $input['returnDate'] !== '') {
-            // returnDate 컬럼 존재 확인
-            $colCheck = $conn->query("SHOW COLUMNS FROM bookings LIKE 'returnDate'");
-            if ($colCheck && $colCheck->num_rows > 0) {
-                $updates[] = "returnDate = ?";
-                $types .= 's';
-                $values[] = trim($input['returnDate']);
-            }
-        }
-
-        if (isset($input['meetingTime']) && $input['meetingTime'] !== '') {
-            // departureTime 컬럼에 저장
-            $updates[] = "departureTime = ?";
-            $types .= 's';
-            $values[] = trim($input['meetingTime']);
-        }
-
-        if (isset($input['meetingPlace']) && $input['meetingPlace'] !== '') {
-            // meetingLocation 컬럼 존재 확인 및 저장
-            $colCheck = $conn->query("SHOW COLUMNS FROM bookings LIKE 'meetingLocation'");
-            if ($colCheck && $colCheck->num_rows === 0) {
-                @$conn->query("ALTER TABLE bookings ADD COLUMN meetingLocation VARCHAR(255) NULL");
-            }
-            $updates[] = "meetingLocation = ?";
-            $types .= 's';
-            $values[] = trim($input['meetingPlace']);
-        }
-
-        // packageId 처리
-        if (isset($input['packageId']) && $input['packageId'] !== '') {
-            $updates[] = "packageId = ?";
-            $types .= 'i';
-            $values[] = (int)$input['packageId'];
-        }
-
-        if (empty($updates)) {
-            send_error_response('No fields to update', 400);
-        }
-
-        // WHERE 조건 추가
-        $types .= 'si';
-        $values[] = $bookingId;
-        $values[] = $agentAccountId;
-
-        $updateSql = "UPDATE bookings SET " . implode(', ', $updates) . " WHERE bookingId = ? AND accountId = ?";
-        $updateStmt = $conn->prepare($updateSql);
-
-        // bind_param에 참조 전달 필요
-        $bindParams = [];
-        $bindParams[] = $types;
-        for ($i = 0; $i < count($values); $i++) {
-            $bindParams[] = &$values[$i];
-        }
-        call_user_func_array([$updateStmt, 'bind_param'], $bindParams);
-
-        $updateStmt->execute();
-
-        if ($updateStmt->affected_rows >= 0) {
-            send_success_response(['updated' => true], 'Product info updated successfully');
-        } else {
-            send_error_response('Failed to update product info', 500);
-        }
-
-        $updateStmt->close();
-
-    } catch (Exception $e) {
-        send_error_response('Failed to update product info: ' . $e->getMessage(), 500);
-    }
-}
-
-/**
- * 여행자 정보 수정 (24시간 내)
+ * 여행자 정보 수정
  */
 function updateTravelerInfo($conn, $input) {
     try {
@@ -10288,26 +9359,16 @@ function updateTravelerInfo($conn, $input) {
         }
         $isAddRemove = $isAddRemoveClient || $isAddRemoveServer;
 
-        // 수정 가능 여부 판단
-        if ($daysRemaining !== null && $daysRemaining < 45 && $editAllowedFlag !== 1) {
-            send_error_response('Edit is only allowed until 45 days before departure date', 403);
-        }
-
-        // 직접 수정 가능 여부 결정
+        // 수정 모드 결정: 34일 이상 또는 edit_allowed → 직접 수정, 34일 미만 → pending_update
         $canDirectEdit = false;
-        if ($isAddRemove) {
-            // 여행자 추가/삭제는 항상 admin_kr 승인 필요
-            $canDirectEdit = false;
-        } else if ($editAllowedFlag === 1) {
-            // admin 오버라이드
+        if ($editAllowedFlag === 1) {
             $canDirectEdit = true;
-        } else if ($daysRemaining !== null && $daysRemaining >= 60) {
-            // 60일 이상 전: 즉시 수정
+        } elseif ($daysRemaining === null) {
+            $canDirectEdit = true; // 출발일 미설정
+        } elseif ($daysRemaining >= 34) {
             $canDirectEdit = true;
-        } else {
-            // 45~59일: 승인 필요
-            $canDirectEdit = false;
         }
+        // else: < 34일 → pending_update 경로
 
         $changeType = $isAddRemove ? 'travelers_add_remove' : 'travelers';
 
@@ -10359,7 +9420,6 @@ function updateTravelerInfo($conn, $input) {
                         $capStmt->close();
                     }
                     // capacity fallback: package_available_dates 행이 없을 때만 packages.maxParticipants
-                    // (행이 있고 capacity=0이면 마감 → fallback하지 않음)
                     if (!$capRow) {
                         $pkgStmt = $conn->prepare("SELECT maxParticipants FROM packages WHERE packageId = ? LIMIT 1");
                         if ($pkgStmt) {
@@ -10419,7 +9479,7 @@ function updateTravelerInfo($conn, $input) {
                 }
                 $currentTravelersStmt->close();
 
-                // 현재 room 정보 조회 (selectedOptions 또는 selectedRooms 컬럼에서)
+                // 현재 room 정보 조회
                 $currentRooms = [];
                 try {
                     $roomStmt = $conn->prepare("SELECT selectedOptions, selectedRooms FROM bookings WHERE bookingId = ?");
@@ -10466,7 +9526,7 @@ function updateTravelerInfo($conn, $input) {
                     elseif ($type === 'infant') $newInfants++;
                 }
 
-                // totalAmount 계산 (approveB2BBooking과 동일한 로직)
+                // totalAmount 계산
                 $adultPrice = floatval($bkInfo['adultPrice'] ?? 0);
                 $childWithRoomPrice = $adultPrice;
                 $childNoRoomPrice = floatval($bkInfo['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
@@ -10512,7 +9572,7 @@ function updateTravelerInfo($conn, $input) {
 
                 $isIncrease = ($seatDifference > 0);
 
-                // previousData 구성 (원본 컬럼값 포함)
+                // previousData 구성
                 $previousDataArray = [
                     'originalTravelers' => $currentTravelers,
                     'originalRooms' => $currentRooms,
@@ -10525,7 +9585,7 @@ function updateTravelerInfo($conn, $input) {
                 ];
                 $previousData = json_encode($previousDataArray, JSON_UNESCAPED_UNICODE);
 
-                // newData 구성 (새 컬럼값 + preDeducted 플래그)
+                // newData 구성
                 $newDataArray = [
                     'pendingTravelers' => $travelers,
                     'newAdults' => $newAdults,
@@ -10550,7 +9610,6 @@ function updateTravelerInfo($conn, $input) {
                 $changeRequestStmt->execute();
                 $changeRequestStmt->close();
 
-                // bookingStatus 업데이트: 증가 시 선차감, 감소 시 기존 유지
                 // infantsWithSeat 계산
                 $newInfantsWithSeat = 0;
                 foreach ($travelers as $t) {
@@ -10560,39 +9619,186 @@ function updateTravelerInfo($conn, $input) {
                 }
 
                 if ($isIncrease) {
-                    // 증가: adults/children/infants/totalAmount/visaFee/flightOptionFee 즉시 반영 (선차감)
                     $pendingStmt = $conn->prepare("UPDATE bookings SET adults = ?, children = ?, infants = ?, infantsWithSeat = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
                     $pendingStmt->bind_param('iiiiddds', $newAdults, $newChildren, $newInfants, $newInfantsWithSeat, $calculatedNewTotal, $calculatedVisaFee, $calculatedFlightOptionFee, $bookingId);
                 } else {
-                    // 감소 또는 동일: 원본 컬럼 유지, 상태만 변경
                     $pendingStmt = $conn->prepare("UPDATE bookings SET bookingStatus = 'pending_update', updatedAt = NOW() WHERE bookingId = ?");
                     $pendingStmt->bind_param('s', $bookingId);
                 }
                 $pendingStmt->execute();
                 $pendingStmt->close();
 
+                // 이력 기록
+                $historyDesc = $isAddRemove
+                    ? "Travelers add/remove change request by agent (pending approval)"
+                    : "Traveler info change request by agent (pending approval)";
+                addReservationHistory($conn, $bookingId, $historyDesc, [
+                    'changeType' => $changeType,
+                    'changedBy' => $requestedBy,
+                    'changedByType' => 'agent',
+                    'previousData' => $previousData,
+                    'newData' => $newData
+                ]);
+
                 $conn->commit();
+
+                send_success_response([
+                    'status' => 'pending_update',
+                    'message' => 'Change request submitted. Waiting for admin approval.'
+                ]);
             } catch (Throwable $e) {
                 $conn->rollback();
                 throw $e;
             }
-
-            send_success_response(['bookingId' => $bookingId, 'status' => 'pending_update'], 'Traveler change request submitted. Waiting for approval.');
-            return;
         }
 
-        // === 직접 수정 경로 (60일 이상 전 또는 edit_allowed=1) ===
+        // === Capacity 체크 (직접 수정 경로, 인원 증가 시) ===
+        $packageId = $booking['packageId'] ?? '';
+        if ($seatDifference > 0 && !empty($packageId) && !empty($departureDate)) {
+            $capStmt = $conn->prepare(
+                "SELECT capacity FROM package_available_dates WHERE package_id = ? AND available_date = ? LIMIT 1"
+            );
+            $maxSeats = 0;
+            if ($capStmt) {
+                $capStmt->bind_param('is', $packageId, $departureDate);
+                $capStmt->execute();
+                $capRow = $capStmt->get_result()->fetch_assoc();
+                if ($capRow) {
+                    $maxSeats = (int)($capRow['capacity'] ?? 0);
+                }
+                $capStmt->close();
+            }
+            if ($maxSeats <= 0) {
+                $pkgStmt = $conn->prepare("SELECT maxParticipants FROM packages WHERE packageId = ? LIMIT 1");
+                if ($pkgStmt) {
+                    $pkgStmt->bind_param('i', $packageId);
+                    $pkgStmt->execute();
+                    $pkgRow = $pkgStmt->get_result()->fetch_assoc();
+                    if ($pkgRow) {
+                        $maxSeats = (int)($pkgRow['maxParticipants'] ?? 0);
+                    }
+                    $pkgStmt->close();
+                }
+            }
+            $bookedSeats = 0;
+            $bkStmt = $conn->prepare(
+                "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
+                 FROM bookings
+                 WHERE packageId = ? AND departureDate = ?
+                   AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')"
+            );
+            if ($bkStmt) {
+                $bkStmt->bind_param('is', $packageId, $departureDate);
+                $bkStmt->execute();
+                $bkRow = $bkStmt->get_result()->fetch_assoc();
+                if ($bkRow) {
+                    $bookedSeats = (int)($bkRow['booked'] ?? 0);
+                }
+                $bkStmt->close();
+            }
+            $remainingSeats = $maxSeats - $bookedSeats;
+            if ($seatDifference > $remainingSeats) {
+                send_error_response('Not enough available seats. Remaining: ' . $remainingSeats . ', Requested: ' . $seatDifference, 400);
+            }
+        }
+
+        // === 이력 기록을 위한 기존 여행자 정보 조회 ===
+        $previousTravelers = [];
+        try {
+            $prevTravStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ?");
+            if ($prevTravStmt) {
+                $prevTravStmt->bind_param('s', $bookingId);
+                $prevTravStmt->execute();
+                $prevTravResult = $prevTravStmt->get_result();
+                while ($row = $prevTravResult->fetch_assoc()) {
+                    $previousTravelers[] = $row;
+                }
+                $prevTravStmt->close();
+            }
+        } catch (Throwable $e) { /* ignore */ }
+
+        // === 인원수/금액 재계산 ===
+        $bkInfoStmt = $conn->prepare("SELECT adults, children, infants, totalAmount, visaFee, flightOptionFee, adultPrice, childPrice, infantPrice, selectedRooms, selectedOptions FROM bookings WHERE bookingId = ? LIMIT 1");
+        $bkInfoStmt->bind_param('s', $bookingId);
+        $bkInfoStmt->execute();
+        $bkInfo = $bkInfoStmt->get_result()->fetch_assoc();
+        $bkInfoStmt->close();
+
+        // 새 인원 카운트 계산
+        $newAdults = 0;
+        $newChildren = 0;
+        $newInfants = 0;
+        foreach ($travelers as $t) {
+            $type = strtolower(trim($t['travelerType'] ?? $t['type'] ?? 'adult'));
+            if ($type === 'adult') $newAdults++;
+            elseif ($type === 'child') $newChildren++;
+            elseif ($type === 'infant') $newInfants++;
+        }
+
+        // totalAmount 계산
+        $adultPrice = floatval($bkInfo['adultPrice'] ?? 0);
+        $childWithRoomPrice = $adultPrice;
+        $childNoRoomPrice = floatval($bkInfo['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
+        $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 10000;
+
+        $calculatedNewTotal = 0;
+        $calculatedVisaFee = 0;
+        $calculatedFlightOptionFee = 0;
+        foreach ($travelers as $t) {
+            $type = strtolower(trim($t['travelerType'] ?? $t['type'] ?? 'adult'));
+            if ($type === 'adult') {
+                $calculatedNewTotal += $adultPrice;
+            } elseif ($type === 'child') {
+                $hasRoom = ($t['childRoom'] ?? false) === true || ($t['childRoom'] ?? '') === 'yes' || ($t['childRoom'] ?? '') === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
+                $calculatedNewTotal += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+            } elseif ($type === 'infant') {
+                $calculatedNewTotal += $infantPriceVal;
+            }
+            // Visa 요금
+            $visaType = strtolower(trim($t['visaType'] ?? ''));
+            if ($visaType === 'group') { $calculatedVisaFee += 1500; $calculatedNewTotal += 1500; }
+            elseif ($visaType === 'individual') { $calculatedVisaFee += 1900; $calculatedNewTotal += 1900; }
+            // Flight Options
+            if (!empty($t['flightOptionPrices']) && is_array($t['flightOptionPrices'])) {
+                foreach ($t['flightOptionPrices'] as $price) {
+                    $fp = floatval($price);
+                    $calculatedFlightOptionFee += $fp;
+                    $calculatedNewTotal += $fp;
+                }
+            }
+        }
+        // Room 요금
+        $currentRooms = [];
+        $srRaw = $bkInfo['selectedRooms'] ?? '';
+        if (!empty($srRaw)) {
+            $tmp = json_decode($srRaw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
+                $currentRooms = $tmp;
+            }
+        }
+        if (empty($currentRooms) && !empty($bkInfo['selectedOptions'])) {
+            $soObj = json_decode($bkInfo['selectedOptions'], true);
+            if (json_last_error() === JSON_ERROR_NONE && isset($soObj['selectedRooms'])) {
+                $currentRooms = $soObj['selectedRooms'];
+            }
+        }
+        $pendingRooms = $selectedRooms ?? $currentRooms;
+        if (is_array($pendingRooms)) {
+            foreach ($pendingRooms as $r) {
+                $count = intval($r['count'] ?? $r['roomCount'] ?? 0);
+                $price = floatval($r['roomPrice'] ?? $r['room_price'] ?? 0);
+                if ($count > 0 && $price > 0) {
+                    $calculatedNewTotal += $count * $price;
+                }
+            }
+        }
+
+        // === 직접 수정 경로 ===
         // 비자 신청용 변수 추출
         $customerAccountId = $booking['customerAccountId'] ?? $agentAccountId;
         $packageDestination = $booking['packageDestination'] ?? 'Korea';
         $packageDurationDays = (int)($booking['packageDurationDays'] ?? 3);
-
-        // 출발 45일 전까지만 직접 수정 가능 (edit_allowed 오버라이드 제외)
-        if (!empty($departureDate) && $editAllowedFlag !== 1) {
-            if ($daysRemaining !== null && $daysRemaining < 45) {
-                send_error_response('Edit is only allowed until 45 days before departure date', 403);
-            }
-        }
 
         // booking_travelers 테이블 컬럼 확인
         $travelerColumns = [];
@@ -10855,19 +10061,44 @@ function updateTravelerInfo($conn, $input) {
             error_log("Failed to clean up orphan visa applications: " . $e->getMessage());
         }
 
-        // infantsWithSeat 동기화: 좌석 점유 인팬트 수 계산 후 bookings 업데이트
+        // infantsWithSeat 동기화 + 인원수/금액 재계산 반영
         $infantsWithSeatCount = 0;
         foreach ($travelers as $t) {
             if (strtolower($t['type'] ?? $t['travelerType'] ?? '') === 'infant' && filter_var($t['infantSeat'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 $infantsWithSeatCount++;
             }
         }
-        $iwsStmt = $conn->prepare("UPDATE bookings SET infantsWithSeat = ? WHERE bookingId = ?");
-        if ($iwsStmt) {
-            $iwsStmt->bind_param('is', $infantsWithSeatCount, $bookingId);
-            $iwsStmt->execute();
-            $iwsStmt->close();
+        $recalcStmt = $conn->prepare("UPDATE bookings SET adults = ?, children = ?, infants = ?, infantsWithSeat = ?, totalAmount = ?, visaFee = ?, flightOptionFee = ?, updatedAt = NOW() WHERE bookingId = ?");
+        if ($recalcStmt) {
+            $recalcStmt->bind_param('iiiiddds', $newAdults, $newChildren, $newInfants, $infantsWithSeatCount, $calculatedNewTotal, $calculatedVisaFee, $calculatedFlightOptionFee, $bookingId);
+            $recalcStmt->execute();
+            $recalcStmt->close();
         }
+
+        // selectedRooms 업데이트 (Agent가 room option도 변경한 경우)
+        if ($selectedRooms !== null) {
+            try {
+                $roomJson = json_encode($selectedRooms, JSON_UNESCAPED_UNICODE);
+                $roomUpdateStmt = $conn->prepare("UPDATE bookings SET selectedRooms = ? WHERE bookingId = ?");
+                if ($roomUpdateStmt) {
+                    $roomUpdateStmt->bind_param('ss', $roomJson, $bookingId);
+                    $roomUpdateStmt->execute();
+                    $roomUpdateStmt->close();
+                }
+            } catch (Throwable $e) { /* ignore */ }
+        }
+
+        // 이력 로깅
+        $historyDesc = $isAddRemove
+            ? "Travelers add/remove applied directly by agent (count: " . count($travelers) . ")"
+            : "Traveler info updated directly by agent";
+        addReservationHistory($conn, $bookingId, $historyDesc, [
+            'changeType' => $changeType,
+            'changedBy' => $_SESSION['agent_username'] ?? 'agent',
+            'changedByType' => 'agent',
+            'previousData' => json_encode($previousTravelers, JSON_UNESCAPED_UNICODE),
+            'newData' => json_encode($travelers, JSON_UNESCAPED_UNICODE)
+        ]);
 
         send_success_response([
             'updated' => true,
@@ -12855,12 +12086,37 @@ function getAgentMessageThreadDetail($conn, $input) {
                 'subject' => $thread['subject'],
                 'status' => $thread['status'],
                 'category' => $thread['category'],
+                'bookingId' => $thread['bookingId'] ?? null,
                 'createdAt' => $thread['createdAt']
             ],
             'messages' => $messages
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to get thread detail: ' . $e->getMessage());
+    }
+}
+
+function getAgentMessageThreadByBookingId($conn, $input) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $agentAccountId = intval($_SESSION['agent_accountId'] ?? ($_SESSION['accountId'] ?? 0));
+        if (!$agentAccountId) send_error_response('Agent login required', 401);
+
+        $bookingId = trim($input['bookingId'] ?? '');
+        if ($bookingId === '') send_error_response('Booking ID is required');
+
+        $stmt = $conn->prepare("SELECT threadId FROM message_threads WHERE bookingId = ? AND agentAccountId = ? LIMIT 1");
+        $stmt->bind_param('si', $bookingId, $agentAccountId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        send_success_response([
+            'exists' => !!$row,
+            'threadId' => $row ? intval($row['threadId']) : null
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to check thread: ' . $e->getMessage());
     }
 }
 
@@ -12873,6 +12129,7 @@ function createAgentMessageThread($conn, $input) {
         $subject = trim($input['subject'] ?? '');
         $content = trim($input['content'] ?? '');
         $category = $input['category'] ?? 'general';
+        $bookingId = trim($input['bookingId'] ?? '') ?: null;
 
         if ($subject === '') send_error_response('Subject is required');
         if ($content === '' || $content === '<p><br></p>') send_error_response('Message content is required');
@@ -12885,8 +12142,8 @@ function createAgentMessageThread($conn, $input) {
 
         $threadNo = generateAgentThreadNo($conn);
 
-        $stmtThread = $conn->prepare("INSERT INTO message_threads (threadNo, subject, createdBy, agentAccountId, category, status, lastMessageAt, createdAt) VALUES (?, ?, ?, ?, ?, 'open', NOW(), NOW())");
-        $stmtThread->bind_param('ssiis', $threadNo, $subject, $agentAccountId, $agentAccountId, $category);
+        $stmtThread = $conn->prepare("INSERT INTO message_threads (threadNo, subject, createdBy, agentAccountId, bookingId, category, status, lastMessageAt, createdAt) VALUES (?, ?, ?, ?, ?, ?, 'open', NOW(), NOW())");
+        $stmtThread->bind_param('ssiiss', $threadNo, $subject, $agentAccountId, $agentAccountId, $bookingId, $category);
         if (!$stmtThread->execute()) {
             $conn->rollback();
             send_error_response('Failed to create thread: ' . $stmtThread->error);

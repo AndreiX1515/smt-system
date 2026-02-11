@@ -71,7 +71,7 @@ try {
             }
 
             // originalStatus 복원 (pending_update/check_reject 오염 방지)
-            $originalStatus = $row['originalStatus'] ?? 'confirmed';
+            $originalStatus = $row['originalStatus'] ?? 'check_reject';
             if (in_array($originalStatus, ['pending_update', 'check_reject'])) {
                 // booking_change_requests에서 유효한 원본 상태 조회
                 $osStmt = $conn->prepare("SELECT originalStatus FROM booking_change_requests WHERE bookingId = ? AND originalStatus IS NOT NULL AND originalStatus NOT IN ('pending_update', 'check_reject') ORDER BY requestedAt DESC LIMIT 1");
@@ -83,7 +83,8 @@ try {
                     if ($osRow && !empty($osRow['originalStatus'])) {
                         $originalStatus = $osRow['originalStatus'];
                     } else {
-                        $originalStatus = 'confirmed';
+                        $originalStatus = 'check_reject';
+                        echo $logPrefix . "  WARNING: No valid originalStatus found for bookingId={$bookingId}, keeping check_reject for manual resolution\n";
                     }
                 }
             }

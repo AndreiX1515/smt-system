@@ -94,8 +94,10 @@ async function filterMenusByPermission() {
 			}
 		});
 
-		// 자식 메뉴가 모두 숨겨진 상위 메뉴(nav-item) 숨기기
+		// 자식 메뉴가 모두 숨겨진 상위 메뉴(nav-item) 숨기기 (서브메뉴가 없는 단독 링크 메뉴는 제외)
 		document.querySelectorAll('.nav-item[data-menu]').forEach(navItem => {
+			const subMenuItems = navItem.querySelectorAll('.nav-sub [data-menu]');
+			if (subMenuItems.length === 0) return;
 			const visibleSubMenus = navItem.querySelectorAll('.nav-sub [data-menu]:not([style*="display: none"])');
 			if (visibleSubMenus.length === 0) {
 				navItem.style.display = 'none';

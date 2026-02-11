@@ -90,28 +90,6 @@ function initializePage() {
         statusSelect.setAttribute('aria-disabled', 'true');
     }
     
-    // 3단계 결제 기한 설정 버튼 이벤트
-    const setDownPaymentDeadlineBtn = document.getElementById('setDownPaymentDeadlineBtn');
-    if (setDownPaymentDeadlineBtn) {
-        setDownPaymentDeadlineBtn.addEventListener('click', () => {
-            openDeadlineModal('down');
-        });
-    }
-
-    const setSecondPaymentDeadlineBtn = document.getElementById('setSecondPaymentDeadlineBtn');
-    if (setSecondPaymentDeadlineBtn) {
-        setSecondPaymentDeadlineBtn.addEventListener('click', () => {
-            openDeadlineModal('second');
-        });
-    }
-
-    const setBalanceDeadlineBtn = document.getElementById('setBalanceDeadlineBtn');
-    if (setBalanceDeadlineBtn) {
-        setBalanceDeadlineBtn.addEventListener('click', () => {
-            openDeadlineModal('balance');
-        });
-    }
-    
     // 3단계 결제 증빙 파일 업로드 버튼 이벤트
     // Down Payment
     const uploadDownFileBtn = document.getElementById('uploadDownFileBtn');
@@ -286,37 +264,10 @@ function initializePage() {
         });
     }
 
-    // 기한 설정 모달 확인 버튼
-    const confirmDeadlineBtn = document.getElementById('confirmDeadlineBtn');
-    if (confirmDeadlineBtn) {
-        confirmDeadlineBtn.addEventListener('click', handleSetDeadline);
-    }
-
     // 예약 취소 확인 버튼
     const confirmCancelBtn = document.getElementById('confirmCancelBtn');
     if (confirmCancelBtn) {
         confirmCancelBtn.addEventListener('click', handleCancelReservation);
-    }
-
-    // Product Information 수정 버튼 이벤트
-    const editProductBtn = document.getElementById('editProductBtn');
-    const saveProductBtn = document.getElementById('saveProductBtn');
-    const cancelProductBtn = document.getElementById('cancelProductBtn');
-
-    if (editProductBtn) {
-        editProductBtn.addEventListener('click', () => {
-            handleEditProductClick();
-        });
-    }
-    if (saveProductBtn) {
-        saveProductBtn.addEventListener('click', () => {
-            saveProductInfo();
-        });
-    }
-    if (cancelProductBtn) {
-        cancelProductBtn.addEventListener('click', () => {
-            cancelProductEdit();
-        });
     }
 
     // Acknowledge Reject 버튼 이벤트 (check_reject 상태에서 원래 상태로 복원)
@@ -367,42 +318,6 @@ async function handleAcknowledgeReject() {
     } catch (error) {
         console.error('Acknowledge reject error:', error);
         alert('An error occurred while restoring status.');
-    }
-}
-
-// Product Edit 계속하기 (Edit in Progress 상태에서)
-function continueProductEdit(bookingId) {
-    window.location.href = `create-reservation.html?mode=edit&bookingId=${bookingId}`;
-}
-
-// Product Edit 취소하기 (Edit in Progress 상태에서)
-async function cancelPendingProductEdit(bookingId) {
-    if (!confirm('Cancel the edit and restore to previous status?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('../backend/api/agent-api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                action: 'cancelProductEdit',
-                bookingId: bookingId
-            })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('Edit cancelled. Booking restored to original status.');
-            window.location.reload();
-        } else {
-            alert('Failed to cancel edit: ' + (result.message || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Cancel product edit error:', error);
-        alert('An error occurred while cancelling the edit.');
     }
 }
 
@@ -3756,10 +3671,6 @@ function updateUIByStatus(booking) {
     if (saveBtn) saveBtn.style.display = 'none';
     const cancelBtn = document.getElementById('cancelReservationBtn');
     if (cancelBtn) cancelBtn.style.display = 'none';
-    const setDepositDeadlineBtn = document.getElementById('setDepositDeadlineBtn');
-    const setBalanceDeadlineBtn = document.getElementById('setBalanceDeadlineBtn');
-    if (setDepositDeadlineBtn) setDepositDeadlineBtn.style.display = 'none';
-    if (setBalanceDeadlineBtn) setBalanceDeadlineBtn.style.display = 'none';
 
     // proof UI
     renderProofSection('deposit', booking, uiKey);
@@ -3834,93 +3745,6 @@ function renderReservationHistory(history) {
             <div class="history-description">${escapeHtml(item.description || item.action || '')}</div>
         </div>
     `).join('');
-}
-
-// 기한 설정 모달 열기
-let currentDeadlineType = null; // 'down', 'second', or 'balance'
-
-function openDeadlineModal(type) {
-    currentDeadlineType = type;
-    const modal = document.getElementById('deadlineModal');
-    const title = document.getElementById('deadlineModalTitle');
-    if (title) {
-        const titles = {
-            'down': 'Down Payment Deadline',
-            'second': 'Second Payment Deadline',
-            'balance': 'Balance Deadline',
-            'deposit': 'Down Payment Deadline' // legacy support
-        };
-        title.textContent = titles[type] || 'Payment Deadline';
-    }
-    if (modal) {
-        modal.style.display = 'block';
-        // 현재 기한이 있으면 표시
-        const inputIds = {
-            'down': 'downPaymentDeadline',
-            'second': 'secondPaymentDeadline',
-            'balance': 'balanceDeadline',
-            'deposit': 'downPaymentDeadline' // legacy support
-        };
-        const currentInput = document.getElementById(inputIds[type]);
-        const deadlineDateEl = document.getElementById('deadlineDate');
-        const deadlineTimeEl = document.getElementById('deadlineTime');
-        // 초기화
-        if (deadlineDateEl) deadlineDateEl.value = '';
-        if (deadlineTimeEl) deadlineTimeEl.value = '';
-
-        if (currentInput && currentInput.value && currentInput.value !== '-') {
-            const dateTime = currentInput.value.split(' ');
-            if (dateTime.length >= 1 && deadlineDateEl) {
-                deadlineDateEl.value = dateTime[0];
-            }
-            if (dateTime.length >= 2 && deadlineTimeEl) {
-                deadlineTimeEl.value = dateTime[1];
-            }
-        }
-    }
-}
-
-// 기한 설정 확인
-async function handleSetDeadline() {
-    if (!currentDeadlineType) return;
-    
-    const date = document.getElementById('deadlineDate').value;
-    const time = document.getElementById('deadlineTime').value;
-    
-    if (!date) {
-        alert('Please select a date.');
-        return;
-    }
-    
-    const deadline = time ? `${date} ${time}` : date;
-    
-    try {
-        const response = await fetch('../backend/api/agent-api.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'setPaymentDeadline',
-                bookingId: currentBookingId,
-                type: currentDeadlineType,
-                deadline: deadline
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert('Payment deadline has been set.');
-            closeModal('deadlineModal');
-            loadReservationDetail();
-        } else {
-            alert('Failed to set payment deadline: ' + result.message);
-        }
-    } catch (error) {
-        console.error('Error setting deadline:', error);
-        alert('An error occurred while setting payment deadline.');
-    }
 }
 
 // 증빙 파일 업로드 (레거시 - deposit/balance)
@@ -4168,9 +3992,8 @@ function getDaysBeforeDeparture(departureDate) {
 function getTravelerEditMode(departureDate) {
     const days = getDaysBeforeDeparture(departureDate);
     if (days === null) return 'locked';
-    if (days >= 60) return 'direct';           // 즉시 수정 (승인 불필요)
-    if (days >= 45) return 'pending_approval';  // 승인 필요
-    return 'locked';                            // 수정 불가
+    if (days >= 34) return 'direct';            // 즉시 수정
+    return 'pending_approval';                  // < 34일: admin 승인 필요
 }
 
 // 하위 호환성 유지
@@ -4208,9 +4031,6 @@ function initEditButtonsIfWithin24Hours(booking) {
         const editTravelerBtn = document.getElementById('editTravelerBtn');
         if (editTravelerBtn) editTravelerBtn.style.display = 'none';
 
-        const editProductBtn = document.getElementById('editProductBtn');
-        if (editProductBtn) editProductBtn.style.display = 'none';
-
         const roomOptionBtn = document.getElementById('room_option_btn');
         if (roomOptionBtn) roomOptionBtn.style.display = 'none';
 
@@ -4231,12 +4051,6 @@ function initEditButtonsIfWithin24Hours(booking) {
         const editBtn = document.getElementById('editCustomerBtn');
         if (viewBtn) viewBtn.style.display = 'inline-flex';
         if (editBtn) editBtn.style.display = 'none';
-    }
-
-    // Product Edit 버튼 - 항상 숨김
-    const editProductBtn = document.getElementById('editProductBtn');
-    if (editProductBtn) {
-        editProductBtn.style.display = 'none';
     }
 
     // Room Option 버튼 - 항상 숨김
@@ -4262,7 +4076,7 @@ function initEditButtonsIfWithin24Hours(booking) {
             editTravelerBtn.disabled = true;
             editTravelerBtn.style.opacity = '0.5';
             editTravelerBtn.style.cursor = 'not-allowed';
-            editTravelerBtn.title = 'Edit is only allowed until 45 days before departure.';
+            editTravelerBtn.title = 'Edit is only allowed until 34 days before departure.';
         }
         editTravelerBtn.onclick = openTravelerEditModal;
     }
@@ -4377,16 +4191,10 @@ let tripRangePicker = null;
 
 /**
  * Edit 버튼 상태 업데이트
- * Product/Customer 버튼은 항상 숨김
+ * Customer 버튼은 항상 숨김
  * Traveler 버튼만 __travelerEditMode + isEditAllowed 기반 제어
  */
 function updateEditButtonsState() {
-    // Product Edit 버튼 - 항상 숨김
-    const editProductBtn = document.getElementById('editProductBtn');
-    if (editProductBtn) {
-        editProductBtn.style.display = 'none';
-    }
-
     // Customer - Edit 숨기고 View만 표시
     const customerEditBtns = document.getElementById('customerEditBtns');
     if (customerEditBtns) {
@@ -4414,191 +4222,9 @@ function updateEditButtonsState() {
             editTravelerBtn.disabled = true;
             editTravelerBtn.style.opacity = '0.5';
             editTravelerBtn.style.cursor = 'not-allowed';
-            editTravelerBtn.title = 'Edit is only allowed until 45 days before departure.';
+            editTravelerBtn.title = 'Edit is only allowed until 34 days before departure.';
         }
     }
-}
-
-/**
- * Product Edit 버튼 클릭 핸들러
- * 관리자 승인 필요 플로우: 예약을 pending_update로 변경하고 신규 예약 정보 입력 페이지로 이동
- */
-async function handleEditProductClick() {
-    // Product Edit은 Agent에서 비활성화
-    alert('Product editing is not available.');
-    return;
-
-    // pending 또는 pending_update 상태에서는 수정 불가
-    const bookingStatus = (currentBookingData?.booking?.bookingStatus || '').toLowerCase();
-    if (bookingStatus === 'pending' || bookingStatus === 'pending_update') {
-        alert(bookingStatus === 'pending'
-            ? 'Editing is not allowed while booking is pending approval.'
-            : 'This booking already has a pending change request.');
-        return;
-    }
-
-    // 확인 다이얼로그 표시 (승인 필요 안내)
-    const confirmMessage = 'A change request requires admin approval.\n\nIf approved:\n- The current reservation will be cancelled\n- A new reservation will be created with the updated information\n\nDo you want to continue?';
-
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-
-    try {
-        // requestProductEdit API 호출 (예약을 pending_update로 변경 + change_request 생성)
-        const response = await fetch('../backend/api/agent-api.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                action: 'requestProductEdit',
-                bookingId: currentBookingId
-            })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // 신규 예약 페이지로 이동 (edit 모드, bookingId 전달)
-            window.location.href = `create-reservation.html?mode=edit&bookingId=${currentBookingId}`;
-        } else {
-            alert('Failed to start product edit: ' + (result.message || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error during edit reservation flow:', error);
-        alert('An error occurred. Please try again.');
-    }
-}
-
-function enterProductEditMode() {
-    // 출발 한달 전이거나 Edit Allowed인 경우에만 수정 가능
-    const canEdit = __canEditBeforeDeparture || isEditAllowed;
-    if (!canEdit) {
-        alert('Edit is only allowed until one month before departure.');
-        return;
-    }
-
-    // 현재 값 백업
-    originalProductData = {
-        packageId: document.getElementById('package_id')?.value || '',
-        productName: document.getElementById('product_name')?.value || '',
-        tripRange: document.getElementById('trip_range')?.value || '',
-        meetTime: document.getElementById('meet_time')?.value || '',
-        meetPlace: document.getElementById('meet_place')?.value || ''
-    };
-    selectedProductForEdit = null;
-
-    // 미팅 시간/장소 필드 활성화
-    const meetTime = document.getElementById('meet_time');
-    const meetPlace = document.getElementById('meet_place');
-    if (meetTime) meetTime.disabled = false;
-    if (meetPlace) meetPlace.disabled = false;
-
-    // 상품 검색 버튼 표시
-    const productSearchBtn = document.getElementById('product_search_btn');
-    if (productSearchBtn) productSearchBtn.style.display = 'inline-flex';
-
-    // 여행 기간 달력 버튼 표시 및 daterangepicker 초기화
-    const tripRangeBtn = document.getElementById('trip_range_btn');
-    const tripRangeInput = document.getElementById('trip_range');
-    if (tripRangeBtn) tripRangeBtn.style.display = 'inline-flex';
-
-    // daterangepicker 초기화
-    if (tripRangeInput && typeof $ !== 'undefined') {
-        // 기존 값에서 날짜 파싱
-        let startDate = moment();
-        let endDate = moment().add(4, 'days');
-        const currentValue = tripRangeInput.value;
-        if (currentValue) {
-            const dateMatch = currentValue.match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
-            if (dateMatch) {
-                startDate = moment(dateMatch[1]);
-                endDate = moment(dateMatch[2]);
-            }
-        }
-
-        $(tripRangeInput).daterangepicker({
-            startDate: startDate,
-            endDate: endDate,
-            locale: {
-                format: 'YYYY-MM-DD',
-                separator: ' - ',
-                applyLabel: 'Apply',
-                cancelLabel: 'Cancel',
-                daysOfWeek: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
-                monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-            },
-            opens: 'left'
-        });
-
-        tripRangePicker = $(tripRangeInput).data('daterangepicker');
-    }
-
-    // 버튼 상태 변경
-    document.getElementById('editProductBtn').style.display = 'none';
-    document.getElementById('saveProductBtn').style.display = 'inline-flex';
-    document.getElementById('cancelProductBtn').style.display = 'inline-flex';
-
-    // 상품 검색 버튼 이벤트
-    if (productSearchBtn) {
-        productSearchBtn.onclick = openProductSearchModal;
-    }
-    if (tripRangeBtn) {
-        tripRangeBtn.onclick = () => {
-            if (tripRangePicker) tripRangePicker.show();
-        };
-    }
-}
-
-function cancelProductEdit() {
-    // 원래 값으로 복원
-    const packageId = document.getElementById('package_id');
-    const productName = document.getElementById('product_name');
-    const tripRange = document.getElementById('trip_range');
-    const meetTime = document.getElementById('meet_time');
-    const meetPlace = document.getElementById('meet_place');
-
-    if (packageId) packageId.value = originalProductData.packageId || '';
-    if (productName) productName.value = originalProductData.productName || '';
-    if (tripRange) tripRange.value = originalProductData.tripRange || '';
-    if (meetTime) meetTime.value = originalProductData.meetTime || '';
-    if (meetPlace) meetPlace.value = originalProductData.meetPlace || '';
-
-    selectedProductForEdit = null;
-    endProductEditMode();
-}
-
-function endProductEditMode() {
-    // 입력 필드 비활성화
-    const meetTime = document.getElementById('meet_time');
-    const meetPlace = document.getElementById('meet_place');
-
-    if (meetTime) meetTime.disabled = true;
-    if (meetPlace) meetPlace.disabled = true;
-
-    // 상품 검색 버튼 숨김
-    const productSearchBtn = document.getElementById('product_search_btn');
-    if (productSearchBtn) productSearchBtn.style.display = 'none';
-
-    // 여행 기간 달력 버튼 숨김
-    const tripRangeBtn = document.getElementById('trip_range_btn');
-    if (tripRangeBtn) tripRangeBtn.style.display = 'none';
-
-    // daterangepicker 제거
-    const tripRangeInput = document.getElementById('trip_range');
-    if (tripRangeInput && typeof $ !== 'undefined') {
-        try {
-            $(tripRangeInput).data('daterangepicker')?.remove();
-        } catch (e) {}
-    }
-    tripRangePicker = null;
-
-    // 버튼 상태 복원
-    document.getElementById('editProductBtn').style.display = 'inline-flex';
-    document.getElementById('saveProductBtn').style.display = 'none';
-    document.getElementById('cancelProductBtn').style.display = 'none';
 }
 
 // 상품 검색 모달
@@ -4710,65 +4336,6 @@ function decodeHtmlEntities(str) {
     const txt = document.createElement('textarea');
     txt.innerHTML = str;
     return txt.value;
-}
-
-async function saveProductInfo() {
-    try {
-        const packageId = document.getElementById('package_id')?.value || '';
-        const productName = document.getElementById('product_name')?.value || '';
-        const tripRange = document.getElementById('trip_range')?.value || '';
-        const meetTime = document.getElementById('meet_time')?.value || '';
-        const meetPlace = document.getElementById('meet_place')?.value || '';
-
-        // 여행 기간 파싱 (YYYY-MM-DD - YYYY-MM-DD 형식)
-        let departureDate = '';
-        let returnDate = '';
-        if (tripRange) {
-            const dateMatch = tripRange.match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
-            if (dateMatch) {
-                departureDate = dateMatch[1];
-                returnDate = dateMatch[2];
-            }
-        }
-
-        const formData = new FormData();
-        formData.append('action', 'updateProductInfo');
-        formData.append('bookingId', currentBookingId);
-        if (packageId) formData.append('packageId', packageId);
-        formData.append('packageName', productName);
-        formData.append('departureDate', departureDate);
-        formData.append('returnDate', returnDate);
-        formData.append('meetingTime', meetTime);
-        formData.append('meetingPlace', meetPlace);
-
-        const response = await fetch('../backend/api/agent-api.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // pending_update 응답 처리
-            if (result.data?.status === 'pending_update') {
-                alert('Change request submitted. Waiting for admin approval.');
-                endProductEditMode();
-                await loadReservationDetail();
-                return;
-            }
-
-            alert('Product information saved.');
-            endProductEditMode();
-            // 데이터 새로고침
-            await loadReservationDetail();
-        } else {
-            alert('Failed to save: ' + (result.message || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Save product info error:', error);
-        alert('An error occurred while saving.');
-    }
 }
 
 // ============================================
@@ -5715,17 +5282,15 @@ async function submitChanges() {
 
             const travelerResult = await travelerResponse.json();
             if (!travelerResult.success) {
-                // pending_update 응답 처리
-                if (travelerResult.data?.status === 'pending_update') {
-                    alert('Change request submitted. Waiting for admin approval.');
-                    __pendingTravelers = null;
-                    closeModal('change-summary-modal');
-                    // 리스트 페이지로 리다이렉션
-                    window.location.href = 'reservation-list.html';
-                    return;
-                }
                 alert('Failed to update travelers: ' + (travelerResult.message || 'Unknown error'));
                 if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+
+            // pending_update 응답 처리 (admin 승인 필요)
+            if (travelerResult.data?.status === 'pending_update') {
+                alert('Change request submitted. Waiting for admin approval.\n\n변경 요청이 제출되었습니다. 관리자 승인을 기다려 주세요.');
+                window.location.reload();
                 return;
             }
 

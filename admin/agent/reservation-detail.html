@@ -111,8 +111,7 @@
 
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">상품 및 예약 정보</p>
-				<a href="../common/reservation-location.html" target="_blank" id="meetingLocationLink"><span data-lan-eng="Meeting location">집합 위치</span><img src="../image/linkout.svg" alt=""></a>
-				<a href="../common/reservation-notices.html" target="_blank" id="announcementsLink"><span data-lan-eng="Announcements">공지사항</span><img src="../image/linkout.svg" alt=""></a>
+				<a href="#" id="messagesLink" style="cursor:pointer;"><span data-lan-eng="Inquiry to Admin">Inquiry to Admin</span><img src="../image/linkout.svg" alt=""></a>
 			</div>
 
 			<!-- 예약 거절 사유 알림 -->
@@ -130,11 +129,6 @@
 
 			<div class="jw-cols jw-between jw-mgt32">
 				<h2 class="section-title" id="section-product" data-lan-eng="Product Information">상품 정보</h2>
-				<div class="product-edit-btns" id="productEditBtns">
-					<button type="button" id="editProductBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
-					<button type="button" id="saveProductBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
-					<button type="button" id="cancelProductBtn" class="jw-button typeD" style="display:none;" data-lan-eng="Cancel">Cancel</button>
-				</div>
 			</div>
 			<div class="card-panel jw-mgt16" id="productInfoCard">
 				<div class="grid-wrap">
@@ -813,34 +807,6 @@
 		</div>
 	</div>
 
-	<!-- 기한 설정 모달 -->
-	<div id="deadlineModal" class="modal" style="display:none;">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h3 id="deadlineModalTitle">입금 기한 설정</h3>
-				<button type="button" class="modal-close" onclick="closeModal('deadlineModal')">
-					<img src="../image/button-close2.svg" alt="">
-				</button>
-			</div>
-			<div class="modal-body">
-				<div class="grid-wrap">
-					<div class="grid-item">
-						<label class="label-name">날짜</label>
-						<input type="date" id="deadlineDate" class="form-control">
-					</div>
-					<div class="grid-item">
-						<label class="label-name">시간</label>
-						<input type="time" id="deadlineTime" class="form-control">
-					</div>
-				</div>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="jw-button typeB" id="confirmDeadlineBtn">확인</button>
-				<button type="button" class="jw-button typeD" onclick="closeModal('deadlineModal')">취소</button>
-			</div>
-		</div>
-	</div>
-
 	<!-- 상품 검색 모달 -->
 	<div id="product-search-modal" class="modal" style="display: none;">
 		<div class="modal-content modal-large">
@@ -1119,6 +1085,25 @@
 				const noti = document.getElementById('announcementsLink');
 				if (loc) loc.href = `../common/reservation-location.html?bookingId=${encodeURIComponent(bookingId)}`;
 				if (noti) noti.href = `../common/reservation-notices.html?bookingId=${encodeURIComponent(bookingId)}`;
+
+				const msgLink = document.getElementById('messagesLink');
+				if (msgLink) {
+					msgLink.addEventListener('click', async function(e) {
+						e.preventDefault();
+						try {
+							const res = await fetch(`../backend/api/agent-api.php?action=getMessageThreadByBookingId&bookingId=${encodeURIComponent(bookingId)}`, { credentials: 'same-origin' });
+							const json = await res.json();
+							if (json.success && json.data.exists) {
+								location.href = `message-detail.html?id=${json.data.threadId}`;
+							} else {
+								location.href = `message-detail.html?new=true&bookingId=${encodeURIComponent(bookingId)}`;
+							}
+						} catch (err) {
+							console.error(err);
+							location.href = `message-detail.html?new=true&bookingId=${encodeURIComponent(bookingId)}`;
+						}
+					});
+				}
 			} catch (_) {}
 		})();
 	</script>
