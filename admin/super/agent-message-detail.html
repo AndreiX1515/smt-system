@@ -13,6 +13,11 @@
 	<link rel="stylesheet" href="../css/a_components.css">
 	<link rel="stylesheet" href="../css/a_contents.css">
 	<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+	<style>
+		.message-timeline { height: 600px !important; max-height: 600px !important; }
+		#replyEditor { height: 100px !important; max-height: 100px !important; overflow: hidden !important; }
+		#replyEditor .ql-editor { height: 100px !important; max-height: 100px !important; overflow-y: auto !important; min-height: 0 !important; }
+	</style>
 </head>
 <body>
 	<header class="layout-header"></header>
@@ -42,7 +47,7 @@
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
 					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Agent Name">Agent Name</label>
+						<label class="label-name" data-lan-eng="Agency Name">Agency Name</label>
 						<input type="text" class="form-control" id="agentName" disabled>
 					</div>
 					<div class="grid-item">
@@ -58,8 +63,8 @@
 						<input type="text" class="form-control" id="threadSubjectField" disabled>
 					</div>
 					<div class="grid-item" id="bookingIdField" style="display:none;">
-						<label class="label-name" data-lan-eng="Booking ID">Booking ID</label>
-						<a id="threadBookingIdLink" href="#" style="display:inline-block; color:#2563EB; text-decoration:underline; padding:8px 0; font-size:14px;"></a>
+						<label class="label-name">Submitted Booking ID</label>
+						<a id="threadBookingIdLink" href="#" style="display:flex; align-items:center; height:46px; padding:0 12px; border-radius:12px; border:1px solid #D4D4D4; background:#F3F3F3; color:#2563EB; text-decoration:underline; font-size:14px;"></a>
 					</div>
 				</div>
 			</div>
@@ -100,7 +105,7 @@
 			<!-- Input Area -->
 			<div class="jw-mgt16" id="inputSection">
 				<div class="message-input-area">
-					<div id="replyEditor" style="height:120px;"></div>
+					<div id="replyEditor"></div>
 					<div class="message-file-preview" id="filePreview"></div>
 					<div class="message-input-actions">
 						<div class="file-attach-wrap">
@@ -206,7 +211,24 @@
 				document.getElementById('threadSubjectField').value = thread.subject || '';
 				document.getElementById('agentName').value = thread.agentName || '';
 				document.getElementById('agentManager').value = thread.managerName || '';
-				const catLabels = { general: 'General', product: 'Product', booking: 'Booking', payment: 'Payment', cancellation: 'Cancellation', other: 'Other' };
+				const catLabels = {
+					general: 'General', product: 'Product', booking: 'Booking',
+					payment: 'Payment', cancellation: 'Cancellation', other: 'Other',
+					booking_new: 'Booking Inquiry (New)',
+					booking_change: 'Booking Change',
+					booking_cancel: 'Booking Cancellation & Refund',
+					product_detail: 'Product Details',
+					product_price: 'Price Inquiry',
+					product_promo: 'Promotion / Discount',
+					payment_method: 'Payment Method',
+					payment_confirm: 'Payment Confirmation',
+					payment_receipt: 'Receipt / Invoice',
+					travel_visa: 'Visa / Passport',
+					travel_insurance: 'Travel Insurance',
+					local_hotel: 'Hotel / Accommodation',
+					local_transport: 'Transportation',
+					local_tour: 'Local Tour / Activity'
+				};
 				document.getElementById('threadCategory').value = catLabels[thread.category] || thread.category || '-';
 				document.getElementById('statusSelect').value = thread.status || 'open';
 
@@ -286,6 +308,24 @@
 					alert(json.message || 'Failed');
 				}
 			} catch (e) { alert('Error: ' + e.message); }
+		}
+
+		function fixEditorHeight() {
+			const ct = document.getElementById('replyEditor');
+			const ed = ct ? ct.querySelector('.ql-editor') : null;
+			console.log('[fixEditorHeight] container:', ct, 'editor:', ed);
+			if (ct) {
+				ct.style.setProperty('height', '100px', 'important');
+				ct.style.setProperty('min-height', '100px', 'important');
+				ct.style.setProperty('max-height', '100px', 'important');
+				ct.style.setProperty('overflow', 'hidden', 'important');
+			}
+			if (ed) {
+				ed.style.setProperty('height', '100px', 'important');
+				ed.style.setProperty('min-height', '0', 'important');
+				ed.style.setProperty('max-height', '100px', 'important');
+				ed.style.setProperty('overflow-y', 'auto', 'important');
+			}
 		}
 
 		function updateFilePreview() {
@@ -400,6 +440,7 @@
 						theme: 'snow',
 						modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
 					});
+					fixEditorHeight();
 
 					document.getElementById('sendBtn').addEventListener('click', handleSendNew);
 					document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
@@ -418,6 +459,7 @@
 					theme: 'snow',
 					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
 				});
+				fixEditorHeight();
 
 				document.getElementById('sendBtn').addEventListener('click', handleSend);
 				document.getElementById('saveStatusBtn').addEventListener('click', handleSaveStatus);

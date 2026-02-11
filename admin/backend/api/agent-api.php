@@ -12156,7 +12156,15 @@ function createAgentMessageThread($conn, $input) {
         if ($subject === '') send_error_response('Subject is required');
         if ($content === '' || $content === '<p><br></p>') send_error_response('Message content is required');
 
-        if (!in_array($category, ['general','product','booking','payment','cancellation','other'])) {
+        $validCategories = [
+            'general','product','booking','payment','cancellation','other',
+            'booking_new','booking_change','booking_cancel',
+            'product_detail','product_price','product_promo',
+            'payment_method','payment_confirm','payment_receipt',
+            'travel_visa','travel_insurance',
+            'local_hotel','local_transport','local_tour'
+        ];
+        if (!in_array($category, $validCategories)) {
             $category = 'general';
         }
 

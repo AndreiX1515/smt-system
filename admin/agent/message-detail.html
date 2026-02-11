@@ -11,6 +11,11 @@
 	<link rel="stylesheet" href="../css/a_contents.css">
 	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
 	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+	<style>
+		.message-timeline { height: 600px !important; max-height: 600px !important; }
+		#replyEditor { height: 100px !important; max-height: 100px !important; overflow: hidden !important; }
+		#replyEditor .ql-editor { height: 100px !important; max-height: 100px !important; overflow-y: auto !important; min-height: 0 !important; }
+	</style>
 </head>
 <body>
 	<header class="layout-header"></header>
@@ -32,17 +37,27 @@
 					<div class="grid-wrap">
 						<div class="grid-item">
 							<label class="label-name" data-lan-eng="Category">Category</label>
-							<select class="select" id="newCategory">
-								<option value="general">General</option>
-								<option value="product">Product</option>
+							<select class="select" id="newCategoryMain">
+								<option value="">-- Select Category --</option>
 								<option value="booking">Booking</option>
+								<option value="product">Product</option>
 								<option value="payment">Payment</option>
-								<option value="cancellation">Cancellation</option>
-								<option value="other">Other</option>
+								<option value="travel">Travel Preparation</option>
+								<option value="local">Local Info</option>
 							</select>
 						</div>
-						<div class="grid-item"></div>
-						<div class="grid-item"></div>
+						<div class="grid-item">
+							<label class="label-name">Sub Category</label>
+							<select class="select" id="newCategorySub" disabled>
+								<option value="">-- Select Sub Category --</option>
+							</select>
+						</div>
+						<div class="grid-item" id="newBookingSelectorWrap" style="display:none;">
+							<label class="label-name">Booking</label>
+							<select class="select" id="newBookingSelector">
+								<option value="">Loading...</option>
+							</select>
+						</div>
 						<div class="grid-item col-span-3">
 							<label class="label-name" data-lan-eng="Subject">Subject</label>
 							<input type="text" class="form-control" id="newSubject" placeholder="Enter subject">
@@ -73,29 +88,42 @@
 							<label class="label-name" data-lan-eng="Status">Status</label>
 							<input type="text" class="form-control" id="threadStatusField" disabled>
 						</div>
-						<div class="grid-item">
+						<div class="grid-item" id="threadCategoryWrap">
 							<label class="label-name" data-lan-eng="Category">Category</label>
 							<input type="text" class="form-control" id="threadCategory" disabled>
-							<select id="threadCategorySelect" style="display:none; height:46px; border-radius:10px; border:1px solid #D4D4D4; padding:0 12px; background:#fff; font-size:14px; width:100%;">
-								<option value="general">General</option>
-								<option value="product">Product</option>
+							<!-- New mode: main category select -->
+							<select id="threadCategoryMainSelect" style="display:none; height:46px; border-radius:10px; border:1px solid #D4D4D4; padding:0 12px; background:#fff; font-size:14px; width:100%; appearance:auto;">
+								<option value="">-- Select Category --</option>
 								<option value="booking">Booking</option>
+								<option value="product">Product</option>
 								<option value="payment">Payment</option>
-								<option value="cancellation">Cancellation</option>
-								<option value="other">Other</option>
+								<option value="travel">Travel Preparation</option>
+								<option value="local">Local Info</option>
+							</select>
+						</div>
+						<div class="grid-item" id="threadSubCategoryWrap" style="display:none;">
+							<label class="label-name">Sub Category</label>
+							<select id="threadSubCategorySelect" style="display:block; height:46px; border-radius:10px; border:1px solid #D4D4D4; padding:0 12px; background:#fff; font-size:14px; width:100%; appearance:auto;" disabled>
+								<option value="">-- Select Sub Category --</option>
 							</select>
 						</div>
 						<div class="grid-item">
 							<label class="label-name" data-lan-eng="Date">Date</label>
 							<input type="text" class="form-control" id="threadDate" disabled>
 						</div>
+						<div class="grid-item" id="threadBookingSelectorWrap" style="display:none;">
+							<label class="label-name">Booking</label>
+							<select id="threadBookingSelector" style="display:block; height:46px; border-radius:10px; border:1px solid #D4D4D4; padding:0 12px; background:#fff; font-size:14px; width:100%; appearance:auto;">
+								<option value="">Loading...</option>
+							</select>
+						</div>
+						<div class="grid-item" id="threadBookingIdWrap" style="display:none;">
+							<label class="label-name">Submitted Booking ID</label>
+							<a id="threadBookingIdLink" href="#" style="display:flex; align-items:center; height:46px; padding:0 12px; border-radius:12px; border:1px solid #D4D4D4; background:#F3F3F3; color:#2563EB; text-decoration:underline; font-size:14px;"></a>
+						</div>
 						<div class="grid-item col-span-3">
 							<label class="label-name" data-lan-eng="Subject">Subject</label>
 							<input type="text" class="form-control" id="threadSubjectField" disabled>
-						</div>
-						<div class="grid-item" id="threadBookingIdWrap" style="display:none;">
-							<label class="label-name" data-lan-eng="Booking ID">Booking ID</label>
-							<a id="threadBookingIdLink" href="#" style="display:inline-block; color:#2563EB; text-decoration:underline; padding:8px 0; font-size:14px;"></a>
 						</div>
 					</div>
 				</div>
@@ -110,7 +138,7 @@
 				<!-- Input Area -->
 				<div class="jw-mgt16" id="inputSection">
 					<div class="message-input-area">
-						<div id="replyEditor" style="height:120px;"></div>
+						<div id="replyEditor"></div>
 						<div class="message-file-preview" id="filePreview"></div>
 						<div class="message-input-actions">
 							<div class="file-attach-wrap">
@@ -151,7 +179,98 @@
 		function formatDate(dt) { return dt ? dt.split(' ')[0] : ''; }
 
 		const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
-		const categoryLabels = { general: 'General', product: 'Product', booking: 'Booking', payment: 'Payment', cancellation: 'Cancellation', other: 'Other' };
+		const categoryLabels = {
+			general: 'General', product: 'Product', booking: 'Booking',
+			payment: 'Payment', cancellation: 'Cancellation', other: 'Other',
+			booking_new: 'Booking Inquiry (New)',
+			booking_change: 'Booking Change',
+			booking_cancel: 'Booking Cancellation & Refund',
+			product_detail: 'Product Details',
+			product_price: 'Price Inquiry',
+			product_promo: 'Promotion / Discount',
+			payment_method: 'Payment Method',
+			payment_confirm: 'Payment Confirmation',
+			payment_receipt: 'Receipt / Invoice',
+			travel_visa: 'Visa / Passport',
+			travel_insurance: 'Travel Insurance',
+			local_hotel: 'Hotel / Accommodation',
+			local_transport: 'Transportation',
+			local_tour: 'Local Tour / Activity'
+		};
+
+		const categoryTree = {
+			booking: {
+				label: 'Booking',
+				subs: [
+					{ value: 'booking_new', label: 'Booking Inquiry (New Booking)' },
+					{ value: 'booking_change', label: 'Booking Change (Date, Guests, Product)' },
+					{ value: 'booking_cancel', label: 'Booking Cancellation & Refund' }
+				]
+			},
+			product: {
+				label: 'Product',
+				subs: [
+					{ value: 'product_detail', label: 'Product Details (Itinerary, Inclusions)' },
+					{ value: 'product_price', label: 'Price Inquiry' },
+					{ value: 'product_promo', label: 'Promotion / Discount Inquiry' }
+				]
+			},
+			payment: {
+				label: 'Payment',
+				subs: [
+					{ value: 'payment_method', label: 'Payment Method' },
+					{ value: 'payment_confirm', label: 'Payment Confirmation' },
+					{ value: 'payment_receipt', label: 'Receipt / Invoice Issuance' }
+				]
+			},
+			travel: {
+				label: 'Travel Preparation',
+				subs: [
+					{ value: 'travel_visa', label: 'Visa / Passport' },
+					{ value: 'travel_insurance', label: 'Travel Insurance' }
+				]
+			},
+			local: {
+				label: 'Local Info',
+				subs: [
+					{ value: 'local_hotel', label: 'Hotel / Accommodation' },
+					{ value: 'local_transport', label: 'Transportation' },
+					{ value: 'local_tour', label: 'Local Tour / Activity' }
+				]
+			}
+		};
+
+		function populateSubCategory(mainSelect, subSelect, mainValue) {
+			subSelect.innerHTML = '<option value="">-- Select Sub Category --</option>';
+			if (mainValue && categoryTree[mainValue]) {
+				categoryTree[mainValue].subs.forEach(s => {
+					subSelect.innerHTML += `<option value="${s.value}">${s.label}</option>`;
+				});
+				subSelect.disabled = false;
+			} else {
+				subSelect.disabled = true;
+			}
+		}
+
+		async function loadBookingOptions(selectEl) {
+			try {
+				const res = await fetch('../backend/api/agent-api.php?action=getReservations&limit=100', { credentials: 'same-origin' });
+				const json = await res.json();
+				selectEl.innerHTML = '<option value="">None</option>';
+				const list = json.success && json.data ? (json.data.reservations || json.data) : [];
+				if (list && list.length) {
+					list.forEach(b => {
+						const id = b.bookingId || b.id;
+						const pkg = b.packageName || b.productName || '';
+						const dep = b.departureDate || '';
+						selectEl.innerHTML += `<option value="${id}">[${id}] ${pkg} - ${dep}</option>`;
+					});
+				}
+			} catch (e) {
+				console.error('Failed to load bookings:', e);
+				selectEl.innerHTML = '<option value="">None</option>';
+			}
+		}
 
 		function renderMessages(messages) {
 			const timeline = document.getElementById('messageTimeline');
@@ -269,20 +388,31 @@
 		let currentBookingId = null;
 
 		async function handleSendNew() {
+			const mainCat = document.getElementById('threadCategoryMainSelect').value;
+			const subCat = document.getElementById('threadSubCategorySelect').value;
 			const subject = document.getElementById('threadSubjectField').value.trim();
 			const content = replyEditor ? replyEditor.root.innerHTML : '';
-			const category = document.getElementById('threadCategorySelect').value;
 
+			if (!mainCat) return alert('Please select a category.');
+			if (!subCat) return alert('Please select a sub category.');
 			if (!subject) return alert('Please enter a subject.');
 			if ((!content || content.trim() === '' || content === '<p><br></p>') && !selectedFiles.length) {
 				return alert('Please enter a message.');
+			}
+
+			// For booking category, booking selector must have a selection (empty string = None, which is OK)
+			if (mainCat === 'booking') {
+				const bookingSel = document.getElementById('threadBookingSelector');
+				if (bookingSel && bookingSel.selectedIndex < 0) {
+					return alert('Please select a booking or choose "None".');
+				}
 			}
 
 			const formData = new FormData();
 			formData.append('action', 'createMessageThread');
 			formData.append('subject', subject);
 			formData.append('content', content);
-			formData.append('category', category);
+			formData.append('category', subCat);
 			if (currentBookingId) formData.append('bookingId', currentBookingId);
 			selectedFiles.forEach(f => formData.append('files[]', f));
 
@@ -317,6 +447,24 @@
 
 		function removeFile(idx) { selectedFiles.splice(idx, 1); updateFilePreview(); }
 
+		function fixEditorHeight() {
+			const ct = document.getElementById('replyEditor');
+			const ed = ct ? ct.querySelector('.ql-editor') : null;
+			console.log('[fixEditorHeight] container:', ct, 'editor:', ed);
+			if (ct) {
+				ct.style.setProperty('height', '100px', 'important');
+				ct.style.setProperty('min-height', '100px', 'important');
+				ct.style.setProperty('max-height', '100px', 'important');
+				ct.style.setProperty('overflow', 'hidden', 'important');
+			}
+			if (ed) {
+				ed.style.setProperty('height', '100px', 'important');
+				ed.style.setProperty('min-height', '0', 'important');
+				ed.style.setProperty('max-height', '100px', 'important');
+				ed.style.setProperty('overflow-y', 'auto', 'important');
+			}
+		}
+
 		document.addEventListener('DOMContentLoaded', async () => {
 			const params = new URLSearchParams(location.search);
 			const isNew = params.get('new') === 'true';
@@ -337,18 +485,75 @@
 				subjectField.disabled = false;
 				subjectField.placeholder = 'Enter subject';
 
-				// Show category select instead of disabled input
+				// Hide single category input, show main + sub category selects
 				document.getElementById('threadCategory').style.display = 'none';
-				const catSelect = document.getElementById('threadCategorySelect');
-				catSelect.style.display = '';
+				const mainSelect = document.getElementById('threadCategoryMainSelect');
+				const subSelect = document.getElementById('threadSubCategorySelect');
+				mainSelect.style.display = 'block';
+				document.getElementById('threadSubCategoryWrap').style.display = '';
 
-				// Hide status and date (not yet created)
+				// Main category change handler
+				mainSelect.addEventListener('change', async () => {
+					const val = mainSelect.value;
+					populateSubCategory(mainSelect, subSelect, val);
+
+					// Booking selector logic
+					const bookingWrap = document.getElementById('threadBookingSelectorWrap');
+					const bookingSel = document.getElementById('threadBookingSelector');
+					if (val === 'booking') {
+						bookingWrap.style.display = '';
+						await loadBookingOptions(bookingSel);
+					} else {
+						bookingWrap.style.display = 'none';
+						currentBookingId = null;
+					}
+				});
+
+				// Booking selector change handler
+				document.getElementById('threadBookingSelector').addEventListener('change', function() {
+					const val = this.value;
+					if (val) {
+						currentBookingId = val;
+						// Add bookingId prefix to subject if not already there
+						const subj = subjectField.value;
+						const prefix = `[${val}] `;
+						if (!subj.startsWith(prefix)) {
+							// Remove any existing [xxxx] prefix
+							subjectField.value = prefix + subj.replace(/^\[.*?\]\s*/, '');
+						}
+					} else {
+						currentBookingId = null;
+						// Remove any [xxxx] prefix from subject
+						subjectField.value = subjectField.value.replace(/^\[.*?\]\s*/, '');
+					}
+
+					// Show/hide bookingId link
+					const linkWrap = document.getElementById('threadBookingIdWrap');
+					const link = document.getElementById('threadBookingIdLink');
+					if (val && linkWrap && link) {
+						link.textContent = val;
+						link.href = `reservation-detail.html?bookingId=${encodeURIComponent(val)}`;
+						linkWrap.style.display = '';
+					} else if (linkWrap) {
+						linkWrap.style.display = 'none';
+					}
+				});
+
+				// Status and date
 				document.getElementById('threadStatusField').value = 'New';
-				document.getElementById('threadDate').value = '-';
+				document.getElementById('threadDate').value = new Date().toISOString().split('T')[0];
 
-				// Auto-set category and subject if bookingId is present
+				// Auto-set category and subject if bookingId is present from URL
 				if (currentBookingId) {
-					catSelect.value = 'booking';
+					mainSelect.value = 'booking';
+					populateSubCategory(mainSelect, subSelect, 'booking');
+
+					// Show and load booking selector
+					document.getElementById('threadBookingSelectorWrap').style.display = '';
+					const bookingSel = document.getElementById('threadBookingSelector');
+					await loadBookingOptions(bookingSel);
+					bookingSel.value = currentBookingId;
+
 					subjectField.value = `[${currentBookingId}] `;
 
 					// Show bookingId link
@@ -366,6 +571,7 @@
 					theme: 'snow',
 					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
 				});
+				fixEditorHeight();
 
 				document.getElementById('sendBtn').addEventListener('click', handleSendNew);
 				document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
@@ -381,6 +587,7 @@
 					theme: 'snow',
 					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
 				});
+				fixEditorHeight();
 
 				document.getElementById('sendBtn').addEventListener('click', handleSend);
 				document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
