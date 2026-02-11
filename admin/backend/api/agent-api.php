@@ -2831,7 +2831,7 @@ function createReservation($conn, $input) {
                     continue;
                 }
                 if (strpos($type, 'infant') !== false || strpos($type, 'baby') !== false || strpos($type, '유아') !== false) {
-                    if (!empty($tr['infantSeat'])) {
+                    if (filter_var($tr['infantSeat'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                         $baseAmount += (float)$infantSeatPrice;
                     } else {
                         $baseAmount += (float)$infantPrice;
@@ -3647,7 +3647,7 @@ function createReservation($conn, $input) {
             // infantsWithSeat 동기화: 좌석 점유 인팬트 수 계산 후 bookings 업데이트
             $infantsWithSeat = 0;
             foreach ($input['travelers'] as $t) {
-                if (strtolower($t['type'] ?? '') === 'infant' && !empty($t['infantSeat'])) {
+                if (strtolower($t['type'] ?? '') === 'infant' && filter_var($t['infantSeat'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                     $infantsWithSeat++;
                 }
             }
@@ -10554,7 +10554,7 @@ function updateTravelerInfo($conn, $input) {
                 // infantsWithSeat 계산
                 $newInfantsWithSeat = 0;
                 foreach ($travelers as $t) {
-                    if (strtolower($t['type'] ?? '') === 'infant' && !empty($t['infantSeat'])) {
+                    if (strtolower($t['type'] ?? '') === 'infant' && filter_var($t['infantSeat'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                         $newInfantsWithSeat++;
                     }
                 }
@@ -10858,7 +10858,7 @@ function updateTravelerInfo($conn, $input) {
         // infantsWithSeat 동기화: 좌석 점유 인팬트 수 계산 후 bookings 업데이트
         $infantsWithSeatCount = 0;
         foreach ($travelers as $t) {
-            if (strtolower($t['type'] ?? $t['travelerType'] ?? '') === 'infant' && !empty($t['infantSeat'])) {
+            if (strtolower($t['type'] ?? $t['travelerType'] ?? '') === 'infant' && filter_var($t['infantSeat'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 $infantsWithSeatCount++;
             }
         }

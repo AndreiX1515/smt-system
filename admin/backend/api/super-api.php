@@ -15150,7 +15150,7 @@ function approveB2BBooking($conn, $input) {
                 $newInfantsWithSeat = 0;
                 foreach ($pendingTravelers as $t) {
                     $tType = strtolower(trim($t['travelerType'] ?? $t['type'] ?? ''));
-                    if ($tType === 'infant' && !empty($t['infantSeat'])) {
+                    if ($tType === 'infant' && filter_var($t['infantSeat'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                         $newInfantsWithSeat++;
                     }
                 }
