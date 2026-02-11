@@ -21,18 +21,28 @@
 			<h1 class="page-title" data-lan-eng="Send to Agent">Send to Agent</h1>
 
 			<div class="card-panel jw-mgt32">
+				<!-- Search Area -->
+				<div class="search-form jw-mgb16" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:16px; background:#F9FAFB; border-radius:10px;">
+					<input type="text" class="form-control" id="searchKeyword" placeholder="Agent name or Subject" style="flex:1; min-width:180px; height:40px; font-size:13px;">
+					<input type="date" class="form-control" id="dateFrom" style="width:150px; height:40px; font-size:13px;">
+					<span style="color:#999; font-size:13px;">~</span>
+					<input type="date" class="form-control" id="dateTo" style="width:150px; height:40px; font-size:13px;">
+					<select class="select" id="statusFilter">
+						<option value="" data-lan-eng="All Status">All Status</option>
+						<option value="open" data-lan-eng="Open">Open</option>
+						<option value="in_progress" data-lan-eng="In Progress">In Progress</option>
+						<option value="resolved" data-lan-eng="Resolved">Resolved</option>
+						<option value="closed" data-lan-eng="Closed">Closed</option>
+					</select>
+					<button type="button" class="jw-button typeB" id="searchBtn" style="height:40px; min-width:80px;" data-lan-eng="Search">Search</button>
+					<button type="button" class="jw-button typeF" id="resetBtn" style="height:40px; min-width:60px;" data-lan-eng="Reset">Reset</button>
+				</div>
+
 				<div class="list-header">
 					<div class="result-count">
 						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
 					</div>
 					<form class="search-form" id="filterForm">
-						<select class="select" id="statusFilter" onchange="applyFilters()">
-							<option value="" data-lan-eng="All Status">All Status</option>
-							<option value="open" data-lan-eng="Open">Open</option>
-							<option value="in_progress" data-lan-eng="In Progress">In Progress</option>
-							<option value="resolved" data-lan-eng="Resolved">Resolved</option>
-							<option value="closed" data-lan-eng="Closed">Closed</option>
-						</select>
 						<select class="select" id="sortFilter" onchange="applyFilters()">
 							<option value="latest" data-lan-eng="Latest">Latest</option>
 							<option value="oldest" data-lan-eng="Oldest">Oldest</option>
@@ -142,7 +152,7 @@
 
 		let currentPage = 1;
 		const limit = 10;
-		let currentFilters = { status: '', sortOrder: 'latest' };
+		let currentFilters = { status: '', sortOrder: 'latest', search: '', dateFrom: '', dateTo: '' };
 		let modalEditor = null;
 
 		function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -174,6 +184,26 @@
 		function applyFilters() {
 			currentFilters.status = document.getElementById('statusFilter').value;
 			currentFilters.sortOrder = document.getElementById('sortFilter').value;
+			currentFilters.search = document.getElementById('searchKeyword').value.trim();
+			currentFilters.dateFrom = document.getElementById('dateFrom').value;
+			currentFilters.dateTo = document.getElementById('dateTo').value;
+			currentPage = 1;
+			loadThreads();
+		}
+
+		function resetFilters() {
+			document.getElementById('searchKeyword').value = '';
+			document.getElementById('dateFrom').value = '';
+			document.getElementById('dateTo').value = '';
+			// Reset status select (custom jw-select)
+			const statusSel = document.getElementById('statusFilter');
+			statusSel.value = '';
+			const statusWrap = statusSel.closest('.jw-select');
+			if (statusWrap) {
+				const box = statusWrap.querySelector('.jw-selected');
+				if (box) box.textContent = statusSel.options[0].textContent;
+			}
+			currentFilters = { status: '', sortOrder: currentFilters.sortOrder, search: '', dateFrom: '', dateTo: '' };
 			currentPage = 1;
 			loadThreads();
 		}
@@ -188,6 +218,9 @@
 					sortOrder: currentFilters.sortOrder
 				});
 				if (currentFilters.status) params.append('status', currentFilters.status);
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.dateFrom) params.append('dateFrom', currentFilters.dateFrom);
+				if (currentFilters.dateTo) params.append('dateTo', currentFilters.dateTo);
 
 				const res = await fetch(`../backend/api/super-api.php?${params}`, { credentials: 'same-origin' });
 				if (res.status === 401) { location.href = '../index.html'; return; }
@@ -360,6 +393,9 @@
 				await loadThreads();
 			} catch (e) { console.error(e); location.href = '../index.html'; }
 
+			document.getElementById('searchBtn').addEventListener('click', applyFilters);
+			document.getElementById('resetBtn').addEventListener('click', resetFilters);
+			document.getElementById('searchKeyword').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyFilters(); } });
 			document.getElementById('newMessageBtn').addEventListener('click', openModal);
 			document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 			document.getElementById('cancelModalBtn').addEventListener('click', closeModal);

@@ -19463,6 +19463,18 @@ function getMessageThreads($conn, $input) {
             $params[] = $searchLike;
             $types .= 'ss';
         }
+        $dateFrom = trim($input['dateFrom'] ?? '');
+        $dateTo = trim($input['dateTo'] ?? '');
+        if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $where[] = 't.createdAt >= ?';
+            $params[] = $dateFrom . ' 00:00:00';
+            $types .= 's';
+        }
+        if ($dateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $where[] = 't.createdAt <= ?';
+            $params[] = $dateTo . ' 23:59:59';
+            $types .= 's';
+        }
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
