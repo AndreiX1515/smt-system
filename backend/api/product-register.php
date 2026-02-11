@@ -1571,7 +1571,7 @@ try {
                              SELECT 1 FROM bookings b
                              WHERE b.packageId = package_available_dates.package_id
                                AND b.departureDate = package_available_dates.available_date
-                               AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','rejected'))
+                               AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled'))
                                AND (b.paymentStatus IS NULL OR b.paymentStatus <> 'refunded')
                          )";
         $stmtCl = $conn->prepare($sqlCleanup);

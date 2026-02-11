@@ -5580,7 +5580,7 @@ function getBookingsByDateAndPackage($conn, $input) {
                 LEFT JOIN agent a ON b.accountId = a.accountId
                 WHERE b.packageId = ?
                   AND b.departureDate = ?
-                  AND b.bookingStatus NOT IN ('cancelled', 'rejected', 'refunded')
+                  AND b.bookingStatus NOT IN ('cancelled')
                 ORDER BY b.createdAt DESC";
 
         $stmt = $conn->prepare($sql);
@@ -9386,13 +9386,13 @@ function getProductSalesOverview($conn, $input) {
 
         // Query 2: 패키지별 예약 집계 (all / confirmed)
         $sqlBookings = "SELECT b.packageId,
-            SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+            SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) as allSeats,
-            SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+            SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.totalAmount,0) ELSE 0 END) as allAmount,
-            COUNT(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+            COUNT(CASE WHEN b.bookingStatus NOT IN ('cancelled')
                        AND COALESCE(b.paymentStatus,'') != 'refunded'
                   THEN 1 ELSE NULL END) as allCount,
             SUM(CASE WHEN b.bookingStatus = 'confirmed'
@@ -9418,10 +9418,10 @@ function getProductSalesOverview($conn, $input) {
 
         // Query 3: 날짜별 상세 (재고 + 예약)
         $sqlDates = "SELECT pad.package_id as packageId, pad.available_date, pad.capacity, pad.status,
-            COALESCE(SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+            COALESCE(SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled')
                               AND COALESCE(b.paymentStatus,'') != 'refunded'
                          THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) END), 0) as allSeats,
-            COALESCE(SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled','rejected')
+            COALESCE(SUM(CASE WHEN b.bookingStatus NOT IN ('cancelled')
                               AND COALESCE(b.paymentStatus,'') != 'refunded'
                          THEN COALESCE(b.totalAmount,0) END), 0) as allAmount,
             COALESCE(SUM(CASE WHEN b.bookingStatus = 'confirmed'
@@ -9684,15 +9684,15 @@ function getSalesDashboard($conn, $input) {
         $sqlBookings = "SELECT DATE_FORMAT(b.departureDate, '%Y-%m') AS yearMonth,
             -- All (non-land-only, cancelled/rejected/refunded 제외)
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS allBookedSeats,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS allTotalAmount,
             COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
-                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND b.bookingStatus NOT IN ('cancelled')
                        AND COALESCE(b.paymentStatus,'') != 'refunded'
                   THEN 1 ELSE NULL END) AS allBookingCount,
             -- Confirmed (non-land-only)
@@ -9707,15 +9707,15 @@ function getSalesDashboard($conn, $input) {
                   THEN 1 ELSE NULL END) AS confirmedBookingCount,
             -- Land Only (cancelled/rejected/refunded 제외)
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS landOnlyBookedSeats,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS landOnlyTotalAmount,
             COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
-                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND b.bookingStatus NOT IN ('cancelled')
                        AND COALESCE(b.paymentStatus,'') != 'refunded'
                   THEN 1 ELSE NULL END) AS landOnlyBookingCount
             FROM bookings b
@@ -9805,15 +9805,15 @@ function downloadSalesDashboard($conn, $input) {
         // Query 2: 월별 예약 집계 (3탭)
         $sqlBookings = "SELECT DATE_FORMAT(b.departureDate, '%Y-%m') AS yearMonth,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS allBookedSeats,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS allTotalAmount,
             COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
-                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND b.bookingStatus NOT IN ('cancelled')
                        AND COALESCE(b.paymentStatus,'') != 'refunded'
                   THEN 1 ELSE NULL END) AS allBookingCount,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) NOT LIKE '(LAND ONLY)%%'
@@ -9826,15 +9826,15 @@ function downloadSalesDashboard($conn, $input) {
                        AND b.bookingStatus = 'confirmed'
                   THEN 1 ELSE NULL END) AS confirmedBookingCount,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0) ELSE 0 END) AS landOnlyBookedSeats,
             SUM(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
-                     AND b.bookingStatus NOT IN ('cancelled','rejected')
+                     AND b.bookingStatus NOT IN ('cancelled')
                      AND COALESCE(b.paymentStatus,'') != 'refunded'
                 THEN COALESCE(b.totalAmount,0) ELSE 0 END) AS landOnlyTotalAmount,
             COUNT(CASE WHEN COALESCE(p.packageName, b.packageName) LIKE '(LAND ONLY)%%'
-                       AND b.bookingStatus NOT IN ('cancelled','rejected')
+                       AND b.bookingStatus NOT IN ('cancelled')
                        AND COALESCE(b.paymentStatus,'') != 'refunded'
                   THEN 1 ELSE NULL END) AS landOnlyBookingCount
             FROM bookings b
@@ -13936,7 +13936,7 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
                         "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                          FROM bookings
                          WHERE packageId = ? AND departureDate = ?
-                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                            AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                          FOR UPDATE"
                     );
@@ -16339,7 +16339,7 @@ function getInventoryCalendar($conn, $input) {
             SELECT departureDate, SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
             FROM bookings
             WHERE packageId = ? AND departureDate >= ? AND departureDate <= ?
-              AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+              AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
               AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
             GROUP BY departureDate
         ");
@@ -16853,7 +16853,7 @@ function getAnnouncementTargetCount($conn, $announcement) {
         $sql = "SELECT COUNT(*) as count
                 FROM bookings b
                 LEFT JOIN packages p ON b.packageId = p.packageId
-                WHERE b.packageId = ? AND b.bookingStatus NOT IN ('cancelled', 'rejected')";
+                WHERE b.packageId = ? AND b.bookingStatus NOT IN ('cancelled')";
 
         $params = [$packageId];
         $types = 'i';
@@ -17076,7 +17076,7 @@ function publishProductAnnouncement($conn, $input) {
         $customerSql = "SELECT DISTINCT b.bookingId, b.transactNo, b.accountId, b.departureDate
                         FROM bookings b
                         LEFT JOIN packages p ON b.packageId = p.packageId
-                        WHERE b.packageId = ? AND b.bookingStatus NOT IN ('cancelled', 'rejected')
+                        WHERE b.packageId = ? AND b.bookingStatus NOT IN ('cancelled')
                         AND b.accountId IS NOT NULL AND b.accountId > 0";
 
         $params = [$packageId];
@@ -17215,7 +17215,7 @@ function getAnnouncementTargetCountApi($conn, $input) {
         $sql = "SELECT COUNT(*) as count
                 FROM bookings b
                 LEFT JOIN packages p ON b.packageId = p.packageId
-                WHERE b.packageId = ? AND b.bookingStatus NOT IN ('cancelled', 'rejected')";
+                WHERE b.packageId = ? AND b.bookingStatus NOT IN ('cancelled')";
 
         $params = [$packageId];
         $types = 'i';
@@ -18934,7 +18934,7 @@ function getSaleDetail($conn, $input) {
                 SELECT packageId, departureDate,
                        SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
-                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                 GROUP BY packageId, departureDate
             ) bk ON bk.packageId = pad.package_id AND bk.departureDate = pad.available_date
@@ -19206,7 +19206,7 @@ function getPackagesForSale($conn, $input) {
         $whereConditions = [
             "pad.available_date >= CURDATE()",
             "pad.status IN ('available', 'confirmed', 'open')",
-            "(pad.capacity - COALESCE((SELECT SUM(COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0)) FROM bookings b WHERE b.packageId=pad.package_id AND b.departureDate=pad.available_date AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled','rejected')) AND (b.paymentStatus IS NULL OR b.paymentStatus <> 'refunded')), 0)) > 0",
+            "(pad.capacity - COALESCE((SELECT SUM(COALESCE(b.adults,0)+COALESCE(b.children,0)+COALESCE(b.infants,0)) FROM bookings b WHERE b.packageId=pad.package_id AND b.departureDate=pad.available_date AND (b.bookingStatus IS NULL OR b.bookingStatus NOT IN ('cancelled')) AND (b.paymentStatus IS NULL OR b.paymentStatus <> 'refunded')), 0)) > 0",
             "p.isActive = 1"
         ];
         $params = [];
@@ -19283,7 +19283,7 @@ function getPackagesForSale($conn, $input) {
                 SELECT packageId, departureDate,
                        SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
-                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                 GROUP BY packageId, departureDate
             ) bk ON bk.packageId = pad.package_id AND bk.departureDate = pad.available_date

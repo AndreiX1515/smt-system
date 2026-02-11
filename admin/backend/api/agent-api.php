@@ -1383,7 +1383,7 @@ function getBestPricePackages($conn) {
                     SELECT packageId, departureDate,
                            SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                     FROM bookings
-                    WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                    WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                       AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                     GROUP BY packageId, departureDate
                 ) bk2 ON bk2.packageId = pad2.package_id AND bk2.departureDate = pad2.available_date
@@ -1402,7 +1402,7 @@ function getBestPricePackages($conn) {
                 SELECT packageId, departureDate,
                        SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
-                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                 GROUP BY packageId, departureDate
             ) bk ON bk.packageId = pa.package_id AND bk.departureDate = pa.available_date
@@ -2609,7 +2609,7 @@ function createReservation($conn, $input) {
                 SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                 FROM bookings
                 WHERE packageId = ? AND departureDate = ?
-                  AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                  AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
             ");
             if ($bkStmt) {
@@ -10378,7 +10378,7 @@ function updateTravelerInfo($conn, $input) {
                         "SELECT SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS booked
                          FROM bookings
                          WHERE packageId = ? AND departureDate = ?
-                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                           AND (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                            AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                          FOR UPDATE"
                     );
@@ -12613,7 +12613,7 @@ function getSaleProducts($conn) {
                 SELECT packageId, departureDate,
                        SUM(COALESCE(adults,0) + COALESCE(children,0) + COALESCE(infantsWithSeat,0)) AS total_booked
                 FROM bookings
-                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled','rejected'))
+                WHERE (bookingStatus IS NULL OR bookingStatus NOT IN ('cancelled'))
                   AND (paymentStatus IS NULL OR paymentStatus <> 'refunded')
                 GROUP BY packageId, departureDate
             ) booked ON booked.packageId = p.packageId AND booked.departureDate = pad.available_date
