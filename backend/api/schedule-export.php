@@ -70,23 +70,7 @@ if (!in_array($format, ['xlsx', 'xls', 'csv'], true)) $format = 'xlsx';
 // - For B2B bookings, bookings.accountId is often the agent(owner) account.
 // - The actual customer is stored in bookings.customerAccountId (if exists) or selectedOptions.customerInfo.accountId.
 // - Export should be accessible to the customer who owns the booking (not just the creator).
-$bookingCols = [];
-try {
-    $cr = $conn->query("SHOW COLUMNS FROM bookings");
-    if ($cr) {
-        while ($c = $cr->fetch_assoc()) $bookingCols[] = strtolower((string)($c['Field'] ?? ''));
-    }
-} catch (Throwable $e) { /* ignore */ }
-$hasCustomerAccountId = in_array('customeraccountid', $bookingCols, true);
-$hasSelectedOptions = in_array('selectedoptions', $bookingCols, true);
-$hasDepartureTime = in_array('departuretime', $bookingCols, true);
-$hasGuideId = in_array('guideid', $bookingCols, true);
-
-$sel = "bookingId, accountId, packageId, departureDate";
-if ($hasDepartureTime) $sel .= ", departureTime";
-if ($hasGuideId) $sel .= ", guideId";
-if ($hasCustomerAccountId) $sel .= ", customerAccountId";
-if ($hasSelectedOptions) $sel .= ", selectedOptions";
+$sel = "bookingId, accountId, packageId, departureDate, departureTime, guideId, customerAccountId, selectedOptions";
 
 $bst = $conn->prepare("SELECT {$sel} FROM bookings WHERE bookingId = ? LIMIT 1");
 if (!$bst) {
@@ -117,23 +101,9 @@ try {
         if ($sid !== $ownerId) {
             $ok = false;
 
-            // 1) bookings.customerAccountId
-            if (!$ok && $hasCustomerAccountId) {
-                $cid = (int)($b['customerAccountId'] ?? 0);
-                if ($cid > 0 && $sid === $cid) $ok = true;
-            }
-
-            // 2) selectedOptions.customerInfo.accountId
-            if (!$ok && $hasSelectedOptions && !empty($b['selectedOptions'])) {
-                $so = json_decode((string)$b['selectedOptions'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($so)) {
-                    $ci = $so['customerInfo'] ?? null;
-                    if (is_array($ci)) {
-                        $cid2 = (int)($ci['accountId'] ?? 0);
-                        if ($cid2 > 0 && $sid === $cid2) $ok = true;
-                    }
-                }
-            }
+            // customerAccountId 확인
+            $cid = (int)($b['customerAccountId'] ?? 0);
+            if ($cid > 0 && $sid === $cid) $ok = true;
 
             // 3) allow support roles (admin/agent/guide/cs) if present
             if (!$ok) {
@@ -354,7 +324,7 @@ if ($format === 'xlsx') {
         }
 
         // trip period: start = departureDate + booking departureTime(if exists), end = last attraction end_time on last day (fallback: schedule end_time)
-        $bookingTime = $hasDepartureTime ? (string)($b['departureTime'] ?? '') : '';
+        $bookingTime = (string)($b['departureTime'] ?? '');
         $startTime = $bookingTime ?: ($daysPayload[0]['attractions'][0]['start_time'] ?? '');
         $endDay = $daysPayload[count($daysPayload)-1] ?? null;
         $endTime = '';

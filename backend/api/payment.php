@@ -341,8 +341,22 @@ function createBooking($bookingData, $userId, $bookingStatus = 'pending', $booki
     $children = $bookingData['children'] ?? 0;
     $infants = $bookingData['infants'] ?? 0;
     $totalAmount = $bookingData['finalPricing']['total_price'] ?? 0;
-    $departureDate = normalize_date_ymd((string)($bookingData['departureDate'] ?? '')) ?: date('Y-m-d');
-    $departureTime = $bookingData['departureTime'] ?? '12:20';
+    $departureDate = normalize_date_ymd((string)($bookingData['departureDate'] ?? ''));
+    if ($departureDate === '') {
+        throw new Exception('departureDate is required');
+    }
+    $departureTime = $bookingData['departureTime'] ?? '';
+    if ($departureTime === '') {
+        // 패키지에서 출발 시간 조회 시도
+        $timeStmt = $conn->prepare("SELECT COALESCE(meeting_time, meetingTime) as mt FROM packages WHERE packageId = ? LIMIT 1");
+        if ($timeStmt) {
+            $timeStmt->bind_param('i', $packageId);
+            $timeStmt->execute();
+            $timeRow = $timeStmt->get_result()->fetch_assoc();
+            $departureTime = $timeRow['mt'] ?? '';
+            $timeStmt->close();
+        }
+    }
     $packageName = $bookingData['packageName'] ?? '';
     $packagePrice = $bookingData['packagePrice'] ?? 0;
     // bookings.bookingStatus enum: pending/confirmed/cancelled/completed
@@ -457,18 +471,18 @@ function createBooking($bookingData, $userId, $bookingStatus = 'pending', $booki
     } else {
         $sql = "
             INSERT INTO bookings (
-                bookingId, accountId, packageId, packageName, packagePrice, 
-                departureDate, departureTime, adults, children, infants, 
-                totalAmount, bookingStatus, paymentStatus, contactEmail, contactPhone, 
-                specialRequests, selectedOptions
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                bookingId, accountId, packageId, packageName, packagePrice,
+                departureDate, departureTime, adults, children, infants,
+                totalAmount, bookingStatus, paymentStatus, contactEmail, contactPhone,
+                specialRequests, selectedOptions, customerAccountId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('siisdssiiidssssss', 
+        $stmt->bind_param('siisdssiiidssssssi',
             $bookingId, $userId, $packageId, $packageName, $packagePrice,
-            $departureDate, $departureTime, $adults, $children, $infants, 
-            $totalAmount, $bookingStatus, $bookingPaymentStatus, $contactEmail, $contactPhone, 
-            $specialRequests, $selectedOptionsJson
+            $departureDate, $departureTime, $adults, $children, $infants,
+            $totalAmount, $bookingStatus, $bookingPaymentStatus, $contactEmail, $contactPhone,
+            $specialRequests, $selectedOptionsJson, $userId
         );
         if (!$stmt->execute()) {
             throw new Exception('Failed to create booking: ' . $stmt->error);

@@ -335,18 +335,18 @@ try {
         INSERT INTO bookings (
             bookingId, accountId, packageId, packageName, packagePrice,
             departureDate, departureTime, adults, children, infants,
-            totalAmount, bookingStatus, paymentStatus, selectedRooms, selectedOptions, price_tier
+            totalAmount, bookingStatus, paymentStatus, selectedRooms, selectedOptions, price_tier, customerAccountId
         ) VALUES (
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
-            ?, 'pending', 'pending', ?, ?, ?
+            ?, 'pending', 'pending', ?, ?, ?, ?
         )
     ");
     $stmt->bind_param(
-        'siisdssiidsss',
+        'siisdssiidsssi',
         $bookingId, $userId, $packageId, $packageName, $packagePrice,
         $departureDate, $departureTime, $adults, $children, $infants,
-        $totalAmount, $selectedRoomsJson, $mergedSelectedOptionsJson, $priceTier
+        $totalAmount, $selectedRoomsJson, $mergedSelectedOptionsJson, $priceTier, $userId
     );
     $stmt->execute();
     $stmt->close();

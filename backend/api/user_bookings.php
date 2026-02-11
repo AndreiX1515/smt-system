@@ -101,50 +101,10 @@ try {
     
     $status = $_GET['status'] ?? 'all'; // all, confirmed, pending, cancelled, completed
 
-    // SMT 수정: 에이전트가 생성한 B2B 예약은 bookings.accountId(소유자)=agent 이고,
-    //         실제 예약자(고객)는 bookings.customerAccountId(환경별 컬럼)에 저장될 수 있음.
-    //         따라서 accountId OR customerAccountId 로 조회해야 사용자 예약내역에 노출됩니다.
-    $bookingsColumns = [];
-    $colRes = $conn->query("SHOW COLUMNS FROM bookings");
-    if ($colRes) {
-        while ($c = $colRes->fetch_assoc()) {
-            $bookingsColumns[] = strtolower($c['Field']);
-        }
-    }
-    $customerAccountIdCol = null;
-    if (in_array('customeraccountid', $bookingsColumns, true)) $customerAccountIdCol = 'customerAccountId';
-    else if (in_array('customer_account_id', $bookingsColumns, true)) $customerAccountIdCol = 'customer_account_id';
-    else if (in_array('customerid', $bookingsColumns, true)) $customerAccountIdCol = 'customerId';
-    else if (in_array('userid', $bookingsColumns, true)) $customerAccountIdCol = 'userId';
-
-    // selectedOptions 컬럼명(환경별) 결정: selectedOptions / selected_options
-    $selectedOptionsCol = null;
-    if (in_array('selectedoptions', $bookingsColumns, true)) $selectedOptionsCol = 'selectedOptions';
-    else if (in_array('selected_options', $bookingsColumns, true)) $selectedOptionsCol = 'selected_options';
-
-    if (!empty($customerAccountIdCol)) {
-        $whereClause = "WHERE (b.accountId = ? OR b.`{$customerAccountIdCol}` = ?)";
-        $params = [$accountId, $accountId];
-        $paramTypes = "ii";
-    } else {
-        // 스키마에 customerAccountId 계열 컬럼이 없는 환경 대응:
-        // - 에이전트가 생성한 B2B 예약은 bookings.accountId=agent로 저장될 수 있어,
-        //   selectedOptions.customerInfo.accountId 에 저장된 고객 accountId로도 조회되도록 보강한다.
-        if (!empty($selectedOptionsCol)) {
-            $whereClause = "WHERE (b.accountId = ? OR (b.`{$selectedOptionsCol}` LIKE ? OR b.`{$selectedOptionsCol}` LIKE ? OR b.`{$selectedOptionsCol}` LIKE ? OR b.`{$selectedOptionsCol}` LIKE ?))";
-            $like1 = '%"customerInfo"%"accountId":' . $accountId . '%';
-            $like2 = '%"customerInfo"%"accountId":"' . $accountId . '"%';
-            $like3 = '%"customerInfo"%"account_id":' . $accountId . '%';
-            $like4 = '%"customerInfo"%"account_id":"' . $accountId . '"%';
-            $params = [$accountId, $like1, $like2, $like3, $like4];
-            $paramTypes = "issss";
-        } else {
-            // 최후 fallback: 기존대로 accountId만
-            $whereClause = "WHERE b.accountId = ?";
-            $params = [$accountId];
-            $paramTypes = "i";
-        }
-    }
+    // accountId OR customerAccountId 로 조회 (B2B 예약도 고객에게 노출)
+    $whereClause = "WHERE (b.accountId = ? OR b.customerAccountId = ?)";
+    $params = [$accountId, $accountId];
+    $paramTypes = "ii";
     
     if ($status !== 'all') {
         $whereClause .= " AND b.bookingStatus = ?";
@@ -159,7 +119,6 @@ try {
     }
     
     // 예약 내역 조회
-    $selectedOptionsSelect = !empty($selectedOptionsCol) ? "b.`{$selectedOptionsCol}` as selectedOptions" : "NULL as selectedOptions";
 
     $stmt = $conn->prepare("
         SELECT 
@@ -173,7 +132,7 @@ try {
             b.totalAmount,
             b.bookingStatus,
             b.paymentStatus,
-            $selectedOptionsSelect,
+            b.selectedOptions,
             b.specialRequests,
             b.createdAt,
             COALESCE(NULLIF(p.packageName,''), NULLIF(b.packageName,''), CONCAT('Deleted product #', b.packageId)) as productName,
@@ -206,21 +165,12 @@ try {
     $statuses = ['pending', 'confirmed', 'completed', 'cancelled'];
     
     foreach ($statuses as $statusType) {
-        if (!empty($customerAccountIdCol)) {
-            $stmt2 = $conn->prepare("
-                SELECT COUNT(*) as count
-                FROM bookings
-                WHERE (accountId = ? OR `{$customerAccountIdCol}` = ?) AND bookingStatus = ?
-            ");
-            $stmt2->bind_param("iis", $accountId, $accountId, $statusType);
-        } else {
-            $stmt2 = $conn->prepare("
-                SELECT COUNT(*) as count
-                FROM bookings
-                WHERE accountId = ? AND bookingStatus = ?
-            ");
-            $stmt2->bind_param("is", $accountId, $statusType);
-        }
+        $stmt2 = $conn->prepare("
+            SELECT COUNT(*) as count
+            FROM bookings
+            WHERE (accountId = ? OR customerAccountId = ?) AND bookingStatus = ?
+        ");
+        $stmt2->bind_param("iis", $accountId, $accountId, $statusType);
         $stmt2->execute();
         $result = $stmt2->get_result();
         $row = $result->fetch_assoc();

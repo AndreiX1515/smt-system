@@ -122,18 +122,11 @@ function ensure_departure_reminders(int $accountId): void {
     $tb = $conn->query("SHOW TABLES LIKE 'bookings'");
     if (!$tb || $tb->num_rows === 0) return;
 
-    // B2B: agent   customerAccountId    
-    $bcols = [];
-    $cr = $conn->query("SHOW COLUMNS FROM bookings");
-    while ($cr && ($row = $cr->fetch_assoc())) $bcols[strtolower($row['Field'])] = $row['Field'];
-    $hasCustomerAccountId = isset($bcols['customeraccountid']);
-
     //   D-7 ~ D-1, bookingStatus confirmed
-    $where = $hasCustomerAccountId ? "(accountId = ? OR customerAccountId = ?)" : "(accountId = ?)";
     $st = $conn->prepare("
         SELECT bookingId, packageId, packageName, departureDate
         FROM bookings
-        WHERE {$where}
+        WHERE (accountId = ? OR customerAccountId = ?)
           AND bookingStatus = 'confirmed'
           AND departureDate IS NOT NULL
           AND DATEDIFF(DATE(departureDate), CURDATE()) BETWEEN 1 AND 7
@@ -141,11 +134,7 @@ function ensure_departure_reminders(int $accountId): void {
         LIMIT 50
     ");
     if (!$st) return;
-    if ($hasCustomerAccountId) {
-        $st->bind_param('ii', $accountId, $accountId);
-    } else {
-        $st->bind_param('i', $accountId);
-    }
+    $st->bind_param('ii', $accountId, $accountId);
     $st->execute();
     $res = $st->get_result();
     $rows = [];
@@ -465,36 +454,20 @@ function ensure_booking_status_notifications(int $accountId): void {
     $ncols = notifications_table_columns();
     $hasData = isset($ncols['data']);
 
-    // bookings   
-    $bcols = [];
-    $cr = $conn->query("SHOW COLUMNS FROM bookings");
-    while ($cr && ($row = $cr->fetch_assoc())) $bcols[strtolower($row['Field'])] = $row['Field'];
-
-    $hasCustomerAccountId = isset($bcols['customeraccountid']);
-    $bookingStatusCol = $bcols['bookingstatus'] ?? null;
-    $paymentStatusCol = $bcols['paymentstatus'] ?? null;
-    $updatedAtCol = $bcols['updatedat'] ?? null;
-    $createdAtCol = $bcols['createdat'] ?? null;
-
     //  200 (  )
-    $where = $hasCustomerAccountId ? "(accountId = ? OR customerAccountId = ?)" : "(accountId = ?)";
     $sql = "
         SELECT bookingId, packageId, packageName, departureDate
-             , " . ($bookingStatusCol ? $bookingStatusCol : "NULL") . " AS bookingStatus
-             , " . ($paymentStatusCol ? $paymentStatusCol : "NULL") . " AS paymentStatus
-             , " . ($updatedAtCol ? $updatedAtCol : ($createdAtCol ? $createdAtCol : "NULL")) . " AS touchedAt
+             , bookingStatus
+             , paymentStatus
+             , COALESCE(updatedAt, createdAt) AS touchedAt
         FROM bookings
-        WHERE {$where}
+        WHERE (accountId = ? OR customerAccountId = ?)
         ORDER BY touchedAt DESC
         LIMIT 200
     ";
     $st = $conn->prepare($sql);
     if (!$st) return;
-    if ($hasCustomerAccountId) {
-        $st->bind_param('ii', $accountId, $accountId);
-    } else {
-        $st->bind_param('i', $accountId);
-    }
+    $st->bind_param('ii', $accountId, $accountId);
     $st->execute();
     $res = $st->get_result();
     $rows = [];

@@ -255,34 +255,16 @@ function notify_booking_user_guide_notice(mysqli $conn, string $bookingId, int $
         if (!$tbl || $tbl->num_rows === 0) return;
 
         // bookings  accountId  (B2B: customerAccountId )
-        $hasCustomerAccountId = false;
-        try {
-            $c = $conn->query("SHOW COLUMNS FROM bookings LIKE 'customerAccountId'");
-            $hasCustomerAccountId = ($c && $c->num_rows > 0);
-        } catch (Throwable $e) { $hasCustomerAccountId = false; }
-
         $recipient = null;
-        if ($hasCustomerAccountId) {
-            $st = $conn->prepare("SELECT accountId, customerAccountId FROM bookings WHERE bookingId = ? LIMIT 1");
-            if ($st) {
-                $st->bind_param('s', $bookingId);
-                $st->execute();
-                $row = $st->get_result()->fetch_assoc();
-                $st->close();
-                $cid = isset($row['customerAccountId']) ? (int)$row['customerAccountId'] : 0;
-                $aid = isset($row['accountId']) ? (int)$row['accountId'] : 0;
-                $recipient = ($cid > 0) ? $cid : ($aid > 0 ? $aid : null);
-            }
-        } else {
-            $st = $conn->prepare("SELECT accountId FROM bookings WHERE bookingId = ? LIMIT 1");
-            if ($st) {
-                $st->bind_param('s', $bookingId);
-                $st->execute();
-                $row = $st->get_result()->fetch_assoc();
-                $st->close();
-                $aid = isset($row['accountId']) ? (int)$row['accountId'] : 0;
-                $recipient = ($aid > 0) ? $aid : null;
-            }
+        $st = $conn->prepare("SELECT accountId, customerAccountId FROM bookings WHERE bookingId = ? LIMIT 1");
+        if ($st) {
+            $st->bind_param('s', $bookingId);
+            $st->execute();
+            $row = $st->get_result()->fetch_assoc();
+            $st->close();
+            $cid = isset($row['customerAccountId']) ? (int)$row['customerAccountId'] : 0;
+            $aid = isset($row['accountId']) ? (int)$row['accountId'] : 0;
+            $recipient = ($cid > 0) ? $cid : ($aid > 0 ? $aid : null);
         }
         if (!$recipient) return;
 
