@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 //  
 require "../conn.php";
+require_once __DIR__ . '/../lib/booking-utils.php';
 
 //   
 function sendErrorResponse($message, $code = 400) {

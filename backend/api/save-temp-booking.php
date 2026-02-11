@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../conn.php';
+require_once __DIR__ . '/../lib/booking-utils.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
