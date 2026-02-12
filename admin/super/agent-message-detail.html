@@ -40,7 +40,7 @@
 				</div>
 			</div>
 
-			<h1 class="page-title" id="threadSubject" data-lan-eng="Send to Agent">Send to Agent</h1>
+			<h1 class="page-title" id="threadSubject" data-lan-eng="Agent Messages">Agent Messages</h1>
 
 			<!-- Agent Info -->
 			<h2 class="section-title jw-mgt32" data-lan-eng="Agent Information">Agent Information</h2>
@@ -207,7 +207,7 @@
 
 				const { thread, messages } = json.data;
 
-				document.getElementById('threadSubject').textContent = 'Send to Agent';
+				document.getElementById('threadSubject').textContent = 'Agent Messages';
 				document.getElementById('threadSubjectField').value = thread.subject || '';
 				document.getElementById('agentName').value = thread.agentName || '';
 				document.getElementById('agentManager').value = thread.managerName || '';
