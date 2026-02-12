@@ -47,6 +47,8 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 .layout-nav .nav-sub .side-link:hover { color: #0056d9; background: #F0F7FF; }
 .layout-nav .nav-sub .side-link.on, .layout-nav .nav-sub .side-link.active { color: #0056d9; background: #E8F2FF; font-weight: 600; }
 
+.nav-unread-badge { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#E53935; color:#fff; font-size:11px; font-weight:700; line-height:1; margin-left:auto; }
+
 /* =========  ========= */
 .modal {
     display: none;

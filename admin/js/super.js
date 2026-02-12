@@ -31,6 +31,9 @@ function init(options) {
 		try { initUsageGuideUpload(); } catch (_) { }
 		// 기획서: 우측 구성요소(필수/완료) 상태 동기화
 		try { initComponentProgress(); } catch (_) { }
+
+		// Inquiries 안읽은 메시지 뱃지 polling
+		try { startInquiryUnreadPolling(); } catch (_) { }
 	};
 
 	if (document.readyState === 'loading') {
@@ -2549,4 +2552,29 @@ function template_detail_sfg3(btn) {
 	tbody.appendChild(tr);
 	const ip = tr.querySelector('input.form-control');
 	if (ip) ip.focus();
+}
+
+// ── Inquiries 안읽은 메시지 뱃지 ──
+let _inquiryUnreadTimer = null;
+
+function startInquiryUnreadPolling() {
+	fetchInquiryUnreadCount();
+	_inquiryUnreadTimer = setInterval(fetchInquiryUnreadCount, 10000);
+}
+
+function fetchInquiryUnreadCount() {
+	fetch('../backend/api/super-api.php?action=getMessageUnreadCount', { credentials: 'same-origin' })
+		.then(res => res.json())
+		.then(data => {
+			const badge = document.getElementById('inquiryUnreadBadge');
+			if (!badge) return;
+			const count = (data.success && data.data) ? parseInt(data.data.unreadCount, 10) || 0 : 0;
+			if (count > 0) {
+				badge.textContent = count > 99 ? '99+' : String(count);
+				badge.style.display = '';
+			} else {
+				badge.style.display = 'none';
+			}
+		})
+		.catch(() => {});
 }

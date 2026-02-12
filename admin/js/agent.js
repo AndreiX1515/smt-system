@@ -13,6 +13,9 @@ function init(options) {
 		if (typeof waitForHeaderUserNameAndHydrate === 'function') {
 			waitForHeaderUserNameAndHydrate();
 		}
+
+		// Inquiry 안읽은 메시지 뱃지 polling
+		try { startInquiryUnreadPolling(); } catch (_) { }
 	};
 
 	if (document.readyState === 'loading') {
@@ -70,4 +73,29 @@ function nav_status() {
 			a.closest('.nav-item')?.classList.add('on');
 		}
 	});
+}
+
+// ── Inquiry 안읽은 메시지 뱃지 ──
+let _inquiryUnreadTimer = null;
+
+function startInquiryUnreadPolling() {
+	fetchInquiryUnreadCount();
+	_inquiryUnreadTimer = setInterval(fetchInquiryUnreadCount, 10000);
+}
+
+function fetchInquiryUnreadCount() {
+	fetch('../backend/api/agent-api.php?action=getMessageUnreadCount', { credentials: 'same-origin' })
+		.then(res => res.json())
+		.then(data => {
+			const badge = document.getElementById('inquiryUnreadBadge');
+			if (!badge) return;
+			const count = (data.success && data.data) ? parseInt(data.data.unreadCount, 10) || 0 : 0;
+			if (count > 0) {
+				badge.textContent = count > 99 ? '99+' : String(count);
+				badge.style.display = '';
+			} else {
+				badge.style.display = 'none';
+			}
+		})
+		.catch(() => {});
 }
