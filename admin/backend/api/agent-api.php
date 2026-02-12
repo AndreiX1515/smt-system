@@ -566,6 +566,27 @@ try {
             updateAgentVisaSend($conn, $input);
             break;
 
+        // ========== Extra Options 관련 ==========
+        case 'getExtraOptionsList':
+            getExtraOptionsList($conn, $input);
+            break;
+
+        case 'getExtraOptionsDetail':
+            getExtraOptionsDetail($conn, $input);
+            break;
+
+        case 'saveExtraOptions':
+            saveExtraOptions($conn, $input);
+            break;
+
+        case 'uploadOptionPaymentProof':
+            uploadOptionPaymentProof($conn, $input);
+            break;
+
+        case 'deleteOptionPaymentProof':
+            deleteOptionPaymentProof($conn, $input);
+            break;
+
         default:
             // 브라우저/확장프로그램/프리로드 등으로 agent-api.php가 파라미터 없이 호출되는 경우가 있어
             // 콘솔에 400이 남는 문제를 방지합니다. (의도치 않은 GET에 한해 조용히 종료)
@@ -10832,6 +10853,398 @@ function getAirlineOptionsByName($conn, $input) {
     $catStmt->close();
 
     send_success_response(['categories' => $categories]);
+}
+
+// ========== Extra Options 함수들 ==========
+
+/**
+ * Extra Options 리스트 조회 (Agent)
+ */
+function getExtraOptionsList($conn, $input) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (empty($agentAccountId)) send_error_response('Login required', 401);
+
+    try {
+        $sql = "SELECT b.bookingId, b.departureDate, b.flightOptionFee, b.bookingStatus,
+                       b.adults, b.children, b.infants,
+                       p.packageName,
+                       DATE_ADD(b.departureDate, INTERVAL (COALESCE(p.duration_days, p.durationDays, 1) - 1) DAY) as returnDate,
+                       bop.option_payment_status, bop.option_payment_amount
+                FROM bookings b
+                LEFT JOIN packages p ON b.packageId = p.packageId
+                LEFT JOIN booking_option_payments bop ON b.bookingId = bop.booking_id
+                WHERE b.agentId IN (SELECT id FROM agent WHERE accountId = ?)
+                  AND b.bookingStatus NOT IN ('draft','cancelled')
+                ORDER BY b.createdAt DESC";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('i', $agentAccountId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            $pax = intval($row['adults'] ?? 0) + intval($row['children'] ?? 0) + intval($row['infants'] ?? 0);
+            $bookings[] = [
+                'bookingId' => $row['bookingId'],
+                'packageName' => $row['packageName'] ?? '',
+                'departureDate' => $row['departureDate'],
+                'returnDate' => $row['returnDate'] ?? '',
+                'pax' => $pax,
+                'bookingStatus' => $row['bookingStatus'],
+                'flightOptionFee' => floatval($row['flightOptionFee'] ?? 0),
+                'optionPaymentStatus' => $row['option_payment_status'] ?? 'not_set',
+                'optionPaymentAmount' => floatval($row['option_payment_amount'] ?? 0)
+            ];
+        }
+        $stmt->close();
+
+        send_success_response(['bookings' => $bookings]);
+    } catch (Exception $e) {
+        send_error_response('Failed to load extra options list: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Extra Options 상세 조회 (Agent)
+ */
+function getExtraOptionsDetail($conn, $input) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (empty($agentAccountId)) send_error_response('Login required', 401);
+
+    $bookingId = $input['bookingId'] ?? '';
+    if (empty($bookingId)) send_error_response('Booking ID is required', 400);
+
+    try {
+        // 예약 기본 정보 조회 + 권한 확인
+        $sql = "SELECT b.bookingId, b.departureDate, b.flightOptionFee,
+                       b.bookingStatus, b.adults, b.children, b.infants,
+                       b.packageId, p.packageName,
+                       DATE_ADD(b.departureDate, INTERVAL (COALESCE(p.duration_days, p.durationDays, 1) - 1) DAY) as returnDate
+                FROM bookings b
+                LEFT JOIN packages p ON b.packageId = p.packageId
+                WHERE b.bookingId = ?
+                  AND b.agentId IN (SELECT id FROM agent WHERE accountId = ?)
+                LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('si', $bookingId, $agentAccountId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$booking) send_error_response('Reservation not found or access denied', 404);
+
+        // Traveler 정보 조회
+        $travelersStmt = $conn->prepare("SELECT * FROM booking_travelers WHERE transactNo = ? ORDER BY CASE travelerType WHEN 'adult' THEN 1 WHEN 'child' THEN 2 WHEN 'infant' THEN 3 ELSE 99 END, isMainTraveler DESC, bookingTravelerId ASC");
+        $travelersStmt->bind_param('s', $bookingId);
+        $travelersStmt->execute();
+        $travelersResult = $travelersStmt->get_result();
+        $travelers = [];
+        while ($t = $travelersResult->fetch_assoc()) {
+            $travelers[] = [
+                'firstName' => $t['firstName'] ?? '',
+                'lastName' => $t['lastName'] ?? '',
+                'travelerType' => $t['travelerType'] ?? 'adult',
+                'isMainTraveler' => intval($t['isMainTraveler'] ?? 0)
+            ];
+        }
+        $travelersStmt->close();
+
+        // 여행자별 기존 옵션 조회
+        $optionsSql = "SELECT traveler_index, option_id, price FROM booking_traveler_options WHERE booking_id = ?";
+        $optionsStmt = $conn->prepare($optionsSql);
+        $optionsStmt->bind_param('s', $bookingId);
+        $optionsStmt->execute();
+        $optionsResult = $optionsStmt->get_result();
+        $travelerOptions = [];
+        while ($opt = $optionsResult->fetch_assoc()) {
+            $idx = intval($opt['traveler_index']);
+            if (!isset($travelerOptions[$idx])) $travelerOptions[$idx] = [];
+            $travelerOptions[$idx][] = [
+                'optionId' => intval($opt['option_id']),
+                'price' => floatval($opt['price'])
+            ];
+        }
+        $optionsStmt->close();
+
+        // 항공사 이름 추출 (package_flights에서)
+        $airlineName = '';
+        $flightStmt = $conn->prepare("SELECT airline_name FROM package_flights WHERE package_id = ? LIMIT 1");
+        if ($flightStmt) {
+            $flightStmt->bind_param('i', $booking['packageId']);
+            $flightStmt->execute();
+            $flightRow = $flightStmt->get_result()->fetch_assoc();
+            if ($flightRow) $airlineName = $flightRow['airline_name'] ?? '';
+            $flightStmt->close();
+        }
+
+        // 항공사 옵션 카테고리 조회
+        $categories = [];
+        if (!empty($airlineName)) {
+            $catSql = "SELECT category_id, category_name, category_name_en FROM airline_option_categories WHERE airline_name = ? AND is_active = 1 ORDER BY sort_order, category_id";
+            $catStmt = $conn->prepare($catSql);
+            $catStmt->bind_param('s', $airlineName);
+            $catStmt->execute();
+            $catResult = $catStmt->get_result();
+            while ($cat = $catResult->fetch_assoc()) {
+                $optSql2 = "SELECT option_id, option_name, option_name_en, price FROM airline_options WHERE category_id = ? AND is_active = 1 ORDER BY sort_order, option_id";
+                $optStmt2 = $conn->prepare($optSql2);
+                $optStmt2->bind_param('i', $cat['category_id']);
+                $optStmt2->execute();
+                $optResult2 = $optStmt2->get_result();
+                $opts = [];
+                while ($o = $optResult2->fetch_assoc()) {
+                    $o['price'] = floatval($o['price']);
+                    $o['option_id'] = intval($o['option_id']);
+                    $opts[] = $o;
+                }
+                $optStmt2->close();
+                $cat['category_id'] = intval($cat['category_id']);
+                $cat['options'] = $opts;
+                $categories[] = $cat;
+            }
+            $catStmt->close();
+        }
+
+        // 옵션 결제 상태 조회
+        $paymentInfo = null;
+        $payStmt = $conn->prepare("SELECT * FROM booking_option_payments WHERE booking_id = ? LIMIT 1");
+        $payStmt->bind_param('s', $bookingId);
+        $payStmt->execute();
+        $payRow = $payStmt->get_result()->fetch_assoc();
+        $payStmt->close();
+        if ($payRow) {
+            $paymentInfo = [
+                'status' => $payRow['option_payment_status'],
+                'amount' => floatval($payRow['option_payment_amount']),
+                'file' => $payRow['option_payment_file'],
+                'fileName' => $payRow['option_payment_file_name'],
+                'uploadedAt' => $payRow['option_payment_uploaded_at'],
+                'confirmedAt' => $payRow['option_payment_confirmed_at'],
+                'rejectedAt' => $payRow['option_payment_rejected_at'],
+                'rejectionReason' => $payRow['option_payment_rejection_reason']
+            ];
+        }
+
+        send_success_response([
+            'booking' => [
+                'bookingId' => $booking['bookingId'],
+                'packageName' => $booking['packageName'] ?? '',
+                'departureDate' => $booking['departureDate'],
+                'returnDate' => $booking['returnDate'] ?? '',
+                'pax' => intval($booking['adults'] ?? 0) + intval($booking['children'] ?? 0) + intval($booking['infants'] ?? 0),
+                'adults' => intval($booking['adults'] ?? 0),
+                'children' => intval($booking['children'] ?? 0),
+                'infants' => intval($booking['infants'] ?? 0),
+                'flightOptionFee' => floatval($booking['flightOptionFee'] ?? 0)
+            ],
+            'travelers' => $travelers,
+            'travelerOptions' => $travelerOptions,
+            'airlineName' => $airlineName,
+            'categories' => $categories,
+            'paymentInfo' => $paymentInfo
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to load extra options detail: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Extra Options 저장 (Agent)
+ */
+function saveExtraOptions($conn, $input) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (empty($agentAccountId)) send_error_response('Login required', 401);
+
+    $bookingId = $input['bookingId'] ?? '';
+    $travelerOptions = $input['travelerOptions'] ?? [];
+    $totalOptionFee = floatval($input['totalOptionFee'] ?? 0);
+
+    if (empty($bookingId)) send_error_response('Booking ID is required', 400);
+
+    // 권한 확인
+    $chk = $conn->prepare("SELECT bookingId FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
+    $chk->bind_param('si', $bookingId, $agentAccountId);
+    $chk->execute();
+    if (!$chk->get_result()->fetch_assoc()) {
+        $chk->close();
+        send_error_response('Reservation not found or access denied', 404);
+    }
+    $chk->close();
+
+    try {
+        $conn->begin_transaction();
+
+        // 기존 옵션 삭제
+        $delStmt = $conn->prepare("DELETE FROM booking_traveler_options WHERE booking_id = ?");
+        $delStmt->bind_param('s', $bookingId);
+        $delStmt->execute();
+        $delStmt->close();
+
+        // 새 옵션 삽입
+        if (!empty($travelerOptions)) {
+            $insStmt = $conn->prepare("INSERT INTO booking_traveler_options (booking_id, traveler_index, option_id, price) VALUES (?, ?, ?, ?)");
+            foreach ($travelerOptions as $item) {
+                $travelerIndex = intval($item['travelerIndex']);
+                $optionId = intval($item['optionId']);
+                $price = floatval($item['price'] ?? 0);
+                $insStmt->bind_param('siid', $bookingId, $travelerIndex, $optionId, $price);
+                $insStmt->execute();
+            }
+            $insStmt->close();
+        }
+
+        // bookings.flightOptionFee 업데이트
+        $feeStmt = $conn->prepare("UPDATE bookings SET flightOptionFee = ? WHERE bookingId = ?");
+        $feeStmt->bind_param('ds', $totalOptionFee, $bookingId);
+        $feeStmt->execute();
+        $feeStmt->close();
+
+        // booking_option_payments upsert — 옵션이 있으면 pending_payment, 없으면 not_set
+        $newStatus = (!empty($travelerOptions) && $totalOptionFee > 0) ? 'pending_payment' : 'not_set';
+        $upsertSql = "INSERT INTO booking_option_payments (booking_id, option_payment_status, option_payment_amount)
+                       VALUES (?, ?, ?)
+                       ON DUPLICATE KEY UPDATE
+                           option_payment_status = VALUES(option_payment_status),
+                           option_payment_amount = VALUES(option_payment_amount),
+                           option_payment_file = NULL,
+                           option_payment_file_name = NULL,
+                           option_payment_uploaded_at = NULL,
+                           option_payment_rejected_at = NULL,
+                           option_payment_rejection_reason = NULL";
+        $upsertStmt = $conn->prepare($upsertSql);
+        $upsertStmt->bind_param('ssd', $bookingId, $newStatus, $totalOptionFee);
+        $upsertStmt->execute();
+        $upsertStmt->close();
+
+        $conn->commit();
+        send_success_response(['status' => $newStatus, 'amount' => $totalOptionFee], 'Extra options saved successfully');
+    } catch (Exception $e) {
+        $conn->rollback();
+        send_error_response('Failed to save extra options: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Extra Options 결제 증빙 업로드 (Agent)
+ */
+function uploadOptionPaymentProof($conn, $input) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (empty($agentAccountId)) send_error_response('Login required', 401);
+
+    $bookingId = $input['bookingId'] ?? '';
+    if (empty($bookingId)) send_error_response('Booking ID is required', 400);
+
+    if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        send_error_response('File upload failed');
+    }
+
+    // 권한 확인
+    $chk = $conn->prepare("SELECT bookingId FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
+    $chk->bind_param('si', $bookingId, $agentAccountId);
+    $chk->execute();
+    if (!$chk->get_result()->fetch_assoc()) {
+        $chk->close();
+        send_error_response('Reservation not found or access denied', 404);
+    }
+    $chk->close();
+
+    try {
+        $file = $_FILES['file'];
+        $uploadDir = __DIR__ . '/../../../uploads/payment/options/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+        $originalFileName = $file['name'];
+        $fileExtension = strtolower(pathinfo($originalFileName, PATHINFO_EXTENSION));
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf'];
+        if (!in_array($fileExtension, $allowedExtensions)) {
+            send_error_response('Invalid file type. Allowed: jpg, jpeg, png, gif, pdf');
+        }
+
+        $newFileName = 'option_' . $bookingId . '_' . time() . '_' . uniqid() . '.' . $fileExtension;
+        $uploadPath = $uploadDir . $newFileName;
+
+        if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            send_error_response('Failed to save uploaded file');
+        }
+
+        $filePath = 'uploads/payment/options/' . $newFileName;
+        $now = date('Y-m-d H:i:s');
+
+        // booking_option_payments 업데이트
+        $sql = "UPDATE booking_option_payments
+                SET option_payment_file = ?, option_payment_file_name = ?,
+                    option_payment_uploaded_at = ?, option_payment_status = 'checking',
+                    option_payment_rejected_at = NULL, option_payment_rejection_reason = NULL
+                WHERE booking_id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('ssss', $filePath, $originalFileName, $now, $bookingId);
+        $stmt->execute();
+        $stmt->close();
+
+        send_success_response([
+            'file' => $filePath,
+            'fileName' => $originalFileName,
+            'uploadedAt' => $now,
+            'status' => 'checking'
+        ], 'Payment proof uploaded successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to upload payment proof: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Extra Options 결제 증빙 삭제 (Agent)
+ */
+function deleteOptionPaymentProof($conn, $input) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (empty($agentAccountId)) send_error_response('Login required', 401);
+
+    $bookingId = $input['bookingId'] ?? '';
+    if (empty($bookingId)) send_error_response('Booking ID is required', 400);
+
+    // 권한 확인 + 현재 파일 경로 조회
+    $chk = $conn->prepare("SELECT bop.option_payment_file, bop.option_payment_status
+                            FROM booking_option_payments bop
+                            JOIN bookings b ON bop.booking_id = b.bookingId
+                            WHERE bop.booking_id = ? AND b.agentId IN (SELECT id FROM agent WHERE accountId = ?)
+                            LIMIT 1");
+    $chk->bind_param('si', $bookingId, $agentAccountId);
+    $chk->execute();
+    $row = $chk->get_result()->fetch_assoc();
+    $chk->close();
+
+    if (!$row) send_error_response('Record not found or access denied', 404);
+
+    // confirmed 상태에서는 삭제 불가
+    if ($row['option_payment_status'] === 'confirmed') {
+        send_error_response('Cannot delete proof file after confirmation', 403);
+    }
+
+    try {
+        // 파일 삭제
+        if (!empty($row['option_payment_file'])) {
+            $fullPath = __DIR__ . '/../../../' . $row['option_payment_file'];
+            if (file_exists($fullPath)) @unlink($fullPath);
+        }
+
+        // DB 업데이트
+        $stmt = $conn->prepare("UPDATE booking_option_payments
+                                SET option_payment_file = NULL, option_payment_file_name = NULL,
+                                    option_payment_uploaded_at = NULL, option_payment_status = 'pending_payment'
+                                WHERE booking_id = ?");
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $stmt->close();
+
+        send_success_response(['status' => 'pending_payment'], 'Payment proof deleted successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to delete payment proof: ' . $e->getMessage(), 500);
+    }
 }
 
 /**

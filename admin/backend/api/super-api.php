@@ -1051,6 +1051,19 @@ try {
             getMonthlyInvoiceData($conn, $input);
             break;
 
+        // ========== Extra Options 관련 ==========
+        case 'getExtraOptionsListAll':
+            getExtraOptionsListAll($conn, $input);
+            break;
+
+        case 'confirmOptionPayment':
+            confirmOptionPayment($conn, $input);
+            break;
+
+        case 'rejectOptionPayment':
+            rejectOptionPayment($conn, $input);
+            break;
+
         default:
             send_error_response('Invalid action: ' . $action, 400);
     }
@@ -19732,5 +19745,147 @@ function getMessageUnreadCount($conn, $input) {
         send_success_response(['unreadCount' => $count]);
     } catch (Exception $e) {
         send_error_response('Failed to get unread count: ' . $e->getMessage());
+    }
+}
+
+// ========== Extra Options 함수들 ==========
+
+/**
+ * Extra Options 전체 리스트 조회 (Super Admin)
+ */
+function getExtraOptionsListAll($conn, $input) {
+    try {
+        $sql = "SELECT b.bookingId, b.departureDate, b.flightOptionFee, b.bookingStatus,
+                       b.adults, b.children, b.infants,
+                       p.packageName,
+                       DATE_ADD(b.departureDate, INTERVAL (COALESCE(p.duration_days, p.durationDays, 1) - 1) DAY) as returnDate,
+                       COALESCE(NULLIF(CONCAT(a.fName,' ',a.lName), ' '), a.agencyName, '') as agentName,
+                       bop.option_payment_status, bop.option_payment_amount,
+                       bop.option_payment_file, bop.option_payment_file_name,
+                       bop.option_payment_uploaded_at,
+                       bop.option_payment_confirmed_at, bop.option_payment_rejected_at,
+                       bop.option_payment_rejection_reason
+                FROM bookings b
+                LEFT JOIN packages p ON b.packageId = p.packageId
+                LEFT JOIN agent a ON b.agentId = a.id
+                LEFT JOIN booking_option_payments bop ON b.bookingId = bop.booking_id
+                WHERE b.bookingStatus NOT IN ('draft','cancelled')
+                  AND (bop.option_payment_status IS NOT NULL AND bop.option_payment_status != 'not_set')
+                ORDER BY
+                    CASE bop.option_payment_status WHEN 'checking' THEN 0 WHEN 'pending_payment' THEN 1 WHEN 'rejected' THEN 2 WHEN 'confirmed' THEN 3 ELSE 4 END,
+                    bop.option_payment_uploaded_at DESC,
+                    b.createdAt DESC";
+        $result = $conn->query($sql);
+
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            $pax = intval($row['adults'] ?? 0) + intval($row['children'] ?? 0) + intval($row['infants'] ?? 0);
+            $bookings[] = [
+                'bookingId' => $row['bookingId'],
+                'packageName' => $row['packageName'] ?? '',
+                'agentName' => $row['agentName'] ?? '',
+                'departureDate' => $row['departureDate'],
+                'returnDate' => $row['returnDate'] ?? '',
+                'pax' => $pax,
+                'bookingStatus' => $row['bookingStatus'],
+                'flightOptionFee' => floatval($row['flightOptionFee'] ?? 0),
+                'optionPaymentStatus' => $row['option_payment_status'] ?? 'not_set',
+                'optionPaymentAmount' => floatval($row['option_payment_amount'] ?? 0),
+                'optionPaymentFile' => $row['option_payment_file'],
+                'optionPaymentFileName' => $row['option_payment_file_name'],
+                'optionPaymentUploadedAt' => $row['option_payment_uploaded_at'],
+                'optionPaymentConfirmedAt' => $row['option_payment_confirmed_at'],
+                'optionPaymentRejectedAt' => $row['option_payment_rejected_at'],
+                'optionPaymentRejectionReason' => $row['option_payment_rejection_reason']
+            ];
+        }
+
+        send_success_response(['bookings' => $bookings]);
+    } catch (Exception $e) {
+        send_error_response('Failed to load extra options list: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Extra Options 결제 승인 (Super Admin)
+ */
+function confirmOptionPayment($conn, $input) {
+    try {
+        $bookingId = $input['bookingId'] ?? '';
+        if (empty($bookingId)) send_error_response('Booking ID is required');
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $adminAccountId = $_SESSION['admin_accountId'] ?? null;
+
+        // 현재 상태 확인
+        $chk = $conn->prepare("SELECT option_payment_status, option_payment_file FROM booking_option_payments WHERE booking_id = ? LIMIT 1");
+        $chk->bind_param('s', $bookingId);
+        $chk->execute();
+        $row = $chk->get_result()->fetch_assoc();
+        $chk->close();
+
+        if (!$row) send_error_response('Option payment record not found', 404);
+        if ($row['option_payment_status'] !== 'checking') {
+            send_error_response('Can only confirm payments in "checking" status');
+        }
+        if (empty($row['option_payment_file'])) {
+            send_error_response('No payment proof file uploaded');
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $stmt = $conn->prepare("UPDATE booking_option_payments SET option_payment_status = 'confirmed', option_payment_confirmed_at = ?, option_payment_confirmed_by = ? WHERE booking_id = ?");
+        $stmt->bind_param('sis', $now, $adminAccountId, $bookingId);
+        $stmt->execute();
+        $stmt->close();
+
+        send_success_response(['confirmedAt' => $now], 'Option payment confirmed successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to confirm option payment: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Extra Options 결제 반려 (Super Admin)
+ */
+function rejectOptionPayment($conn, $input) {
+    try {
+        $bookingId = $input['bookingId'] ?? '';
+        $reason = $input['reason'] ?? '';
+        if (empty($bookingId)) send_error_response('Booking ID is required');
+
+        // 현재 상태 및 파일 확인
+        $chk = $conn->prepare("SELECT option_payment_status, option_payment_file FROM booking_option_payments WHERE booking_id = ? LIMIT 1");
+        $chk->bind_param('s', $bookingId);
+        $chk->execute();
+        $row = $chk->get_result()->fetch_assoc();
+        $chk->close();
+
+        if (!$row) send_error_response('Option payment record not found', 404);
+        if ($row['option_payment_status'] !== 'checking') {
+            send_error_response('Can only reject payments in "checking" status');
+        }
+
+        // 파일 삭제
+        if (!empty($row['option_payment_file'])) {
+            $fullPath = __DIR__ . '/../../../' . $row['option_payment_file'];
+            if (file_exists($fullPath)) @unlink($fullPath);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $stmt = $conn->prepare("UPDATE booking_option_payments
+                                SET option_payment_status = 'rejected',
+                                    option_payment_file = NULL,
+                                    option_payment_file_name = NULL,
+                                    option_payment_uploaded_at = NULL,
+                                    option_payment_rejected_at = ?,
+                                    option_payment_rejection_reason = ?
+                                WHERE booking_id = ?");
+        $stmt->bind_param('sss', $now, $reason, $bookingId);
+        $stmt->execute();
+        $stmt->close();
+
+        send_success_response(['rejectedAt' => $now], 'Option payment rejected successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to reject option payment: ' . $e->getMessage(), 500);
     }
 }

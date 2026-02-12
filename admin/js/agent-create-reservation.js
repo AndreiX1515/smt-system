@@ -1795,7 +1795,6 @@ function renderTravelerCards() {
                         <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source of Income" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
                     </div>
                 </div>
-                ${renderFlightOptionsForTraveler(index)}
             </div>
         `;
     });
@@ -5857,12 +5856,7 @@ async function handleSave() {
             if (visaType === 'group') visaFeeTotal += 1500;
             else if (visaType === 'individual') visaFeeTotal += 1900;
 
-            // Flight Option Fee 계산
-            if (t.flightOptionPrices && typeof t.flightOptionPrices === 'object') {
-                Object.values(t.flightOptionPrices).forEach(price => {
-                    flightOptionFeeTotal += parseFloat(price) || 0;
-                });
-            }
+            // Flight Option Fee는 Extra Options 페이지에서 별도 관리 (예약 생성 시 0)
         });
 
         const seatRequestValue = getEditorPlainText('seat_req_editor');
@@ -5901,9 +5895,9 @@ async function handleSave() {
                 passportPhotoKey: null,
                 // visaDocumentKey는 FormData 파일 필드명과 매칭(backend가 업로드 후 visaDocument로 저장)
                 visaDocumentKey: null,
-                // 항공 옵션 (카테고리별 선택된 옵션 ID 및 가격)
-                flightOptions: t.flightOptions || {},
-                flightOptionPrices: t.flightOptionPrices || {}
+                // 항공 옵션은 Extra Options 페이지에서 별도 관리
+                flightOptions: {},
+                flightOptionPrices: {}
             })),
             adults: adults,
             children: children,
