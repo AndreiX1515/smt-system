@@ -11075,15 +11075,26 @@ function saveExtraOptions($conn, $input) {
 
     if (empty($bookingId)) send_error_response('Booking ID is required', 400);
 
-    // 권한 확인
-    $chk = $conn->prepare("SELECT bookingId FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
+    // 권한 확인 + 출발일 조회
+    $chk = $conn->prepare("SELECT bookingId, DATE(departureDate) as depDate FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
     $chk->bind_param('si', $bookingId, $agentAccountId);
     $chk->execute();
-    if (!$chk->get_result()->fetch_assoc()) {
+    $chkRow = $chk->get_result()->fetch_assoc();
+    if (!$chkRow) {
         $chk->close();
         send_error_response('Reservation not found or access denied', 404);
     }
     $chk->close();
+
+    // 출발 7일 전까지만 변경 가능
+    $depDate = $chkRow['depDate'] ?? '';
+    if ($depDate !== '') {
+        $depTs = strtotime($depDate);
+        $cutoffTs = $depTs - (7 * 86400); // 7일 전
+        if (time() >= $cutoffTs) {
+            send_error_response('Extra options can only be changed up to 7 days before departure', 400);
+        }
+    }
 
     try {
         $conn->begin_transaction();

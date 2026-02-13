@@ -37,6 +37,7 @@
             renderTravelerOptions();
             updateTotalFee();
             renderPaymentProof();
+            checkDeadline();
         } catch (e) {
             console.error('Failed to load detail:', e);
             alert('Failed to load data: ' + e.message);
@@ -303,6 +304,36 @@
             alert('Failed to delete: ' + e.message);
         }
     };
+
+    function checkDeadline() {
+        if (!bookingData || !bookingData.departureDate) return;
+        const dep = new Date(bookingData.departureDate.substring(0, 10) + 'T00:00:00');
+        const now = new Date();
+        const diffDays = Math.ceil((dep - now) / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 7) {
+            // 체크박스 모두 비활성화
+            document.querySelectorAll('input[data-traveler]').forEach(cb => cb.disabled = true);
+
+            // Save 버튼 비활성화
+            const saveBtn = document.getElementById('saveOptionsBtn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                saveBtn.style.cursor = 'not-allowed';
+            }
+
+            // 안내 메시지 삽입
+            const section = document.getElementById('flightOptionsSection');
+            if (section && !document.getElementById('deadlineNotice')) {
+                const notice = document.createElement('div');
+                notice.id = 'deadlineNotice';
+                notice.style.cssText = 'margin: 12px 0 0; padding: 10px 14px; background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 6px; color: #92400E; font-size: 13px; font-weight: 500;';
+                notice.textContent = 'Options can only be changed up to 7 days before departure.';
+                section.querySelector('.card-panel-divider').after(notice);
+            }
+        }
+    }
 
     function escapeHtml(str) {
         if (!str) return '';
