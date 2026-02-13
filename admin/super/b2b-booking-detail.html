@@ -238,7 +238,7 @@
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Deadline</label>
-						<input type="date" class="form-control" id="downPaymentDeadline">
+						<input type="date" class="form-control" id="downPaymentDeadline" disabled title="Down Payment deadline cannot be modified">
 					</div>
 					<div class="grid-item">
 						<label class="label-name">Proof File</label>
@@ -889,6 +889,18 @@
 					__isSuperAdmin = ['admin_ph', 'admin_kr'].includes(sessionData.userType);
 					__isAdminKr = sessionData.userType === 'admin_kr';
 				} catch (_) { __isSuperAdmin = false; __isAdminKr = false; }
+
+				// 데드라인 수정 권한: admin_ph, admin_kr만 Second/Balance/Full 수정 가능
+				// Down Payment deadline은 HTML에서 이미 disabled
+				if (!__isSuperAdmin) {
+					['secondPaymentDeadline', 'balanceDeadline', 'fullPaymentDeadline', 'middlePaymentDeadline', 'middleBalanceDeadline'].forEach(id => {
+						const el = document.getElementById(id);
+						if (el) {
+							el.disabled = true;
+							el.title = 'Only admin_ph and admin_kr can modify payment deadlines';
+						}
+					});
+				}
 
 				const urlParams = new URLSearchParams(window.location.search);
 				bookingId = urlParams.get('id') || urlParams.get('bookingId');
@@ -1736,8 +1748,8 @@
 						{ id: 'secondPaymentDeadline', type: 'second', field: 'advancePaymentDueDate' },
 						{ id: 'balanceDeadline', type: 'balance', field: 'balanceDueDate' },
 						{ id: 'fullPaymentDeadline', type: 'full', field: 'fullPaymentDueDate' },
-						{ id: 'middlePaymentDeadline', type: 'down', field: 'downPaymentDueDate' },
-						{ id: 'middleBalanceDeadline', type: 'balance', field: 'balanceDueDate' }
+						{ id: 'middlePaymentDeadline', type: 'middle', field: 'downPaymentDueDate' },
+						{ id: 'middleBalanceDeadline', type: 'middle_balance', field: 'balanceDueDate' }
 					];
 					let deadlineChanged = false;
 					let deadlineDirectUpdate = true; // 직접 변경 여부 추적

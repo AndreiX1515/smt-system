@@ -1009,20 +1009,46 @@ function getWaitingCancelledBookings($conn) {
                 $graceRemainingSeconds = 0;
             }
 
-            // Check if deadline has already been extended before (max 1 time)
-            $extCountStmt = $conn->prepare("
+            // waiting_cancelled 진입 횟수 체크 (2번 이상이면 자가 연장 불가)
+            $wcCountStmt = $conn->prepare("
                 SELECT COUNT(*) as cnt FROM booking_status_history
-                WHERE bookingId = ? AND previousStatus = 'waiting_cancelled' AND changeReason LIKE 'Payment deadline extended%'
+                WHERE bookingId = ? AND newStatus = 'waiting_cancelled'
             ");
-            $extCountStmt->bind_param('s', $bookingId);
-            $extCountStmt->execute();
-            $extCountRow = $extCountStmt->get_result()->fetch_assoc();
-            $extCountStmt->close();
-            $extensionCount = (int)($extCountRow['cnt'] ?? 0);
-            $extensionExhausted = $extensionCount >= 1;
+            $wcCountStmt->bind_param('s', $bookingId);
+            $wcCountStmt->execute();
+            $wcCountRow = $wcCountStmt->get_result()->fetch_assoc();
+            $wcCountStmt->close();
+            $wcCount = (int)($wcCountRow['cnt'] ?? 0);
+            $extensionExhausted = $wcCount >= 2;
 
-            // canExtend: paymentType IN (staged, middle) AND departure > 31 days AND not already extended
-            $canExtend = in_array($b['paymentType'], ['staged', 'middle']) && $daysUntilDeparture > 31 && !$extensionExhausted;
+            // 결제 증빙 업로드 이력 확인
+            $hasAnyProof = false;
+            foreach ($payments as $p) {
+                if (!empty($p['filePath']) || $p['status'] === 'confirmed') {
+                    $hasAnyProof = true;
+                    break;
+                }
+            }
+
+            // canExtend: paymentType != 'full' AND departure >= 34 AND wcCount < 2 AND hasProof
+            $canExtend = $b['paymentType'] !== 'full'
+                && $daysUntilDeparture >= 34
+                && $wcCount < 2
+                && $hasAnyProof;
+
+            // 연장 불가 사유
+            $cannotExtendReason = null;
+            if (!$canExtend) {
+                if ($b['paymentType'] === 'full') {
+                    $cannotExtendReason = 'Full payment bookings cannot be extended.';
+                } else if ($daysUntilDeparture < 34) {
+                    $cannotExtendReason = 'Departure is within 34 days - extension not available.';
+                } else if ($wcCount >= 2) {
+                    $cannotExtendReason = '이 예약은 이미 waiting_cancelled 상태를 경험했기 때문에 자동 연장이 불가능합니다. 관리자에게 문의해주세요.';
+                } else if (!$hasAnyProof) {
+                    $cannotExtendReason = '결제 증빙이 업로드된 적 없는 예약은 연장할 수 없습니다.';
+                }
+            }
 
             $items[] = [
                 'bookingId' => $bookingId,
@@ -1037,7 +1063,8 @@ function getWaitingCancelledBookings($conn) {
                 'graceDeadline' => $graceDeadline->format('Y-m-d H:i:s'),
                 'graceRemainingSeconds' => $graceRemainingSeconds,
                 'canExtend' => $canExtend,
-                'extensionExhausted' => $extensionExhausted
+                'extensionExhausted' => $extensionExhausted,
+                'cannotExtendReason' => $cannotExtendReason
             ];
         }
 
@@ -1082,28 +1109,40 @@ function extendPaymentDeadline($conn, $input) {
             send_error_response('Full payment bookings cannot be extended');
         }
 
-        // Check extension limit (max 1 time per booking)
-        $extCountStmt = $conn->prepare("
+        // waiting_cancelled 진입 횟수 체크 (2번 이상이면 자가 연장 불가)
+        $wcCountStmt = $conn->prepare("
             SELECT COUNT(*) as cnt FROM booking_status_history
-            WHERE bookingId = ? AND previousStatus = 'waiting_cancelled' AND changeReason LIKE 'Payment deadline extended%'
+            WHERE bookingId = ? AND newStatus = 'waiting_cancelled'
         ");
-        $extCountStmt->bind_param('s', $bookingId);
-        $extCountStmt->execute();
-        $extCountRow = $extCountStmt->get_result()->fetch_assoc();
-        $extCountStmt->close();
-        if ((int)($extCountRow['cnt'] ?? 0) >= 1) {
-            send_error_response('This booking has already been extended once. Automatic extension is no longer available. Please contact the administrator.');
+        $wcCountStmt->bind_param('s', $bookingId);
+        $wcCountStmt->execute();
+        $wcCountRow = $wcCountStmt->get_result()->fetch_assoc();
+        $wcCountStmt->close();
+        if ((int)($wcCountRow['cnt'] ?? 0) >= 2) {
+            send_error_response('이 예약은 이미 waiting_cancelled 상태를 경험했습니다. 자동 연장이 불가능합니다. 관리자에게 문의해주세요.');
+        }
+
+        // 결제 증빙이 하나라도 업로드된 적 있어야 연장 가능
+        $payments = getPaymentsByBookingId($conn, $bookingId);
+        $hasProof = false;
+        foreach ($payments as $p) {
+            if (!empty($p['filePath']) || $p['status'] === 'confirmed') {
+                $hasProof = true;
+                break;
+            }
+        }
+        if (!$hasProof) {
+            send_error_response('결제 증빙이 업로드된 적 없는 예약은 연장할 수 없습니다.');
         }
 
         $now = new DateTime();
         $depDate = new DateTime($booking['departureDate']);
         $daysUntilDeparture = (int)$now->diff($depDate)->format('%r%a');
-        if ($daysUntilDeparture <= 31) {
-            send_error_response('Cannot extend: departure is within 31 days');
+        if ($daysUntilDeparture < 34) {
+            send_error_response('Cannot extend: departure is within 34 days');
         }
 
-        // Get next unpaid
-        $payments = getPaymentsByBookingId($conn, $bookingId);
+        // Get next unpaid (payments already fetched above for proof check)
         $nextUnpaidStep = null;
         $currentDueDate = null;
         foreach ($payments as $p) {
@@ -2976,17 +3015,20 @@ function createReservation($conn, $input) {
             }
 
             // ========== 결제 규칙 ==========
-            // 규칙 1: 출발일까지 30일 이내 → Full Payment만, deadline 1일
-            // 규칙 2: 출발일까지 44일 이내 → 모든 deadline 3일
-            // 규칙 3: 출발일까지 44일 초과 → 일반 규칙
-            //         - Down Payment: 예약일 + 3일
-            //         - Second Payment: Down Payment deadline + 30일
-            //         - Balance: 출발일 - 30일
+            // 규칙 1: 출발일까지 34일 미만 → Full Payment만, 3시간 데드라인
+            // 규칙 2: 출발일까지 34~44일 → Middle Payment만, +3일
+            // 규칙 3: 출발일까지 45일 이상 → Staged/Middle/Full 선택
+            //         - Staged: Down(+3일), Second(예약일+30일), Balance(출발-45일)
+            //         - Middle: middle(+3일), middle_balance(+3일)
+            //         - Full: +3일
 
-            $userRequestedPaymentType = (isset($input['paymentType']) && $input['paymentType'] === 'full') ? 'full' : 'staged';
+            $userRequestedPaymentType = $input['paymentType'] ?? 'staged';
+            if (!in_array($userRequestedPaymentType, ['staged', 'middle', 'full'])) {
+                $userRequestedPaymentType = 'staged';
+            }
 
-            if ($daysUntilDeparture !== null && $daysUntilDeparture <= 30) {
-                // 규칙 1: 30일 이내 → Full Payment 강제, deadline 1일
+            if ($daysUntilDeparture !== null && $daysUntilDeparture < 34) {
+                // 규칙 1: <34일 → Full Payment 강제, 3시간 데드라인
                 $paymentType = 'full';
                 $downPaymentAmount = 0;
                 $downPaymentDueDate = null;
@@ -2995,9 +3037,22 @@ function createReservation($conn, $input) {
                 $balanceAmount = 0;
                 $balanceDueDate = null;
                 $fullPaymentAmount = $totalAmount;
-                $fullPaymentDueDate = date('Y-m-d', strtotime('+1 day'));
+                $fullPaymentDueDate = date('Y-m-d H:i:s', strtotime('+3 hours'));
             } else if ($daysUntilDeparture !== null && $daysUntilDeparture <= 44) {
-                // 규칙 2: 44일 이내 → 모든 deadline 3일
+                // 규칙 2: 34~44일 → Middle Payment 강제, +3일
+                $paymentType = 'middle';
+                $travelerCount = $adults + $children;
+                $middleAmount = (5000 * $travelerCount) + (10000 * $travelerCount) + $visaFee;
+                $downPaymentAmount = $middleAmount; // legacy 호환
+                $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
+                $advancePaymentAmount = $middleAmount;
+                $advancePaymentDueDate = null;
+                $balanceAmount = max(0, $totalAmount - $middleAmount);
+                $balanceDueDate = date('Y-m-d', strtotime('+3 days'));
+                $fullPaymentAmount = null;
+                $fullPaymentDueDate = null;
+            } else {
+                // 규칙 3: ≥45일 → Staged/Middle/Full 선택
                 $paymentType = $userRequestedPaymentType;
                 if ($paymentType === 'full') {
                     $downPaymentAmount = 0;
@@ -3008,37 +3063,28 @@ function createReservation($conn, $input) {
                     $balanceDueDate = null;
                     $fullPaymentAmount = $totalAmount;
                     $fullPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                } else {
-                    $downPaymentAmount = 5000 * ($adults + $children);
+                } else if ($paymentType === 'middle') {
+                    // Middle: middle(+3일), middle_balance(+3일)
+                    $travelerCount = $adults + $children;
+                    $middleAmount = (5000 * $travelerCount) + (10000 * $travelerCount) + $visaFee;
+                    $downPaymentAmount = $middleAmount;
                     $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                    $advancePaymentAmount = (10000 * ($adults + $children)) + $visaFee + $flightOptionsTotal;
-                    $advancePaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                    $balanceAmount = max(0, $totalAmount - $downPaymentAmount - $advancePaymentAmount);
+                    $advancePaymentAmount = $middleAmount;
+                    $advancePaymentDueDate = null;
+                    $balanceAmount = max(0, $totalAmount - $middleAmount);
                     $balanceDueDate = date('Y-m-d', strtotime('+3 days'));
                     $fullPaymentAmount = null;
                     $fullPaymentDueDate = null;
-                }
-            } else {
-                // 규칙 3: 44일 초과 → 일반 규칙
-                $paymentType = $userRequestedPaymentType;
-                if ($paymentType === 'full') {
-                    $downPaymentAmount = 0;
-                    $downPaymentDueDate = null;
-                    $advancePaymentAmount = 0;
-                    $advancePaymentDueDate = null;
-                    $balanceAmount = 0;
-                    $balanceDueDate = null;
-                    $fullPaymentAmount = $totalAmount;
-                    $fullPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
                 } else {
+                    // Staged: Down(+3일), Second(예약일+30일), Balance(출발-45일)
                     $downPaymentAmount = 5000 * ($adults + $children);
                     $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                    $advancePaymentAmount = (10000 * ($adults + $children)) + $visaFee + $flightOptionsTotal;
-                    // Second Payment deadline = Down Payment deadline + 30일
-                    $advancePaymentDueDate = date('Y-m-d', strtotime($downPaymentDueDate . ' +30 days'));
+                    $advancePaymentAmount = (10000 * ($adults + $children)) + $visaFee;
+                    // Second Payment deadline = 예약일 + 30일
+                    $advancePaymentDueDate = date('Y-m-d', strtotime('+30 days'));
                     $balanceAmount = max(0, $totalAmount - $downPaymentAmount - $advancePaymentAmount);
-                    // Balance deadline = 출발일 - 30일
-                    $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -30 days')) : null;
+                    // Balance deadline = 출발일 - 45일
+                    $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -45 days')) : null;
                     // Second Payment 기한이 Balance 기한보다 늦으면 Balance 기한에 맞춤
                     if ($balanceDueDate && $advancePaymentDueDate > $balanceDueDate) {
                         $advancePaymentDueDate = $balanceDueDate;
@@ -10445,7 +10491,7 @@ function updatePaymentInfo($conn, $input) {
         }
 
         // 예약 존재 및 소유권 확인
-        $checkStmt = $conn->prepare("SELECT accountId, bookingStatus, totalAmount, departureDate, adults, children FROM bookings WHERE bookingId = ?");
+        $checkStmt = $conn->prepare("SELECT accountId, bookingStatus, totalAmount, departureDate, adults, children, visaFee FROM bookings WHERE bookingId = ?");
         $checkStmt->bind_param('s', $bookingId);
         $checkStmt->execute();
         $booking = $checkStmt->get_result()->fetch_assoc();
@@ -10463,6 +10509,7 @@ function updatePaymentInfo($conn, $input) {
         $departureDate = $booking['departureDate'] ?? null;
         $adults = (int)($booking['adults'] ?? 0);
         $children = (int)($booking['children'] ?? 0);
+        $visaFee = (float)($booking['visaFee'] ?? 0);
 
         // 출발일까지 남은 일수 계산
         $daysUntilDeparture = null;
@@ -10475,20 +10522,17 @@ function updatePaymentInfo($conn, $input) {
         }
 
         // ========== 결제 규칙 ==========
-        // 규칙 1: 출발일까지 34일 이내 → Full Payment만, deadline 1일 (24시간)
-        // 규칙 2: 출발일까지 35~44일 → Middle Payment (기본) 또는 Full Payment
-        //         - Middle Payment: deadline +3일, Balance: 출발 -30일
-        //         - Full Payment: deadline +3일
-        // 규칙 3: 출발일까지 44일 초과 → Staged Payment 또는 Full Payment
+        // 규칙 1: 출발일까지 34일 미만 → Full Payment만, 3시간 데드라인
+        // 규칙 2: 출발일까지 34~44일 → Middle Payment만, +3일
+        // 규칙 3: 출발일까지 45일 이상 → Staged/Middle/Full 선택
 
         $userRequestedPaymentType = $input['paymentType'] ?? 'staged';
-        // 유효한 타입인지 확인
         if (!in_array($userRequestedPaymentType, ['staged', 'middle', 'full'])) {
             $userRequestedPaymentType = 'staged';
         }
 
-        if ($daysUntilDeparture !== null && $daysUntilDeparture <= 34) {
-            // 규칙 1: 34일 이내 → Full Payment 강제 (24시간)
+        if ($daysUntilDeparture !== null && $daysUntilDeparture < 34) {
+            // 규칙 1: <34일 → Full Payment 강제, 3시간 데드라인
             $paymentType = 'full';
             $downPaymentAmount = 0;
             $downPaymentDueDate = null;
@@ -10497,13 +10541,22 @@ function updatePaymentInfo($conn, $input) {
             $balanceAmount = 0;
             $balanceDueDate = null;
             $fullPaymentAmount = $totalAmount;
-            $fullPaymentDueDate = date('Y-m-d', strtotime('+1 day'));
+            $fullPaymentDueDate = date('Y-m-d H:i:s', strtotime('+3 hours'));
         } else if ($daysUntilDeparture !== null && $daysUntilDeparture <= 44) {
-            // 규칙 2: 35~44일 → Middle Payment (기본) 또는 Full Payment
-            // staged는 이 구간에서 사용 불가 → middle로 변환
-            if ($userRequestedPaymentType === 'staged') {
-                $userRequestedPaymentType = 'middle';
-            }
+            // 규칙 2: 34~44일 → Middle Payment 강제, +3일
+            $paymentType = 'middle';
+            $travelerCount = $adults + $children;
+            $middleAmount = (5000 * $travelerCount) + (10000 * $travelerCount) + $visaFee;
+            $downPaymentAmount = $middleAmount;
+            $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
+            $advancePaymentAmount = $middleAmount;
+            $advancePaymentDueDate = null;
+            $balanceAmount = max(0, $totalAmount - $middleAmount);
+            $balanceDueDate = date('Y-m-d', strtotime('+3 days'));
+            $fullPaymentAmount = null;
+            $fullPaymentDueDate = null;
+        } else {
+            // 규칙 3: ≥45일 → Staged/Middle/Full 모두 허용
             $paymentType = $userRequestedPaymentType;
 
             if ($paymentType === 'full') {
@@ -10515,50 +10568,28 @@ function updatePaymentInfo($conn, $input) {
                 $balanceDueDate = null;
                 $fullPaymentAmount = $totalAmount;
                 $fullPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-            } else {
-                // Middle Payment: Down + Second를 합쳐서 1차 결제, 나머지가 Balance
+            } else if ($paymentType === 'middle') {
+                // Middle: middle(+3일), middle_balance(+3일)
                 $travelerCount = $adults + $children;
-                $downPaymentAmount = 5000 * $travelerCount;
-                $secondPaymentAmount = 10000 * $travelerCount; // Visa Fee는 프론트에서 계산해서 전달
-                if (isset($input['advancePaymentAmount'])) {
-                    $secondPaymentAmount = (float)$input['advancePaymentAmount'];
-                }
-                // Middle Payment = Down + Second (advancePaymentAmount 필드에 저장)
-                $advancePaymentAmount = $downPaymentAmount + $secondPaymentAmount;
-                $downPaymentAmount = $advancePaymentAmount; // downPaymentAmount에 Middle Payment 금액 저장
+                $middleAmount = (5000 * $travelerCount) + (10000 * $travelerCount) + $visaFee;
+                $downPaymentAmount = $middleAmount;
                 $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                $advancePaymentDueDate = null; // Middle에서는 Second가 없음
-                // Balance = Total - Middle Payment
-                $balanceAmount = $totalAmount - $advancePaymentAmount;
-                $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -30 days')) : null;
+                $advancePaymentAmount = $middleAmount;
+                $advancePaymentDueDate = null;
+                $balanceAmount = max(0, $totalAmount - $middleAmount);
+                $balanceDueDate = date('Y-m-d', strtotime('+3 days'));
                 $fullPaymentAmount = null;
                 $fullPaymentDueDate = null;
-            }
-        } else {
-            // 규칙 3: 44일 초과 → Staged 또는 Full (middle은 이 구간에서 사용 불가 → staged로 변환)
-            if ($userRequestedPaymentType === 'middle') {
-                $userRequestedPaymentType = 'staged';
-            }
-            $paymentType = $userRequestedPaymentType;
-
-            if ($paymentType === 'full') {
-                $downPaymentAmount = 0;
-                $downPaymentDueDate = null;
-                $advancePaymentAmount = 0;
-                $advancePaymentDueDate = null;
-                $balanceAmount = 0;
-                $balanceDueDate = null;
-                $fullPaymentAmount = $totalAmount;
-                $fullPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
             } else {
+                // Staged: Down(+3일), Second(예약일+30일), Balance(출발-45일)
                 $downPaymentAmount = isset($input['downPaymentAmount']) ? (float)$input['downPaymentAmount'] : 5000 * ($adults + $children);
                 $downPaymentDueDate = date('Y-m-d', strtotime('+3 days'));
-                $advancePaymentAmount = isset($input['advancePaymentAmount']) ? (float)$input['advancePaymentAmount'] : null;
-                // Second Payment deadline = Down Payment deadline + 30일
-                $advancePaymentDueDate = date('Y-m-d', strtotime($downPaymentDueDate . ' +30 days'));
-                $balanceAmount = isset($input['balanceAmount']) ? (float)$input['balanceAmount'] : null;
-                // Balance deadline = 출발일 - 30일
-                $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -30 days')) : null;
+                $advancePaymentAmount = isset($input['advancePaymentAmount']) ? (float)$input['advancePaymentAmount'] : (10000 * ($adults + $children)) + $visaFee;
+                // Second Payment deadline = 예약일 + 30일
+                $advancePaymentDueDate = date('Y-m-d', strtotime('+30 days'));
+                $balanceAmount = isset($input['balanceAmount']) ? (float)$input['balanceAmount'] : max(0, $totalAmount - $downPaymentAmount - $advancePaymentAmount);
+                // Balance deadline = 출발일 - 45일
+                $balanceDueDate = !empty($departureDate) ? date('Y-m-d', strtotime($departureDate . ' -45 days')) : null;
                 // Second Payment 기한이 Balance 기한보다 늦으면 Balance 기한에 맞춤
                 if ($balanceDueDate && $advancePaymentDueDate > $balanceDueDate) {
                     $advancePaymentDueDate = $balanceDueDate;

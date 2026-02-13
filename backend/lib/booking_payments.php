@@ -344,7 +344,7 @@ function getOverduePayments($conn, $agentId = null, $limit = 100) {
                b.bookingStatus, b.paymentType, b.agentId
         FROM booking_payments bp
         JOIN bookings b ON bp.bookingId = b.bookingId
-        WHERE bp.dueDate < CURDATE()
+        WHERE bp.dueDate < NOW()
         AND bp.status NOT IN ('confirmed')
         AND b.bookingStatus NOT IN ('cancelled', 'confirmed', 'refunded', 'completed', 'rejected', 'waiting_cancelled', 'draft')
     ";

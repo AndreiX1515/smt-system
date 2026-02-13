@@ -15701,6 +15701,20 @@ function setPaymentDeadline($conn, $input) {
             send_error_response('Deadline date is required');
         }
 
+        // Down Payment: 수정 불가 (모든 관리자 차단)
+        if (in_array($deadlineType, ['down', 'deposit'])) {
+            send_error_response('Down Payment deadline cannot be modified', 403);
+        }
+
+        // Second/Balance/Full: admin_ph, admin_kr만 수정 가능
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $adminUserTypeCheck = $_SESSION['admin_userType'] ?? '';
+        if (!in_array($adminUserTypeCheck, ['admin_ph', 'admin_kr'], true)) {
+            send_error_response('Only admin_ph and admin_kr can modify payment deadlines', 403);
+        }
+
         // bookings 스키마: downPaymentDueDate / advancePaymentDueDate / balanceDueDate / fullPaymentDueDate
         $fieldName = 'balanceDueDate';
         switch ($deadlineType) {
@@ -15708,11 +15722,15 @@ function setPaymentDeadline($conn, $input) {
             case 'deposit':
                 $fieldName = 'downPaymentDueDate';
                 break;
+            case 'middle':
+                $fieldName = 'downPaymentDueDate'; // Middle Payment은 downPaymentDueDate에 저장
+                break;
             case 'second':
             case 'advance':
                 $fieldName = 'advancePaymentDueDate';
                 break;
             case 'balance':
+            case 'middle_balance':
                 $fieldName = 'balanceDueDate';
                 break;
             case 'full':
@@ -15723,6 +15741,8 @@ function setPaymentDeadline($conn, $input) {
         $historyLabels = [
             'down' => 'Down Payment deadline',
             'deposit' => 'Down Payment deadline',
+            'middle' => 'Middle Payment deadline',
+            'middle_balance' => 'Middle Balance deadline',
             'second' => 'Second Payment deadline',
             'advance' => 'Second Payment deadline',
             'balance' => 'Balance deadline',

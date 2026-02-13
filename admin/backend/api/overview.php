@@ -261,8 +261,8 @@ function logAutoCancellation($conn, $bookingId, $previousStatus) {
 }
 
 /**
- * 31일 이내 + 무결제 예약 → Full Payment 자동 전환
- * waiting_cancelled 설정 직후 호출하여, 출발 31일 이내이고 결제증빙이 전혀 없는 경우
+ * 34일 미만 + 무결제 예약 → Full Payment 자동 전환
+ * waiting_cancelled 설정 직후 호출하여, 출발 34일 미만이고 결제증빙이 전혀 없는 경우
  * paymentType을 full로 변경하고 기한은 기존 dueDate 유지
  */
 function convertToFullPaymentIfNeeded($conn, $bookingId) {
@@ -278,9 +278,9 @@ function convertToFullPaymentIfNeeded($conn, $bookingId) {
         // 이미 full인 경우 스킵
         if (($bRow['paymentType'] ?? '') === 'full') return;
 
-        // 출발일까지 31일 이내인지 체크
+        // 출발일까지 34일 미만인지 체크
         $daysUntilDep = (int)(new DateTime())->diff(new DateTime($bRow['departureDate']))->format('%r%a');
-        if ($daysUntilDep > 31) return;
+        if ($daysUntilDep >= 34) return;
 
         // booking_payments 테이블에서 파일 존재 확인
         $payments = getPaymentsByBookingId($conn, $bookingId);
@@ -439,7 +439,7 @@ function applyB2BAutoCancellation($conn) {
             $cancelStmt->execute();
             $cancelStmt->close();
 
-            // 44일 이내 + 무결제 → full payment 전환
+            // 34일 미만 + 무결제 → full payment 전환
             convertToFullPaymentIfNeeded($conn, $bookingId);
 
             $processedBookingIds[] = $bookingId;
@@ -488,7 +488,7 @@ function applyB2BAutoCancellation($conn) {
             $conds[] = "(" . $dateExpr('b.balanceDueDate') . " IS NOT NULL AND " . $dateExpr('b.balanceDueDate') . " < CURDATE() AND COALESCE(b.balanceFile,'') = '')";
         }
         if ($hasFullPaymentDueDate && $hasFullPaymentFile) {
-            $conds[] = "(" . $dateExpr('b.fullPaymentDueDate') . " IS NOT NULL AND " . $dateExpr('b.fullPaymentDueDate') . " < CURDATE() AND COALESCE(b.fullPaymentFile,'') = '')";
+            $conds[] = "(" . $dateExpr('b.fullPaymentDueDate') . " IS NOT NULL AND b.fullPaymentDueDate < NOW() AND COALESCE(b.fullPaymentFile,'') = '')";
         }
         if (empty($conds)) return;
 
@@ -548,7 +548,7 @@ function applyB2BAutoCancellation($conn) {
         $updateStmt->execute();
         $updateStmt->close();
 
-        // 레거시 처리된 예약에 대해서도 44일 이내 + 무결제 → full payment 전환
+        // 레거시 처리된 예약에 대해서도 34일 미만 + 무결제 → full payment 전환
         foreach ($legacyBookingIds as $legacyBid) {
             convertToFullPaymentIfNeeded($conn, $legacyBid);
         }
