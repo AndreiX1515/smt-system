@@ -630,10 +630,7 @@
 			tbody.innerHTML = pageBookings.map((booking, index) => {
 				let dateBooked = '';
 				if (booking.createdAt) {
-					const d = new Date(booking.createdAt);
-					if (!isNaN(d.getTime())) {
-						dateBooked = d.toISOString().split('T')[0];
-					}
+					dateBooked = String(booking.createdAt).substring(0, 10);
 				}
 				const globalIndex = startIdx + index;
 
@@ -699,10 +696,7 @@
 			tbody.innerHTML = pageBookings.map((booking, index) => {
 				let dateBooked = '';
 				if (booking.createdAt) {
-					const d = new Date(booking.createdAt);
-					if (!isNaN(d.getTime())) {
-						dateBooked = d.toISOString().split('T')[0];
-					}
+					dateBooked = String(booking.createdAt).substring(0, 10);
 				}
 				const globalIndex = startIdx + index;
 

@@ -52,6 +52,10 @@ if ($conn->connect_error) {
 // UTF-8 설정
 $conn->set_charset("utf8");
 
+// 시간대 설정: 필리핀 (UTC+8)
+date_default_timezone_set('Asia/Manila');
+$conn->query("SET time_zone = '+08:00'");
+
 // 연결 성공 로그 (디버깅용 - 필요시 주석 처리)
 if (defined('DEBUG_MODE') && DEBUG_MODE) {
     error_log("Database connection successful to $dbname");
