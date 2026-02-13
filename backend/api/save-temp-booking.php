@@ -349,26 +349,43 @@ try {
         $mergedSelectedOptionsJson = json_encode($base, JSON_UNESCAPED_UNICODE);
     }
 
-    $bookingId = generate_booking_id($conn);
-    $stmt = $conn->prepare("
-        INSERT INTO bookings (
-            bookingId, accountId, packageId, packageName, packagePrice,
-            departureDate, departureTime, adults, children, infants,
-            totalAmount, bookingStatus, paymentStatus, selectedRooms, selectedOptions, price_tier, customerAccountId
-        ) VALUES (
-            ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?,
-            ?, 'pending', 'pending', ?, ?, ?, ?
-        )
-    ");
-    $stmt->bind_param(
-        'siisdssiidsssi',
-        $bookingId, $userId, $packageId, $packageName, $packagePrice,
-        $departureDate, $departureTime, $adults, $children, $infants,
-        $totalAmount, $selectedRoomsJson, $mergedSelectedOptionsJson, $priceTier, $userId
-    );
-    $stmt->execute();
-    $stmt->close();
+    $inserted = false;
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        $bookingId = generate_booking_id();
+        $stmt = $conn->prepare("
+            INSERT INTO bookings (
+                bookingId, accountId, packageId, packageName, packagePrice,
+                departureDate, departureTime, adults, children, infants,
+                totalAmount, bookingStatus, paymentStatus, selectedRooms, selectedOptions, price_tier, customerAccountId
+            ) VALUES (
+                ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                ?, 'pending', 'pending', ?, ?, ?, ?
+            )
+        ");
+        $stmt->bind_param(
+            'siisdssiidsssi',
+            $bookingId, $userId, $packageId, $packageName, $packagePrice,
+            $departureDate, $departureTime, $adults, $children, $infants,
+            $totalAmount, $selectedRoomsJson, $mergedSelectedOptionsJson, $priceTier, $userId
+        );
+        try {
+            $stmt->execute();
+            $stmt->close();
+            $inserted = true;
+            break;
+        } catch (mysqli_sql_exception $e) {
+            $stmt->close();
+            if ($e->getCode() === 1062) {
+                continue; // duplicate key → retry with new ID
+            }
+            throw $e;
+        }
+    }
+
+    if (!$inserted) {
+        send_json_response(['success' => false, 'message' => 'Failed to generate unique booking ID'], 500);
+    }
 
     send_json_response(['success' => true, 'bookingId' => $bookingId]);
 
@@ -376,21 +393,10 @@ try {
     send_json_response(['success' => false, 'message' => ' : ' . $e->getMessage()], 500);
 }
 
-function generate_booking_id(mysqli $conn): string {
+function generate_booking_id(): string {
     $prefix = 'BK' . date('Ymd');
-    for ($i = 0; $i < 10; $i++) {
-        $rand = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-        $id = $prefix . $rand; // : BK2025121701234
-        $stmt = $conn->prepare("SELECT bookingId FROM bookings WHERE bookingId = ? LIMIT 1");
-        $stmt->bind_param('s', $id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $exists = $res && $res->num_rows > 0;
-        $stmt->close();
-        if (!$exists) return $id;
-    }
-    //  fallback
-    return $prefix . str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+    $rand = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+    return $prefix . $rand;
 }
 
 
