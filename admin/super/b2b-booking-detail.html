@@ -3656,11 +3656,8 @@
 				items.push({ label: 'Visa Fee', amount: visaFee });
 			}
 
-			// DB에 저장된 Flight Option Fee 사용
+			// DB에 저장된 Flight Option Fee (Total에서 제외, 별도 표시)
 			const flightOptionsTotal = parseFloat(booking.flightOptionFee || 0);
-			if (flightOptionsTotal > 0) {
-				items.push({ label: 'Flight Options', amount: flightOptionsTotal });
-			}
 
 			// 소계 (할인 전)
 			const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
@@ -3702,6 +3699,26 @@
 				'<span style="color: #0050C8; font-weight: 700;">Total</span>' +
 				'<span style="color: #0050C8; font-weight: 700;">PHP ' + formatNumber(calculatedTotal) + '</span>' +
 			'</div>';
+
+			// Extra Option Fee — Total과 분리하여 별도 표시
+			if (flightOptionsTotal > 0) {
+				const opStatus = (booking.optionPaymentStatus || 'not_set').toLowerCase();
+				const badgeMap = {
+					'pending_payment': { label: 'Pending Payment', bg: '#FEF3C7', color: '#92400E', border: '#FCD34D' },
+					'checking':        { label: 'Checking',        bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD' },
+					'confirmed':       { label: 'Confirmed',       bg: '#D1FAE5', color: '#065F46', border: '#6EE7B7' },
+					'rejected':        { label: 'Rejected',        bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
+					'not_set':         { label: 'Not Set',         bg: '#F3F4F6', color: '#6B7280', border: '#D1D5DB' }
+				};
+				const badge = badgeMap[opStatus] || badgeMap['not_set'];
+				html += '<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 10px; padding: 10px 12px; background: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">' +
+					'<span style="color: #6B7280; font-weight: 600;">Extra Option Fee</span>' +
+					'<span style="display: flex; align-items: center; gap: 8px;">' +
+						'<span style="color: #374151; font-weight: 600;">PHP ' + formatNumber(flightOptionsTotal) + '</span>' +
+						'<span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: ' + badge.bg + '; color: ' + badge.color + '; border: 1px solid ' + badge.border + ';">' + badge.label + '</span>' +
+					'</span>' +
+				'</div>';
+			}
 
 			list.innerHTML = html;
 

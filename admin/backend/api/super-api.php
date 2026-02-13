@@ -13187,6 +13187,21 @@ function getB2BBookingDetail($conn, $input) {
             }
         }
 
+        // Option payment status 조회
+        try {
+            $opStmt = $conn->prepare("SELECT option_payment_status FROM booking_option_payments WHERE booking_id = ? LIMIT 1");
+            if ($opStmt) {
+                $opStmt->bind_param('s', $bookingId);
+                $opStmt->execute();
+                $opResult = $opStmt->get_result();
+                $opRow = $opResult->fetch_assoc();
+                $opStmt->close();
+                $booking['optionPaymentStatus'] = $opRow ? ($opRow['option_payment_status'] ?? 'not_set') : 'not_set';
+            }
+        } catch (Throwable $e) {
+            $booking['optionPaymentStatus'] = 'not_set';
+        }
+
         send_success_response([
             'booking' => $booking,
             'roomSummary' => $roomSummary,
