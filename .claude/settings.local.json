@@ -216,7 +216,9 @@
       "Bash(/dev/null << 'EOSQL'\nSELECT a.accountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName, ag.contactNo\nFROM accounts a\nINNER JOIN agent ag ON a.accountId = ag.accountId\nWHERE \\(a.accountStatus = 'active' OR a.accountStatus IS NULL\\)\n  AND \\(ag.agencyName LIKE '%SMART%' OR ag.personInCharge LIKE '%SMART%' OR ag.fName LIKE '%SMART%' OR ag.lName LIKE '%SMART%' OR CONCAT\\(ag.fName, ' ', ag.lName\\) LIKE '%SMART%'\\)\nORDER BY ag.agencyName ASC\nLIMIT 50;\nEOSQL)",
       "Bash(/dev/null << 'EOSQL'\nSELECT a.accountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName, ag.contactNo\nFROM accounts a\nINNER JOIN agent ag ON a.accountId = ag.accountId\nWHERE \\(a.accountStatus = 'active' OR a.accountStatus IS NULL\\)\n  AND \\(ag.agencyName LIKE '%travel%' OR ag.personInCharge LIKE '%travel%' OR ag.fName LIKE '%travel%' OR ag.lName LIKE '%travel%' OR CONCAT\\(ag.fName, ' ', ag.lName\\) LIKE '%travel%'\\)\nORDER BY ag.agencyName ASC\nLIMIT 10;\nEOSQL)",
       "Bash(/dev/null << 'EOSQL'\nSELECT t.threadId, t.agentAccountId, ag.agencyName, ag.personInCharge, ag.fName, ag.lName\nFROM message_threads t\nLEFT JOIN agent ag ON t.agentAccountId = ag.accountId\nWHERE t.threadId = 2;\nEOSQL)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(/dev/null <<'SQL'\nSELECT accountId, loginId, userType FROM accounts WHERE accountId = 2;\nSQL)",
+      "Bash(# Test API with actual session cookie from browser # First, let''s check the latest access log for the agent-api tail -20 /var/log/apache2/access.log)"
     ]
   }
 }

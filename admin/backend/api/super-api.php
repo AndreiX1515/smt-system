@@ -14468,14 +14468,26 @@ function confirmPayment($conn, $input) {
 
         $now = date('Y-m-d H:i:s');
 
+        // 예약의 결제 타입 조회 (middle 결제 구분용)
+        $ptStmt = $conn->prepare("SELECT paymentType FROM bookings WHERE bookingId = ? LIMIT 1");
+        $ptStmt->bind_param('s', $bookingId);
+        $ptStmt->execute();
+        $ptRow = $ptStmt->get_result()->fetch_assoc();
+        $ptStmt->close();
+        $bookingPaymentType = $ptRow['paymentType'] ?? '';
+
         // 결제 타입별 검증 및 업데이트 (상태 자동 전환 포함)
         switch ($paymentType) {
             case 'down':
                 if (empty($booking['downPaymentFile'])) {
                     send_error_response('No Down Payment proof file uploaded');
                 }
-                // Down Payment 승인 → waiting_second_payment로 자동 전환
-                $sql = "UPDATE bookings SET downPaymentConfirmedAt = ?, bookingStatus = 'waiting_second_payment' WHERE bookingId = ?";
+                // Down Payment 승인: middle 결제면 waiting_balance로, staged면 waiting_second_payment로 전환
+                if ($bookingPaymentType === 'middle') {
+                    $sql = "UPDATE bookings SET downPaymentConfirmedAt = ?, bookingStatus = 'waiting_balance' WHERE bookingId = ?";
+                } else {
+                    $sql = "UPDATE bookings SET downPaymentConfirmedAt = ?, bookingStatus = 'waiting_second_payment' WHERE bookingId = ?";
+                }
                 break;
 
             case 'second':
@@ -14491,9 +14503,15 @@ function confirmPayment($conn, $input) {
                 break;
 
             case 'balance':
-                // Second Payment 확정 여부 확인
-                if (empty($booking['advancePaymentConfirmedAt']) || $booking['advancePaymentConfirmedAt'] === '0000-00-00 00:00:00') {
-                    send_error_response('Second Payment must be confirmed first');
+                // middle 결제: down(middle) 확인 후 balance 가능 / staged 결제: second 확인 후 balance 가능
+                if ($bookingPaymentType === 'middle') {
+                    if (empty($booking['downPaymentConfirmedAt']) || $booking['downPaymentConfirmedAt'] === '0000-00-00 00:00:00') {
+                        send_error_response('Middle Payment must be confirmed first');
+                    }
+                } else {
+                    if (empty($booking['advancePaymentConfirmedAt']) || $booking['advancePaymentConfirmedAt'] === '0000-00-00 00:00:00') {
+                        send_error_response('Second Payment must be confirmed first');
+                    }
                 }
                 if (empty($booking['balanceFile'])) {
                     send_error_response('No Balance proof file uploaded');

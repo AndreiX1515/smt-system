@@ -7823,11 +7823,11 @@ function uploadPaymentProofFile($conn, $input) {
         // 예약 확인 및 권한 체크
         if ($isAdmin) {
             // 관리자는 모든 예약에 접근 가능
-            $chk = $conn->prepare("SELECT bookingId, bookingStatus, departureDate, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? LIMIT 1");
+            $chk = $conn->prepare("SELECT bookingId, bookingStatus, departureDate, paymentType AS bookingPaymentType, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? LIMIT 1");
             $chk->bind_param("s", $bookingId);
         } else {
             // 에이전트는 자신이 담당하는 예약에만 접근 가능 (accountId 또는 agentId 매칭)
-            $chk = $conn->prepare("SELECT bookingId, bookingStatus, departureDate, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?)) LIMIT 1");
+            $chk = $conn->prepare("SELECT bookingId, bookingStatus, departureDate, paymentType AS bookingPaymentType, downPaymentConfirmedAt, advancePaymentConfirmedAt, balanceConfirmedAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?)) LIMIT 1");
             $chk->bind_param("sii", $bookingId, $agentAccountId, $agentAccountId);
         }
         $chk->execute();
@@ -7844,12 +7844,23 @@ function uploadPaymentProofFile($conn, $input) {
             send_error_response('Cannot upload payment proof in current reservation status', 403);
         }
 
-        // 단계별 검증: Second는 Down 확인 후, Balance는 Second 확인 후
+        // 단계별 검증: Second는 Down 확인 후, Balance는 Second 확인 후 (middle 결제는 second 단계 없음)
+        $bookingPaymentType = $row['bookingPaymentType'] ?? '';
         if ($paymentType === 'second' && empty($row['downPaymentConfirmedAt'])) {
             send_error_response('Second Payment can only be uploaded after Down Payment is confirmed', 403);
         }
-        if ($paymentType === 'balance' && empty($row['advancePaymentConfirmedAt'])) {
-            send_error_response('Balance can only be uploaded after Second Payment is confirmed', 403);
+        if ($paymentType === 'balance') {
+            if ($bookingPaymentType === 'middle') {
+                // middle 결제: down(middle) 확인 후 balance 업로드 가능
+                if (empty($row['downPaymentConfirmedAt'])) {
+                    send_error_response('Balance can only be uploaded after Middle Payment is confirmed', 403);
+                }
+            } else {
+                // staged 결제: second 확인 후 balance 업로드 가능
+                if (empty($row['advancePaymentConfirmedAt'])) {
+                    send_error_response('Balance can only be uploaded after Second Payment is confirmed', 403);
+                }
+            }
         }
 
         // 파일 처리
