@@ -91,6 +91,7 @@
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">Product and Reservation Information</p>
 				<a href="#" id="messagesLink" style="cursor:pointer;"><span data-lan-eng="Send Message to Agent">Send Message to Agent</span><img src="../image/linkout.svg" alt=""></a>
+				<a href="#" id="checkInventoryLink" style="cursor:pointer;"><span data-lan-eng="Check Inventory">Check Inventory</span><img src="../image/linkout.svg" alt=""></a>
 			</div>
 
 			<h2 class="section-title jw-mgt32" id="section-product" data-lan-eng="Product Information">Product Information</h2>
@@ -790,6 +791,69 @@
 			padding: 0 24px;
 			z-index: 100;
 		}
+		/* Inventory Modal Styles */
+		#inventoryBookingsList .inv-booking-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 10px 12px;
+			border: 1px solid #e5e5e5;
+			border-radius: 6px;
+			margin-bottom: 8px;
+			cursor: pointer;
+			transition: background 0.15s;
+		}
+		#inventoryBookingsList .inv-booking-item:hover {
+			background: #f7faff;
+			border-color: #3b82f6;
+		}
+		#inventoryBookingsList .inv-booking-item.current-booking {
+			background: #eff6ff;
+			border-color: #3b82f6;
+			border-width: 2px;
+		}
+		#inventoryBookingsList .inv-booking-id {
+			font-weight: 600;
+			font-size: 13px;
+			color: #333;
+		}
+		#inventoryBookingsList .inv-booking-info {
+			font-size: 12px;
+			color: #666;
+			margin-top: 2px;
+		}
+		#inventoryBookingsList .inv-booking-pax {
+			font-size: 12px;
+			color: #666;
+			text-align: right;
+		}
+		#inventoryBookingsList .inv-booking-status {
+			display: inline-block;
+			font-size: 10px;
+			padding: 2px 6px;
+			border-radius: 4px;
+			margin-top: 4px;
+		}
+		#inventoryBookingsList .inv-booking-status.pending { background: #fef3c7; color: #d97706; }
+		#inventoryBookingsList .inv-booking-status.confirmed { background: #dcfce7; color: #16a34a; }
+		#inventoryBookingsList .inv-booking-status.cancelled { background: #fee2e2; color: #dc2626; }
+		.inv-no-bookings {
+			color: #999;
+			font-size: 13px;
+			text-align: center;
+			padding: 20px;
+		}
+		.inv-status-badge {
+			display: inline-block;
+			font-size: 11px;
+			padding: 2px 8px;
+			border-radius: 4px;
+			font-weight: 600;
+		}
+		.inv-status-badge.available { background: #dcfce7; color: #16a34a; }
+		.inv-status-badge.soldout { background: #fee2e2; color: #dc2626; }
+		.inv-status-badge.closed { background: #f3f4f6; color: #6b7280; }
+
 		/* Payment Deadline Date Inputs - always visible */
 		#downPaymentDeadline,
 		#secondPaymentDeadline,
@@ -932,6 +996,14 @@
 						});
 					}
 				} catch (_) { }
+
+				const invLink = document.getElementById('checkInventoryLink');
+				if (invLink) {
+					invLink.addEventListener('click', function(e) {
+						e.preventDefault();
+						openInventoryModal();
+					});
+				}
 
 				const saveBtn = document.getElementById('saveBtn');
 				if (saveBtn) saveBtn.addEventListener('click', handleSave);
@@ -4428,8 +4500,123 @@
 			}
 		}
 
+		// ========== Inventory Check Modal ==========
+		async function openInventoryModal() {
+			if (!lastLoadedBooking) {
+				alert('Booking data not loaded yet.');
+				return;
+			}
+
+			const pkgId = lastLoadedBooking.packageId || currentPackageId;
+			const depDate = lastLoadedBooking.departureDate;
+			const pkgName = lastLoadedBooking.packageName || '';
+
+			if (!pkgId || !depDate) {
+				alert('Package or departure date information not available.');
+				return;
+			}
+
+			const modal = document.getElementById('inventoryModal');
+			const summaryEl = document.getElementById('inventorySummary');
+			const listEl = document.getElementById('inventoryBookingsList');
+
+			summaryEl.innerHTML = 'Loading...';
+			listEl.innerHTML = '';
+			modal.style.display = 'flex';
+
+			const depYear = parseInt(depDate.substring(0, 4));
+			const depMonth = parseInt(depDate.substring(5, 7));
+
+			try {
+				const [calRes, bookingsRes] = await Promise.all([
+					fetch(`../backend/api/super-api.php?action=getInventoryCalendar&packageId=${encodeURIComponent(pkgId)}&year=${depYear}&month=${depMonth}`, { credentials: 'same-origin' }).then(r => r.json()),
+					fetch(`../backend/api/super-api.php?action=getBookingsByDateAndPackage&packageId=${encodeURIComponent(pkgId)}&date=${encodeURIComponent(depDate)}`, { credentials: 'same-origin' }).then(r => r.json())
+				]);
+
+				// Inventory summary
+				let summaryHtml = '';
+				const depDay = parseInt(depDate.substring(8, 10));
+				let dayData = null;
+				if (calRes.success && calRes.data && calRes.data.calendar) {
+					dayData = calRes.data.calendar.find(d => d.day === depDay);
+				}
+
+				summaryHtml += `<div style="margin-bottom:8px;"><strong>${pkgName}</strong></div>`;
+				summaryHtml += `<div style="font-size:13px; color:#666; margin-bottom:12px;">Departure: ${depDate}</div>`;
+
+				if (dayData) {
+					const avail = dayData.availableSeats ?? 0;
+					const remaining = dayData.remainingSeats ?? 0;
+					const booked = avail - remaining;
+					const status = dayData.status || 'available';
+
+					let statusLabel = 'Available';
+					let statusClass = 'available';
+					if (status === 'soldout' || (status === 'available' && remaining <= 0 && avail > 0)) {
+						statusLabel = 'Sold Out';
+						statusClass = 'soldout';
+					} else if (status === 'closed' || avail <= 0) {
+						statusLabel = 'Closed';
+						statusClass = 'closed';
+					}
+
+					summaryHtml += `<div style="display:flex; align-items:center; gap:12px; font-size:14px;">`;
+					summaryHtml += `<span>Booked: <strong>${booked}</strong> / Available: <strong>${avail}</strong> (Remaining: <strong>${remaining}</strong>)</span>`;
+					summaryHtml += `<span class="inv-status-badge ${statusClass}">${statusLabel}</span>`;
+					summaryHtml += `</div>`;
+				} else {
+					summaryHtml += `<div style="font-size:13px; color:#999;">No inventory data for this date.</div>`;
+				}
+
+				summaryEl.innerHTML = summaryHtml;
+
+				// Bookings list
+				if (bookingsRes.success && bookingsRes.data && bookingsRes.data.length > 0) {
+					listEl.innerHTML = bookingsRes.data.map(b => {
+						const isCurrent = b.bookingId === bookingId;
+						return `<div class="inv-booking-item${isCurrent ? ' current-booking' : ''}" data-booking-id="${b.bookingId}">
+							<div>
+								<div class="inv-booking-id">${b.bookingId || 'N/A'}${isCurrent ? ' (Current)' : ''}</div>
+								<div class="inv-booking-info">${b.agencyName || 'N/A'}</div>
+								<span class="inv-booking-status ${b.bookingStatus}">${b.bookingStatus}</span>
+							</div>
+							<div class="inv-booking-pax">
+								<div>${b.adults || 0}A ${b.children || 0}C ${b.infants || 0}I</div>
+							</div>
+						</div>`;
+					}).join('');
+
+					listEl.querySelectorAll('.inv-booking-item').forEach(item => {
+						item.addEventListener('click', () => {
+							const bid = item.dataset.bookingId;
+							if (bid && bid !== bookingId) {
+								window.open('b2b-booking-detail.html?id=' + bid, '_blank');
+							}
+						});
+					});
+				} else {
+					listEl.innerHTML = '<div class="inv-no-bookings">No bookings on this date</div>';
+				}
+			} catch (err) {
+				console.error('Inventory modal error:', err);
+				summaryEl.innerHTML = '<div style="color:#dc2626;">Failed to load inventory data.</div>';
+			}
+		}
+
+		function closeInventoryModal() {
+			document.getElementById('inventoryModal').style.display = 'none';
+		}
+
+		// Inventory modal - close on overlay click
+		document.getElementById('inventoryModal').addEventListener('click', function(e) {
+			if (e.target === this) closeInventoryModal();
+		});
+
 		// ESC 키로 모달 닫기
 		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && document.getElementById('inventoryModal').style.display === 'flex') {
+				closeInventoryModal();
+			}
 			if (e.key === 'Escape' && document.getElementById('rejectModal').style.display === 'flex') {
 				closeRejectModal();
 			}
@@ -4884,6 +5071,25 @@
 			</aside>
 		</section>
 	</main>
+
+	<!-- Inventory Check Modal -->
+	<div id="inventoryModal" class="modal" style="display:none;">
+		<div class="modal-content" style="max-width:600px; width:95%;">
+			<div class="modal-header">
+				<h3>Check Inventory</h3>
+				<button type="button" class="modal-close" onclick="closeInventoryModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body" style="padding:24px 32px;">
+				<div id="inventorySummary">Loading...</div>
+				<div style="margin-top:20px;">
+					<label style="font-weight:600; font-size:14px;">Bookings on this date</label>
+					<div id="inventoryBookingsList" style="max-height:400px; overflow-y:auto; margin-top:8px;"></div>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<!-- File Viewer Modal -->
 	<div id="fileViewerModal" class="file-viewer-modal" style="display:none;">
