@@ -1,6 +1,29 @@
 //   
 
-//   
+// auth-guard i18n messages
+function getAuthMessage(key) {
+    const lang = localStorage.getItem('selectedLanguage') || 'ko';
+    const messages = {
+        ko: {
+            loginRequired: '로그인이 필요합니다.',
+            sessionExpired: '세션이 만료되었습니다. 다시 로그인해주세요.',
+            noPermission: '접근 권한이 없습니다.'
+        },
+        en: {
+            loginRequired: 'Login is required.',
+            sessionExpired: 'Session expired. Please login again.',
+            noPermission: 'You do not have permission to access this page.'
+        },
+        tl: {
+            loginRequired: 'Kailangan mag-login.',
+            sessionExpired: 'Nag-expire ang session. Mag-login muli.',
+            noPermission: 'Walang pahintulot na ma-access ang pahinang ito.'
+        }
+    };
+    return (messages[lang] || messages['ko'])[key] || key;
+}
+
+//
 const PROTECTED_PAGES = [
     'edit-profile.html',
     'change-password.html',
@@ -95,7 +118,7 @@ function handleUnauthorizedAccess() {
     sessionStorage.setItem('redirectAfterLogin', currentUrl);
     
     //  
-    showAuthAlert(' .', () => {
+    showAuthAlert(getAuthMessage('loginRequired'), () => {
         window.location.href = 'login.html';
     });
 }
@@ -156,7 +179,7 @@ function handleSessionExpired() {
     sessionStorage.setItem('redirectAfterLogin', currentUrl);
     
     //  
-    showAuthAlert(' .  .', () => {
+    showAuthAlert(getAuthMessage('sessionExpired'), () => {
         window.location.href = 'login.html';
     });
 }
@@ -221,14 +244,14 @@ function checkPageAccessLevel() {
     const agentPages = [];
     
     if (adminPages.includes(currentPage) && !['admin_ph', 'admin_kr'].includes(authStatus.accountType)) {
-        showAuthAlert('  .', () => {
+        showAuthAlert(getAuthMessage('noPermission'), () => {
             history.back();
         });
         return false;
     }
 
     if (agentPages.includes(currentPage) && !['agent', 'admin_ph', 'admin_kr'].includes(authStatus.accountType)) {
-        showAuthAlert('  .', () => {
+        showAuthAlert(getAuthMessage('noPermission'), () => {
             history.back();
         });
         return false;
