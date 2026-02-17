@@ -255,7 +255,16 @@ function handlePaymentProcessing($input) {
         // - (save-temp-booking.php)  pending    bookingId  UPDATE
         //   pending   (B2C)  2   .
         $bookingId = createBooking($bookingData, $userId, $bookingStatus, $bookingPaymentStatus);
-        
+
+        // Google Sheets APP 동기화
+        try {
+            require_once __DIR__ . '/../lib/google_sheets.php';
+            $gsDepDate = normalize_date_ymd((string)($bookingData['departureDate'] ?? ''));
+            gs_sync_booking_to_sheet($conn, (int)($bookingData['packageId'] ?? 0), $gsDepDate);
+        } catch (Exception $gsEx) {
+            error_log("Sheets sync failed (payment): " . $gsEx->getMessage());
+        }
+
         // Process payment
         $paymentId = processPayment($bookingId, $bookingData, $paymentMethodEnum, $paymentRowStatus, (int)$userId);
         

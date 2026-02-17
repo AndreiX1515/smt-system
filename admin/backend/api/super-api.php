@@ -12901,6 +12901,14 @@ function getB2BBookingDetail($conn, $input) {
                     $booking['paymentStatus'] = 'failed';
                     $autoCancelled = true;
 
+                    // Google Sheets APP 동기화
+                    try {
+                        require_once __DIR__ . '/../../../backend/lib/google_sheets.php';
+                        gs_sync_booking_to_sheet($conn, (int)($booking['packageId'] ?? 0), date('Y-m-d', strtotime($booking['departureDate'] ?? '')));
+                    } catch (Exception $gsEx) {
+                        error_log("Sheets sync failed (auto-cancel): " . $gsEx->getMessage());
+                    }
+
                     // 자동취소 히스토리 기록
                     __log_booking_status_change($conn, $bookingId, $previousStatus, 'cancelled', 'System (Auto-Cancel)', 'system');
                 }
@@ -14693,6 +14701,14 @@ function cancelB2BBooking($conn, $input) {
         $stmt->execute();
         $stmt->close();
 
+        // Google Sheets APP 동기화
+        try {
+            require_once __DIR__ . '/../../../backend/lib/google_sheets.php';
+            gs_sync_by_booking_id($conn, $bookingId);
+        } catch (Exception $gsEx) {
+            error_log("Sheets sync failed (cancelB2B): " . $gsEx->getMessage());
+        }
+
         send_success_response([], 'Booking cancelled successfully');
     } catch (Exception $e) {
         send_error_response('Failed to cancel B2B booking: ' . $e->getMessage());
@@ -14722,9 +14738,9 @@ function approveB2BBooking($conn, $input) {
         $adminUserType = $_SESSION['admin_userType'] ?? '';
 
         if ($booking['bookingStatus'] === 'pending') {
-            // 신규 예약 승인: admin_kr만 가능
-            if ($adminUserType !== 'admin_kr') {
-                send_error_response('Only admin_kr can approve new bookings', 403);
+            // 신규 예약 승인: admin_kr, admin_ph 가능
+            if (!in_array($adminUserType, ['admin_kr', 'admin_ph'], true)) {
+                send_error_response('Only admin_kr or admin_ph can approve new bookings', 403);
             }
             // paymentType에 따라 다른 상태로 변경
             $newStatus = ($booking['paymentType'] === 'full') ? 'waiting_full_payment' : 'waiting_down_payment';
@@ -14734,6 +14750,14 @@ function approveB2BBooking($conn, $input) {
             $stmt->bind_param('ss', $newStatus, $bookingId);
             $stmt->execute();
             $stmt->close();
+
+            // Google Sheets APP 동기화
+            try {
+                require_once __DIR__ . '/../../../backend/lib/google_sheets.php';
+                gs_sync_by_booking_id($conn, $bookingId);
+            } catch (Exception $gsEx) {
+                error_log("Sheets sync failed (approveB2B): " . $gsEx->getMessage());
+            }
 
             // 상태 변경 히스토리 저장
             __log_booking_status_change($conn, $bookingId, 'pending', $newStatus, null, null, 'New booking approved');
@@ -15348,9 +15372,9 @@ function rejectB2BBooking($conn, $input) {
         $adminUserType = $_SESSION['admin_userType'] ?? '';
 
         if ($booking['bookingStatus'] === 'pending') {
-            // 신규 예약 거절: admin_kr만 가능
-            if ($adminUserType !== 'admin_kr') {
-                send_error_response('Only admin_kr can reject new bookings', 403);
+            // 신규 예약 거절: admin_kr, admin_ph 가능
+            if (!in_array($adminUserType, ['admin_kr', 'admin_ph'], true)) {
+                send_error_response('Only admin_kr or admin_ph can reject new bookings', 403);
             }
             // pending → cancelled (rejected 대신 cancelled 사용)
             if ($hasRemarks && !empty($reason)) {
@@ -15364,6 +15388,14 @@ function rejectB2BBooking($conn, $input) {
             }
             $stmt->execute();
             $stmt->close();
+
+            // Google Sheets APP 동기화
+            try {
+                require_once __DIR__ . '/../../../backend/lib/google_sheets.php';
+                gs_sync_by_booking_id($conn, $bookingId);
+            } catch (Exception $gsEx) {
+                error_log("Sheets sync failed (rejectB2B): " . $gsEx->getMessage());
+            }
 
             // 상태 변경 히스토리 저장
             __log_booking_status_change($conn, $bookingId, 'pending', 'cancelled', null, null, $reason ?: 'Booking rejected');
@@ -15701,20 +15733,6 @@ function setPaymentDeadline($conn, $input) {
             send_error_response('Deadline date is required');
         }
 
-        // Down Payment: 수정 불가 (모든 관리자 차단)
-        if (in_array($deadlineType, ['down', 'deposit'])) {
-            send_error_response('Down Payment deadline cannot be modified', 403);
-        }
-
-        // Second/Balance/Full: admin_ph, admin_kr만 수정 가능
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $adminUserTypeCheck = $_SESSION['admin_userType'] ?? '';
-        if (!in_array($adminUserTypeCheck, ['admin_ph', 'admin_kr'], true)) {
-            send_error_response('Only admin_ph and admin_kr can modify payment deadlines', 403);
-        }
-
         // bookings 스키마: downPaymentDueDate / advancePaymentDueDate / balanceDueDate / fullPaymentDueDate
         $fieldName = 'balanceDueDate';
         switch ($deadlineType) {
@@ -15722,15 +15740,11 @@ function setPaymentDeadline($conn, $input) {
             case 'deposit':
                 $fieldName = 'downPaymentDueDate';
                 break;
-            case 'middle':
-                $fieldName = 'downPaymentDueDate'; // Middle Payment은 downPaymentDueDate에 저장
-                break;
             case 'second':
             case 'advance':
                 $fieldName = 'advancePaymentDueDate';
                 break;
             case 'balance':
-            case 'middle_balance':
                 $fieldName = 'balanceDueDate';
                 break;
             case 'full':
@@ -15741,8 +15755,6 @@ function setPaymentDeadline($conn, $input) {
         $historyLabels = [
             'down' => 'Down Payment deadline',
             'deposit' => 'Down Payment deadline',
-            'middle' => 'Middle Payment deadline',
-            'middle_balance' => 'Middle Balance deadline',
             'second' => 'Second Payment deadline',
             'advance' => 'Second Payment deadline',
             'balance' => 'Balance deadline',

@@ -373,6 +373,15 @@ try {
             $stmt->execute();
             $stmt->close();
             $inserted = true;
+
+            // Google Sheets APP 동기화
+            try {
+                require_once __DIR__ . '/../lib/google_sheets.php';
+                gs_sync_booking_to_sheet($conn, $packageId, $departureDate);
+            } catch (Exception $gsEx) {
+                error_log("Sheets sync failed (save-temp-booking): " . $gsEx->getMessage());
+            }
+
             break;
         } catch (mysqli_sql_exception $e) {
             $stmt->close();

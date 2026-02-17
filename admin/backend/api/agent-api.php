@@ -7560,6 +7560,14 @@ function cancelReservation($conn, $input) {
         $stmt->bind_param("s", $bookingId);
         $stmt->execute();
 
+        // Google Sheets APP 동기화
+        try {
+            require_once __DIR__ . '/../../../backend/lib/google_sheets.php';
+            gs_sync_by_booking_id($conn, $bookingId);
+        } catch (Exception $gsEx) {
+            error_log("Sheets sync failed (agent-cancel): " . $gsEx->getMessage());
+        }
+
         // 예약 이력 추가 (사유 포함)
         $historyMsg = '예약 취소';
         if (!empty($reason)) {
