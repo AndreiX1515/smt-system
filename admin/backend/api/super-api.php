@@ -1064,6 +1064,17 @@ try {
             rejectOptionPayment($conn, $input);
             break;
 
+        // ========== Rooming List 관련 ==========
+        case 'getRoomingDates':
+            getRoomingDates($conn, $input);
+            break;
+        case 'getRoomingList':
+            getRoomingList($conn, $input);
+            break;
+        case 'saveRoomingAssignments':
+            saveRoomingAssignments($conn, $input);
+            break;
+
         default:
             send_error_response('Invalid action: ' . $action, 400);
     }
@@ -19952,5 +19963,372 @@ function rejectOptionPayment($conn, $input) {
         send_success_response(['rejectedAt' => $now], 'Option payment rejected successfully');
     } catch (Exception $e) {
         send_error_response('Failed to reject option payment: ' . $e->getMessage(), 500);
+    }
+}
+
+// ========== Rooming List 관련 함수 ==========
+
+function getRoomingDates($conn, $input) {
+    try {
+        $month = $input['month'] ?? '';
+        if (empty($month) || !preg_match('/^\d{4}-\d{2}$/', $month)) {
+            send_error_response('Valid month parameter is required (YYYY-MM)', 400);
+        }
+
+        $startDate = $month . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
+        $sql = "SELECT DATE(b.departureDate) AS departureDate,
+                       b.packageId,
+                       COALESCE(NULLIF(b.packageName,''), p.packageName) AS packageName,
+                       SUM(b.adults + b.children + b.infants) AS totalPax,
+                       COUNT(DISTINCT b.bookingId) AS bookingCount
+                FROM bookings b
+                LEFT JOIN packages p ON b.packageId = p.packageId
+                LEFT JOIN accounts a ON b.accountId = a.accountId
+                WHERE b.departureDate BETWEEN ? AND ?
+                  AND (a.accountType = 'agent' OR b.price_tier = 'B2B' OR b.agentId IS NOT NULL)
+                  AND b.bookingStatus IN ('confirmed','completed','waiting_balance','checking_balance','waiting_full_payment','checking_full_payment','waiting_second_payment','checking_second_payment')
+                GROUP BY DATE(b.departureDate), b.packageId
+                ORDER BY b.departureDate";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('ss', $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $dates = [];
+        while ($row = $result->fetch_assoc()) {
+            $dates[] = [
+                'departureDate' => $row['departureDate'],
+                'packageId' => (int)$row['packageId'],
+                'packageName' => $row['packageName'] ?? '',
+                'totalPax' => (int)$row['totalPax'],
+                'bookingCount' => (int)$row['bookingCount']
+            ];
+        }
+        $stmt->close();
+
+        send_success_response($dates);
+    } catch (Exception $e) {
+        send_error_response('Failed to get rooming dates: ' . $e->getMessage(), 500);
+    }
+}
+
+function getRoomingList($conn, $input) {
+    try {
+        $departureDate = $input['departureDate'] ?? '';
+        $packageId = $input['packageId'] ?? '';
+
+        if (empty($departureDate) || empty($packageId)) {
+            send_error_response('departureDate and packageId are required', 400);
+        }
+
+        $packageId = (int)$packageId;
+
+        // 메인 쿼리: 예약 + 여행객 + 방 배정 정보
+        $sql = "SELECT
+                    b.bookingId, b.departureDate, b.adults, b.children, b.infants,
+                    b.roomOption, b.selectedRooms, b.bookingStatus, b.specialRequests, b.seatRequest,
+                    b.price_tier, b.contactEmail, b.contactPhone,
+                    COALESCE(NULLIF(b.packageName,''), p.packageName) AS packageName,
+                    p.duration_days, p.common_accommodation_name,
+                    bt.bookingTravelerId, bt.travelerType, bt.title, bt.firstName, bt.lastName,
+                    bt.birthDate, bt.gender, bt.nationality,
+                    bt.passportNumber, bt.passportIssueDate, bt.passportExpiry,
+                    bt.visaStatus, bt.specialRequests AS travelerRequests,
+                    bt.isMainTraveler, bt.infantSeat, bt.childRoom,
+                    COALESCE(ag.storeName, ag.agencyName) AS agentDisplayName,
+                    ag.agencyName,
+                    ag.id AS agentTableId,
+                    g.guideName,
+                    ra.room_number, ra.room_type, ra.luggage, ra.tipping, ra.remarks AS roomRemarks
+                FROM bookings b
+                LEFT JOIN packages p ON b.packageId = p.packageId
+                LEFT JOIN booking_travelers bt ON bt.transactNo = b.bookingId
+                LEFT JOIN accounts a ON b.accountId = a.accountId
+                LEFT JOIN agent ag ON ag.id = b.agentId
+                LEFT JOIN guides g ON b.guideId = g.guideId
+                LEFT JOIN rooming_assignments ra
+                    ON ra.booking_traveler_id = bt.bookingTravelerId
+                    AND ra.departure_date = b.departureDate
+                WHERE DATE(b.departureDate) = ?
+                  AND b.packageId = ?
+                  AND (a.accountType = 'agent' OR b.price_tier = 'B2B' OR b.agentId IS NOT NULL)
+                  AND b.bookingStatus IN ('confirmed','completed','waiting_balance','checking_balance','waiting_full_payment','checking_full_payment','waiting_second_payment','checking_second_payment')
+                ORDER BY ag.agencyName, b.bookingId, bt.bookingTravelerId";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('si', $departureDate, $packageId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $agentsMap = [];
+        $totalAdults = 0;
+        $totalChildren = 0;
+        $totalInfants = 0;
+        $packageName = '';
+        $accommodation = '';
+        $durationDays = 0;
+        $guideName = '';
+        $processedBookings = [];
+
+        while ($row = $result->fetch_assoc()) {
+            if (empty($packageName)) $packageName = $row['packageName'] ?? '';
+            if (empty($accommodation)) $accommodation = $row['common_accommodation_name'] ?? '';
+            if (empty($durationDays)) $durationDays = (int)($row['duration_days'] ?? 0);
+            if (empty($guideName) && !empty($row['guideName'])) $guideName = $row['guideName'];
+
+            // 예약별 PAX 중복 방지
+            $bid = $row['bookingId'];
+            if (!isset($processedBookings[$bid])) {
+                $processedBookings[$bid] = true;
+                $totalAdults += (int)$row['adults'];
+                $totalChildren += (int)$row['children'];
+                $totalInfants += (int)$row['infants'];
+            }
+
+            if (empty($row['bookingTravelerId'])) continue;
+
+            $agentName = $row['agentDisplayName'] ?? $row['agencyName'] ?? 'Unknown';
+
+            // Luggage 기본값: rooming_assignments 우선, 없으면 예약 데이터에서 추출
+            $luggage = $row['luggage'];
+            if ($luggage === null || $luggage === '') {
+                $luggage = '';
+                $seatReq = trim((string)($row['seatRequest'] ?? ''));
+                if ($seatReq !== '') $luggage = $seatReq;
+            }
+
+            // Remarks 기본값: rooming_assignments 우선, 없으면 예약/여행객 데이터에서 추출
+            $remarks = $row['roomRemarks'];
+            if ($remarks === null || $remarks === '') {
+                $parts = [];
+                $sr = trim((string)($row['specialRequests'] ?? ''));
+                $tr = trim((string)($row['travelerRequests'] ?? ''));
+                if ($sr !== '') $parts[] = $sr;
+                if ($tr !== '' && $tr !== $sr) $parts[] = $tr;
+                $remarks = implode('; ', $parts);
+            }
+
+            // roomOptions JSON 파싱 (selectedRooms 우선, 없으면 roomOption 사용)
+            $selectedRooms = [];
+            $rawRooms = $row['selectedRooms'] ?? '';
+            if (empty($rawRooms) || $rawRooms === '[]') {
+                $rawRooms = $row['roomOption'] ?? '';
+            }
+            if (!empty($rawRooms) && $rawRooms !== '[]') {
+                $decoded = json_decode($rawRooms, true);
+                if (is_array($decoded)) {
+                    $selectedRooms = $decoded;
+                } else {
+                    // 잘린 JSON 복구: 완전한 객체만 추출
+                    preg_match_all('/\{[^}]+\}/', $rawRooms, $matches);
+                    foreach ($matches[0] as $objStr) {
+                        $obj = json_decode($objStr, true);
+                        if ($obj && isset($obj['roomId'])) {
+                            $selectedRooms[] = $obj;
+                        }
+                    }
+                }
+            }
+
+            if (!isset($agentsMap[$agentName])) {
+                $agentsMap[$agentName] = [
+                    'agentName' => $agentName,
+                    'travelers' => []
+                ];
+            }
+
+            $agentsMap[$agentName]['travelers'][] = [
+                'bookingTravelerId' => (int)$row['bookingTravelerId'],
+                'bookingId' => $row['bookingId'],
+                'title' => $row['title'] ?? '',
+                'firstName' => $row['firstName'] ?? '',
+                'lastName' => $row['lastName'] ?? '',
+                'birthDate' => $row['birthDate'] ?? '',
+                'gender' => $row['gender'] ?? '',
+                'nationality' => $row['nationality'] ?? '',
+                'passportNumber' => $row['passportNumber'] ?? '',
+                'passportIssueDate' => $row['passportIssueDate'] ?? '',
+                'passportExpiry' => $row['passportExpiry'] ?? '',
+                'travelerType' => $row['travelerType'] ?? 'adult',
+                'roomNumber' => $row['room_number'] !== null ? (int)$row['room_number'] : null,
+                'roomType' => $row['room_type'] ?? null,
+                'luggage' => $luggage,
+                'tipping' => $row['tipping'] ?? '',
+                'remarks' => $remarks,
+                'infantSeat' => (int)($row['infantSeat'] ?? 0),
+                'childRoom' => (int)($row['childRoom'] ?? 0),
+                'contactEmail' => $row['contactEmail'] ?? '',
+                'contactPhone' => $row['contactPhone'] ?? '',
+                'roomOptions' => $selectedRooms
+            ];
+        }
+        $stmt->close();
+
+        // booking_traveler_options 조회 (Baggage, eSIM, Flight Meal 등)
+        $bookingIds = array_keys($processedBookings);
+        $travelerOptionsMap = []; // "bookingId|travelerIndex" => [{category, option}]
+        if (!empty($bookingIds)) {
+            $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));
+            $types = str_repeat('s', count($bookingIds));
+            $optSql = "SELECT bto.booking_id, bto.traveler_index,
+                              ao.option_name, aoc.category_name
+                       FROM booking_traveler_options bto
+                       JOIN airline_options ao ON bto.option_id = ao.option_id
+                       JOIN airline_option_categories aoc ON ao.category_id = aoc.category_id
+                       WHERE bto.booking_id IN ($placeholders)
+                       ORDER BY bto.booking_id, bto.traveler_index, aoc.sort_order, ao.sort_order";
+            $optStmt = $conn->prepare($optSql);
+            $optStmt->bind_param($types, ...$bookingIds);
+            $optStmt->execute();
+            $optRes = $optStmt->get_result();
+            while ($optRow = $optRes->fetch_assoc()) {
+                $key = $optRow['booking_id'] . '|' . $optRow['traveler_index'];
+                if (!isset($travelerOptionsMap[$key])) $travelerOptionsMap[$key] = [];
+                $travelerOptionsMap[$key][] = [
+                    'category' => $optRow['category_name'],
+                    'option' => $optRow['option_name']
+                ];
+            }
+            $optStmt->close();
+        }
+
+        // booking_travelers의 index 매핑 → flightOptions 문자열 생성
+        // bookingId별 traveler를 순서대로 세어 traveler_index 매핑
+        $travelerIndexByBooking = []; // bookingId => counter
+        $flightOptionsById = []; // bookingTravelerId => flightOptions string
+        foreach ($agentsMap as $agent) {
+            foreach ($agent['travelers'] as $t) {
+                $bid = $t['bookingId'];
+                if (!isset($travelerIndexByBooking[$bid])) $travelerIndexByBooking[$bid] = 0;
+                $idx = $travelerIndexByBooking[$bid]++;
+                $key = $bid . '|' . $idx;
+                $opts = $travelerOptionsMap[$key] ?? [];
+                $optionTexts = [];
+                foreach ($opts as $opt) {
+                    $optionTexts[] = $opt['category'] . ': ' . $opt['option'];
+                }
+                $flightOptionsById[$t['bookingTravelerId']] = implode(', ', $optionTexts);
+            }
+        }
+        // flightOptions를 traveler 배열에 추가
+        foreach ($agentsMap as &$agent) {
+            foreach ($agent['travelers'] as &$t) {
+                $t['flightOptions'] = $flightOptionsById[$t['bookingTravelerId']] ?? '';
+            }
+            unset($t);
+        }
+        unset($agent);
+
+        // 에이전트 목록 정리
+        $agents = [];
+        foreach ($agentsMap as $agent) {
+            $agent['paxCount'] = count($agent['travelers']);
+            $agents[] = $agent;
+        }
+
+        // 항공편 정보
+        $flights = ['departure' => null, 'return' => null];
+        $fStmt = $conn->prepare("SELECT flight_type, flight_number, airline_name, departure_time, arrival_time, departure_point, destination FROM package_flights WHERE package_id = ? ORDER BY flight_type, flight_id");
+        if ($fStmt) {
+            $fStmt->bind_param('i', $packageId);
+            $fStmt->execute();
+            $fRes = $fStmt->get_result();
+            while ($fRow = $fRes->fetch_assoc()) {
+                if ($fRow['flight_type'] === 'departure' && $flights['departure'] === null) {
+                    $flights['departure'] = $fRow;
+                }
+                if ($fRow['flight_type'] === 'return' && $flights['return'] === null) {
+                    $flights['return'] = $fRow;
+                }
+            }
+            $fStmt->close();
+        }
+
+        // 귀국일 계산
+        $returnDate = '';
+        if ($durationDays > 0) {
+            $returnDate = date('Y-m-d', strtotime($departureDate . ' + ' . ($durationDays - 1) . ' days'));
+        }
+
+        $totalPax = $totalAdults + $totalChildren + $totalInfants;
+
+        $summary = [
+            'departureDate' => $departureDate,
+            'returnDate' => $returnDate,
+            'packageName' => $packageName,
+            'accommodation' => $accommodation,
+            'totalPax' => $totalPax,
+            'adults' => $totalAdults,
+            'children' => $totalChildren,
+            'infants' => $totalInfants,
+            'guideName' => $guideName,
+            'flights' => $flights
+        ];
+
+        send_json_response([
+            'success' => true,
+            'summary' => $summary,
+            'agents' => $agents
+        ]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get rooming list: ' . $e->getMessage(), 500);
+    }
+}
+
+function saveRoomingAssignments($conn, $input) {
+    try {
+        $departureDate = $input['departureDate'] ?? '';
+        $packageId = $input['packageId'] ?? '';
+        $assignments = $input['assignments'] ?? [];
+
+        if (empty($departureDate) || empty($packageId)) {
+            send_error_response('departureDate and packageId are required', 400);
+        }
+        if (!is_array($assignments) || empty($assignments)) {
+            send_error_response('assignments array is required', 400);
+        }
+
+        $packageId = (int)$packageId;
+
+        $sql = "INSERT INTO rooming_assignments (departure_date, package_id, booking_traveler_id, room_number, room_type, luggage, tipping, remarks)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    room_number = VALUES(room_number),
+                    room_type = VALUES(room_type),
+                    luggage = VALUES(luggage),
+                    tipping = VALUES(tipping),
+                    remarks = VALUES(remarks),
+                    package_id = VALUES(package_id)";
+
+        $stmt = $conn->prepare($sql);
+        $savedCount = 0;
+
+        foreach ($assignments as $a) {
+            $travelerId = (int)($a['bookingTravelerId'] ?? 0);
+            if ($travelerId <= 0) continue;
+
+            $roomNumber = isset($a['roomNumber']) && $a['roomNumber'] !== '' && $a['roomNumber'] !== null ? (int)$a['roomNumber'] : null;
+            $roomType = $a['roomType'] ?? null;
+            if ($roomType !== null && $roomType !== '') {
+                $roomType = substr($roomType, 0, 50);
+            } else {
+                $roomType = null;
+            }
+            $luggage = $a['luggage'] ?? null;
+            $tipping = $a['tipping'] ?? null;
+            $remarks = $a['remarks'] ?? null;
+
+            $stmt->bind_param('siisssss', $departureDate, $packageId, $travelerId, $roomNumber, $roomType, $luggage, $tipping, $remarks);
+            $stmt->execute();
+            $savedCount++;
+        }
+        $stmt->close();
+
+        send_success_response(['savedCount' => $savedCount], "Saved $savedCount assignments successfully");
+    } catch (Exception $e) {
+        send_error_response('Failed to save rooming assignments: ' . $e->getMessage(), 500);
     }
 }
