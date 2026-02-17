@@ -314,7 +314,7 @@ function renderNoAgents(message = 'No agent locations available at this time.') 
 
     agentList.innerHTML = `
         <li class="no-agents">
-            <img src="../images/ico_location_gray.svg" alt="" onerror="this.style.display='none'">
+            <img src="../images/ico_location.svg" alt="" onerror="this.style.display='none'">
             <p>${message}</p>
         </li>
     `;

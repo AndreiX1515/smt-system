@@ -173,7 +173,7 @@ $departureDate = isset($_GET['departure_date']) ? htmlspecialchars($_GET['depart
             <h4 class="text fz16 fw600 lh24 black12 mb12">Agent Locations</h4>
             <ul class="agent-list" id="agentList">
                 <li class="no-agents">
-                    <img src="../images/ico_location_gray.svg" alt="">
+                    <img src="../images/ico_location.svg" alt="">
                     <p>Loading agent locations...</p>
                 </li>
             </ul>
@@ -188,7 +188,7 @@ $departureDate = isset($_GET['departure_date']) ? htmlspecialchars($_GET['depart
             departureDate: '<?php echo addslashes($departureDate); ?>'
         };
     </script>
-    <script src="../js/contact-agent.js" defer></script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBrXp_FWtCGihkNF-Q3Mm6uERfyPLIv_EY&callback=initMap"></script>
+    <script src="../js/contact-agent.js"></script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCn9NqedIRpJrhkLDNRRr8yIPFaUFl-FnU&loading=async&callback=initMap"></script>
 </body>
 </html>
