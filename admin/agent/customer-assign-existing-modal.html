@@ -1,0 +1,27 @@
+<div class="dialog-container jw-rows jw-flex-c">
+
+	<div class="dialog-content">
+		<div class="grid-wrap">
+			<div class="grid-item col-span-2">
+				<h1 class="page-title" data-lan-eng="Assign Existing Customer">Assign Existing Customer</h1>
+			</div>
+		</div>
+
+		<div class="grid-item jw-mgt32">
+			<label class="label-name" data-lan-eng="Search by Email">Search by Email</label>
+			<div style="display:flex; gap:8px; margin-top:8px;">
+				<input type="email" id="assignEmailInput" class="form-control" style="flex:1;" placeholder="customer@example.com">
+				<button type="button" class="jw-button typeE" id="assignSearchBtn" data-lan-eng="Search">Search</button>
+			</div>
+		</div>
+
+		<div id="assignSearchResult" class="jw-mgt32" style="display:none;">
+			<!-- 검색 결과가 여기에 표시됩니다 -->
+		</div>
+	</div>
+
+	<div class="dialog-controls jw-mgt50">
+		<button type="button" class="jw-button typeB2" id="closeDialog" data-lan-eng="Cancel">Cancel</button>
+		<button type="button" class="jw-button typeB" id="assignRegisterBtn" disabled data-lan-eng="Register">Register</button>
+	</div>
+</div>

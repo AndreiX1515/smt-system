@@ -292,7 +292,7 @@ try {
 <body>
     <div class="main bg white mh100">
         <header class="header-type2 bg white">
-            <a class="btn-back" href="javascript:history.back();"><img src="../images/ico_back_black.svg"></a>
+            <a class="btn-back" href="javascript:void(0);" onclick="goBack()"><img src="../images/ico_back_black.svg"></a>
             <div class="title"><?php echoI18nText('reservation_detail', $currentLang); ?></div>
             <div></div>
         </header>
@@ -317,9 +317,8 @@ try {
             } elseif ($bs === 'cancelled' || $bs === 'canceled' || $ps === 'failed') {
                 $statusKey = 'payment_canceled';
             } elseif ($bs === 'pending') {
-                // dev_tasks #114: user flow uses bookingStatus=pending while still editing/resuming steps.
-                // Treat as temporary save so user can continue booking instead of seeing payment instructions.
-                $statusKey = 'temporary_save';
+                // B2C 고객은 직접 예약할 수 없으므로 확정 대기중으로 표시
+                $statusKey = 'pending_confirmation';
             } elseif ($bs === 'confirmed') {
                 // B2C 요구사항: 확정 직후 입금 전 상태는 Payment Suspended
                 $statusKey = ($ps === 'paid') ? 'payment_completed' : 'payment_suspended';
@@ -338,6 +337,7 @@ try {
             else if ($statusKey === 'refund_completed') { $labelText = 'Refund Completed'; $labelClass = 'primary'; }
             else if ($statusKey === 'payment_canceled') { $labelText = 'Reservation cancellation'; $labelClass = 'primary'; }
             else if ($statusKey === 'temporary_save') { $labelText = 'Temporary save'; $labelClass = 'secondary'; }
+            else if ($statusKey === 'pending_confirmation') { $labelText = 'Pending Confirmation'; $labelClass = 'secondary'; }
             else { $labelText = 'Awaiting Payment'; $labelClass = 'primary'; }
 
             // 상단 상태 칩
@@ -539,7 +539,23 @@ try {
                 }
 
                 if ($rendered === 0) {
-                    echo '<div class="text fz14 fw400 lh22 black12 mt4">-</div>';
+                    // guestOptions가 없으면 bookings 테이블의 adults/children/infants로 표시
+                    $adults = (int)($bookingInfo['adults'] ?? 0);
+                    $children = (int)($bookingInfo['children'] ?? 0);
+                    $infants = (int)($bookingInfo['infants'] ?? 0);
+                    if ($adults > 0 || $children > 0 || $infants > 0) {
+                        if ($adults > 0) {
+                            echo '<div class="mt4"><p class="text fz14 fw400 lh22 black12">Adult x' . $adults . '</p></div>';
+                        }
+                        if ($children > 0) {
+                            echo '<div class="mt4"><p class="text fz14 fw400 lh22 black12">Child x' . $children . '</p></div>';
+                        }
+                        if ($infants > 0) {
+                            echo '<div class="mt4"><p class="text fz14 fw400 lh22 black12">Infant x' . $infants . '</p></div>';
+                        }
+                    } else {
+                        echo '<div class="text fz14 fw400 lh22 black12 mt4">-</div>';
+                    }
                 }
                 ?>
             </div>
@@ -581,15 +597,13 @@ try {
                         $roomIdKey = $roomData['roomId'] ?? $roomId;
                         $roomName = $roomData['roomType'] ?? $roomData['name'] ?? ($roomNames[$roomIdKey] ?? $roomIdKey);
 
-                        echo '<div class="align both vm mt4">';
+                        echo '<div class="mt4">';
                         echo '<p class="text fz14 fw400 lh22 black12">' . htmlspecialchars($roomName) . ' x' . $roomCount . '</p>';
-                        echo '<span class="text fz14 fw400 lh22 black12">' . formatPrice($roomPrice) . '</span>';
                         echo '</div>';
                     }
                 } else {
-                    echo '<div class="align both vm mt4">';
-                    echo '<p class="text fz14 fw400 lh22 black12">' . htmlspecialchars(getI18nText('standard_room', $currentLang)) . 'x1</p>';
-                    echo '<span class="text fz14 fw400 lh22 black12">₱0</span>';
+                    echo '<div class="mt4">';
+                    echo '<p class="text fz14 fw400 lh22 black12">' . htmlspecialchars(getI18nText('standard_room', $currentLang)) . ' x1</p>';
                     echo '</div>';
                 }
                 ?>
@@ -694,6 +708,11 @@ try {
                         <div class="text fz14 fw400 lh22 black12" id="bookerName">
                             <?php 
                             $bookerName = trim(($bookingInfo['fName'] ?? '') . ' ' . ($bookingInfo['lName'] ?? ''));
+                            if (empty($bookerName)) {
+                                // client 테이블에 없으면 selectedOptions.customerInfo에서 가져오기
+                                $custInfo = $selectedOptions['customerInfo'] ?? [];
+                                $bookerName = trim(($custInfo['firstName'] ?? '') . ' ' . ($custInfo['lastName'] ?? ''));
+                            }
                             if (empty($bookerName)) {
                                 $bookerName = getI18nText('db_no_data', $currentLang);
                             }
@@ -860,7 +879,7 @@ try {
         
         <div class="px20 pb20 border-bottom10">
             <?php if (!$showGuideSection): ?>
-                <div class="text fz14 fw400 lh22 gray96 mt16"><?php echoI18nText('db_no_data', $currentLang); ?></div>
+                <div class="text fz14 fw400 lh22 gray96 mt16">No guide has been assigned yet.</div>
             <?php else: ?>
             <div class="align both mt16">
                 <div>
@@ -925,6 +944,17 @@ try {
         // 예약 정보를 JavaScript에서 사용할 수 있도록 전역 변수로 설정
         window.bookingInfo = <?php echo json_encode($bookingInfo, JSON_UNESCAPED_UNICODE); ?>;
         window.currentLang = '<?php echo $currentLang; ?>';
+
+        function goBack() {
+            var params = new URLSearchParams(window.location.search);
+            var from = params.get('from');
+            var lang = params.get('lang') || 'en';
+            if (from === 'mypage') {
+                window.location.href = 'mypage.html?lang=' + lang;
+            } else {
+                window.location.href = '../home.html';
+            }
+        }
     </script>
 </body>
 </html>

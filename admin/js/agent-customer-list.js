@@ -39,6 +39,9 @@ document.addEventListener('modal:loaded', function(event) {
     if (action.includes('customer-batch-upload-modal.html')) {
         initializeBatchUploadModal(dialog);
     }
+    if (action.includes('customer-assign-existing-modal.html')) {
+        initializeAssignExistingModal(dialog);
+    }
 });
 
 function initializeCustomerList() {
@@ -405,7 +408,7 @@ async function handleBatchRegister() {
 
         let message = `  . (: ${successCount}, : ${errorCount})`;
         if (errors.length > 0) {
-            //       N 
+            //       N
             const head = errors.slice(0, 5).join('\n');
             message += `\n\n ( 5):\n${head}`;
             if (errors.length > 5) message += `\n...  ${errors.length - 5}`;
@@ -417,5 +420,138 @@ async function handleBatchRegister() {
     } catch (error) {
         console.error('Batch upload error:', error);
         alert('   : ' + error.message);
+    }
+}
+
+// ========== Assign Existing Customer Modal ==========
+
+let assignModalState = {
+    dialog: null,
+    selectedAccountId: null
+};
+
+function initializeAssignExistingModal(dialog) {
+    assignModalState.dialog = dialog;
+    assignModalState.selectedAccountId = null;
+    dialog.addEventListener('close', resetAssignModalState, { once: true });
+
+    const searchBtn = dialog.querySelector('#assignSearchBtn');
+    const emailInput = dialog.querySelector('#assignEmailInput');
+    const registerBtn = dialog.querySelector('#assignRegisterBtn');
+    const closeBtn = dialog.querySelector('#closeDialog');
+
+    if (registerBtn) registerBtn.disabled = true;
+
+    if (searchBtn) {
+        searchBtn.addEventListener('click', () => searchB2CCustomer(dialog));
+    }
+    if (emailInput) {
+        emailInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchB2CCustomer(dialog);
+            }
+        });
+    }
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => assignExistingCustomer(dialog));
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', resetAssignModalState, { once: true });
+    }
+}
+
+function resetAssignModalState() {
+    assignModalState = { dialog: null, selectedAccountId: null };
+}
+
+async function searchB2CCustomer(dialog) {
+    const emailInput = dialog.querySelector('#assignEmailInput');
+    const resultArea = dialog.querySelector('#assignSearchResult');
+    const registerBtn = dialog.querySelector('#assignRegisterBtn');
+
+    const email = (emailInput?.value || '').trim();
+    if (!email) {
+        alert('Please enter an email address.');
+        emailInput?.focus();
+        return;
+    }
+
+    assignModalState.selectedAccountId = null;
+    if (registerBtn) registerBtn.disabled = true;
+
+    resultArea.style.display = 'block';
+    resultArea.innerHTML = '<p style="text-align:center; color:#969696;">Searching...</p>';
+
+    try {
+        const params = new URLSearchParams({
+            action: 'searchB2CCustomer',
+            email: email
+        });
+        const response = await fetch(`../backend/api/agent-api.php?${params.toString()}`, {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            resultArea.innerHTML = `<p style="color:#E1322E; font-size:14px; padding:12px; background:#FFF5F5; border-radius:10px;">${escapeHtml(result.message)}</p>`;
+            return;
+        }
+
+        const customer = result.data;
+        resultArea.innerHTML = `
+            <div style="padding:16px; background:#F7FAFF; border-radius:10px; border:1px solid #D4E7FF;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img src="../image/person.svg" alt="" style="width:32px; height:32px; opacity:0.6;">
+                    <div>
+                        <div style="font-size:16px; font-weight:bold; color:#121212;">${escapeHtml(customer.name)}</div>
+                        <div style="font-size:14px; color:#969696;">${escapeHtml(customer.email)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        assignModalState.selectedAccountId = customer.accountId;
+        if (registerBtn) registerBtn.disabled = false;
+
+    } catch (error) {
+        console.error('Search B2C customer error:', error);
+        resultArea.innerHTML = '<p style="color:#E1322E; font-size:14px;">Search failed. Please try again.</p>';
+    }
+}
+
+async function assignExistingCustomer(dialog) {
+    if (!assignModalState.selectedAccountId) {
+        alert('Please search and select a customer first.');
+        return;
+    }
+
+    const registerBtn = dialog.querySelector('#assignRegisterBtn');
+    if (registerBtn) registerBtn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'assignExistingCustomer');
+        formData.append('targetAccountId', assignModalState.selectedAccountId);
+
+        const response = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to assign customer');
+        }
+
+        alert('Customer has been successfully assigned.');
+        resetAssignModalState();
+        modal_close();
+        loadCustomers();
+    } catch (error) {
+        console.error('Assign customer error:', error);
+        alert('Failed to assign customer: ' + error.message);
+        if (registerBtn) registerBtn.disabled = false;
     }
 }

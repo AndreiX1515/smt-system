@@ -103,6 +103,7 @@
 					<button type="button" class="jw-button typeB" onclick="layerToggle(this)"><img src="../image/buttonB.svg" alt="">Add New Customer</button>
 					<div class="fab-menu" aria-hidden="true">
 						<button type="button" class="jw-button" onclick="closeFabMenu(); goToCustomerRegister();"><img src="../image/plus.svg" alt=""><span data-lan-eng="Single registration">Single registration</span></button>
+						<button type="button" class="jw-button" onclick="closeFabMenu(); openAssignExistingCustomerModal();"><img src="../image/person.svg" alt=""><span data-lan-eng="Assign Existing Customer">Assign Existing Customer</span></button>
 						<button type="button" class="jw-button" onclick="closeFabMenu(); openBatchUploadModal();"><img src="../image/upload.svg" alt=""><span data-lan-eng="Batch Registration">Batch Registration</span></button>
 					</div>
 				</div>
@@ -148,6 +149,10 @@
 		
 		function openBatchUploadModal() {
 			modal('customer-batch-upload-modal.html', '600px', '500px');
+		}
+
+		function openAssignExistingCustomerModal() {
+			modal('customer-assign-existing-modal.html', '580px', '550px');
 		}
 		
 		function downloadCustomers() {

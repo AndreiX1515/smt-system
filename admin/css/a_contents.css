@@ -1391,6 +1391,7 @@ input:disabled {background:#F3F3F3; border: 1px solid #D4D4D4; color:#969696; }
 .layerToggleWrap .fab-menu { position:absolute; width:100%; right:0; bottom:calc(100% + 10px); display:flex; flex-direction:column; opacity:0; transform:translateY(6px); pointer-events:none; transition:opacity .18s ease, transform .18s ease; z-index:10; }
 .layerToggleWrap .fab-menu .jw-button { height:44px; background:#fff; font-weight:bold; }
 .layerToggleWrap .fab-menu .jw-button:first-child { border-radius:12px 12px 0 0; border: 1px solid #EAEAEA; }
+.layerToggleWrap .fab-menu .jw-button:not(:first-child):not(:last-child) { border-radius:0; border-left: 1px solid #EAEAEA; border-right: 1px solid #EAEAEA; border-bottom: 1px solid #EAEAEA; }
 .layerToggleWrap .fab-menu .jw-button:last-child { border-radius:0 0 12px 12px; border-left: 1px solid #EAEAEA; border-bottom: 1px solid #EAEAEA; border-right: 1px solid #EAEAEA;  }
 .layerToggleWrap .fab-menu.on { opacity:1; transform:translateY(0); pointer-events:auto; }
 

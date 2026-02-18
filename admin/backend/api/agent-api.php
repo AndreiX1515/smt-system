@@ -458,7 +458,15 @@ try {
         case 'batchUploadCustomers':
             batchUploadCustomers($conn);
             break;
-            
+
+        case 'searchB2CCustomer':
+            searchB2CCustomer($conn, $input);
+            break;
+
+        case 'assignExistingCustomer':
+            assignExistingCustomer($conn, $input);
+            break;
+
         // ========== 문의 관련 ==========
         case 'getInquiries':
             getInquiries($conn, $input);
@@ -5044,6 +5052,316 @@ function createCustomer($conn, $input) {
         send_success_response($result, 'Customer created successfully');
     } catch (Exception $e) {
         send_error_response('Failed to create customer: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 이메일로 B2C 고객을 검색 (에이전트 소속이 아닌 일반 회원)
+ */
+function searchB2CCustomer($conn, $input) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+        if (empty($agentAccountId)) {
+            send_error_response('Agent login required', 401);
+        }
+
+        $email = trim($input['email'] ?? '');
+        if (empty($email)) {
+            send_error_response('Email is required');
+        }
+
+        // accounts 테이블 스키마 확인 (email vs emailAddress)
+        $accountsColMap = [];
+        $colRes = $conn->query("SHOW COLUMNS FROM accounts");
+        if ($colRes) {
+            while ($row = $colRes->fetch_assoc()) {
+                $f = (string)($row['Field'] ?? '');
+                if ($f !== '') $accountsColMap[strtolower($f)] = $f;
+            }
+        }
+        $emailCol = $accountsColMap['emailaddress'] ?? ($accountsColMap['email'] ?? 'emailAddress');
+
+        // accounts에서 이메일로 검색
+        $sql = "SELECT a.accountId, a.`{$emailCol}` AS email, a.accountType
+                FROM accounts a
+                WHERE a.`{$emailCol}` = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('s', $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 0) {
+            send_error_response('No customer found with this email.');
+        }
+
+        $account = $result->fetch_assoc();
+        $accountId = (int)$account['accountId'];
+
+        // accountType이 agent면 에이전트 계정이므로 B2C 고객이 아님
+        if (($account['accountType'] ?? '') === 'agent') {
+            send_error_response('This account is an agent, not a customer.');
+        }
+
+        // client 테이블에서 정보 확인
+        $clientColMap = [];
+        $cRes = $conn->query("SHOW COLUMNS FROM client");
+        if ($cRes) {
+            while ($row = $cRes->fetch_assoc()) {
+                $f = (string)($row['Field'] ?? '');
+                if ($f !== '') $clientColMap[strtolower($f)] = $f;
+            }
+        }
+        $hasClientType = isset($clientColMap['clienttype']);
+        $hasAgentId = isset($clientColMap['agentid']);
+
+        $clientSql = "SELECT c.* FROM client c WHERE c.accountId = ? LIMIT 1";
+        $clientStmt = $conn->prepare($clientSql);
+        $clientStmt->bind_param('i', $accountId);
+        $clientStmt->execute();
+        $clientResult = $clientStmt->get_result();
+        $clientRow = $clientResult->fetch_assoc();
+
+        // 이미 에이전트에 소속된 B2B 고객인지 확인
+        if ($clientRow) {
+            $clientType = strtolower($clientRow['clientType'] ?? '');
+            $agentId = $clientRow['agentId'] ?? null;
+
+            if (in_array($clientType, ['wholeseller', 'wholesaler']) && !empty($agentId)) {
+                send_error_response('This customer is already assigned to an agent (B2B).');
+            }
+        }
+
+        // 이름 조합
+        $firstName = $clientRow['fName'] ?? '';
+        $lastName = $clientRow['lName'] ?? '';
+        $name = trim($firstName . ' ' . $lastName);
+        if ($name === '') $name = $account['email'];
+        $phone = $clientRow['contactNo'] ?? '';
+
+        send_success_response([
+            'accountId' => $accountId,
+            'name' => $name,
+            'email' => $account['email'],
+            'phone' => $phone
+        ], 'Customer found');
+
+    } catch (Exception $e) {
+        send_error_response('Search failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * B2C 고객을 에이전트 소속 B2B로 전환
+ */
+function assignExistingCustomer($conn, $input) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+        if (empty($agentAccountId)) {
+            send_error_response('Agent login required', 401);
+        }
+        $agentAccountId = (int)$agentAccountId;
+
+        $targetAccountId = (int)($input['targetAccountId'] ?? 0);
+        if (empty($targetAccountId)) {
+            send_error_response('Target account ID is required');
+        }
+
+        // 에이전트의 companyId 조회
+        $scope = get_agent_scope($conn, $agentAccountId);
+        $companyId = !empty($scope['companyId']) ? (int)$scope['companyId'] : null;
+
+        // 대상 고객 유효성 재검증 (race condition 방지)
+        $accountsColMap = [];
+        $colRes = $conn->query("SHOW COLUMNS FROM accounts");
+        if ($colRes) {
+            while ($row = $colRes->fetch_assoc()) {
+                $f = (string)($row['Field'] ?? '');
+                if ($f !== '') $accountsColMap[strtolower($f)] = $f;
+            }
+        }
+        $emailCol = $accountsColMap['emailaddress'] ?? ($accountsColMap['email'] ?? 'emailAddress');
+
+        $checkSql = "SELECT accountId, `{$emailCol}` AS email, accountType FROM accounts WHERE accountId = ? LIMIT 1";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param('i', $targetAccountId);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+
+        if ($checkResult->num_rows === 0) {
+            send_error_response('Target account not found.');
+        }
+        $targetAccount = $checkResult->fetch_assoc();
+
+        if (($targetAccount['accountType'] ?? '') === 'agent') {
+            send_error_response('Cannot assign an agent account.');
+        }
+
+        // client 테이블 컬럼 확인
+        $clientColumns = [];
+        $columnResult = $conn->query("SHOW COLUMNS FROM client");
+        while ($row = $columnResult->fetch_assoc()) {
+            $clientColumns[] = strtolower($row['Field']);
+        }
+
+        // client 레코드 존재 여부 확인
+        $clientCheckSql = "SELECT * FROM client WHERE accountId = ? LIMIT 1";
+        $clientCheckStmt = $conn->prepare($clientCheckSql);
+        $clientCheckStmt->bind_param('i', $targetAccountId);
+        $clientCheckStmt->execute();
+        $clientCheckResult = $clientCheckStmt->get_result();
+        $existingClient = $clientCheckResult->fetch_assoc();
+
+        if ($existingClient) {
+            $clientType = strtolower($existingClient['clientType'] ?? '');
+            $existingAgentId = $existingClient['agentId'] ?? null;
+            if (in_array($clientType, ['wholeseller', 'wholesaler']) && !empty($existingAgentId)) {
+                send_error_response('This customer is already assigned to an agent.');
+            }
+        }
+
+        $conn->begin_transaction();
+        try {
+            if ($existingClient) {
+                // UPDATE existing client record
+                $updateParts = [];
+                $updateValues = [];
+                $updateTypes = '';
+
+                if (in_array('clienttype', $clientColumns)) {
+                    $updateParts[] = "clientType = ?";
+                    $updateValues[] = 'Wholeseller';
+                    $updateTypes .= 's';
+                }
+                if (in_array('companyid', $clientColumns) && $companyId) {
+                    $updateParts[] = "companyId = ?";
+                    $updateValues[] = $companyId;
+                    $updateTypes .= 'i';
+                }
+                if (in_array('agentid', $clientColumns)) {
+                    $updateParts[] = "agentId = ?";
+                    $updateValues[] = $agentAccountId;
+                    $updateTypes .= 'i';
+                }
+                if (in_array('clientrole', $clientColumns)) {
+                    $updateParts[] = "clientRole = ?";
+                    $updateValues[] = 'Sub-Agent';
+                    $updateTypes .= 's';
+                }
+
+                if (!empty($updateParts)) {
+                    $updateSql = "UPDATE client SET " . implode(', ', $updateParts) . " WHERE accountId = ?";
+                    $updateValues[] = $targetAccountId;
+                    $updateTypes .= 'i';
+
+                    $updateStmt = $conn->prepare($updateSql);
+                    $updateStmt->bind_param($updateTypes, ...$updateValues);
+                    $updateStmt->execute();
+                    $updateStmt->close();
+                }
+            } else {
+                // INSERT new client record
+                $clientFields = [];
+                $clientValues = [];
+                $clientTypes = '';
+
+                if (in_array('clientid', $clientColumns)) {
+                    $clientId = 'CLI' . str_pad($targetAccountId, 6, '0', STR_PAD_LEFT);
+                    $clientFields[] = 'clientId';
+                    $clientValues[] = $clientId;
+                    $clientTypes .= 's';
+                }
+
+                $clientFields[] = 'accountId';
+                $clientValues[] = $targetAccountId;
+                $clientTypes .= 'i';
+
+                $clientFields[] = 'fName';
+                $clientValues[] = '';
+                $clientTypes .= 's';
+
+                $clientFields[] = 'lName';
+                $clientValues[] = '';
+                $clientTypes .= 's';
+
+                $clientFields[] = 'contactNo';
+                $clientValues[] = '';
+                $clientTypes .= 's';
+
+                if (in_array('emailaddress', $clientColumns)) {
+                    $clientFields[] = 'emailAddress';
+                    $clientValues[] = $targetAccount['email'];
+                    $clientTypes .= 's';
+                }
+
+                if (in_array('clienttype', $clientColumns)) {
+                    $clientFields[] = 'clientType';
+                    $clientValues[] = 'Wholeseller';
+                    $clientTypes .= 's';
+                }
+                if (in_array('clientrole', $clientColumns)) {
+                    $clientFields[] = 'clientRole';
+                    $clientValues[] = 'Sub-Agent';
+                    $clientTypes .= 's';
+                }
+                if (in_array('companyid', $clientColumns) && $companyId) {
+                    $clientFields[] = 'companyId';
+                    $clientValues[] = $companyId;
+                    $clientTypes .= 'i';
+                }
+                if (in_array('agentid', $clientColumns)) {
+                    $clientFields[] = 'agentId';
+                    $clientValues[] = $agentAccountId;
+                    $clientTypes .= 'i';
+                }
+
+                $placeholders = str_repeat('?,', count($clientFields) - 1) . '?';
+                $insertSql = "INSERT INTO client (" . implode(', ', $clientFields) . ") VALUES ($placeholders)";
+                $insertStmt = $conn->prepare($insertSql);
+                $insertStmt->bind_param($clientTypes, ...$clientValues);
+                $insertStmt->execute();
+                $insertStmt->close();
+            }
+
+            // agent 테이블에 레코드 INSERT (createCustomerRecord 패턴과 동일)
+            $agentTable = $conn->query("SHOW TABLES LIKE 'agent'");
+            if ($agentTable && $agentTable->num_rows > 0) {
+                // 이미 agent 레코드가 있는지 확인
+                $agentCheck = $conn->prepare("SELECT id FROM agent WHERE accountId = ? LIMIT 1");
+                $agentCheck->bind_param('i', $targetAccountId);
+                $agentCheck->execute();
+                $agentCheckResult = $agentCheck->get_result();
+
+                if ($agentCheckResult->num_rows === 0) {
+                    $agentId = 'AGT' . str_pad((string)$targetAccountId, 6, '0', STR_PAD_LEFT);
+                    $aF = $existingClient ? (string)($existingClient['fName'] ?? '') : '';
+                    $aL = $existingClient ? (string)($existingClient['lName'] ?? '') : '';
+                    $cn = $existingClient ? (string)($existingClient['contactNo'] ?? '') : '';
+                    if ($aF === '') $aF = 'Customer';
+
+                    $agentSql = "INSERT INTO agent (agentId, accountId, companyId, fName, lName, countryCode, contactNo, agentType, agentRole)
+                                 VALUES (?, ?, ?, ?, ?, '+82', ?, 'Wholeseller', 'Sub-Agent')";
+                    $agentStmt = $conn->prepare($agentSql);
+                    if ($agentStmt) {
+                        $agentStmt->bind_param('siisss', $agentId, $targetAccountId, $companyId, $aF, $aL, $cn);
+                        $agentStmt->execute();
+                        $agentStmt->close();
+                    }
+                }
+                $agentCheck->close();
+            }
+
+            $conn->commit();
+            send_success_response(['accountId' => $targetAccountId], 'Customer assigned successfully');
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            throw $e;
+        }
+
+    } catch (Exception $e) {
+        send_error_response('Assignment failed: ' . $e->getMessage());
     }
 }
 
