@@ -160,6 +160,10 @@ function showLoggedInView() {
     
     // Settings & Support 섹션 표시
     showSettingsSupportSection();
+
+    // 로그아웃 메뉴 표시
+    const logoutMenuItem = document.getElementById('logoutMenuItem');
+    if (logoutMenuItem) logoutMenuItem.style.display = 'block';
 }
 
 // 로그아웃 상태 뷰 표시
@@ -537,17 +541,42 @@ function getBookingStatusColor(bookingStatus, paymentStatus) {
     return 'black12';
 }
 
+// 로그아웃 모달 표시
+function showLogoutPopup() {
+    const layer = document.getElementById('logoutLayer');
+    const popup = document.getElementById('logoutPopup');
+    if (layer && popup) {
+        layer.style.display = 'block';
+        popup.style.display = 'flex';
+    }
+}
+
+// 로그아웃 모달 숨기기
+function hideLogoutPopup() {
+    const layer = document.getElementById('logoutLayer');
+    const popup = document.getElementById('logoutPopup');
+    if (layer && popup) {
+        layer.style.display = 'none';
+        popup.style.display = 'none';
+    }
+}
+
 // 로그아웃 처리
-function handleLogout() {
-    if (confirm('로그아웃 하시겠습니까?')) {
-        // 서버 세션도 종료 (실패해도 로컬 정리는 수행)
+function handleLogout(e) {
+    if (e) e.preventDefault();
+    showLogoutPopup();
+}
+
+// 로그아웃 확정
+async function confirmLogout() {
+    try {
         try {
-            fetch('../backend/api/logout.php', {
+            await fetch('../backend/api/logout.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
-            }).catch(() => {});
+            });
         } catch (_) {}
 
         localStorage.removeItem('isLoggedIn');
@@ -556,19 +585,30 @@ function handleLogout() {
         localStorage.removeItem('username');
         localStorage.removeItem('accountType');
         localStorage.removeItem('autoLogin');
-        
-        alert('로그아웃되었습니다.');
-        // 홈으로 이동 (로그인 상태 UI 리셋)
-        const lang = (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : (localStorage.getItem('selectedLanguage') || 'en'));
-        location.href = `../home.html?lang=${encodeURIComponent(lang || 'en')}`;
+
+        hideLogoutPopup();
+
+        const currentLang = (typeof getCurrentLanguage === 'function') ? getCurrentLanguage() : (localStorage.getItem('selectedLanguage') || 'en');
+        const safeLang = (currentLang === 'tl') ? 'tl' : 'en';
+        window.location.replace(`../home.html?lang=${safeLang}`);
+    } catch (error) {
+        console.error('Logout error:', error);
     }
 }
 
-// 로그아웃 버튼이 있다면 이벤트 연결
+// 로그아웃 관련 이벤트 초기화
 document.addEventListener('DOMContentLoaded', function() {
-    const logoutBtn = document.querySelector('.logout-btn, [data-action="logout"]');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
+    const logoutLink = document.getElementById('logoutLink');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', handleLogout);
+    }
+    const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+    if (logoutCancelBtn) {
+        logoutCancelBtn.addEventListener('click', hideLogoutPopup);
+    }
+    const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+    if (logoutConfirmBtn) {
+        logoutConfirmBtn.addEventListener('click', confirmLogout);
     }
 });
 

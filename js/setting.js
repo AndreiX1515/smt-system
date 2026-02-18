@@ -127,21 +127,7 @@ function setupEventListeners() {
         });
     });
     
-    //  
-    const logoutCancelBtn = document.getElementById("logoutCancelBtn");
-    const logoutConfirmBtn = document.getElementById("logoutConfirmBtn");
-    const logoutLayer = document.getElementById("logoutLayer");
-    const logoutPopup = document.getElementById("logoutPopup");
-    
-    if (logoutCancelBtn) {
-        logoutCancelBtn.addEventListener("click", hideLogoutPopup);
-    }
-    
-    if (logoutConfirmBtn) {
-        logoutConfirmBtn.addEventListener("click", confirmLogout);
-    }
-    
-    //   
+    //
     const deleteCancelBtn = document.getElementById("deleteCancelBtn");
     const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
     
@@ -166,70 +152,7 @@ function setupEventListeners() {
     }
 }
 
-//   
-function showLogoutPopup() {
-    const logoutLayer = document.getElementById("logoutLayer");
-    const logoutPopup = document.getElementById("logoutPopup");
-    if (logoutLayer && logoutPopup) {
-        logoutLayer.style.display = 'block';
-        logoutPopup.style.display = 'flex';
-    }
-}
-
-//   
-function hideLogoutPopup() {
-    const logoutLayer = document.getElementById("logoutLayer");
-    const logoutPopup = document.getElementById("logoutPopup");
-    if (logoutLayer && logoutPopup) {
-        logoutLayer.style.display = 'none';
-        logoutPopup.style.display = 'none';
-    }
-}
-
-//  
-function handleLogout() {
-    showLogoutPopup();
-}
-
-//  
-async function confirmLogout() {
-    try {
-        //     (PHP  + user_sessions)
-        try {
-            await fetch('../backend/api/logout.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-        } catch (_) {
-            //       
-        }
-
-        //   
-        localStorage.removeItem("isLoggedIn");
-        localStorage.removeItem("userEmail");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("username");
-        localStorage.removeItem("accountType");
-        localStorage.removeItem("autoLogin");
-        
-        hideLogoutPopup();
-        
-        //   
-        const currentLang = getCurrentLanguage();
-        const safeLang = (currentLang === 'tl') ? 'tl' : 'en';
-        const homeUrl = `../home.html?lang=${safeLang}`;
-        
-        // /    replace 
-        window.location.replace(homeUrl);
-    } catch (error) {
-        console.error('Logout error:', error);
-        alert(getI18nText('logoutError') || '   .');
-    }
-}
-
-//    
+//
 function showDeleteConfirmPopup() {
     const deleteConfirmLayer = document.getElementById("deleteConfirmLayer");
     const deleteConfirmPopup = document.getElementById("deleteConfirmPopup");
@@ -356,5 +279,4 @@ function getI18nText(key) {
 }
 
 //   
-window.handleLogout = handleLogout;
 window.handleDeleteAccount = handleDeleteAccount;
