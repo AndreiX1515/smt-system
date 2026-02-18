@@ -6,48 +6,17 @@ require "../backend/i18n_helper.php";
 // 현재 언어 설정
 $currentLang = getCurrentLanguage();
 
-// B2B/B2C 구분(정책 확정):
-// - agent가 등록한 사용자 => client.clientType = 'Wholeseller' (B2B)
-// - 자가 가입 사용자 => client.clientType = 'Retailer' (B2C)
-// - affiliateCode/companyId로 B2B를 추정하지 않음(혼선/누수 방지)
+// B2B/B2C 구분: account_type 세션 기반만 사용
+// - B2B = 에이전트 계정 자체 (accountType = agent/admin_ph/admin_kr)
+// - B2C = 모든 일반 고객 (에이전트 소속 여부 무관)
+// 주의: agent_accountId 세션은 관리자 패널용이므로 여기서 체크하지 않음
+//       (같은 브라우저에서 관리자 로그인 후 유저 페이지 접속 시 잔류할 수 있음)
 $isB2B = false;
 try {
-    $sessionAccountId = $_SESSION['user_id'] ?? ($_SESSION['accountId'] ?? null);
-    $sessionAccountId = $sessionAccountId !== null ? (int)$sessionAccountId : 0;
-    // 관리자(에이전트) 세션이 남아있는 경우에도 B2B로 판단(동일 브라우저 세션 공존 이슈 방지)
-    $agentSessionId = $_SESSION['agent_accountId'] ?? null;
-    $agentSessionId = $agentSessionId !== null ? (int)$agentSessionId : 0;
-
-    // DEBUG: 세션 확인용 (문제 해결 후 제거)
-    error_log("[product-detail] sessionAccountId=$sessionAccountId, agentSessionId=$agentSessionId, session_id=" . session_id() . ", all_session=" . json_encode($_SESSION));
-
-    // account_type으로 B2B 판별 (일반 로그인으로 agent가 로그인한 경우)
     $sessionAccountType = strtolower(trim((string)($_SESSION['account_type'] ?? '')));
 
-    // agent 세션이 있거나, account_type이 agent/admin_ph/admin_kr이면 B2B
-    if ($agentSessionId > 0 || in_array($sessionAccountType, ['agent', 'admin_ph', 'admin_kr'], true)) {
+    if (in_array($sessionAccountType, ['agent', 'admin_ph', 'admin_kr'], true)) {
         $isB2B = true;
-    } elseif ($sessionAccountId > 0) {
-        // agent 세션이 없을 때만 일반 사용자의 clientType 확인
-        $stmtBiz = $conn->prepare("
-            SELECT
-                COALESCE(c.clientType, '') AS clientType,
-                c.companyId AS companyId
-            FROM accounts a
-            LEFT JOIN client c ON a.accountId = c.accountId
-            WHERE a.accountId = ?
-            LIMIT 1
-        ");
-        if ($stmtBiz) {
-            $stmtBiz->bind_param('i', $sessionAccountId);
-            $stmtBiz->execute();
-            $rowBiz = $stmtBiz->get_result()->fetch_assoc();
-            $stmtBiz->close();
-            if ($rowBiz) {
-                $clientType = strtolower(trim((string)($rowBiz['clientType'] ?? '')));
-                $isB2B = ($clientType === 'wholeseller');
-            }
-        }
     }
 } catch (Throwable $e) {
     // ignore (default: B2C)

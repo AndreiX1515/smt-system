@@ -263,8 +263,8 @@ function formatDistance(km) {
     return km.toFixed(1) + ' km away';
 }
 
-// Render agent list
-function renderAgentList() {
+// Render agent list (optional query string to filter)
+function renderAgentList(query) {
     const agentList = document.getElementById('agentList');
     if (!agentList) return;
 
@@ -273,7 +273,24 @@ function renderAgentList() {
         return;
     }
 
-    const html = agents.map((agent, index) => {
+    // Filter if query provided
+    let filtered = agents;
+    if (query) {
+        filtered = agents.filter(agent => {
+            const name = (agent.storeName || agent.companyName || '').toLowerCase();
+            const addr = (agent.storeAddress || '').toLowerCase();
+            const phone = (agent.phone || agent.contactPhone || '').toLowerCase();
+            return name.includes(query) || addr.includes(query) || phone.includes(query);
+        });
+    }
+
+    if (filtered.length === 0) {
+        agentList.innerHTML = `<li class="no-agents"><p>No agents found matching your search.</p></li>`;
+        return;
+    }
+
+    const html = filtered.map((agent) => {
+        const globalIndex = agents.indexOf(agent);
         const distanceText = userLocation && agent.distance !== Infinity
             ? `<div class="agent-distance">${formatDistance(agent.distance)}</div>`
             : '';
@@ -286,9 +303,9 @@ function renderAgentList() {
             : '';
 
         return `
-            <li class="agent-card" data-agent-id="${agent.id}" onclick="focusAgent(${index})">
+            <li class="agent-card" data-agent-id="${agent.id}" onclick="focusAgent(${globalIndex})">
                 <div class="agent-name">
-                    <span style="display:inline-block;width:20px;height:20px;background:#FF6B6B;color:white;border-radius:50%;text-align:center;line-height:20px;font-size:12px;margin-right:8px;">${index + 1}</span>
+                    <span style="display:inline-block;width:20px;height:20px;background:#FF6B6B;color:white;border-radius:50%;text-align:center;line-height:20px;font-size:12px;margin-right:8px;">${globalIndex + 1}</span>
                     ${agent.storeName || agent.companyName || 'Agent'}
                 </div>
                 ${agent.storeAddress ? `<div class="agent-address">${agent.storeAddress}</div>` : ''}
@@ -365,7 +382,24 @@ function openDirections(lat, lng, name) {
     window.open(url, '_blank');
 }
 
+// Search / filter agents
+function initAgentSearch() {
+    const input = document.getElementById('agentSearchInput');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        if (!q) {
+            renderAgentList();
+            return;
+        }
+        renderAgentList(q);
+    });
+}
+
 // Make functions globally available
 window.initMap = initMap;
 window.focusAgent = focusAgent;
 window.openDirections = openDirections;
+
+// Bind search after DOM ready
+document.addEventListener('DOMContentLoaded', initAgentSearch);

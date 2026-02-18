@@ -170,7 +170,11 @@ $departureDate = isset($_GET['departure_date']) ? htmlspecialchars($_GET['depart
             </div>
             <div id="map" style="display: none;"></div>
 
-            <h4 class="text fz16 fw600 lh24 black12 mb12">Agent Locations</h4>
+            <h4 class="text fz16 fw600 lh24 black12 mb4">Agent Locations</h4>
+            <p style="font-size:13px;color:#888;margin-bottom:12px;">Sorted by nearest location to you.</p>
+            <div class="agent-search-wrap" style="margin-bottom:14px;">
+                <input type="text" id="agentSearchInput" placeholder="Search by name, address or phone" style="width:100%;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;" />
+            </div>
             <ul class="agent-list" id="agentList">
                 <li class="no-agents">
                     <img src="../images/ico_location.svg" alt="">
