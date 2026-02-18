@@ -738,89 +738,12 @@ function getInquiryDetail($conn, $input) {
         }
 
         // Agent Name(지점명) 계산:
-        // - 기본: client.clientType이 wholeseller/wholesaler/wholesale 인 경우 company/branch join 값 사용
-        // - 보강: affiliateCode(제휴코드)가 agent 테이블의 agentId/agentCode로 매핑되면 B2B로 간주하여 지점명/회사명 출력
+        // - client.clientType이 wholeseller/wholesaler/wholesale 인 경우 company/branch join 값 사용
         $clientType = strtolower(trim((string)($inquiry['clientType'] ?? '')));
         $isB2B = in_array($clientType, ['wholeseller', 'wholesaler', 'wholesale'], true);
 
         $resolvedBranchName = trim((string)($inquiry['branchName'] ?? ''));
         $resolvedCompanyName = trim((string)($inquiry['companyName'] ?? ''));
-
-        if (!$isB2B || ($resolvedBranchName === '' && $resolvedCompanyName === '')) {
-            // affiliateCode 기반 보강
-            try {
-                if (table_exists($conn, 'accounts')) {
-                    $accCols = table_columns_map($conn, 'accounts');
-                    $affCol = $accCols['affiliatecode'] ?? null;
-                    if ($affCol && table_exists($conn, 'agent')) {
-                        $stAff = $conn->prepare("SELECT `{$affCol}` AS affiliateCode FROM accounts WHERE accountId = ? LIMIT 1");
-                        if ($stAff) {
-                            $aid = intval($inquiry['accountId'] ?? 0);
-                            $stAff->bind_param('i', $aid);
-                            $stAff->execute();
-                            $affRow = $stAff->get_result()->fetch_assoc();
-                            $stAff->close();
-                            $aff = trim((string)($affRow['affiliateCode'] ?? ''));
-
-                            if ($aff !== '') {
-                                $agentCols = table_columns_map($conn, 'agent');
-                                $agentIdCol = $agentCols['agentid'] ?? null;
-                                $agentCodeCol = $agentCols['agentcode'] ?? null;
-                                $agentCompanyIdCol = $agentCols['companyid'] ?? null;
-                                $companyExists2 = table_exists($conn, 'company');
-                                $branchTable2 = table_exists($conn, 'branch') ? 'branch' : null;
-
-                                // agent -> company -> branch
-                                if ($agentCompanyIdCol && $companyExists2) {
-                                    $coCols2 = table_columns_map($conn, 'company');
-                                    $coId2 = $coCols2['companyid'] ?? null;
-                                    $coName2 = $coCols2['companyname'] ?? null;
-                                    $coBranchId2 = $coCols2['branchid'] ?? null;
-                                    if ($coId2 && $coName2) {
-                                        $bNameExpr = "''";
-                                        $bJoin = "";
-                                        if ($branchTable2 && $coBranchId2) {
-                                            $bCols2 = table_columns_map($conn, $branchTable2);
-                                            $bId2 = $bCols2['branchid'] ?? null;
-                                            $bName2 = $bCols2['branchname'] ?? null;
-                                            if ($bId2 && $bName2) {
-                                                $bJoin = " LEFT JOIN `{$branchTable2}` bb ON ''";
-                                                $bNameExpr = "COALESCE(bb.`{$bName2}`,'')";
-                                            }
-                                        }
-
-                                        $where = [];
-                                        $types2 = '';
-                                        $params2 = [];
-                                        if ($agentIdCol) { $where[] = "a.`{$agentIdCol}` = ?"; $params2[] = $aff; $types2 .= 's'; }
-                                        if ($agentCodeCol) { $where[] = "a.`{$agentCodeCol}` = ?"; $params2[] = $aff; $types2 .= 's'; }
-                                        if (!empty($where)) {
-                                            $sql2 = "SELECT {$bNameExpr} AS branchName, COALESCE('','') AS companyName
-                                                     FROM agent a
-                                                     {$bJoin}
-                                                     WHERE (" . implode(' OR ', $where) . ")
-                                                     LIMIT 1";
-                                            $st2 = $conn->prepare($sql2);
-                                            if ($st2) {
-                                                $st2->bind_param($types2, ...$params2);
-                                                $st2->execute();
-                                                $r2 = $st2->get_result()->fetch_assoc();
-                                                $st2->close();
-                                                $resolvedBranchName = trim((string)($r2['branchName'] ?? ''));
-                                                $resolvedCompanyName = trim((string)($r2['companyName'] ?? ''));
-                                                if ($resolvedBranchName !== '' || $resolvedCompanyName !== '') {
-                                                    $isB2B = true;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Throwable $_) {}
-        }
 
         if (!$isB2B) {
             // B2C(소속 없음)는 Agent Name을 비워야 함

@@ -363,26 +363,6 @@ function fillEditForm(profile) {
         emailInput.readOnly = false;
     }
     
-    // 제휴 코드 필드 처리 (가입 시 입력했거나 에이전트 회원인 경우만 표시)
-    const codeInput = document.getElementById('code');
-    const codeLabel = codeInput ? codeInput.previousElementSibling : null;
-    
-    // 제휴 코드 표시 조건: 가입 시 입력했거나 (affiliateCode가 있음) 에이전트 회원인 경우 (accountType === 'agent')
-    const shouldShowAffiliateCode = (profile.affiliateCode && profile.affiliateCode.trim()) || profile.accountType === 'agent';
-    
-    if (codeInput && codeLabel) {
-        if (shouldShowAffiliateCode) {
-            // 표시하고 DB 값 사용
-            codeInput.value = profile.affiliateCode || '';
-            codeInput.style.display = 'block';
-            codeLabel.style.display = 'block';
-        } else {
-            // 숨김
-            codeInput.style.display = 'none';
-            codeLabel.style.display = 'none';
-        }
-    }
-    
     // 저장 버튼 활성화 체크
     checkSaveButtonState();
     

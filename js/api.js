@@ -197,13 +197,10 @@ class SmartTravelAPI {
         return await this.request(`${this.baseURL}/check-session.php`);
     }
 
-    async register(name, email, phone, password, affiliateCode = null) {
+    async register(name, email, phone, password) {
         const data = { name, email, password };
         if (phone != null && String(phone).trim() !== '') {
             data.phone = String(phone).trim();
-        }
-        if (affiliateCode && affiliateCode.trim()) {
-            data.affiliateCode = affiliateCode.trim();
         }
         return await this.request(`${this.baseURL}/register.php`, {
             method: 'POST',

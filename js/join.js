@@ -16,7 +16,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     const requiredChk1 = document.getElementById("chk1");
     const requiredChk2 = document.getElementById("chk2");
     const marketingChk = document.getElementById("chk3");
-    const affiliateInput = document.getElementById("affiliate_code");
 
     let isEmailChecked = window.__joinIsEmailChecked === true;
 
@@ -34,7 +33,6 @@ document.addEventListener("DOMContentLoaded", async function () {
             if ((data.countryCode ?? '') !== '') savedCountryCode = data.countryCode;
             if (passwordInput && (data.password ?? '') !== '') passwordInput.value = data.password;
             if (confirmPasswordInput && (data.password2 ?? '') !== '') confirmPasswordInput.value = data.password2;
-            if (affiliateInput && (data.affiliateCode ?? '') !== '') affiliateInput.value = data.affiliateCode;
             if (requiredChk1) requiredChk1.checked = !!data.chk1;
             if (requiredChk2) requiredChk2.checked = !!data.chk2;
             if (marketingChk) marketingChk.checked = !!data.chk3;
@@ -74,7 +72,6 @@ document.addEventListener("DOMContentLoaded", async function () {
                 countryCode: countryCodeSel?.value || '+63',
                 password: passwordInput?.value || '',
                 password2: confirmPasswordInput?.value || '',
-                affiliateCode: affiliateInput?.value || '',
                 chk1: requiredChk1?.checked || false,
                 chk2: requiredChk2?.checked || false,
                 chk3: marketingChk?.checked || false,
@@ -423,7 +420,6 @@ async function handleJoin() {
     const countryCode = document.getElementById("countryCodeSelect")?.value || '';
     const password = document.getElementById("password")?.value.trim();
     const confirmPassword = document.getElementById("password2")?.value.trim();
-    const affiliateCode = document.getElementById("affiliate_code")?.value.trim() || null;
     const chk1 = document.getElementById("chk1")?.checked;
     const chk2 = document.getElementById("chk2")?.checked;
     const currentLang = getCurrentLanguage();
@@ -481,9 +477,8 @@ async function handleJoin() {
             joinBtn.textContent = texts.joining || "Signing up...";
         }
         
-        // API 호출 (제휴 코드 포함)
         const fullPhone = phone ? (countryCode ? `${countryCode} ${phone}` : phone) : null;
-        const result = await api.register(name, email, fullPhone, password, affiliateCode);
+        const result = await api.register(name, email, fullPhone, password);
         
         if (result.success) {
             const currentLang = getCurrentLanguage();
@@ -508,12 +503,8 @@ async function handleJoin() {
             sessionStorage.removeItem('joinFormData');
             // SMT 수정 완료
         } else {
-            // Invalid affiliate code / Unavailable email: 요청 문구로 통일
             const msg = String(result.message || '');
-            if (isEn && (msg.includes('유효하지 않은 제휴 코드') || msg.toLowerCase().includes('affiliate'))) {
-                // alert((globalLanguageTexts[currentLang] || {}).invalidAffiliateCode || "Invalid affiliate code.");
-                showAlertModal((globalLanguageTexts[currentLang] || {}).invalidAffiliateCode || "Invalid affiliate code.");
-            } else if (isEn && (msg.includes('이미 사용 중인 이메일') || msg.toLowerCase().includes('email'))) {
+            if (isEn && (msg.includes('이미 사용 중인 이메일') || msg.toLowerCase().includes('email'))) {
                 alert((globalLanguageTexts[currentLang] || {}).emailUnavailable || "This email cannot be used.");
             } else {
                 alert(result.message || "Registration failed.");

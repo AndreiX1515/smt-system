@@ -26,8 +26,6 @@ if (isset($_SESSION['user_id']) || isset($_SESSION['accountId'])) {
         'username' => $_SESSION['username'] ?? '',
         'email' => $_SESSION['email'] ?? '',
         'accountType' => $_SESSION['account_type'] ?? ($_SESSION['accountRole'] ?? ''),
-        // B2B ()
-        'affiliateCode' => '',
         'clientType' => '',
         'companyId' => null,
         'isB2B' => false
@@ -36,7 +34,7 @@ if (isset($_SESSION['user_id']) || isset($_SESSION['accountId'])) {
         $hasClient = table_exists($conn, 'client');
         $hasGuides = table_exists($conn, 'guides');
         $joins = '';
-        $select = "a.username, a.emailAddress, a.accountType, COALESCE(NULLIF(TRIM(a.affiliateCode), ''), '') AS affiliateCode";
+        $select = "a.username, a.emailAddress, a.accountType";
         if ($hasClient) $select .= ", c.fName, c.lName, COALESCE(c.clientType,'') AS clientType, c.companyId AS companyId";
         if ($hasGuides) $select .= ", g.guideName, g.guideCode";
         if ($hasClient) $joins .= " LEFT JOIN client c ON a.accountId = c.accountId";
@@ -57,7 +55,6 @@ if (isset($_SESSION['user_id']) || isset($_SESSION['accountId'])) {
                 $profile['lastName'] = $row['lName'] ?? '';
                 $profile['guideName'] = $row['guideName'] ?? '';
                 $profile['guideCode'] = $row['guideCode'] ?? '';
-                $profile['affiliateCode'] = (string)($row['affiliateCode'] ?? '');
                 $profile['clientType'] = strtolower(trim((string)($row['clientType'] ?? '')));
                 $profile['companyId'] = isset($row['companyId']) ? (int)$row['companyId'] : null;
 

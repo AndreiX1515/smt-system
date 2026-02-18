@@ -336,9 +336,6 @@ const globalLanguageTexts = {
         phonePlaceholder: "'-' 없이 숫자만 입력",
         passwordConfirm: "비밀번호 확인",
         passwordConfirmPlaceholder: "비밀번호 확인",
-        affiliateCode: "제휴 코드 (선택)",
-        affiliateCodePlaceholder: "제휴 코드",
-        affiliateCodeDesc: "제휴사(에이전트)로부터 받은 코드가 있다면 입력해 주세요.",
         duplicateCheck: "중복 확인",
         // 회원가입 완료 팝업
         joinSuccessTitle: "가입이 완료되었습니다.",
@@ -351,6 +348,7 @@ const globalLanguageTexts = {
         invalidEmailFormat: "이메일 형식이 올바르지 않습니다.",
         invalidPhoneFormat: "연락처 형식이 올바르지 않습니다.",
         invalidPasswordFormat: "비밀번호 형식이 올바르지 않습니다.",
+        passwordRule: "8~12자, 영문/숫자/특수문자 포함",
         passwordMismatch: "비밀번호가 일치하지 않습니다.",
 
         // 계정 설정 페이지
@@ -657,9 +655,6 @@ const globalLanguageTexts = {
         phonePlaceholder: "Enter numbers only without '-'",
         passwordConfirm: "Confirm Password",
         passwordConfirmPlaceholder: "Confirm Password",
-        affiliateCode: "Affiliate Code (Optional)",
-        affiliateCodePlaceholder: "Affiliate Code",
-        affiliateCodeDesc: "Please enter the code if you received it from an affiliate (agent).",
         duplicateCheck: "Check Duplicate",
         // Sign Up Complete popup
         joinSuccessTitle: "Registration has been completed.",
@@ -672,6 +667,7 @@ const globalLanguageTexts = {
         invalidEmailFormat: "Email format is incorrect.",
         invalidPhoneFormat: "Phone format is incorrect.",
         invalidPasswordFormat: "Password format is incorrect.",
+        passwordRule: "8-12 characters, including letters, numbers, and special characters",
         passwordMismatch: "Passwords do not match.",
 
         // Account Settings Page
@@ -974,9 +970,6 @@ const globalLanguageTexts = {
         phonePlaceholder: "Ilagay ang mga numero lamang nang walang '-'",
         passwordConfirm: "Kumpirmahin ang Password",
         passwordConfirmPlaceholder: "Kumpirmahin ang Password",
-        affiliateCode: "Affiliate Code (Opsiyonal)",
-        affiliateCodePlaceholder: "Affiliate Code",
-        affiliateCodeDesc: "Pakipasok ang code kung natanggap ninyo ito mula sa isang affiliate (agent).",
         duplicateCheck: "Suriin ang Duplicate",
         // Sign Up Complete popup
         joinSuccessTitle: "Registration has been completed.",
@@ -989,6 +982,7 @@ const globalLanguageTexts = {
         invalidEmailFormat: "Mali ang format ng email.",
         invalidPhoneFormat: "Mali ang format ng telepono.",
         invalidPasswordFormat: "Mali ang format ng password.",
+        passwordRule: "8-12 karakter, kasama ang mga titik, numero, at espesyal na karakter",
         passwordMismatch: "Hindi magkatugma ang mga password.",
 
         // Account Settings Page

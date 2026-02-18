@@ -52,6 +52,7 @@ $currentLang = getCurrentLanguage();
                     <input class="input-type1" id="password" type="password" data-i18n-placeholder="passwordPlaceholder" placeholder="8~12자, 영문/숫자/특수문자 포함">
                     <button class="btn-eye" type="button"><img src="../images/ico_eye_off.svg" alt=""></button>
                 </div>
+                <div class="text fz12 fw400 lh16 gray96 mt4" data-i18n="passwordRule">8-12 characters, including letters, numbers, and special characters</div>
                 <div class="text fz12 fw400 lh16 reded mt4" data-i18n="invalidPasswordFormat" style="display: none;">비밀번호 형식이 올바르지 않습니다.</div>
 
                 <label class="label-input mb6 mt16" for="password2"><span data-i18n="passwordConfirm">비밀번호 확인</span><span class="text fz14 fw500 reded lh22 ml3">*</span></label>
@@ -60,10 +61,6 @@ $currentLang = getCurrentLanguage();
                     <button class="btn-eye" type="button"><img src="../images/ico_eye_off.svg" alt=""></button>
                 </div>
                 <div class="text fz12 fw400 lh16 reded mt4" data-i18n="passwordMismatch" style="display: none;">비밀번호가 일치하지 않습니다.</div>
-
-                <label class="label-input mb6 mt16" for="affiliate_code" data-i18n="affiliateCode">제휴 코드 (선택)</label>
-                <input class="input-type1" id="affiliate_code" type="text" data-i18n-placeholder="affiliateCodePlaceholder" placeholder="제휴 코드">
-                <div class="text fz12 fw400 lh16 gray96 mt4" data-i18n="affiliateCodeDesc">제휴사(에이전트)로부터 받은 코드가 있다면 입력해 주세요.</div>
 
                 <div class="mt28">
                     <!-- 전체 동의 체크박스 -->

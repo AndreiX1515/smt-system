@@ -3123,22 +3123,23 @@ function getAgentDetail($conn, $input) {
             $agent['managerName'] = trim($agent['fName'] . ' ' . $agent['lName']);
         }
 
-        // 소속 고객 수(동적): 제휴코드(affiliateCode)로 가입한 고객
+        // 소속 고객 수(동적): client.companyId 기반으로 B2B(Wholeseller) 고객 카운트
         $customerCount = 0;
-        $agentIdStr = (string)($agent['agentId'] ?? '');
-        $agentAccountIdStr = (string)intval($agent['accountId'] ?? 0);
-        // guest 고객만 카운트
-        $ccSql = "SELECT COUNT(DISTINCT ac2.accountId) as c
-                  FROM accounts ac2
-                  WHERE ac2.accountType = 'guest'
-                    AND COALESCE(ac2.affiliateCode,'') <> ''
-                    AND (ac2.affiliateCode = ? OR ac2.affiliateCode = ?)";
-        $cc = $conn->prepare($ccSql);
-        if ($cc) {
-            $cc->bind_param('ss', $agentIdStr, $agentAccountIdStr);
-            $cc->execute();
-            $customerCount = intval($cc->get_result()->fetch_assoc()['c'] ?? 0);
-            $cc->close();
+        $agentCompanyId = intval($agent['companyId'] ?? 0);
+        if ($agentCompanyId > 0) {
+            $ccSql = "SELECT COUNT(DISTINCT c2.accountId) as c
+                      FROM client c2
+                      JOIN accounts ac2 ON ac2.accountId = c2.accountId
+                      WHERE ac2.accountType = 'guest'
+                        AND LOWER(COALESCE(c2.clientType,'')) IN ('wholeseller','wholesaler')
+                        AND c2.companyId = ?";
+            $cc = $conn->prepare($ccSql);
+            if ($cc) {
+                $cc->bind_param('i', $agentCompanyId);
+                $cc->execute();
+                $customerCount = intval($cc->get_result()->fetch_assoc()['c'] ?? 0);
+                $cc->close();
+            }
         }
         $agent['customerCount'] = $customerCount;
 
@@ -6308,32 +6309,14 @@ function getB2BCustomers($conn, $input) {
         $limit = isset($input['limit']) ? max(1, min(100, intval($input['limit']))) : 20;
         $offset = ($page - 1) * $limit;
 
-        // agentCode 컬럼 존재 여부(환경별 스키마 편차 대응)
-        $hasAgentCodeCol = false;
-        try {
-            $c = $conn->query("SHOW COLUMNS FROM agent LIKE 'agentCode'");
-            $hasAgentCodeCol = ($c && $c->num_rows > 0);
-        } catch (Throwable $e) { $hasAgentCodeCol = false; }
-        $agentJoinCond = $hasAgentCodeCol
-            ? "(ag.agentId = TRIM(COALESCE(ac.affiliateCode,'')) OR ag.agentCode = TRIM(COALESCE(ac.affiliateCode,'')) OR CAST(ag.accountId AS CHAR) = TRIM(COALESCE(ac.affiliateCode,'')))"
-            : "(ag.agentId = TRIM(COALESCE(ac.affiliateCode,'')) OR CAST(ag.accountId AS CHAR) = TRIM(COALESCE(ac.affiliateCode,'')))";
-        
-        // B2B 정책(운영 요구사항 반영):
-        // - 에이전트(admin/agent/customer-register.html)에서 등록한 고객 => client.clientType = 'Wholeseller'
-        // - 사용자 페이지에서 "제휴코드(Partnership code)"로 가입한 고객 => accounts.affiliateCode(=agentId)가 유효하면 B2B로 취급
-        //   (register.php는 clientType을 Retailer로 저장하므로, 목록 화면에서 재분류가 필요)
+        // B2B 정책: client.clientType = 'Wholeseller' 기반
         $whereConditions = [
             "ac.accountType = 'guest'",
-            // 오탈자/대소문자 혼재 환경 대응(wholeseller/wholesaler 모두 허용)
-            // + affiliateCode로 매핑되는 agent가 있으면 B2B로 승격
-            "(
-                LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler')
-                OR ag.agentId IS NOT NULL
-            )"
+            "LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler')"
         ];
         $params = [];
         $types = '';
-        
+
         if (!empty($input['search'])) {
             $searchType = $input['searchType'] ?? 'all'; // all/customer/branch
             $term = '%' . $input['search'] . '%';
@@ -6342,13 +6325,11 @@ function getB2BCustomers($conn, $input) {
                 $params[] = $term;
                 $types .= 's';
             } elseif ($searchType === 'branch') {
-                // "소속 지점명"은 branchName 기준 + fallback으로 companyName도 포함
                 $whereConditions[] = "(COALESCE('', '', '') LIKE ? OR COALESCE('' as co_ag_companyName, '' as co_cl_companyName, '') LIKE ?)";
                 $params[] = $term;
                 $params[] = $term;
                 $types .= 'ss';
             } else {
-                // 전체: 고객명 + 지점/회사명
                 $whereConditions[] = "(
                     CONCAT(c.fName, ' ', c.lName) LIKE ?
                     OR COALESCE('', '', '') LIKE ?
@@ -6360,20 +6341,13 @@ function getB2BCustomers($conn, $input) {
                 $types .= 'sss';
             }
         }
-        
+
         $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
-        
-        // NOTE:
-        // - 제휴코드 기반으로 에이전트 소속(branch/company)을 보여주기 위해 affiliateCode → agent → company → branch로 연결
-        // - 레거시/직접등록 케이스를 위해 client.companyId 기반 조인도 유지
+
         $countSql = "SELECT COUNT(*) as total FROM client c
                      LEFT JOIN accounts ac ON c.accountId = ac.accountId
-                     -- 제휴코드(affiliateCode)=agent.agentId/agentCode (또는 agent.accountId 문자열) 로 매핑 (공백/문자형 편차 흡수)
-                     LEFT JOIN agent ag ON {$agentJoinCond}
-                     
-                     
                      $whereClause";
-        
+
         $countStmt = null;
         if (!empty($params)) {
             $countStmt = $conn->prepare($countSql);
@@ -6385,49 +6359,41 @@ function getB2BCustomers($conn, $input) {
         }
         $totalCount = $countResult->fetch_assoc()['total'];
         if ($countStmt) $countStmt->close();
-        
+
         $dataSql = "SELECT
             c.accountId,
-            NULL as companyId,
+            c.companyId,
             CONCAT(c.fName, ' ', c.lName) as customerName,
             ac.emailAddress,
             c.contactNo,
             '' as companyName,
             '' as branchName,
             '' as businessUnit,
-            TRIM(COALESCE(ac.affiliateCode,'')) as affiliateCode,
             ac.accountStatus,
             COALESCE(ac.createdAt, c.updatedAt) as createdAt
         FROM client c
         LEFT JOIN accounts ac ON c.accountId = ac.accountId
-        -- 제휴코드(affiliateCode)=agent.agentId/agentCode (또는 agent.accountId 문자열) 로 매핑 (공백/문자형 편차 흡수)
-        LEFT JOIN agent ag ON {$agentJoinCond}
-        
-        
         $whereClause
         ORDER BY COALESCE(ac.createdAt, c.updatedAt) DESC
         LIMIT ? OFFSET ?";
-        
+
         $dataParams = array_merge($params, [$limit, $offset]);
         $dataTypes = $types . 'ii';
-        
+
         $dataStmt = $conn->prepare($dataSql);
         mysqli_bind_params_by_ref($dataStmt, $dataTypes, $dataParams);
         $dataStmt->execute();
         $dataResult = $dataStmt->get_result();
-        
+
         $customers = [];
         $rowNum = $totalCount - $offset;
         while ($row = $dataResult->fetch_assoc()) {
-            // Agent Name fallback (B2B should always have some label)
             $bn = trim((string)($row['branchName'] ?? ''));
             $cn = trim((string)($row['companyName'] ?? ''));
             $bu = trim((string)($row['businessUnit'] ?? ''));
-            $af = trim((string)($row['affiliateCode'] ?? ''));
             $agentLabel = $bn;
             if ($agentLabel === '' && $cn !== '') $agentLabel = $cn;
             if ($agentLabel === '' && $bu !== '') $agentLabel = $bu;
-            if ($agentLabel === '' && $af !== '') $agentLabel = $af;
 
             $customers[] = [
                 'accountId' => $row['accountId'],
@@ -6437,7 +6403,6 @@ function getB2BCustomers($conn, $input) {
                 'contactNo' => $row['contactNo'] ?? '',
                 'companyName' => $row['companyName'] ?? '',
                 'branchName' => $agentLabel,
-                'affiliateCode' => $row['affiliateCode'] ?? '',
                 'status' => $row['accountStatus'] ?? 'active',
                 'createdAt' => $row['createdAt'] ?? '',
                 'rowNum' => $rowNum--
@@ -6465,42 +6430,26 @@ function getB2CCustomers($conn, $input) {
         $limit = isset($input['limit']) ? max(1, min(100, intval($input['limit']))) : 20;
         $offset = ($page - 1) * $limit;
 
-        // agentCode 컬럼 존재 여부(환경별 스키마 편차 대응)
-        $hasAgentCodeCol = false;
-        try {
-            $c = $conn->query("SHOW COLUMNS FROM agent LIKE 'agentCode'");
-            $hasAgentCodeCol = ($c && $c->num_rows > 0);
-        } catch (Throwable $e) { $hasAgentCodeCol = false; }
-        $agentJoinCond = $hasAgentCodeCol
-            ? "(ag.agentId = TRIM(COALESCE(ac.affiliateCode,'')) OR ag.agentCode = TRIM(COALESCE(ac.affiliateCode,'')) OR CAST(ag.accountId AS CHAR) = TRIM(COALESCE(ac.affiliateCode,'')))"
-            : "(ag.agentId = TRIM(COALESCE(ac.affiliateCode,'')) OR CAST(ag.accountId AS CHAR) = TRIM(COALESCE(ac.affiliateCode,'')))";
-        
-        // B2C 정책(운영 요구사항 반영):
-        // - 기본: clientType이 wholeseller가 아니면 B2C
-        // - 단, affiliateCode(제휴코드)가 유효해서 agent로 매핑되는 고객은 B2B로 취급되므로 B2C에서 제외
+        // B2C 정책: clientType이 wholeseller가 아니면 B2C
         $whereConditions = [
             "ac.accountType = 'guest'",
-            // wholeseller만 제외하면 나머지는 B2C로 취급(NULL/'' 포함)
-            "(LOWER(COALESCE(c.clientType,'')) NOT IN ('wholeseller','wholesaler'))",
-            // affiliateCode로 agent가 매핑되면 B2C에서 제외
-            "ag.agentId IS NULL"
+            "(LOWER(COALESCE(c.clientType,'')) NOT IN ('wholeseller','wholesaler'))"
         ];
         $params = [];
         $types = '';
-        
+
         if (!empty($input['search'])) {
             $whereConditions[] = "CONCAT(c.fName, ' ', c.lName) LIKE ?";
             $params[] = '%' . $input['search'] . '%';
             $types .= 's';
         }
-        
+
         $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
-        
+
         $countSql = "SELECT COUNT(*) as total FROM client c
                      LEFT JOIN accounts ac ON c.accountId = ac.accountId
-                     LEFT JOIN agent ag ON {$agentJoinCond}
                      $whereClause";
-        
+
         $countStmt = null;
         if (!empty($params)) {
             $countStmt = $conn->prepare($countSql);
@@ -6512,30 +6461,28 @@ function getB2CCustomers($conn, $input) {
         }
         $totalCount = $countResult->fetch_assoc()['total'];
         if ($countStmt) $countStmt->close();
-        
-        $dataSql = "SELECT 
+
+        $dataSql = "SELECT
             c.accountId,
             CONCAT(c.fName, ' ', c.lName) as customerName,
             ac.emailAddress,
             c.contactNo,
-            TRIM(COALESCE(ac.affiliateCode,'')) as affiliateCode,
             ac.accountStatus,
             ac.createdAt
         FROM client c
         LEFT JOIN accounts ac ON c.accountId = ac.accountId
-        LEFT JOIN agent ag ON {$agentJoinCond}
         $whereClause
         ORDER BY ac.createdAt DESC
         LIMIT ? OFFSET ?";
-        
+
         $dataParams = array_merge($params, [$limit, $offset]);
         $dataTypes = $types . 'ii';
-        
+
         $dataStmt = $conn->prepare($dataSql);
         mysqli_bind_params_by_ref($dataStmt, $dataTypes, $dataParams);
         $dataStmt->execute();
         $dataResult = $dataStmt->get_result();
-        
+
         $customers = [];
         $rowNum = $totalCount - $offset;
         while ($row = $dataResult->fetch_assoc()) {
@@ -6544,7 +6491,6 @@ function getB2CCustomers($conn, $input) {
                 'customerName' => $row['customerName'] ?? '',
                 'emailAddress' => $row['emailAddress'] ?? '',
                 'contactNo' => $row['contactNo'] ?? '',
-                'affiliateCode' => $row['affiliateCode'] ?? '',
                 'status' => $row['accountStatus'] ?? 'active',
                 'createdAt' => $row['createdAt'] ?? '',
                 'rowNum' => $rowNum--
@@ -6576,18 +6522,13 @@ function getCustomerDetail($conn, $input) {
         $sql = "SELECT
             c.*,
             ac.emailAddress,
-            ac.affiliateCode,
             ac.accountStatus,
             ac.createdAt as accountCreatedAt,
-            ag.agentId as matchedAgentId,
             '' as companyName,
             '' as businessUnit,
-            COALESCE(ag.agencyName, '') as branchName
+            '' as branchName
         FROM client c
         LEFT JOIN accounts ac ON c.accountId = ac.accountId
-        LEFT JOIN agent ag ON ag.id = ac.agentId
-        
-        
         WHERE c.accountId = ?";
         
         $stmt = $conn->prepare($sql);
@@ -6665,11 +6606,9 @@ function getCustomerDetail($conn, $input) {
         $travelerFirstName = $pick($row, ['travelerFirstName', 'traveler_first_name', 'travelerFName', 'traveler_firstname']);
         $travelerLastName = $pick($row, ['travelerLastName', 'traveler_last_name', 'travelerLName', 'traveler_lastname']);
 
-        // B2B/B2C 판별:
-        // - B2B: clientType wholeseller/wholesaler 또는 affiliateCode로 agent가 매핑됨
-        // - B2C: 위 조건이 아니면 에이전트 소속(branch/company) 정보를 노출하지 않는다 (요구사항 id 80)
+        // B2B/B2C 판별: clientType 기반
         $ct = strtolower(trim((string)($row['clientType'] ?? '')));
-        $isB2B = in_array($ct, ['wholeseller','wholesaler'], true) || (trim((string)($row['matchedAgentId'] ?? '')) !== '');
+        $isB2B = in_array($ct, ['wholeseller','wholesaler'], true);
         $companyName = trim((string)($row['companyName'] ?? ''));
         $businessUnit = trim((string)($row['businessUnit'] ?? ''));
         $branchName = trim((string)($row['branchName'] ?? ''));
@@ -6679,13 +6618,11 @@ function getCustomerDetail($conn, $input) {
             $branchName = '';
         }
         // B2B는 "Agent Name"이 비어있으면 안 됨(운영 요구사항):
-        // - 우선순위: branchName → companyName → businessUnit → affiliateCode(제휴코드)
+        // - 우선순위: branchName → companyName → businessUnit
         if ($isB2B) {
-            $affiliate = trim((string)($row['affiliateCode'] ?? ''));
             $agentLabel = $branchName;
             if ($agentLabel === '' && $companyName !== '') $agentLabel = $companyName;
             if ($agentLabel === '' && $businessUnit !== '') $agentLabel = $businessUnit;
-            if ($agentLabel === '' && $affiliate !== '') $agentLabel = $affiliate;
             $branchName = $agentLabel;
         }
         
@@ -6703,7 +6640,6 @@ function getCustomerDetail($conn, $input) {
             'companyId' => $row['companyId'] ?? null,
             'companyName' => $companyName,
             'branchName' => $branchName,
-            'affiliateCode' => $row['affiliateCode'] ?? '',
             'accountStatus' => $row['accountStatus'] ?? '',
             'registrationDate' => $row['accountCreatedAt'] ?? ($row['updatedAt'] ?? ''),
             'memo' => $row['memo'] ?? '',
@@ -8490,9 +8426,6 @@ function exportB2BCustomersCsv($conn, $input) {
                     COALESCE(ac.createdAt, c.updatedAt) as createdAt
                 FROM client c
                 LEFT JOIN accounts ac ON c.accountId = ac.accountId
-                LEFT JOIN agent ag ON (ag.agentId = ac.affiliateCode OR CAST(ag.accountId AS CHAR) = ac.affiliateCode)
-                
-                
                 $whereClause
                 ORDER BY COALESCE(ac.createdAt, c.updatedAt) DESC";
 

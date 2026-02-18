@@ -678,14 +678,14 @@ try {
         : "b.packageName";
     //  (B2B/B2C)
     // - bookings.customerType     
-    // -  accounts.accountType/affiliateCode B2B/B2C (guest + affiliateCode  = B2C)
+    // -  accounts.accountType + client.clientType B2B/B2C
     // -   clientType   B2B fallback
     if (in_array('customertype', $bookingsColumns)) {
         $customerTypeColumn = "CASE WHEN UPPER(COALESCE(b.customerType,'')) = 'B2C' THEN 'B2C' ELSE 'B2B' END";
     } elseif ($hasAccountsTable) {
         $customerTypeColumn = "CASE
             WHEN a.accountType IN ('agent','employee','admin_ph','admin_kr') THEN 'B2B'
-            WHEN COALESCE(a.affiliateCode, '') <> '' THEN 'B2B'
+            WHEN LOWER(COALESCE(c.clientType,'')) IN ('wholeseller','wholesaler') THEN 'B2B'
             ELSE 'B2C'
         END";
     } else {

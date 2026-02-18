@@ -58,7 +58,7 @@ function getUserProfile($conn, $input) {
     
     $stmt = $conn->prepare("
         SELECT 
-            a.accountId, a.username, a.emailAddress, a.accountStatus, a.accountType, a.affiliateCode, a.createdAt,
+            a.accountId, a.username, a.emailAddress, a.accountStatus, a.accountType, a.createdAt,
             c.clientId, c.fName, c.lName, c.contactNo, c.clientType, c.clientRole,
             ag.agentId AS agentCode
         FROM accounts a
@@ -76,15 +76,6 @@ function getUserProfile($conn, $input) {
     
     $user = $result->fetch_assoc();
     
-    //   
-    //   agent.agentId     
-    $affiliateCode = $user['affiliateCode'] ?? null;
-    if ((!$affiliateCode || trim((string)$affiliateCode) === '') && ($user['accountType'] ?? '') === 'agent') {
-        if (!empty($user['agentCode'])) {
-            $affiliateCode = $user['agentCode'];
-        }
-    }
-
     $profile = [
         'accountId' => $user['accountId'],
         'username' => $user['username'],
@@ -93,7 +84,6 @@ function getUserProfile($conn, $input) {
         'lastName' => $user['lName'] ?? '',
         'phoneNumber' => $user['contactNo'] ?? '',
         'accountType' => $user['accountType'],
-        'affiliateCode' => $affiliateCode,
         'clientType' => $user['clientType'] ?? '',
         'clientRole' => $user['clientRole'] ?? ''
     ];

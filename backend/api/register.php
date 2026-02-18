@@ -145,61 +145,14 @@ try {
     $conn->begin_transaction();
     
     try {
-        // 제휴 코드 처리 (선택 필드)
-        // - Partnership code는 super/agent-detail.html?id=AGTxxx 의 id 값(AGTxxx) 자체
-        // - 입력 편차(공백/대소문자)를 보정한다.
-        $affiliate_code_raw =
-            (isset($input['affiliateCode']) ? (string)$input['affiliateCode'] : '') ?: 
-            (isset($input['affiliate_code']) ? (string)$input['affiliate_code'] : '') ?: 
-            (isset($input['partnershipCode']) ? (string)$input['partnershipCode'] : '') ?: 
-            (isset($input['partnership_code']) ? (string)$input['partnership_code'] : '');
-        $affiliate_code = trim($affiliate_code_raw);
-        if ($affiliate_code === '') $affiliate_code = null;
-        if ($affiliate_code !== null) {
-            // 대문자 정규화 (MySQL collation이 case-insensitive여도 안전)
-            $affiliate_code = strtoupper($affiliate_code);
-        }
-
-        // 제휴코드 검증 (agent 테이블에 존재하는지 확인)
-        if ($affiliate_code !== null && $affiliate_code !== '') {
-            $agentTable = $conn->query("SHOW TABLES LIKE 'agent'");
-            if ($agentTable && $agentTable->num_rows > 0) {
-                $hasAgentCode = false;
-                try {
-                    $hasAgentCodeRes = $conn->query("SHOW COLUMNS FROM agent LIKE 'agentCode'");
-                    $hasAgentCode = ($hasAgentCodeRes && $hasAgentCodeRes->num_rows > 0);
-                } catch (Throwable $e) { $hasAgentCode = false; }
-
-                $chk = $conn->prepare($hasAgentCode
-                    ? "SELECT agentId FROM agent WHERE agentId = ? OR agentCode = ? LIMIT 1"
-                    : "SELECT agentId FROM agent WHERE agentId = ? LIMIT 1"
-                );
-                if ($chk) {
-                    if ($hasAgentCode) $chk->bind_param("ss", $affiliate_code, $affiliate_code);
-                    else $chk->bind_param("s", $affiliate_code);
-                    $chk->execute();
-                    $chkRes = $chk->get_result();
-                    $row = $chkRes ? $chkRes->fetch_assoc() : null;
-                    $chk->close();
-                    if (!$row) {
-                        send_json_response(['success' => false, 'message' => '유효하지 않은 제휴 코드입니다.'], 400);
-                    }
-                } else {
-                    send_json_response(['success' => false, 'message' => '유효하지 않은 제휴 코드입니다.'], 400);
-                }
-            } else {
-                send_json_response(['success' => false, 'message' => '유효하지 않은 제휴 코드입니다.'], 400);
-            }
-        }
-        
         // accounts 테이블에 사용자 추가
-        $stmt = $conn->prepare("INSERT INTO accounts (username, emailAddress, password, accountStatus, accountType, affiliateCode) VALUES (?, ?, ?, 'active', 'guest', ?)");
+        $stmt = $conn->prepare("INSERT INTO accounts (username, emailAddress, password, accountStatus, accountType) VALUES (?, ?, ?, 'active', 'guest')");
         if (!$stmt) {
             error_log("Accounts insert prepare failed: " . $conn->error);
             throw new Exception("데이터베이스 준비 오류");
         }
-        
-        $stmt->bind_param("ssss", $username, $email, $hashed_password, $affiliate_code);
+
+        $stmt->bind_param("sss", $username, $email, $hashed_password);
         $stmt->execute();
         
         $account_id = $conn->insert_id;
@@ -218,29 +171,26 @@ try {
             }
         }
 
-        // 제휴코드가 있으면 Wholeseller(B2B), 없으면 Retailer(B2C)
-        $clientType = ($affiliate_code !== null && $affiliate_code !== '') ? 'Wholeseller' : 'Retailer';
+        // 일반 가입자는 항상 Retailer(B2C)
+        $clientType = 'Retailer';
 
-        // 먼저 임시 clientId로 INSERT 후 client.id를 가져와서 clientId 생성
-        $temp_client_id = 'CLI_TEMP_' . time();
+        // clientId 채번: 현재 최대 CLI 번호 + 1 (id 기반이 아닌 실제 clientId 시퀀스 기반)
+        $maxRes = $conn->query("SELECT MAX(CAST(REPLACE(clientId, 'CLI', '') AS UNSIGNED)) AS maxNum FROM client WHERE clientId LIKE 'CLI%'");
+        $maxNum = 0;
+        if ($maxRes) {
+            $maxRow = $maxRes->fetch_assoc();
+            $maxNum = intval($maxRow['maxNum'] ?? 0);
+        }
+        $client_id = 'CLI' . str_pad($maxNum + 1, 6, '0', STR_PAD_LEFT);
+
         $stmt = $conn->prepare("INSERT INTO client (clientId, accountId, fName, lName, contactNo, clientType, clientRole) VALUES (?, ?, ?, ?, ?, ?, 'Sub-Agent')");
         if (!$stmt) {
             error_log("Client insert prepare failed: " . $conn->error);
             throw new Exception("클라이언트 데이터베이스 준비 오류");
         }
 
-        $stmt->bind_param("sissss", $temp_client_id, $account_id, $fname, $lname, $phone, $clientType);
+        $stmt->bind_param("sissss", $client_id, $account_id, $fname, $lname, $phone, $clientType);
         $stmt->execute();
-
-        // client.id를 기반으로 clientId 생성
-        $client_table_id = $conn->insert_id;
-        $client_id = 'CLI' . str_pad($client_table_id, 6, '0', STR_PAD_LEFT);
-
-        // clientId 업데이트
-        $updateStmt = $conn->prepare("UPDATE client SET clientId = ? WHERE id = ?");
-        $updateStmt->bind_param("si", $client_id, $client_table_id);
-        $updateStmt->execute();
-        $updateStmt->close();
 
         error_log("Client created with ID: " . $client_id);
         
