@@ -901,13 +901,9 @@ function getStatusText(bookingOrStatus) {
     const bs = String(booking.bookingStatus || '').toLowerCase();
     const ps = String(booking.paymentStatus || '').toLowerCase();
 
-    const clientType = (localStorage.getItem('clientType') || '').toString().toLowerCase();
-    const clientRole = (localStorage.getItem('clientRole') || '').toString().toLowerCase();
-    const hint = (localStorage.getItem('accountType') || '').toString().toLowerCase();
-    const isB2B =
-        clientType.includes('wholeseller') || clientType.includes('wholesaler') ||
-        clientRole.includes('sub-agent') || clientRole.includes('head agent') || clientRole.includes('agent') ||
-        hint.includes('b2b') || hint.includes('wholeseller') || hint.includes('wholesaler') || hint.includes('agent');
+    // B2B = 에이전트 계정 자체, B2C = 모든 일반 고객 (에이전트 소속 여부 무관)
+    const accountType = (localStorage.getItem('accountType') || '').toString().toLowerCase();
+    const isB2B = accountType === 'agent' || accountType === 'admin_ph' || accountType === 'admin_kr';
 
     let key = '';
     if (['temporary_save', 'temporary', 'draft', 'temp', 'saved', 'saved_draft'].includes(bs)) key = 'temporary_save';
