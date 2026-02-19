@@ -117,9 +117,10 @@ function renderCategories(categories) {
     }
 
     container.innerHTML = categories.map(cat => `
-        <div class="category-card ${cat.is_active ? '' : 'inactive'}">
+        <div class="category-card ${cat.is_active ? '' : 'inactive'}" draggable="true" data-category-id="${cat.category_id}">
             <div class="category-header">
-                <div>
+                <div style="display:flex;align-items:center;">
+                    <span class="drag-handle js-cat-drag-handle" title="Drag to reorder">&#9776;</span>
                     <span class="category-title">${escapeHtml(cat.category_name)}</span>
                     ${cat.category_name_en ? `<span class="category-title-en">(${escapeHtml(cat.category_name_en)})</span>` : ''}
                     <span class="status-badge ${cat.is_active ? 'active' : 'inactive'}">${cat.is_active ? 'Active' : 'Inactive'}</span>
@@ -142,8 +143,9 @@ function renderCategories(categories) {
             <div class="category-body">
                 <div class="option-list">
                     ${(cat.options || []).map(opt => `
-                        <div class="option-item ${opt.is_active ? '' : 'inactive'}">
+                        <div class="option-item ${opt.is_active ? '' : 'inactive'}" draggable="true" data-option-id="${opt.option_id}" data-category-id="${cat.category_id}">
                             <div class="option-info">
+                                <span class="drag-handle js-opt-drag-handle" title="Drag to reorder">&#9776;</span>
                                 <span class="option-name">${escapeHtml(opt.option_name)}</span>
                                 ${opt.option_name_en ? `<span class="option-name-en">(${escapeHtml(opt.option_name_en)})</span>` : ''}
                             </div>
@@ -520,6 +522,119 @@ async function deleteOption(optionId) {
         alert('Failed to delete option: ' + error.message);
     }
 }
+
+// ============ Drag & Drop Reordering ============
+
+let draggingCategory = null;
+let draggingOption = null;
+let _mouseDownTarget = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('categoriesContainer');
+    if (!container) return;
+
+    // mousedown 시점의 실제 클릭 요소를 기록 (dragstart의 e.target은 draggable 요소 자체이므로)
+    container.addEventListener('mousedown', (e) => {
+        _mouseDownTarget = e.target;
+    });
+
+    container.addEventListener('dragstart', (e) => {
+        // Option drag
+        const optItem = e.target.closest('.option-item[data-option-id]');
+        if (optItem) {
+            if (!_mouseDownTarget || !_mouseDownTarget.closest('.js-opt-drag-handle')) {
+                e.preventDefault();
+                return;
+            }
+            draggingOption = optItem;
+            optItem.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', 'opt:' + optItem.dataset.optionId); } catch (_) {}
+            return;
+        }
+
+        // Category card drag
+        const catCard = e.target.closest('.category-card[data-category-id]');
+        if (catCard) {
+            if (!_mouseDownTarget || !_mouseDownTarget.closest('.js-cat-drag-handle')) {
+                e.preventDefault();
+                return;
+            }
+            draggingCategory = catCard;
+            catCard.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', 'cat:' + catCard.dataset.categoryId); } catch (_) {}
+        }
+    });
+
+    container.addEventListener('dragover', (e) => {
+        // Option dragover
+        if (draggingOption) {
+            const overItem = e.target.closest('.option-item[data-option-id]');
+            if (!overItem || overItem === draggingOption) return;
+            if (overItem.dataset.categoryId !== draggingOption.dataset.categoryId) return;
+            e.preventDefault();
+            const list = overItem.parentElement;
+            const rect = overItem.getBoundingClientRect();
+            const after = (e.clientY - rect.top) > rect.height / 2;
+            list.insertBefore(draggingOption, after ? overItem.nextSibling : overItem);
+            return;
+        }
+
+        // Category dragover
+        if (draggingCategory) {
+            const overCard = e.target.closest('.category-card[data-category-id]');
+            if (!overCard || overCard === draggingCategory) return;
+            e.preventDefault();
+            const rect = overCard.getBoundingClientRect();
+            const after = (e.clientY - rect.top) > rect.height / 2;
+            container.insertBefore(draggingCategory, after ? overCard.nextSibling : overCard);
+        }
+    });
+
+    container.addEventListener('dragend', async () => {
+        // Option dragend
+        if (draggingOption) {
+            draggingOption.style.opacity = '';
+            const categoryId = parseInt(draggingOption.dataset.categoryId, 10);
+            const list = draggingOption.closest('.option-list');
+            const ids = Array.from(list.querySelectorAll('.option-item[data-option-id]')).map(el => parseInt(el.dataset.optionId, 10));
+            draggingOption = null;
+            try {
+                const formData = new FormData();
+                formData.append('action', 'reorderAirlineOptions');
+                formData.append('categoryId', categoryId);
+                formData.append('order', JSON.stringify(ids));
+                const response = await fetch(API_URL, { method: 'POST', body: formData, credentials: 'same-origin' });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
+            } catch (err) {
+                alert(err.message || 'Failed to reorder options.');
+                loadSubCategories();
+            }
+            return;
+        }
+
+        // Category dragend
+        if (draggingCategory) {
+            draggingCategory.style.opacity = '';
+            const ids = Array.from(container.querySelectorAll('.category-card[data-category-id]')).map(el => parseInt(el.dataset.categoryId, 10));
+            draggingCategory = null;
+            try {
+                const formData = new FormData();
+                formData.append('action', 'reorderOptionCategories');
+                formData.append('mainCategory', selectedMainCategory);
+                formData.append('order', JSON.stringify(ids));
+                const response = await fetch(API_URL, { method: 'POST', body: formData, credentials: 'same-origin' });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
+            } catch (err) {
+                alert(err.message || 'Failed to reorder categories.');
+                loadSubCategories();
+            }
+        }
+    });
+});
 
 // ============ Utility Functions ============
 

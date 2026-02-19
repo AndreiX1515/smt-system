@@ -166,6 +166,23 @@
 			background: #DC2626;
 			color: #fff;
 		}
+		.drag-handle {
+			cursor: grab;
+			color: #9CA3AF;
+			font-size: 16px;
+			margin-right: 10px;
+			user-select: none;
+			line-height: 1;
+		}
+		.drag-handle:active {
+			cursor: grabbing;
+		}
+		.category-card[draggable="true"] {
+			transition: opacity 0.15s;
+		}
+		.option-item[draggable="true"] {
+			transition: opacity 0.15s;
+		}
 		.inactive {
 			opacity: 0.5;
 		}

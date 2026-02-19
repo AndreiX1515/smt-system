@@ -927,6 +927,12 @@ try {
         case 'reorderMainCategories':
             reorderMainCategories($conn, $input);
             break;
+        case 'reorderOptionCategories':
+            reorderOptionCategories($conn, $input);
+            break;
+        case 'reorderAirlineOptions':
+            reorderAirlineOptions($conn, $input);
+            break;
 
         // 에이전트 문의 관리
         case 'getAgentInquiries':
@@ -1682,6 +1688,100 @@ function reorderMainCategories($conn, $input) {
         send_success_response([], 'Main categories reordered successfully');
     } catch (Exception $e) {
         send_error_response('Failed to reorder main categories: ' . $e->getMessage());
+    }
+}
+
+function reorderOptionCategories($conn, $input) {
+    try {
+        $mainCategory = $input['mainCategory'] ?? '';
+        $order = $input['order'] ?? null;
+        if (is_string($order)) $order = json_decode($order, true);
+
+        if (empty($mainCategory) || !is_array($order)) {
+            send_error_response('mainCategory and order(array) are required', 400);
+        }
+
+        $ids = array_values(array_filter(array_map('intval', $order), fn($v) => $v > 0));
+        if (count($ids) === 0) {
+            send_error_response('order is empty', 400);
+        }
+
+        // Validate all belong to mainCategory
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = 's' . str_repeat('i', count($ids));
+        $params = array_merge([$mainCategory], $ids);
+        $sql = "SELECT COUNT(*) AS cnt FROM airline_option_categories WHERE airline_name = ? AND category_id IN ($placeholders)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $cnt = (int)($res->fetch_assoc()['cnt'] ?? 0);
+        $stmt->close();
+        if ($cnt !== count($ids)) {
+            send_error_response('Invalid category IDs for this main category', 400);
+        }
+
+        $conn->begin_transaction();
+        $stmtUp = $conn->prepare("UPDATE airline_option_categories SET sort_order = ? WHERE category_id = ?");
+        $i = 1;
+        foreach ($ids as $catId) {
+            $stmtUp->bind_param('ii', $i, $catId);
+            $stmtUp->execute();
+            $i++;
+        }
+        $stmtUp->close();
+        $conn->commit();
+
+        send_success_response([], 'Option categories reordered successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to reorder option categories: ' . $e->getMessage());
+    }
+}
+
+function reorderAirlineOptions($conn, $input) {
+    try {
+        $categoryId = (int)($input['categoryId'] ?? 0);
+        $order = $input['order'] ?? null;
+        if (is_string($order)) $order = json_decode($order, true);
+
+        if ($categoryId <= 0 || !is_array($order)) {
+            send_error_response('categoryId and order(array) are required', 400);
+        }
+
+        $ids = array_values(array_filter(array_map('intval', $order), fn($v) => $v > 0));
+        if (count($ids) === 0) {
+            send_error_response('order is empty', 400);
+        }
+
+        // Validate all belong to categoryId
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = 'i' . str_repeat('i', count($ids));
+        $params = array_merge([$categoryId], $ids);
+        $sql = "SELECT COUNT(*) AS cnt FROM airline_options WHERE category_id = ? AND option_id IN ($placeholders)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $cnt = (int)($res->fetch_assoc()['cnt'] ?? 0);
+        $stmt->close();
+        if ($cnt !== count($ids)) {
+            send_error_response('Invalid option IDs for this category', 400);
+        }
+
+        $conn->begin_transaction();
+        $stmtUp = $conn->prepare("UPDATE airline_options SET sort_order = ? WHERE option_id = ?");
+        $i = 1;
+        foreach ($ids as $optId) {
+            $stmtUp->bind_param('ii', $i, $optId);
+            $stmtUp->execute();
+            $i++;
+        }
+        $stmtUp->close();
+        $conn->commit();
+
+        send_success_response([], 'Options reordered successfully');
+    } catch (Exception $e) {
+        send_error_response('Failed to reorder options: ' . $e->getMessage());
     }
 }
 
