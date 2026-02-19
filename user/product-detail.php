@@ -974,7 +974,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
             </ul>
             <?php endif; ?>
         </div>
-        <div class="px20 pb20" id="visa_application">
+        <div class="px20 pb20 border-bottomea" id="visa_application">
             <div class="text fz14 fw600 lh24 black12 mt36"><?php echoI18nText('visa_application', $currentLang); ?></div>
             <?php if (!empty($guides['visa'])): ?>
             <div class="text fz14 fw400 lh22 black12 mt20"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($guides['visa']))); ?></div>
