@@ -214,7 +214,15 @@
 		<div class="jw-cols jw-between jw-mgt32">
 			<h2 class="section-title" data-lan-eng="Traveler Information">Traveler Information</h2>
 		</div>
-		<div class="card-panel jw-mgt16">
+		<div class="detail-tabs jw-mgt16">
+			<div class="detail-tabs-nav">
+				<button type="button" class="detail-tab-btn is-active" data-tab-target="tabCreateTravelers" onclick="switchDetailTab(this)">Travelers</button>
+				<button type="button" class="detail-tab-btn" data-tab-target="tabCreateRoomOptions" onclick="switchDetailTab(this)">Room Options</button>
+			</div>
+
+			<!-- Tab: Travelers -->
+			<div class="detail-tab-panel is-active" id="tabCreateTravelers">
+			<div class="card-panel">
 			<div class="traveler-summary-section">
 				<div class="traveler-summary-header">
 					<span class="traveler-summary-count" id="traveler-summary-count">0 Travelers</span>
@@ -224,8 +232,83 @@
 					<p class="no-traveler-message">No travelers added yet. Click "Manage Travelers" to add.</p>
 				</div>
 			</div>
-		</div>
+		</div><!-- /card-panel -->
+		</div><!-- /tabCreateTravelers -->
+
+			<!-- Tab: Room Options -->
+			<div class="detail-tab-panel" id="tabCreateRoomOptions" style="display:none;">
+			<div class="card-panel">
+				<div class="grid-wrap">
+
+					<div class="grid-item col-span-3">
+						<label class="label-name"><span data-lan-eng="Room Options">룸 옵션 </span><span class="req">*</span></label>
+						<div><button type="button" id="room_option_btn" class="jw-button typeA" data-lan-eng="Select Room Options">룸 옵션 선택</button></div>
+						<div class="selected-rooms-list" id="selected-rooms-list">
+							<!-- 선택된 룸 옵션이 여기에 표시됩니다 -->
+						</div>
+					</div>
+
+					<!-- multi-editor.js -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="etc_req_editor" data-lan-eng="Other requests">기타 요청사항</label>
+						<div class="editor-box-wrap">
+						  <div class="jw-editor">
+							<div class="toolbar">
+							  <div class="group">
+								<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+								<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+								<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+							  </div>
+							  <div class="group">
+								<select class="ql-size">
+								  <option value="" selected>Font</option>
+								  <option value="12px">12px</option>
+								  <option value="14px">14px</option>
+								  <option value="16px">16px</option>
+								  <option value="18px">18px</option>
+								  <option value="24px">24px</option>
+								</select>
+							  </div>
+							  <div class="group">
+								<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+							  </div>
+							  <div class="group">
+								<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+							  </div>
+							</div>
+
+							<div class="jweditor" id="etc_req_editor" data-placeholder="내용을 입력해주세요"></div>
+						  </div>
+						</div>
+					</div>
+				</div>
+			</div><!-- /card-panel -->
+			</div><!-- /tabCreateRoomOptions -->
+		</div><!-- /detail-tabs -->
 		<style>
+			/* ── Detail Tabs ── */
+			.detail-tabs-nav {
+				display: flex; gap: 0; border-bottom: 2px solid #e5e7eb;
+			}
+			.detail-tab-btn {
+				padding: 10px 20px; font-size: 14px; font-weight: 600;
+				color: #6b7280; background: none; border: none; cursor: pointer;
+				border-bottom: 2px solid transparent; margin-bottom: -2px;
+				transition: color 0.15s, border-color 0.15s;
+				display: inline-flex; align-items: center;
+			}
+			.detail-tab-btn:hover { color: #374151; }
+			.detail-tab-btn.is-active {
+				color: #2563eb; border-bottom-color: #2563eb;
+			}
+			.detail-tab-panel { padding-top: 16px; }
+			/* ── Traveler Summary ── */
 			.traveler-summary-section {
 				padding: 8px 0;
 			}
@@ -337,61 +420,6 @@
 				color: #0050C8;
 			}
 		</style>
-
-
-			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Information">예약 정보</h2>
-			<div class="card-panel jw-mgt16">
-				<div class="grid-wrap">
-
-					<div class="grid-item col-span-3">
-						<label class="label-name"><span data-lan-eng="Room Options">룸 옵션 </span><span class="req">*</span></label>
-						<div><button type="button" id="room_option_btn" class="jw-button typeA" data-lan-eng="Select Room Options">룸 옵션 선택</button></div>
-						<div class="selected-rooms-list" id="selected-rooms-list">
-							<!-- 선택된 룸 옵션이 여기에 표시됩니다 -->
-						</div>
-					</div>
-
-					<!-- multi-editor.js -->
-					<div class="grid-item col-span-3">
-						<label class="label-name" for="etc_req_editor" data-lan-eng="Other requests">기타 요청사항</label>
-						<div class="editor-box-wrap">
-						  <div class="jw-editor">
-							<div class="toolbar">
-							  <div class="group">
-								<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
-								<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
-								<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
-								<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
-								<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
-								<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
-							  </div>
-							  <div class="group">
-								<select class="ql-size">
-								  <option value="" selected>Font</option>
-								  <option value="12px">12px</option>
-								  <option value="14px">14px</option>
-								  <option value="16px">16px</option>
-								  <option value="18px">18px</option>
-								  <option value="24px">24px</option>
-								</select>
-							  </div>
-							  <div class="group">
-								<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
-								<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
-								<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
-							  </div>
-							  <div class="group">
-								<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
-								<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
-							  </div>
-							</div>
-					  
-							<div class="jweditor" id="etc_req_editor" data-placeholder="내용을 입력해주세요"></div>
-						  </div>
-						</div>
-					</div>
-				</div>
-			</div>
 
 
 			<h2 class="section-title jw-mgt32" data-lan-eng="Agent Notes">Agent Note</h2>
@@ -1086,6 +1114,23 @@
 			headerUrl: '../inc/header.html',
 			navUrl: '../inc/nav_agent.html'
 		});
+
+		function switchDetailTab(btn) {
+			var targetId = btn.dataset.tabTarget;
+			btn.closest('.detail-tabs-nav').querySelectorAll('.detail-tab-btn').forEach(function(b) {
+				b.classList.remove('is-active');
+			});
+			btn.classList.add('is-active');
+			btn.closest('.detail-tabs').querySelectorAll('.detail-tab-panel').forEach(function(p) {
+				p.style.display = 'none';
+				p.classList.remove('is-active');
+			});
+			var panel = document.getElementById(targetId);
+			if (panel) {
+				panel.style.display = '';
+				panel.classList.add('is-active');
+			}
+		}
 
 		// 공통 Traveler 모달 로드
 		fetch('../inc/modals/traveler-edit-modal.html')
