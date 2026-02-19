@@ -981,13 +981,6 @@ function formatDuration($startTime, $endTime, $lang = null) {
             <?php else: ?>
             <div class="text fz14 fw400 lh22 black12 mt20"><?php echoI18nText('default_visa_guide', $currentLang); ?></div>
             <?php endif; ?>
-            <div class="card-type px16 py14 align both vm mt60">
-                <div class="align gap8 vm">
-                    <img src="../images/ico_inquiry_red.svg" alt="">
-                    <div class="text fz14 fw500 lh20 black12"><?php echoI18nText('inquiry_question', $currentLang); ?></div>
-                </div>
-                <a href="inquiry.php?lang=<?php echo urlencode($currentLang); ?>&returnUrl=<?php echo urlencode($_SERVER['REQUEST_URI'] ?? ('/user/product-detail.php?id=' . (int)$productId)); ?>" class="text fz14 fw500 lh20 reded"><?php echoI18nText('customer_support', $currentLang); ?> <img src="../images/ico_arrow_right_red.svg" alt=""></a>
-            </div>
         </div>
         <div class="px20 pb20 border-bottomea" id="terms_conditions">
             <div class="text fz14 fw600 lh24 black12 mt36">Terms and Conditions</div>
@@ -997,82 +990,89 @@ function formatDuration($startTime, $endTime, $lang = null) {
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">BOOKING AND PAYMENTS</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Bookings are final and non-cancellable. Full payment is forfeited if canceled.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Unused services, including accommodations, tours, meals, and transfers, are non-refundable.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Any unauthorized changes to bookings or travel documents render the booking null and void.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Bookings are final and non-cancellable. Full payment is forfeited if canceled.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Unused services, including accommodations, tours, meals, and transfers, are non-refundable.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Any unauthorized changes to bookings or travel documents render the booking null and void.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">FLIGHTS, CHANGES &amp; CANCELLATIONS</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Travel Escape is not liable for any missed flights, transfers, tours, or entrance passes due to the client's actions, delays, or failure to comply with schedules.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Flight changes and cancellations made by the airline are subject to applicable flexibility options offered by the airline, such as rebooking within 30 days or travel fund.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Land arrangements such as hotels, transportation, entrance fees, tour guide, meals, and other services in the land are not refundable and not rebookable due to flight changes or cancellations.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Travel Escape is not liable for any missed flights, transfers, tours, or entrance passes due to the client's actions, delays, or failure to comply with schedules.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Flight changes and cancellations made by the airline are subject to applicable flexibility options offered by the airline, such as rebooking within 30 days or travel fund.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Land arrangements such as hotels, transportation, entrance fees, tour guide, meals, and other services in the land are not refundable and not rebookable due to flight changes or cancellations.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">TOURS, TRANSFERS &amp; ITINERARY CHANGES</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● All transfers and tours are seat-in-coach unless otherwise specified.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Itineraries, schedules, transport, or accommodations might change due to operational requirements, weather, or other circumstances beyond its control.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● All incidental costs, penalties, or additional expenses incurred during travel are the client's responsibility.</div>
+                        <div class="text fz14 fw400 lh22 black12">- All transfers and tours are seat-in-coach unless otherwise specified.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Itineraries, schedules, transport, or accommodations might change due to operational requirements, weather, or other circumstances beyond its control.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- All incidental costs, penalties, or additional expenses incurred during travel are the client's responsibility.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">FORCE MAJEURE</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Travel Escape shall not be held liable for any delays, cancellations, or other issues arising from events outside of its control, such as natural disasters, political unrest, or strikes.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Travel Escape shall not be held liable for any delays, cancellations, or other issues arising from events outside of its control, such as natural disasters, political unrest, or strikes.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">TRAVEL DOCUMENTS &amp; IMMIGRATION</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Clients must carry a valid passport with at least six (6) months validity from the date of travel, along with visas (if applicable) and other required travel or income documents.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Clients are responsible for the necessary documents needed for their travel. If they need assistance, we can help obtaining those documents.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Travel Escape is not responsible for decisions made by immigration authorities; all payments are non-refundable if denied boarding or entry.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Clients must carry a valid passport with at least six (6) months validity from the date of travel, along with visas (if applicable) and other required travel or income documents.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Clients are responsible for the necessary documents needed for their travel. If they need assistance, we can help obtaining those documents.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Travel Escape is not responsible for decisions made by immigration authorities; all payments are non-refundable if denied boarding or entry.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">SAFETY, HEALTH &amp; INSURANCE</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Travel Escape cannot guarantee the safety of its clients, and it is the client's responsibility to take appropriate precautions to protect their health and safety during the trip.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● The client is strongly encouraged to purchase travel insurance to cover any unexpected events, such as trip cancellations, medical emergencies, or lost luggage.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Travel Escape cannot guarantee the safety of its clients, and it is the client's responsibility to take appropriate precautions to protect their health and safety during the trip.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- The client is strongly encouraged to purchase travel insurance to cover any unexpected events, such as trip cancellations, medical emergencies, or lost luggage.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">LIABILITY</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Travel Escape shall not be held liable for any loss, injury, or damage to clients or their property during the trip, unless caused by the company's proven negligence.</div>
-                        <div class="text fz14 fw400 lh22 black12 mt4">● Travel Escape is not liable for actions or omissions of third-party providers and is indemnified from related claims.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Travel Escape shall not be held liable for any loss, injury, or damage to clients or their property during the trip, unless caused by the company's proven negligence.</div>
+                        <div class="text fz14 fw400 lh22 black12 mt4">- Travel Escape is not liable for actions or omissions of third-party providers and is indemnified from related claims.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">INTELLECTUAL PROPERTY</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Clients agree to respect the intellectual property of Travel Escape and its partners, and not use any of the company materials or trademarks without permission.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Clients agree to respect the intellectual property of Travel Escape and its partners, and not use any of the company materials or trademarks without permission.</div>
                     </div>
                 </div>
 
                 <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">GOVERNMENT LAW &amp; DISPUTES</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● Any disputes arising from the agreement should be resolved in accordance with the laws of the country where the travel company is located.</div>
+                        <div class="text fz14 fw400 lh22 black12">- Any disputes arising from the agreement should be resolved in accordance with the laws of the country where the travel company is located.</div>
                     </div>
                 </div>
 
-                <div class="mt16" style="padding-bottom: 80px;">
+                <div class="mt16">
                     <div class="text fz14 fw600 lh22 black12">PRIVACY</div>
                     <div class="mt4">
-                        <div class="text fz14 fw400 lh22 black12">● The client's personal information will be collected, processed, and used in accordance with Travel Escape's Privacy Policy.</div>
+                        <div class="text fz14 fw400 lh22 black12">- The client's personal information will be collected, processed, and used in accordance with Travel Escape's Privacy Policy.</div>
                     </div>
                 </div>
+            </div>
+            <div class="card-type px16 py14 align both vm mt60" style="margin-bottom: 80px;">
+                <div class="align gap8 vm">
+                    <img src="../images/ico_inquiry_red.svg" alt="">
+                    <div class="text fz14 fw500 lh20 black12"><?php echoI18nText('inquiry_question', $currentLang); ?></div>
+                </div>
+                <a href="inquiry.php?lang=<?php echo urlencode($currentLang); ?>&returnUrl=<?php echo urlencode($_SERVER['REQUEST_URI'] ?? ('/user/product-detail.php?id=' . (int)$productId)); ?>" class="text fz14 fw500 lh20 reded"><?php echoI18nText('customer_support', $currentLang); ?> <img src="../images/ico_arrow_right_red.svg" alt=""></a>
             </div>
         </div>
 
