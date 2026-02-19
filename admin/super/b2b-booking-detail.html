@@ -4249,7 +4249,7 @@
 			const fullAmount = Number(booking._calculatedTotal || booking.fullPaymentAmount || booking.totalAmount || 0);
 
 			setValue('fullPaymentAmount', fullAmount > 0 ? formatNumber(fullAmount) : '-');
-			setValue('fullPaymentDeadline', booking.fullPaymentDueDate || '');
+			setValue('fullPaymentDeadline', (booking.fullPaymentDueDate || '').substring(0, 10));
 			applyPaymentProofUi('full', booking.fullPaymentFile || '', booking.fullPaymentFileName || '');
 
 			// Full Payment 상태 표시
