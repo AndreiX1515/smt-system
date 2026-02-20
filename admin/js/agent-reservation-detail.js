@@ -5943,28 +5943,21 @@ function _extraOpt_checkDeadline() {
 var _visa_applicationsData = [];
 
 async function loadVisaManagement() {
-    console.log('[VisaMgmt] loadVisaManagement called');
     var tabBtn = document.getElementById('visaMgmtTabBtn');
     var tabPanel = document.getElementById('tabVisaManagement');
     var container = document.getElementById('visaMgmtContainer');
-    console.log('[VisaMgmt] elements:', { tabBtn: !!tabBtn, tabPanel: !!tabPanel, container: !!container });
     if (!tabBtn || !tabPanel || !container) return;
 
     var booking = currentBookingData?.booking;
-    if (!booking) { console.log('[VisaMgmt] no booking data'); tabBtn.style.display = 'none'; return; }
+    if (!booking) { tabBtn.style.display = 'none'; return; }
 
     var bookingId = booking.bookingId || '';
-    console.log('[VisaMgmt] bookingId:', bookingId);
     if (!bookingId) { tabBtn.style.display = 'none'; return; }
 
     try {
-        var apiUrl = '../backend/api/agent-api.php?action=getVisaApplicationsByBookingId&bookingId=' + encodeURIComponent(bookingId);
-        console.log('[VisaMgmt] fetching:', apiUrl);
-        var res = await fetch(apiUrl);
+        var res = await fetch('../backend/api/agent-api.php?action=getVisaApplicationsByBookingId&bookingId=' + encodeURIComponent(bookingId));
         var json = await res.json();
-        console.log('[VisaMgmt] API response:', json);
         if (!json.success || !json.data || !json.data.applications) {
-            console.log('[VisaMgmt] no applications found, hiding tab');
             tabBtn.style.display = 'none';
             return;
         }
@@ -6113,7 +6106,7 @@ function _visaMgmt_renderVisaFileSection(app) {
     if (visaFile) {
         html += _visaMgmt_renderVisaFileDisplay(appId, visaFile);
     } else {
-        html += _visaMgmt_renderVisaFileUpload(appId);
+        html += '<span class="visa-mgmt-doc-none">No file uploaded</span>';
     }
 
     html += '</div>';
@@ -6128,16 +6121,11 @@ function _visaMgmt_renderVisaFileDisplay(appId, filePath) {
     html += '<div class="visa-mgmt-visa-file-actions">';
     html += '<button type="button" onclick="_visaMgmt_viewFile(\'' + _visaMgmt_escJs(filePath) + '\', \'Issued Visa\')">View</button>';
     html += '<button type="button" onclick="_visaMgmt_downloadFile(\'' + _visaMgmt_escJs(filePath) + '\', \'' + _visaMgmt_escJs(fileName) + '\')">Download</button>';
-    html += '<button type="button" class="delete-btn" onclick="_visaMgmt_deleteVisaFile(' + appId + ')">Delete</button>';
     html += '</div>';
     html += '</div>';
     return html;
 }
 
-function _visaMgmt_renderVisaFileUpload(appId) {
-    return '<input type="file" id="visaMgmtFileInput_' + appId + '" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_visaMgmt_uploadVisaFile(' + appId + ')">'
-         + '<button type="button" class="visa-mgmt-upload-btn" onclick="document.getElementById(\'visaMgmtFileInput_' + appId + '\').click()">Upload Visa File</button>';
-}
 
 function _visaMgmt_escJs(str) {
     if (!str) return '';
@@ -6162,105 +6150,7 @@ function _visaMgmt_downloadFile(filePath, fileName) {
     document.body.removeChild(a);
 }
 
-async function _visaMgmt_uploadVisaFile(applicationId) {
-    var fileInput = document.getElementById('visaMgmtFileInput_' + applicationId);
-    if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
-
-    var file = fileInput.files[0];
-    var formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', 'visa');
-
-    try {
-        // 1. Upload file
-        var uploadRes = await fetch('/backend/api/upload.php', {
-            method: 'POST',
-            body: formData
-        });
-        var uploadJson = await uploadRes.json();
-        if (!uploadJson.success) {
-            alert('Upload failed: ' + (uploadJson.message || 'Unknown error'));
-            return;
-        }
-        var filePath = uploadJson.filePath || uploadJson.data?.filePath || '';
-        if (!filePath) {
-            alert('Upload failed: no file path returned');
-            return;
-        }
-
-        // 2. Save visa file path via updateAgentVisaFile
-        var saveRes = await fetch('../backend/api/agent-api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'updateAgentVisaFile',
-                visaApplicationId: applicationId,
-                visaFilePath: filePath
-            })
-        });
-        var saveJson = await saveRes.json();
-        if (!saveJson.success) {
-            alert('Save failed: ' + (saveJson.message || 'Unknown error'));
-            return;
-        }
-
-        // 3. Update local data and re-render
-        var app = _visa_applicationsData.find(function(a) { return a.applicationId === applicationId; });
-        if (app) {
-            app.visaFile = filePath;
-            app.status = 'approved';
-        }
-
-        var area = document.getElementById('visaMgmtFileArea_' + applicationId);
-        if (area) {
-            area.innerHTML = _visaMgmt_renderVisaFileDisplay(applicationId, filePath);
-        }
-        _visaMgmt_renderOverallBadge();
-
-        // Re-render status badge on the card
-        _visaMgmt_renderTravelerCards(document.getElementById('visaMgmtContainer'));
-
-    } catch (e) {
-        console.error('_visaMgmt_uploadVisaFile error:', e);
-        alert('Upload failed: ' + e.message);
-    }
-}
-
-async function _visaMgmt_deleteVisaFile(applicationId) {
-    if (!confirm('Are you sure you want to delete this visa file?')) return;
-
-    try {
-        var res = await fetch('../backend/api/agent-api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'deleteAgentVisaFile',
-                visaApplicationId: applicationId
-            })
-        });
-        var json = await res.json();
-        if (!json.success) {
-            alert('Delete failed: ' + (json.message || 'Unknown error'));
-            return;
-        }
-
-        // Update local data
-        var newStatus = json.data?.status || 'pending';
-        var app = _visa_applicationsData.find(function(a) { return a.applicationId === applicationId; });
-        if (app) {
-            app.visaFile = '';
-            app.status = newStatus;
-        }
-
-        // Re-render
-        _visaMgmt_renderOverallBadge();
-        _visaMgmt_renderTravelerCards(document.getElementById('visaMgmtContainer'));
-
-    } catch (e) {
-        console.error('_visaMgmt_deleteVisaFile error:', e);
-        alert('Delete failed: ' + e.message);
-    }
-}
+// (upload/delete removed - view only)
 
 // ============================================
 // Room Options Tab - Drag & Drop Room Assignment
