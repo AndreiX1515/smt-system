@@ -880,6 +880,13 @@ function renderReservationDetail(data) {
 
         // 현재 선택된 룸 옵션 저장 (수정용)
         window.currentSelectedRooms = selectedOptions.selectedRooms || [];
+
+        // Room Options 탭 표시 (selectedRooms가 있을 때)
+        if (Array.isArray(window.currentSelectedRooms) && window.currentSelectedRooms.some(r => r && (r.count > 0 || r.quantity > 0))) {
+            const roomTabBtn = document.getElementById('roomOptionsTabBtn');
+            if (roomTabBtn) roomTabBtn.style.display = '';
+            initRoomAssignmentTab();
+        }
     }
     
     // 추가 옵션: createReservation()이 selectedOptions.selectedOptions에 배열/객체 둘 다 저장할 수 있으므로 폭넓게 지원
@@ -992,6 +999,10 @@ function renderReservationDetail(data) {
             await loadFlightOptionCategories(booking);
             // 출발 한달 전 수정 가능 여부 체크 및 버튼 초기화
             initEditButtonsIfWithin24Hours(booking);
+            // Extra Options 로드
+            loadExtraOptions();
+            // Visa Management 로드
+            loadVisaManagement();
         });
     });
 }
@@ -4070,9 +4081,12 @@ function startEditCustomer() {
     if (custPhone) custPhone.disabled = false;
 
     // 버튼 상태 변경
-    document.getElementById('editCustomerBtn').style.display = 'none';
-    document.getElementById('saveCustomerBtn').style.display = 'inline-flex';
-    document.getElementById('cancelCustomerBtn').style.display = 'inline-flex';
+    var _ecb = document.getElementById('editCustomerBtn');
+    var _scb = document.getElementById('saveCustomerBtn');
+    var _ccb = document.getElementById('cancelCustomerBtn');
+    if (_ecb) _ecb.style.display = 'none';
+    if (_scb) _scb.style.display = 'inline-flex';
+    if (_ccb) _ccb.style.display = 'inline-flex';
 }
 
 async function saveCustomerInfo() {
@@ -4137,9 +4151,12 @@ function endEditCustomer() {
     if (custPhone) custPhone.disabled = true;
 
     // 버튼 상태 복원
-    document.getElementById('editCustomerBtn').style.display = 'inline-flex';
-    document.getElementById('saveCustomerBtn').style.display = 'none';
-    document.getElementById('cancelCustomerBtn').style.display = 'none';
+    var _ecb2 = document.getElementById('editCustomerBtn');
+    var _scb2 = document.getElementById('saveCustomerBtn');
+    var _ccb2 = document.getElementById('cancelCustomerBtn');
+    if (_ecb2) _ecb2.style.display = 'inline-flex';
+    if (_scb2) _scb2.style.display = 'none';
+    if (_ccb2) _ccb2.style.display = 'none';
 }
 
 // ===== Traveler Info 수정 =====
@@ -4981,6 +4998,20 @@ async function confirmRoomSelectionEdit() {
         return;
     }
 
+    // Room Assignment 모드: Summary Modal 대신 방 배정 테이블 갱신
+    if (window.__roomAssignmentMode) {
+        window.__roomAssignmentMode = false;
+        closeModal('room-option-modal');
+        window.currentSelectedRooms = selectedRoomsInModal.filter(r => r.count > 0);
+        __roomPool = buildAgentRoomPool(window.currentSelectedRooms);
+        __roomAssignments = {};
+        __roomPool.forEach(r => { __roomAssignments[r.key] = []; });
+        renderRoomAssignmentTable();
+        const roomTabBtn = document.getElementById('roomOptionsTabBtn');
+        if (roomTabBtn) roomTabBtn.style.display = '';
+        return;
+    }
+
     // Room Option Modal 닫고 Summary Modal 열기 (skipReset=true로 pendingTravelers 유지)
     closeModal('room-option-modal', true);
     showChangeSummaryModal();
@@ -5554,5 +5585,1008 @@ function closeFileViewer() {
 function handleFileViewerEscape(e) {
     if (e.key === 'Escape') {
         closeFileViewer();
+    }
+}
+
+// ────────────────────────────────────────────────────────────
+// Extra Options Module (integrated from extra-options-detail)
+// ────────────────────────────────────────────────────────────
+var _extraOpt_travelersData = [];
+var _extraOpt_travelerOptionsData = {};
+var _extraOpt_categoriesData = [];
+var _extraOpt_paymentInfoData = null;
+var _extraOpt_bookingData = null;
+
+async function loadExtraOptions() {
+    var tabBtn = document.getElementById('extraOptTabBtn');
+    var tabPanel = document.getElementById('tabExtraOptions');
+    if (!tabBtn || !tabPanel) return;
+
+    // 항공편이 없는 예약이면 탭 숨김
+    var booking = currentBookingData?.booking;
+    if (!booking) { tabBtn.style.display = 'none'; return; }
+
+    // 항공편 유무: outboundFlight 또는 selectedOptions.flightInfo 체크
+    var selectedOptions = currentBookingData?.selectedOptions || {};
+    var hasFlight = !!(
+        (booking.outboundFlight && booking.outboundFlight.flightNumber) ||
+        (booking.inboundFlight && booking.inboundFlight.flightNumber) ||
+        selectedOptions.flightInfo
+    );
+    if (!hasFlight) { tabBtn.style.display = 'none'; return; }
+
+    try {
+        var res = await fetch('../backend/api/agent-api.php?action=getExtraOptionsDetail&bookingId=' + encodeURIComponent(currentBookingId));
+        var json = await res.json();
+        if (!json.success) throw new Error(json.message);
+
+        _extraOpt_bookingData = json.data.booking;
+        _extraOpt_travelersData = json.data.travelers || [];
+        _extraOpt_travelerOptionsData = json.data.travelerOptions || {};
+        _extraOpt_categoriesData = json.data.categories || [];
+        _extraOpt_paymentInfoData = json.data.paymentInfo;
+
+        // 카테고리가 없으면 (항공사 옵션 미설정) 탭 숨김
+        if (_extraOpt_categoriesData.length === 0) {
+            tabBtn.style.display = 'none';
+            return;
+        }
+
+        tabBtn.style.display = '';
+
+        _extraOpt_renderStatusBadge();
+        _extraOpt_renderTravelerOptions();
+        _extraOpt_updateTotalFee();
+        _extraOpt_renderPaymentProof();
+        _extraOpt_checkDeadline();
+    } catch (e) {
+        console.error('Failed to load extra options:', e);
+        tabBtn.style.display = 'none';
+    }
+}
+
+function _extraOpt_renderStatusBadge() {
+    var badge = document.getElementById('extraOptStatusBadge');
+    if (!badge) return;
+    var status = _extraOpt_paymentInfoData?.status || 'not_set';
+    var labels = {
+        'not_set': 'Not Set',
+        'pending_payment': 'Pending Payment',
+        'checking': 'Checking',
+        'confirmed': 'Confirmed',
+        'rejected': 'Rejected'
+    };
+    badge.textContent = labels[status] || status;
+    badge.className = 'extra-opt-status-badge ' + status;
+}
+
+function _extraOpt_renderTravelerOptions() {
+    var container = document.getElementById('extraOptTravelerContainer');
+    if (!container) return;
+
+    if (_extraOpt_travelersData.length === 0) {
+        container.innerHTML = '<p class="is-center" style="color:#6b7280;">No travelers found for this booking</p>';
+        return;
+    }
+
+    if (_extraOpt_categoriesData.length === 0) {
+        container.innerHTML = '<p class="is-center" style="color:#6b7280;">No flight options available for this package\'s airline</p>';
+        return;
+    }
+
+    container.innerHTML = _extraOpt_travelersData.map(function(traveler, idx) {
+        var name = ((traveler.firstName || '') + ' ' + (traveler.lastName || '')).trim() || ('Traveler ' + (idx + 1));
+        var type = traveler.travelerType || 'adult';
+        var selectedOptions = _extraOpt_travelerOptionsData[idx] || [];
+        var selectedIds = selectedOptions.map(function(o) { return o.optionId; });
+
+        var categoriesHtml = _extraOpt_categoriesData.map(function(cat) {
+            var optionsHtml = cat.options.map(function(opt) {
+                var checked = selectedIds.includes(opt.option_id) ? 'checked' : '';
+                return '<div class="extra-opt-item">' +
+                    '<label>' +
+                    '<input type="checkbox" name="eo_opt_' + idx + '_' + cat.category_id + '" value="' + opt.option_id + '"' +
+                    ' data-eo-traveler="' + idx + '" data-eo-option="' + opt.option_id + '" data-eo-price="' + opt.price + '"' +
+                    ' data-eo-category="' + cat.category_id + '"' +
+                    ' ' + checked + ' onchange="_extraOpt_onOptionChange(this)">' +
+                    escapeHtml(opt.option_name_en || opt.option_name) +
+                    '</label>' +
+                    '<span class="extra-opt-price">₱' + Number(opt.price).toLocaleString('en-US') + '</span>' +
+                    '</div>';
+            }).join('');
+
+            return '<div class="extra-opt-category">' +
+                '<div class="extra-opt-category-title">' + escapeHtml(cat.category_name_en || cat.category_name) + '</div>' +
+                optionsHtml +
+                '</div>';
+        }).join('');
+
+        return '<div class="extra-opt-traveler-card" id="extraOptTravelerCard_' + idx + '">' +
+            '<div class="extra-opt-traveler-card-header">' +
+            '<h4>' + escapeHtml(name) + '</h4>' +
+            '<span class="extra-opt-type-badge ' + type + '">' + type + '</span>' +
+            '</div>' +
+            categoriesHtml +
+            '<div class="extra-opt-subtotal" id="extraOptSubtotal_' + idx + '">Subtotal: ₱0</div>' +
+            '</div>';
+    }).join('');
+
+    // 초기 서브토탈 계산
+    _extraOpt_travelersData.forEach(function(_, idx) { _extraOpt_updateSubtotal(idx); });
+}
+
+function _extraOpt_onOptionChange(checkbox) {
+    var travelerIdx = parseInt(checkbox.dataset.eoTraveler);
+    var categoryId = checkbox.dataset.eoCategory;
+
+    // 같은 카테고리 내에서는 하나만 선택 가능 (라디오 동작)
+    if (checkbox.checked) {
+        var sameCat = document.querySelectorAll('input[data-eo-traveler="' + travelerIdx + '"][data-eo-category="' + categoryId + '"]');
+        sameCat.forEach(function(cb) {
+            if (cb !== checkbox) cb.checked = false;
+        });
+    }
+
+    _extraOpt_updateSubtotal(travelerIdx);
+    _extraOpt_updateTotalFee();
+}
+
+function _extraOpt_updateSubtotal(travelerIdx) {
+    var checkboxes = document.querySelectorAll('input[data-eo-traveler="' + travelerIdx + '"]:checked');
+    var subtotal = 0;
+    checkboxes.forEach(function(cb) { subtotal += parseFloat(cb.dataset.eoPrice) || 0; });
+    var el = document.getElementById('extraOptSubtotal_' + travelerIdx);
+    if (el) el.textContent = 'Subtotal: ₱' + Number(subtotal).toLocaleString('en-US');
+}
+
+function _extraOpt_updateTotalFee() {
+    var total = 0;
+    document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
+        total += parseFloat(cb.dataset.eoPrice) || 0;
+    });
+    var el = document.getElementById('extraOptTotalFee');
+    if (el) el.textContent = '₱' + Number(total).toLocaleString('en-US');
+}
+
+function _extraOpt_getSelectedOptions() {
+    var options = [];
+    document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
+        options.push({
+            travelerIndex: parseInt(cb.dataset.eoTraveler),
+            optionId: parseInt(cb.dataset.eoOption),
+            price: parseFloat(cb.dataset.eoPrice) || 0
+        });
+    });
+    return options;
+}
+
+function _extraOpt_getTotalFee() {
+    var total = 0;
+    document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
+        total += parseFloat(cb.dataset.eoPrice) || 0;
+    });
+    return total;
+}
+
+async function _extraOpt_saveOptions() {
+    var travelerOptions = _extraOpt_getSelectedOptions();
+    var totalOptionFee = _extraOpt_getTotalFee();
+
+    try {
+        var res = await fetch('../backend/api/agent-api.php?action=saveExtraOptions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveExtraOptions',
+                bookingId: currentBookingId,
+                travelerOptions: travelerOptions,
+                totalOptionFee: totalOptionFee
+            })
+        });
+        var json = await res.json();
+        if (!json.success) throw new Error(json.message);
+
+        alert('Options saved successfully!');
+        loadExtraOptions();
+    } catch (e) {
+        console.error('Failed to save options:', e);
+        alert('Failed to save: ' + e.message);
+    }
+}
+
+function _extraOpt_renderPaymentProof() {
+    var section = document.getElementById('extraOptPaymentSection');
+    var statusBadge = document.getElementById('extraOptPaymentStatusBadge');
+    var rejectionAlert = document.getElementById('extraOptRejectionAlert');
+    var fileDisplay = document.getElementById('extraOptFileDisplay');
+    var fileUpload = document.getElementById('extraOptFileUpload');
+    var deleteBtn = document.getElementById('extraOptDeleteFileBtn');
+
+    var status = _extraOpt_paymentInfoData?.status || 'not_set';
+
+    if (status === 'not_set') {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+
+    // 상태 뱃지
+    var statusLabels = {
+        'not_set': 'Not Set',
+        'pending_payment': 'Pending Payment',
+        'checking': 'Checking',
+        'confirmed': 'Confirmed',
+        'rejected': 'Rejected'
+    };
+    statusBadge.textContent = statusLabels[status] || status;
+    statusBadge.className = 'extra-opt-status-badge ' + status;
+
+    // 반려 알림
+    if (status === 'rejected' && _extraOpt_paymentInfoData.rejectionReason) {
+        rejectionAlert.style.display = '';
+        document.getElementById('extraOptRejectionReason').textContent = _extraOpt_paymentInfoData.rejectionReason || 'No reason provided';
+        document.getElementById('extraOptRejectionDate').textContent = _extraOpt_paymentInfoData.rejectedAt ? ('Rejected at: ' + _extraOpt_paymentInfoData.rejectedAt) : '';
+    } else {
+        rejectionAlert.style.display = 'none';
+    }
+
+    // 파일 표시
+    if (_extraOpt_paymentInfoData.file) {
+        fileDisplay.style.display = 'flex';
+        document.getElementById('extraOptFileName').textContent = _extraOpt_paymentInfoData.fileName || 'Payment proof';
+        deleteBtn.style.display = (status === 'confirmed') ? 'none' : '';
+        fileUpload.style.display = 'none';
+    } else {
+        fileDisplay.style.display = 'none';
+        fileUpload.style.display = (status === 'pending_payment' || status === 'rejected') ? '' : 'none';
+    }
+}
+
+async function _extraOpt_uploadFile() {
+    var fileInput = document.getElementById('extraOptFileInput');
+    if (!fileInput.files.length) return;
+
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('action', 'uploadOptionPaymentProof');
+    formData.append('bookingId', currentBookingId);
+
+    try {
+        var res = await fetch('../backend/api/agent-api.php?action=uploadOptionPaymentProof', {
+            method: 'POST',
+            body: formData
+        });
+        var json = await res.json();
+        if (!json.success) throw new Error(json.message);
+
+        alert('Payment proof uploaded successfully!');
+        fileInput.value = '';
+        loadExtraOptions();
+    } catch (e) {
+        console.error('Failed to upload:', e);
+        alert('Failed to upload: ' + e.message);
+    }
+}
+
+function _extraOpt_viewFile() {
+    if (_extraOpt_paymentInfoData?.file) {
+        openFileViewer(_extraOpt_paymentInfoData.file, 'Option Payment Proof - ' + (_extraOpt_paymentInfoData.fileName || 'Payment proof'));
+    }
+}
+
+function _extraOpt_downloadFile() {
+    if (_extraOpt_paymentInfoData?.file) {
+        var url = getFileUrl(_extraOpt_paymentInfoData.file);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = _extraOpt_paymentInfoData.fileName || 'payment_proof';
+        a.click();
+    }
+}
+
+async function _extraOpt_deleteFile() {
+    if (!confirm('Are you sure you want to delete this payment proof?')) return;
+
+    try {
+        var res = await fetch('../backend/api/agent-api.php?action=deleteOptionPaymentProof', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'deleteOptionPaymentProof',
+                bookingId: currentBookingId
+            })
+        });
+        var json = await res.json();
+        if (!json.success) throw new Error(json.message);
+
+        alert('Payment proof deleted successfully');
+        loadExtraOptions();
+    } catch (e) {
+        console.error('Failed to delete:', e);
+        alert('Failed to delete: ' + e.message);
+    }
+}
+
+function _extraOpt_checkDeadline() {
+    if (!_extraOpt_bookingData || !_extraOpt_bookingData.departureDate) return;
+    var dep = new Date(_extraOpt_bookingData.departureDate.substring(0, 10) + 'T00:00:00');
+    var now = new Date();
+    var diffDays = Math.ceil((dep - now) / (1000 * 60 * 60 * 24));
+
+    var noticeEl = document.getElementById('extraOptDeadlineNotice');
+
+    if (diffDays < 7) {
+        // 체크박스 모두 비활성화
+        document.querySelectorAll('input[data-eo-traveler]').forEach(function(cb) { cb.disabled = true; });
+
+        // Save 버튼 비활성화
+        var saveBtn = document.getElementById('extraOptSaveBtn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.5';
+            saveBtn.style.cursor = 'not-allowed';
+        }
+
+        // 마감 안내
+        if (noticeEl) {
+            noticeEl.innerHTML = '<div class="extra-opt-deadline-notice">Options can only be changed up to 7 days before departure.</div>';
+        }
+    } else {
+        if (noticeEl) noticeEl.innerHTML = '';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Visa Management Module
+// ─────────────────────────────────────────────────────────────
+
+var _visa_applicationsData = [];
+
+async function loadVisaManagement() {
+    console.log('[VisaMgmt] loadVisaManagement called');
+    var tabBtn = document.getElementById('visaMgmtTabBtn');
+    var tabPanel = document.getElementById('tabVisaManagement');
+    var container = document.getElementById('visaMgmtContainer');
+    console.log('[VisaMgmt] elements:', { tabBtn: !!tabBtn, tabPanel: !!tabPanel, container: !!container });
+    if (!tabBtn || !tabPanel || !container) return;
+
+    var booking = currentBookingData?.booking;
+    if (!booking) { console.log('[VisaMgmt] no booking data'); tabBtn.style.display = 'none'; return; }
+
+    var bookingId = booking.bookingId || '';
+    console.log('[VisaMgmt] bookingId:', bookingId);
+    if (!bookingId) { tabBtn.style.display = 'none'; return; }
+
+    try {
+        var apiUrl = '../backend/api/agent-api.php?action=getVisaApplicationsByBookingId&bookingId=' + encodeURIComponent(bookingId);
+        console.log('[VisaMgmt] fetching:', apiUrl);
+        var res = await fetch(apiUrl);
+        var json = await res.json();
+        console.log('[VisaMgmt] API response:', json);
+        if (!json.success || !json.data || !json.data.applications) {
+            console.log('[VisaMgmt] no applications found, hiding tab');
+            tabBtn.style.display = 'none';
+            return;
+        }
+
+        _visa_applicationsData = json.data.applications;
+        if (_visa_applicationsData.length === 0) {
+            tabBtn.style.display = 'none';
+            return;
+        }
+
+        // Show tab
+        tabBtn.style.display = '';
+
+        // Render badge and cards
+        _visaMgmt_renderOverallBadge();
+        _visaMgmt_renderTravelerCards(container);
+
+    } catch (e) {
+        console.error('loadVisaManagement error:', e);
+        tabBtn.style.display = 'none';
+    }
+}
+
+function _visaMgmt_renderOverallBadge() {
+    var badge = document.getElementById('visaMgmtStatusBadge');
+    if (!badge) return;
+
+    var total = _visa_applicationsData.length;
+    var approved = _visa_applicationsData.filter(function(a) { return a.status === 'approved'; }).length;
+
+    if (total === 0) {
+        badge.textContent = '';
+        badge.className = '';
+        return;
+    }
+
+    badge.textContent = approved + '/' + total + ' Approved';
+    if (approved === total) {
+        badge.style.background = '#f0fdf4';
+        badge.style.color = '#16a34a';
+    } else if (approved > 0) {
+        badge.style.background = '#eff6ff';
+        badge.style.color = '#2563eb';
+    } else {
+        badge.style.background = '#fff7ed';
+        badge.style.color = '#ea580c';
+    }
+}
+
+function _visaMgmt_renderTravelerCards(container) {
+    if (!container) return;
+
+    if (_visa_applicationsData.length === 0) {
+        container.innerHTML = '<p class="is-center" style="color:#6b7280;">No visa applications found.</p>';
+        return;
+    }
+
+    var html = '';
+    _visa_applicationsData.forEach(function(app, idx) {
+        var name = escapeHtml(app.applicantName || ((app.btFirstName || '') + ' ' + (app.btLastName || '')).trim() || 'Traveler ' + (idx + 1));
+        var travelerType = (app.travelerType || 'adult').toLowerCase();
+        var visaType = (app.visaType || '').toLowerCase();
+        var status = app.status || 'pending';
+        var statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+        html += '<div class="visa-mgmt-traveler-card">';
+        html += '<div class="visa-mgmt-card-header">';
+        html += '<div class="visa-mgmt-card-header-left">';
+        html += '<h4>' + name + '</h4>';
+        html += '<span class="visa-mgmt-type-badge ' + escapeHtml(travelerType) + '">' + escapeHtml(travelerType) + '</span>';
+        if (visaType) {
+            html += '<span class="visa-mgmt-type-badge ' + escapeHtml(visaType) + '">' + escapeHtml(visaType) + ' visa</span>';
+        }
+        html += '</div>';
+        html += '<span class="visa-mgmt-status-badge ' + escapeHtml(status) + '">' + escapeHtml(statusLabel) + '</span>';
+        html += '</div>';
+
+        // Body: depends on visa type
+        if (visaType === 'group') {
+            html += _visaMgmt_renderGroupDocs(app);
+        } else if (visaType === 'individual') {
+            html += _visaMgmt_renderIndividualInfo(app);
+        }
+
+        // Visa file section (common)
+        html += _visaMgmt_renderVisaFileSection(app);
+
+        // View Full Details link
+        html += '<a class="visa-mgmt-view-link" href="visa-detail.html?id=' + app.applicationId + '">View Full Details &rarr;</a>';
+
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+}
+
+function _visaMgmt_renderGroupDocs(app) {
+    var docs = app.documents || {};
+    var docKeys = [
+        { key: 'passport', label: 'Passport Copy' },
+        { key: 'visaApplicationForm', label: 'Visa Application Form' },
+        { key: 'bankCertificate', label: 'Bank Certificate' },
+        { key: 'bankStatement', label: 'Bank Statement' },
+        { key: 'additional', label: 'Additional Documents' }
+    ];
+
+    var html = '<div class="visa-mgmt-docs-section">';
+    html += '<div class="visa-mgmt-docs-title">Submitted Documents</div>';
+
+    docKeys.forEach(function(dk) {
+        var filePath = docs[dk.key] || '';
+        html += '<div class="visa-mgmt-doc-row">';
+        html += '<span class="visa-mgmt-doc-name">' + escapeHtml(dk.label) + '</span>';
+        if (filePath) {
+            html += '<div class="visa-mgmt-doc-actions">';
+            html += '<button type="button" onclick="_visaMgmt_viewFile(\'' + _visaMgmt_escJs(filePath) + '\', \'' + _visaMgmt_escJs(dk.label) + '\')">View</button>';
+            html += '<button type="button" onclick="_visaMgmt_downloadFile(\'' + _visaMgmt_escJs(filePath) + '\', \'' + _visaMgmt_escJs(dk.label) + '\')">Download</button>';
+            html += '</div>';
+        } else {
+            html += '<span class="visa-mgmt-doc-none">Not uploaded</span>';
+        }
+        html += '</div>';
+    });
+
+    html += '</div>';
+    return html;
+}
+
+function _visaMgmt_renderIndividualInfo(app) {
+    var sent = app.visaSend ? true : false;
+    var html = '<div class="visa-mgmt-docs-section">';
+    html += '<div class="visa-mgmt-docs-title">Documents Sent</div>';
+    html += '<span class="visa-mgmt-send-badge ' + (sent ? 'yes' : 'no') + '">' + (sent ? 'Yes' : 'No') + '</span>';
+    html += '</div>';
+    return html;
+}
+
+function _visaMgmt_renderVisaFileSection(app) {
+    var visaFile = app.visaFile || '';
+    var appId = app.applicationId;
+
+    var html = '<div class="visa-mgmt-visa-file-section">';
+    html += '<div class="visa-mgmt-visa-file-title">Issued Visa File</div>';
+    html += '<div id="visaMgmtFileArea_' + appId + '">';
+
+    if (visaFile) {
+        html += _visaMgmt_renderVisaFileDisplay(appId, visaFile);
+    } else {
+        html += _visaMgmt_renderVisaFileUpload(appId);
+    }
+
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
+function _visaMgmt_renderVisaFileDisplay(appId, filePath) {
+    var fileName = filePath.split('/').pop();
+    var html = '<div class="visa-mgmt-visa-file-row">';
+    html += '<span class="file-name">' + escapeHtml(fileName) + '</span>';
+    html += '<div class="visa-mgmt-visa-file-actions">';
+    html += '<button type="button" onclick="_visaMgmt_viewFile(\'' + _visaMgmt_escJs(filePath) + '\', \'Issued Visa\')">View</button>';
+    html += '<button type="button" onclick="_visaMgmt_downloadFile(\'' + _visaMgmt_escJs(filePath) + '\', \'' + _visaMgmt_escJs(fileName) + '\')">Download</button>';
+    html += '<button type="button" class="delete-btn" onclick="_visaMgmt_deleteVisaFile(' + appId + ')">Delete</button>';
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
+function _visaMgmt_renderVisaFileUpload(appId) {
+    return '<input type="file" id="visaMgmtFileInput_' + appId + '" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_visaMgmt_uploadVisaFile(' + appId + ')">'
+         + '<button type="button" class="visa-mgmt-upload-btn" onclick="document.getElementById(\'visaMgmtFileInput_' + appId + '\').click()">Upload Visa File</button>';
+}
+
+function _visaMgmt_escJs(str) {
+    if (!str) return '';
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+function _visaMgmt_viewFile(filePath, title) {
+    if (typeof openFileViewer === 'function') {
+        openFileViewer(filePath, title || 'Visa Document');
+    } else {
+        window.open(getFileUrl(filePath), '_blank');
+    }
+}
+
+function _visaMgmt_downloadFile(filePath, fileName) {
+    var url = getFileUrl(filePath);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || filePath.split('/').pop() || 'visa-file';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+async function _visaMgmt_uploadVisaFile(applicationId) {
+    var fileInput = document.getElementById('visaMgmtFileInput_' + applicationId);
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
+
+    var file = fileInput.files[0];
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'visa');
+
+    try {
+        // 1. Upload file
+        var uploadRes = await fetch('/backend/api/upload.php', {
+            method: 'POST',
+            body: formData
+        });
+        var uploadJson = await uploadRes.json();
+        if (!uploadJson.success) {
+            alert('Upload failed: ' + (uploadJson.message || 'Unknown error'));
+            return;
+        }
+        var filePath = uploadJson.filePath || uploadJson.data?.filePath || '';
+        if (!filePath) {
+            alert('Upload failed: no file path returned');
+            return;
+        }
+
+        // 2. Save visa file path via updateAgentVisaFile
+        var saveRes = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'updateAgentVisaFile',
+                visaApplicationId: applicationId,
+                visaFilePath: filePath
+            })
+        });
+        var saveJson = await saveRes.json();
+        if (!saveJson.success) {
+            alert('Save failed: ' + (saveJson.message || 'Unknown error'));
+            return;
+        }
+
+        // 3. Update local data and re-render
+        var app = _visa_applicationsData.find(function(a) { return a.applicationId === applicationId; });
+        if (app) {
+            app.visaFile = filePath;
+            app.status = 'approved';
+        }
+
+        var area = document.getElementById('visaMgmtFileArea_' + applicationId);
+        if (area) {
+            area.innerHTML = _visaMgmt_renderVisaFileDisplay(applicationId, filePath);
+        }
+        _visaMgmt_renderOverallBadge();
+
+        // Re-render status badge on the card
+        _visaMgmt_renderTravelerCards(document.getElementById('visaMgmtContainer'));
+
+    } catch (e) {
+        console.error('_visaMgmt_uploadVisaFile error:', e);
+        alert('Upload failed: ' + e.message);
+    }
+}
+
+async function _visaMgmt_deleteVisaFile(applicationId) {
+    if (!confirm('Are you sure you want to delete this visa file?')) return;
+
+    try {
+        var res = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'deleteAgentVisaFile',
+                visaApplicationId: applicationId
+            })
+        });
+        var json = await res.json();
+        if (!json.success) {
+            alert('Delete failed: ' + (json.message || 'Unknown error'));
+            return;
+        }
+
+        // Update local data
+        var newStatus = json.data?.status || 'pending';
+        var app = _visa_applicationsData.find(function(a) { return a.applicationId === applicationId; });
+        if (app) {
+            app.visaFile = '';
+            app.status = newStatus;
+        }
+
+        // Re-render
+        _visaMgmt_renderOverallBadge();
+        _visaMgmt_renderTravelerCards(document.getElementById('visaMgmtContainer'));
+
+    } catch (e) {
+        console.error('_visaMgmt_deleteVisaFile error:', e);
+        alert('Delete failed: ' + e.message);
+    }
+}
+
+// ============================================
+// Room Options Tab - Drag & Drop Room Assignment
+// ============================================
+
+let __roomAssignments = {};    // { "double-1": [travelerId, ...], ... }
+let __roomPool = [];           // [{ roomId, roomType, capacity, key }, ...]
+let __savedAssignments = [];   // 서버에서 로드한 기존 배정
+
+/**
+ * selectedRooms 배열을 개별 방으로 확장
+ * e.g. [{roomId:'double', roomType:'Double room', capacity:2, count:2}]
+ * → [{roomId:'double', roomType:'Double room', capacity:2, key:'double-1'}, ...]
+ */
+function buildAgentRoomPool(rooms) {
+    const pool = [];
+    if (!Array.isArray(rooms)) return pool;
+    rooms.forEach(ro => {
+        const count = parseInt(ro.count || ro.quantity) || 0;
+        const roomId = ro.roomId || ro.roomType || 'room';
+        const roomType = ro.roomType || ro.roomName || ro.name || roomId;
+        const capacity = parseInt(ro.capacity) || 1;
+        for (let i = 1; i <= count; i++) {
+            pool.push({
+                roomId: roomId,
+                roomType: roomType,
+                capacity: capacity,
+                key: roomId + '-' + i
+            });
+        }
+    });
+    return pool;
+}
+
+/**
+ * Room Options 탭 초기화
+ */
+async function initRoomAssignmentTab() {
+    __roomPool = buildAgentRoomPool(window.currentSelectedRooms);
+    __roomAssignments = {};
+    __roomPool.forEach(r => { __roomAssignments[r.key] = []; });
+
+    // 서버에서 기존 배정 로드
+    try {
+        const resp = await fetch(`../backend/api/agent-api.php?action=getRoomingAssignments&bookingId=${encodeURIComponent(currentBookingId)}`, {
+            credentials: 'same-origin'
+        });
+        const json = await resp.json();
+        if (json.success && Array.isArray(json.data?.assignments)) {
+            __savedAssignments = json.data.assignments;
+            // 기존 배정 복원
+            __savedAssignments.forEach(a => {
+                const tid = a.bookingTravelerId;
+                const roomType = a.roomType;
+                if (tid && roomType && __roomAssignments[roomType] !== undefined) {
+                    __roomAssignments[roomType].push(tid);
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Failed to load rooming assignments:', e);
+    }
+
+    renderRoomAssignmentTable();
+}
+
+/**
+ * 여행자가 capacity에 포함되는지 판단
+ */
+function countsTowardCapacity(t) {
+    if (!t) return false;
+    const type = (t.travelerType || '').toLowerCase();
+    if (type === 'adult') return true;
+    if (type === 'child') return parseInt(t.childRoom) === 1;
+    return false; // infant
+}
+
+/**
+ * 방 배정 UI 전체 렌더링
+ */
+function renderRoomAssignmentTable() {
+    const container = document.getElementById('roomAssignmentContainer');
+    const actionsDiv = document.getElementById('roomAssignmentActions');
+    if (!container) return;
+
+    const travelers = window.currentTravelers || [];
+
+    if (__roomPool.length === 0) {
+        container.innerHTML = '<p style="color:#6b7280; text-align:center;">No room options selected.</p>';
+        if (actionsDiv) actionsDiv.style.display = 'none';
+        return;
+    }
+
+    // 배정된 모든 traveler ID 수집
+    const assignedIds = new Set();
+    Object.values(__roomAssignments).forEach(ids => {
+        ids.forEach(id => assignedIds.add(id));
+    });
+
+    // 미배정 여행자
+    const unassigned = travelers.filter(t => {
+        const tid = t.bookingTravelerId;
+        return tid && !assignedIds.has(tid);
+    });
+
+    // placeholder travelers (bookingTravelerId 없음)
+    const placeholders = travelers.filter(t => !t.bookingTravelerId);
+
+    let html = '';
+
+    // 미배정 풀
+    html += '<div class="unassigned-pool" id="unassignedPool" ondragover="onRoomDragOver(event)" ondragleave="onRoomDragLeave(event)" ondrop="onDropToUnassigned(event)">';
+    html += '<div class="unassigned-pool-title">Unassigned Travelers</div>';
+    html += '<div class="chip-pool">';
+    if (unassigned.length > 0) {
+        unassigned.forEach(t => { html += renderTravelerChip(t); });
+    }
+    // placeholder travelers
+    if (placeholders.length > 0) {
+        placeholders.forEach((t, idx) => {
+            html += `<span class="traveler-chip disabled" title="Save traveler info first">${t.travelerType || 'traveler'} #${idx + 1} (unsaved)</span>`;
+        });
+    }
+    if (unassigned.length === 0 && placeholders.length === 0) {
+        html += '<span style="color:#9ca3af; font-size:12px;">All travelers assigned</span>';
+    }
+    html += '</div></div>';
+
+    // 방 카드 그리드
+    html += '<div class="room-assignment-grid">';
+    __roomPool.forEach(room => {
+        const assignedTids = __roomAssignments[room.key] || [];
+        const assignedTravelers = assignedTids.map(tid => travelers.find(t => t.bookingTravelerId === tid)).filter(Boolean);
+        const capacityCount = assignedTravelers.filter(t => countsTowardCapacity(t)).length;
+        const isFull = capacityCount >= room.capacity;
+        const isExceeded = capacityCount > room.capacity;
+
+        let badgeClass = '';
+        if (isExceeded) badgeClass = ' exceeded';
+        else if (isFull) badgeClass = ' full';
+
+        const roomLabel = formatAgentRoomLabel(room);
+
+        html += '<div class="room-card">';
+        html += `<div class="room-card-header">`;
+        html += `<h4>${roomLabel}</h4>`;
+        html += `<span class="room-capacity-badge${badgeClass}">${capacityCount}/${room.capacity}</span>`;
+        html += '</div>';
+        html += `<div class="room-drop-zone" data-room-key="${room.key}" ondragover="onRoomDragOver(event)" ondragleave="onRoomDragLeave(event)" ondrop="onDropToRoom(event, '${room.key}')">`;
+        if (assignedTravelers.length > 0) {
+            assignedTravelers.forEach(t => { html += renderTravelerChip(t); });
+        } else {
+            html += '<div class="room-drop-zone-empty">Drop travelers here</div>';
+        }
+        html += '</div></div>';
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+    if (actionsDiv) actionsDiv.style.display = '';
+}
+
+function formatAgentRoomLabel(room) {
+    const typeName = room.roomType || room.roomId;
+    const num = room.key.split('-').pop();
+    return typeName + ' #' + num;
+}
+
+/**
+ * 드래그 가능한 여행자 칩 HTML
+ */
+function renderTravelerChip(t) {
+    const tid = t.bookingTravelerId;
+    if (!tid) return '';
+
+    const type = (t.travelerType || '').toLowerCase();
+    const childRoom = parseInt(t.childRoom) || 0;
+    let chipClass = 'type-adult';
+    let noBed = '';
+
+    if (type === 'child') {
+        if (childRoom === 1) {
+            chipClass = 'type-child-room';
+        } else {
+            chipClass = 'type-child-noroom';
+            noBed = ' <span class="chip-nobed">no bed</span>';
+        }
+    } else if (type === 'infant') {
+        chipClass = 'type-infant';
+        noBed = ' <span class="chip-nobed">no bed</span>';
+    }
+
+    const name = ((t.firstName || '') + ' ' + (t.lastName || '')).trim() || `Traveler #${tid}`;
+    const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+
+    return `<span class="traveler-chip ${chipClass}" draggable="true" data-traveler-id="${tid}"
+        ondragstart="onTravelerDragStart(event)" ondragend="onTravelerDragEnd(event)"
+        title="${typeLabel}">${name}${noBed}</span>`;
+}
+
+// ── Drag & Drop Handlers ──
+
+function onTravelerDragStart(e) {
+    const tid = e.target.dataset.travelerId;
+    if (!tid) { e.preventDefault(); return; }
+    e.dataTransfer.setData('text/plain', tid);
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.classList.add('dragging');
+}
+
+function onTravelerDragEnd(e) {
+    e.target.classList.remove('dragging');
+}
+
+function onRoomDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drag-over');
+}
+
+function onRoomDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function onDropToRoom(e, roomKey) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+
+    const tid = parseInt(e.dataTransfer.getData('text/plain'));
+    if (!tid) return;
+
+    const travelers = window.currentTravelers || [];
+    const traveler = travelers.find(t => t.bookingTravelerId === tid);
+    if (!traveler) return;
+
+    const room = __roomPool.find(r => r.key === roomKey);
+    if (!room) return;
+
+    // 이미 이 방에 있으면 무시
+    if ((__roomAssignments[roomKey] || []).includes(tid)) return;
+
+    // capacity 체크: capacity에 포함되는 traveler만 카운트
+    if (countsTowardCapacity(traveler)) {
+        const currentCapacityCount = (__roomAssignments[roomKey] || [])
+            .map(id => travelers.find(t => t.bookingTravelerId === id))
+            .filter(t => t && countsTowardCapacity(t)).length;
+        if (currentCapacityCount >= room.capacity) {
+            alert(`Room "${formatAgentRoomLabel(room)}" is full (${room.capacity}/${room.capacity}).`);
+            return;
+        }
+    }
+
+    // 기존 방에서 제거
+    removeFromAllRooms(tid);
+
+    // 새 방에 추가
+    if (!__roomAssignments[roomKey]) __roomAssignments[roomKey] = [];
+    __roomAssignments[roomKey].push(tid);
+
+    renderRoomAssignmentTable();
+}
+
+function onDropToUnassigned(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+
+    const tid = parseInt(e.dataTransfer.getData('text/plain'));
+    if (!tid) return;
+
+    removeFromAllRooms(tid);
+    renderRoomAssignmentTable();
+}
+
+function removeFromAllRooms(tid) {
+    Object.keys(__roomAssignments).forEach(key => {
+        __roomAssignments[key] = __roomAssignments[key].filter(id => id !== tid);
+    });
+}
+
+/**
+ * Room Option Modal을 Room Assignment 용도로 열기
+ */
+function openRoomOptionModalForAssignment() {
+    window.__roomAssignmentMode = true;
+    openRoomOptionModalEdit();
+}
+
+/**
+ * 방 배정 저장
+ */
+async function saveRoomAssignments() {
+    const assignments = [];
+
+    Object.keys(__roomAssignments).forEach(roomKey => {
+        const tids = __roomAssignments[roomKey];
+        tids.forEach(tid => {
+            assignments.push({
+                bookingTravelerId: tid,
+                roomType: roomKey,
+                roomNumber: null,
+                luggage: null,
+                tipping: null,
+                remarks: null
+            });
+        });
+    });
+
+    try {
+        const resp = await fetch('../backend/api/agent-api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                action: 'saveRoomingAssignments',
+                bookingId: currentBookingId,
+                assignments: assignments
+            })
+        });
+        const json = await resp.json();
+        if (json.success) {
+            alert('Room assignments saved successfully.');
+        } else {
+            alert('Failed to save: ' + (json.message || 'Unknown error'));
+        }
+    } catch (e) {
+        console.error('saveRoomAssignments error:', e);
+        alert('Save failed: ' + e.message);
     }
 }

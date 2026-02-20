@@ -537,6 +537,13 @@ try {
             updateRoomOptions($conn, $input);
             break;
 
+        case 'getRoomingAssignments':
+            getRoomingAssignments($conn, $input);
+            break;
+        case 'saveRoomingAssignments':
+            saveAgentRoomingAssignments($conn, $input);
+            break;
+
         case 'getAirlineOptionsByName':
             getAirlineOptionsByName($conn, $input);
             break;
@@ -572,6 +579,10 @@ try {
 
         case 'updateAgentVisaSend':
             updateAgentVisaSend($conn, $input);
+            break;
+
+        case 'getVisaApplicationsByBookingId':
+            getVisaApplicationsByBookingId($conn, $input);
             break;
 
         // ========== Extra Options 관련 ==========
@@ -2358,6 +2369,7 @@ function getReservationDetail($conn, $input) {
             }
 
             $travelers[] = [
+                'bookingTravelerId' => $traveler['bookingTravelerId'] ?? null,
                 'travelerType' => $travelerType,
                 'title' => $title,
                 'firstName' => $traveler['firstName'] ?? $traveler['fName'] ?? '',
@@ -13115,6 +13127,286 @@ function getAgentMessageUnreadCount($conn, $input) {
         send_success_response(['unreadCount' => $count]);
     } catch (Exception $e) {
         send_error_response('Failed to get unread count: ' . $e->getMessage());
+    }
+}
+
+// ========== Visa Applications by Booking ==========
+function getVisaApplicationsByBookingId($conn, $input) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (empty($agentAccountId)) {
+        send_error_response('Agent login required', 401);
+    }
+    $agentAccountId = (int)$agentAccountId;
+
+    $bookingId = $input['bookingId'] ?? null;
+    if (empty($bookingId)) {
+        send_error_response('Booking ID is required');
+    }
+
+    // 에이전트 소유 booking 검증
+    $chk = $conn->prepare("SELECT 1 FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
+    $chk->bind_param('si', $bookingId, $agentAccountId);
+    $chk->execute();
+    if ($chk->get_result()->num_rows === 0) {
+        $chk->close();
+        send_error_response('Unauthorized access to this booking', 403);
+    }
+    $chk->close();
+
+    // visa_applications 조회 + booking_travelers JOIN
+    $sql = "SELECT
+                v.applicationId,
+                v.transactNo,
+                v.bookingTravelerId,
+                v.applicantName,
+                v.visaType,
+                v.status,
+                v.notes,
+                v.visaSend,
+                v.createdAt,
+                v.updatedAt,
+                bt.travelerType,
+                bt.firstName AS btFirstName,
+                bt.lastName AS btLastName
+            FROM visa_applications v
+            LEFT JOIN booking_travelers bt ON v.bookingTravelerId = bt.bookingTravelerId
+            WHERE v.transactNo = ?
+            ORDER BY v.applicationId ASC";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $bookingId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $applications = [];
+    while ($row = $result->fetch_assoc()) {
+        $uiStatus = __agent_mapVisaDbToUiStatus($row['status'] ?? 'pending');
+        $documents = __agent_extractVisaDocumentsFromNotes($row['notes']);
+        $visaFile = __agent_extractVisaFileFromNotes($row['notes']);
+
+        $applications[] = [
+            'applicationId' => (int)$row['applicationId'],
+            'transactNo'    => $row['transactNo'],
+            'bookingTravelerId' => $row['bookingTravelerId'] ? (int)$row['bookingTravelerId'] : null,
+            'applicantName' => $row['applicantName'] ?? '',
+            'visaType'      => $row['visaType'] ?? '',
+            'status'        => $uiStatus,
+            'dbStatus'      => $row['status'] ?? 'pending',
+            'visaSend'      => (int)($row['visaSend'] ?? 0),
+            'documents'     => $documents,
+            'visaFile'      => $visaFile,
+            'travelerType'  => $row['travelerType'] ?? 'adult',
+            'btFirstName'   => $row['btFirstName'] ?? '',
+            'btLastName'    => $row['btLastName'] ?? '',
+            'createdAt'     => $row['createdAt'] ?? '',
+            'updatedAt'     => $row['updatedAt'] ?? ''
+        ];
+    }
+    $stmt->close();
+
+    send_success_response([
+        'applications' => $applications,
+        'totalCount'   => count($applications)
+    ]);
+}
+
+// ============================================
+// Rooming Assignments (Room Options Tab)
+// ============================================
+
+function getRoomingAssignments($conn, $input) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+        if (empty($agentAccountId)) {
+            send_error_response('Agent login required', 401);
+        }
+
+        $bookingId = $input['bookingId'] ?? '';
+        if (empty($bookingId)) {
+            send_error_response('Booking ID is required', 400);
+        }
+
+        // 예약 소유권 확인 + departureDate, packageId 조회
+        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+
+        if ($result->num_rows === 0) {
+            send_error_response('Reservation not found or access denied', 404);
+        }
+
+        $booking = $result->fetch_assoc();
+        $checkStmt->close();
+
+        $departureDate = $booking['departureDate'] ?? '';
+        if (empty($departureDate)) {
+            send_success_response(['assignments' => []]);
+            return;
+        }
+
+        // booking_travelers에서 해당 예약의 traveler ID 목록 조회
+        $travelerIds = [];
+        $tSql = "SELECT bookingTravelerId FROM booking_travelers WHERE transactNo = ?";
+        $tStmt = $conn->prepare($tSql);
+        $tStmt->bind_param('s', $bookingId);
+        $tStmt->execute();
+        $tResult = $tStmt->get_result();
+        while ($row = $tResult->fetch_assoc()) {
+            $travelerIds[] = (int)$row['bookingTravelerId'];
+        }
+        $tStmt->close();
+
+        if (empty($travelerIds)) {
+            send_success_response(['assignments' => []]);
+            return;
+        }
+
+        // rooming_assignments에서 해당 traveler들의 배정 데이터 조회
+        $placeholders = implode(',', array_fill(0, count($travelerIds), '?'));
+        $types = str_repeat('i', count($travelerIds));
+        $sql = "SELECT booking_traveler_id AS bookingTravelerId, room_type AS roomType, room_number AS roomNumber, remarks
+                FROM rooming_assignments
+                WHERE departure_date = ? AND booking_traveler_id IN ($placeholders)";
+        $stmt = $conn->prepare($sql);
+        $bindTypes = 's' . $types;
+        $bindParams = array_merge([$departureDate], $travelerIds);
+        $stmt->bind_param($bindTypes, ...$bindParams);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $assignments = [];
+        while ($row = $res->fetch_assoc()) {
+            $assignments[] = [
+                'bookingTravelerId' => (int)$row['bookingTravelerId'],
+                'roomType' => $row['roomType'],
+                'roomNumber' => $row['roomNumber'] !== null ? (int)$row['roomNumber'] : null,
+                'remarks' => $row['remarks']
+            ];
+        }
+        $stmt->close();
+
+        send_success_response(['assignments' => $assignments]);
+    } catch (Exception $e) {
+        send_error_response('Failed to get rooming assignments: ' . $e->getMessage(), 500);
+    }
+}
+
+function saveAgentRoomingAssignments($conn, $input) {
+    try {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+        if (empty($agentAccountId)) {
+            send_error_response('Agent login required', 401);
+        }
+
+        $bookingId = $input['bookingId'] ?? '';
+        $assignments = $input['assignments'] ?? [];
+
+        if (empty($bookingId)) {
+            send_error_response('Booking ID is required', 400);
+        }
+        if (!is_array($assignments)) {
+            send_error_response('assignments array is required', 400);
+        }
+
+        // 예약 소유권 확인 + departureDate, packageId 자동 조회
+        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+
+        if ($result->num_rows === 0) {
+            send_error_response('Reservation not found or access denied', 404);
+        }
+
+        $booking = $result->fetch_assoc();
+        $checkStmt->close();
+
+        $departureDate = $booking['departureDate'] ?? '';
+        $packageId = (int)($booking['packageId'] ?? 0);
+
+        if (empty($departureDate)) {
+            send_error_response('Departure date not found for this booking', 400);
+        }
+
+        // 해당 예약의 기존 배정 삭제 (traveler ID 기반)
+        $travelerIds = [];
+        $tSql = "SELECT bookingTravelerId FROM booking_travelers WHERE transactNo = ?";
+        $tStmt = $conn->prepare($tSql);
+        $tStmt->bind_param('s', $bookingId);
+        $tStmt->execute();
+        $tResult = $tStmt->get_result();
+        while ($row = $tResult->fetch_assoc()) {
+            $travelerIds[] = (int)$row['bookingTravelerId'];
+        }
+        $tStmt->close();
+
+        if (!empty($travelerIds)) {
+            $placeholders = implode(',', array_fill(0, count($travelerIds), '?'));
+            $types = str_repeat('i', count($travelerIds));
+            $delSql = "DELETE FROM rooming_assignments WHERE departure_date = ? AND booking_traveler_id IN ($placeholders)";
+            $delStmt = $conn->prepare($delSql);
+            $bindTypes = 's' . $types;
+            $bindParams = array_merge([$departureDate], $travelerIds);
+            $delStmt->bind_param($bindTypes, ...$bindParams);
+            $delStmt->execute();
+            $delStmt->close();
+        }
+
+        // 새 배정 삽입
+        if (!empty($assignments)) {
+            $sql = "INSERT INTO rooming_assignments (departure_date, package_id, booking_traveler_id, room_number, room_type, luggage, tipping, remarks)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        room_number = VALUES(room_number),
+                        room_type = VALUES(room_type),
+                        luggage = VALUES(luggage),
+                        tipping = VALUES(tipping),
+                        remarks = VALUES(remarks),
+                        package_id = VALUES(package_id)";
+
+            $stmt = $conn->prepare($sql);
+            $savedCount = 0;
+
+            foreach ($assignments as $a) {
+                $travelerId = (int)($a['bookingTravelerId'] ?? 0);
+                if ($travelerId <= 0) continue;
+
+                // 소유권 확인: 해당 traveler가 이 예약에 속하는지
+                if (!in_array($travelerId, $travelerIds)) continue;
+
+                $roomNumber = isset($a['roomNumber']) && $a['roomNumber'] !== '' && $a['roomNumber'] !== null ? (int)$a['roomNumber'] : null;
+                $roomType = $a['roomType'] ?? null;
+                if ($roomType !== null && $roomType !== '') {
+                    $roomType = substr($roomType, 0, 50);
+                } else {
+                    $roomType = null;
+                }
+                $luggage = $a['luggage'] ?? null;
+                $tipping = $a['tipping'] ?? null;
+                $remarks = $a['remarks'] ?? null;
+
+                $stmt->bind_param('siisssss', $departureDate, $packageId, $travelerId, $roomNumber, $roomType, $luggage, $tipping, $remarks);
+                $stmt->execute();
+                $savedCount++;
+            }
+            $stmt->close();
+        } else {
+            $savedCount = 0;
+        }
+
+        send_success_response(['savedCount' => $savedCount], "Saved $savedCount assignments successfully");
+    } catch (Exception $e) {
+        send_error_response('Failed to save rooming assignments: ' . $e->getMessage(), 500);
     }
 }
 

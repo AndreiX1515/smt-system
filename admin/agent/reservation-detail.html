@@ -106,7 +106,6 @@
 
 			<div class="tab-wrap jw-mgt32">
 				<p data-lan-eng="Product and Reservation Information">상품 및 예약 정보</p>
-				<a href="#" id="messagesLink" style="cursor:pointer;"><span data-lan-eng="Inquiry to Admin">Inquiry to Admin</span><img src="../image/linkout.svg" alt=""></a>
 			</div>
 
 			<!-- 예약 거절 사유 알림 -->
@@ -200,6 +199,24 @@
 						</div>
 					</div>
 
+				</div>
+
+				<!-- Contact Person -->
+				<div class="card-panel-divider" style="margin: 20px 0 16px;"></div>
+				<h3 class="card-panel-title" data-lan-eng="Contact Person" style="margin-bottom:12px;">Contact Person</h3>
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" for="cust_name" data-lan-eng="Name">이름</label>
+						<input id="cust_name" type="text" class="form-control" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" for="cust_email" data-lan-eng="Email">이메일</label>
+						<input id="cust_email" type="email" class="form-control" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" for="cust_phone" data-lan-eng="Contact">연락처</label>
+						<input id="cust_phone" type="text" class="form-control" value="" disabled>
+					</div>
 				</div>
 			</div>
 
@@ -604,14 +621,120 @@
 				</div>
 			</div><!-- End of fullPaymentSection -->
 
+			<!-- ── Traveler & Extra Options Tabbed Section ── -->
+			<div class="jw-cols jw-between jw-mgt32">
+				<h2 class="section-title" id="section-traveler" data-lan-eng="Traveler Information">Traveler Information</h2>
+			</div>
 
-			<h2 class="section-title jw-mgt32" id="section-agent-notes" data-lan-eng="Agent Notes">에이전트 전달사항</h2>
-			<div class="card-panel jw-mgt16">
-				<div class="grid-wrap">
-					<div class="grid-item col-span-3">
-						<label class="label-name" for="agent_memo" data-lan-eng="Memo">메모</label>
-						<div class="editor-box-wrap">
-							<textarea id="agent_memo" rows="6" placeholder="내용을 입력해주세요" disabled></textarea>
+			<div class="detail-tabs jw-mgt16">
+				<div class="detail-tabs-nav">
+					<button type="button" class="detail-tab-btn is-active" data-tab-target="tabTravelerInfo" onclick="switchDetailTab(this)">Travelers</button>
+					<button type="button" class="detail-tab-btn" id="extraOptTabBtn" data-tab-target="tabExtraOptions" onclick="switchDetailTab(this)" style="display:none;">
+						Extra Options <span class="extra-opt-status-badge" id="extraOptStatusBadge" style="margin-left:6px;font-size:11px;padding:2px 8px;"></span>
+					</button>
+					<button type="button" class="detail-tab-btn" id="visaMgmtTabBtn" data-tab-target="tabVisaManagement" onclick="switchDetailTab(this)" style="display:none;">
+						Visa Management <span id="visaMgmtStatusBadge" style="margin-left:6px;font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600;white-space:nowrap;"></span>
+					</button>
+					<button type="button" class="detail-tab-btn" id="roomOptionsTabBtn" data-tab-target="tabRoomOptions" onclick="switchDetailTab(this)" style="display:none;">Room Options</button>
+				</div>
+
+				<!-- Tab: Traveler Information -->
+				<div class="detail-tab-panel is-active" id="tabTravelerInfo">
+					<div class="card-panel">
+						<div class="traveler-summary-section">
+							<div class="traveler-summary-header">
+								<span class="traveler-summary-count" id="traveler-summary-count">0 Travelers</span>
+								<button type="button" id="editTravelerBtn" class="jw-button typeA" style="display:none;" data-lan-eng="Edit">Edit</button>
+							</div>
+							<div class="traveler-summary-list" id="traveler-summary-list">
+								<p class="no-traveler-message" data-lan-eng="No travelers information.">여행자 정보가 없습니다.</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tab: Extra Options -->
+				<div class="detail-tab-panel" id="tabExtraOptions" style="display:none;">
+					<div id="extraOptionsWrapper">
+						<div id="extraOptDeadlineNotice"></div>
+
+						<div class="card-panel">
+							<div id="extraOptTravelerContainer">
+								<p class="is-center" style="color:#6b7280;">Loading...</p>
+							</div>
+						</div>
+
+						<div class="card-panel jw-mgt16">
+							<div class="extra-opt-total-summary">
+								<span data-lan-eng="Total Option Fee">Total Option Fee</span>
+								<span class="extra-opt-total-amount" id="extraOptTotalFee">₱0</span>
+							</div>
+							<div style="text-align: right; margin-top: 12px;">
+								<button type="button" class="jw-button typeB" id="extraOptSaveBtn" onclick="_extraOpt_saveOptions()">Save Options</button>
+							</div>
+						</div>
+
+						<!-- Payment Proof for Extra Options -->
+						<div class="card-panel jw-mgt16" id="extraOptPaymentSection" style="display:none;">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+								<h3 class="card-panel-title" data-lan-eng="Option Payment Proof">Option Payment Proof</h3>
+								<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
+							</div>
+							<div class="card-panel-divider"></div>
+
+							<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert jw-mgt16" style="display:none;">
+								<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
+								<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
+								<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
+							</div>
+
+							<div class="jw-mgt16">
+								<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
+									<div class="extra-opt-file-info">
+										<img src="../image/file.svg" alt="" style="width:16px;">
+										<span id="extraOptFileName"></span>
+									</div>
+									<div class="extra-opt-file-actions">
+										<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
+											<img src="../image/eye.svg" alt="">
+										</button>
+										<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
+											<img src="../image/buttun-download.svg" alt="">
+										</button>
+										<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
+											<img src="../image/button-close2.svg" alt="">
+										</button>
+									</div>
+								</div>
+								<div id="extraOptFileUpload">
+									<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
+									<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tab: Visa Management -->
+				<div class="detail-tab-panel" id="tabVisaManagement" style="display:none;">
+					<div class="card-panel">
+						<div id="visaMgmtContainer"><p class="is-center" style="color:#6b7280;">Loading...</p></div>
+					</div>
+				</div>
+
+				<!-- Tab: Room Options (Room Assignment) -->
+				<div class="detail-tab-panel" id="tabRoomOptions" style="display:none;">
+					<div class="card-panel">
+						<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+							<h3 class="card-panel-title" style="margin:0;">Room Assignment</h3>
+							<button type="button" class="jw-button typeA" id="selectRoomOptionsBtn"
+								onclick="openRoomOptionModalForAssignment()">Select Room Options</button>
+						</div>
+						<div id="roomAssignmentContainer">
+							<p style="color:#6b7280; text-align:center;">No room options selected.</p>
+						</div>
+						<div id="roomAssignmentActions" style="display:none; text-align:right; margin-top:16px;">
+							<button type="button" class="jw-button typeB" onclick="saveRoomAssignments()">Save</button>
 						</div>
 					</div>
 				</div>
@@ -651,7 +774,7 @@
 					<div class="grid-item"></div>
 				</div>
 			</div>
-			
+
 			<div class="card-panel jw-mgt16">
 				<h3 class="grid-wrap-title" data-lan-eng="Return Flight">귀국편</h3>
 
@@ -686,48 +809,14 @@
 			</div>
 
 
-			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" id="section-customer" data-lan-eng="Reservation Customer Information">예약 고객 정보</h2>
-				<div class="customer-edit-btns" id="customerEditBtns" style="display:none;">
-					<button type="button" id="viewCustomerBtn" class="jw-button typeA" data-lan-eng="View" onclick="openCustomerViewModal()">View</button>
-					<button type="button" id="editCustomerBtn" class="jw-button typeA" data-lan-eng="Edit">Edit</button>
-					<button type="button" id="saveCustomerBtn" class="jw-button typeB" style="display:none;" data-lan-eng="Save">Save</button>
-					<button type="button" id="cancelCustomerBtn" class="jw-button typeD" style="display:none;" data-lan-eng="Cancel">Cancel</button>
-				</div>
-			</div>
+			<h2 class="section-title jw-mgt32" id="section-agent-notes" data-lan-eng="Agent Notes">에이전트 전달사항</h2>
 			<div class="card-panel jw-mgt16">
 				<div class="grid-wrap">
-
-					<div class="grid-item">
-						<label class="label-name" for="cust_name" data-lan-eng="Name">이름</label>
-						<input id="cust_name" type="text" class="form-control" value="" disabled>
-					</div>
-
-					<div class="grid-item">
-						<label class="label-name" for="cust_email" data-lan-eng="Email">이메일</label>
-						<input id="cust_email" type="email" class="form-control" value="" disabled>
-					</div>
-
-					<div class="grid-item">
-						<label class="label-name" for="cust_phone" data-lan-eng="Contact">연락처</label>
-						<input id="cust_phone" type="text" class="form-control" value="" disabled>
-					</div>
-
-				</div>
-			</div>
-
-
-			<div class="jw-cols jw-between jw-mgt32">
-				<h2 class="section-title" id="section-traveler" data-lan-eng="Traveler Information">여행 고객 정보</h2>
-			</div>
-			<div class="card-panel jw-mgt16">
-				<div class="traveler-summary-section">
-					<div class="traveler-summary-header">
-						<span class="traveler-summary-count" id="traveler-summary-count">0 Travelers</span>
-						<button type="button" id="editTravelerBtn" class="jw-button typeA" style="display:none;" data-lan-eng="Edit">Edit</button>
-					</div>
-					<div class="traveler-summary-list" id="traveler-summary-list">
-						<p class="no-traveler-message" data-lan-eng="No travelers information.">여행자 정보가 없습니다.</p>
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="agent_memo" data-lan-eng="Memo">메모</label>
+						<div class="editor-box-wrap">
+							<textarea id="agent_memo" rows="6" placeholder="내용을 입력해주세요" disabled></textarea>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -771,20 +860,16 @@
 								<div class="aside-row__title" data-scroll-target="section-payment" onclick="scrollToSection('section-payment')" style="cursor:pointer;" data-lan-eng="Payment Information">Payment Information</div>
 							</div>
 							<hr class="aside-row__sep">
-							<div class="aside-row" data-nav-section="section-agent-notes">
-								<div class="aside-row__title" data-scroll-target="section-agent-notes" onclick="scrollToSection('section-agent-notes')" style="cursor:pointer;" data-lan-eng="Agent Notes">Agent Notes</div>
+							<div class="aside-row" data-nav-section="section-traveler">
+								<div class="aside-row__title" data-scroll-target="section-traveler" onclick="scrollToSection('section-traveler')" style="cursor:pointer;" data-lan-eng="Traveler Information">Traveler Information</div>
 							</div>
 							<hr class="aside-row__sep">
 							<div class="aside-row" data-nav-section="section-flight">
 								<div class="aside-row__title" data-scroll-target="section-flight" onclick="scrollToSection('section-flight')" style="cursor:pointer;" data-lan-eng="Flight Information">Flight Information</div>
 							</div>
 							<hr class="aside-row__sep">
-							<div class="aside-row" data-nav-section="section-customer">
-								<div class="aside-row__title" data-scroll-target="section-customer" onclick="scrollToSection('section-customer')" style="cursor:pointer;" data-lan-eng="Customer Information">Customer Information</div>
-							</div>
-							<hr class="aside-row__sep">
-							<div class="aside-row" data-nav-section="section-traveler">
-								<div class="aside-row__title" data-scroll-target="section-traveler" onclick="scrollToSection('section-traveler')" style="cursor:pointer;" data-lan-eng="Traveler Information">Traveler Information</div>
+							<div class="aside-row" data-nav-section="section-agent-notes">
+								<div class="aside-row__title" data-scroll-target="section-agent-notes" onclick="scrollToSection('section-agent-notes')" style="cursor:pointer;" data-lan-eng="Agent Notes">Agent Notes</div>
 							</div>
 						</div>
 					</div>
@@ -1058,12 +1143,238 @@
 			gap: 12px;
 			z-index: 100;
 		}
+
+		/* ── Extra Options Section ── */
+		.extra-opt-status-badge {
+			display: inline-block; padding: 4px 12px; border-radius: 12px;
+			font-size: 13px; font-weight: 600; white-space: nowrap;
+		}
+		.extra-opt-status-badge.not_set { background: #f3f4f6; color: #6b7280; }
+		.extra-opt-status-badge.pending_payment { background: #fff7ed; color: #ea580c; }
+		.extra-opt-status-badge.checking { background: #eff6ff; color: #2563eb; }
+		.extra-opt-status-badge.confirmed { background: #f0fdf4; color: #16a34a; }
+		.extra-opt-status-badge.rejected { background: #fef2f2; color: #dc2626; }
+
+		.extra-opt-traveler-card {
+			border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px;
+		}
+		.extra-opt-traveler-card-header {
+			display: flex; justify-content: space-between; align-items: center;
+			margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+		}
+		.extra-opt-traveler-card-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+		.extra-opt-type-badge {
+			display: inline-block; padding: 2px 8px; border-radius: 4px;
+			font-size: 11px; font-weight: 600; text-transform: uppercase;
+		}
+		.extra-opt-type-badge.adult { background: #dbeafe; color: #1d4ed8; }
+		.extra-opt-type-badge.child { background: #fef3c7; color: #b45309; }
+		.extra-opt-type-badge.infant { background: #fce7f3; color: #be185d; }
+
+		.extra-opt-category { margin-bottom: 12px; }
+		.extra-opt-category-title {
+			font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;
+		}
+		.extra-opt-item {
+			display: flex; align-items: center; gap: 8px; padding: 6px 0;
+		}
+		.extra-opt-item label {
+			display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;
+		}
+		.extra-opt-price { color: #6b7280; font-size: 12px; margin-left: auto; }
+		.extra-opt-subtotal {
+			text-align: right; font-weight: 600; font-size: 14px; color: #1d4ed8;
+			padding-top: 8px; border-top: 1px solid #e5e7eb; margin-top: 8px;
+		}
+
+		.extra-opt-total-summary {
+			display: flex; justify-content: space-between; align-items: center;
+			padding: 16px 20px; background: #f0f9ff; border-radius: 8px;
+			font-size: 16px; font-weight: 700;
+		}
+		.extra-opt-total-amount { color: #1d4ed8; font-size: 20px; }
+
+		.extra-opt-rejection-alert {
+			background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+			padding: 12px 16px; margin-bottom: 16px;
+		}
+		.extra-opt-rejection-alert-title { color: #dc2626; font-weight: 600; margin-bottom: 4px; }
+		.extra-opt-rejection-alert-reason { color: #991b1b; font-size: 13px; }
+		.extra-opt-rejection-alert-date { color: #9ca3af; font-size: 12px; margin-top: 4px; }
+
+		.extra-opt-file-display {
+			display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+		}
+		.extra-opt-file-info {
+			display: flex; align-items: center; gap: 6px;
+		}
+		.extra-opt-file-actions {
+			display: flex; gap: 6px;
+		}
+
+		.extra-opt-deadline-notice {
+			margin: 12px 0 0; padding: 10px 14px; background: #FEF3C7;
+			border: 1px solid #FCD34D; border-radius: 6px; color: #92400E;
+			font-size: 13px; font-weight: 500;
+		}
+
+		/* ── Detail Tabs ── */
+		.detail-tabs-nav {
+			display: flex; gap: 0; border-bottom: 2px solid #e5e7eb;
+		}
+		.detail-tab-btn {
+			padding: 10px 20px; font-size: 14px; font-weight: 600;
+			color: #6b7280; background: none; border: none; cursor: pointer;
+			border-bottom: 2px solid transparent; margin-bottom: -2px;
+			transition: color 0.15s, border-color 0.15s;
+			display: inline-flex; align-items: center;
+		}
+		.detail-tab-btn:hover { color: #374151; }
+		.detail-tab-btn.is-active {
+			color: #2563eb; border-bottom-color: #2563eb;
+		}
+		.detail-tab-panel { padding-top: 16px; }
+
+		/* ── Room Assignment (Drag & Drop) ── */
+		.room-assignment-grid {
+			display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+			gap: 16px; margin-top: 16px;
+		}
+		.unassigned-pool {
+			border: 2px dashed #d1d5db; border-radius: 8px; padding: 12px;
+			min-height: 60px; background: #f9fafb; margin-bottom: 16px;
+		}
+		.unassigned-pool-title {
+			font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 8px;
+		}
+		.unassigned-pool.drag-over { border-color: #3b82f6; background: #eff6ff; }
+		.room-card {
+			border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+		}
+		.room-card-header {
+			display: flex; justify-content: space-between; align-items: center;
+			padding: 10px 12px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb;
+		}
+		.room-card-header h4 { margin: 0; font-size: 13px; font-weight: 600; }
+		.room-capacity-badge {
+			font-size: 11px; padding: 2px 8px; border-radius: 12px;
+			font-weight: 600; background: #e5e7eb; color: #374151;
+		}
+		.room-capacity-badge.full { background: #dcfce7; color: #166534; }
+		.room-capacity-badge.exceeded { background: #fee2e2; color: #991b1b; }
+		.room-drop-zone {
+			min-height: 56px; padding: 8px; display: flex; flex-wrap: wrap;
+			gap: 6px; align-items: flex-start; align-content: flex-start;
+			transition: border-color 0.15s, background 0.15s;
+		}
+		.room-drop-zone.drag-over { background: #eff6ff; outline: 2px dashed #3b82f6; outline-offset: -2px; }
+		.room-drop-zone-empty {
+			width: 100%; text-align: center; color: #9ca3af; font-size: 12px;
+			padding: 12px 0; pointer-events: none;
+		}
+		.traveler-chip {
+			display: inline-flex; align-items: center; gap: 4px;
+			padding: 4px 10px; border-radius: 16px; font-size: 12px;
+			font-weight: 500; cursor: grab; user-select: none;
+			border: 1px solid transparent; transition: opacity 0.15s;
+		}
+		.traveler-chip:active { cursor: grabbing; }
+		.traveler-chip.dragging { opacity: 0.4; }
+		.traveler-chip.type-adult { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+		.traveler-chip.type-child-room { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+		.traveler-chip.type-child-noroom { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+		.traveler-chip.type-infant { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+		.traveler-chip.disabled { opacity: 0.5; cursor: not-allowed; }
+		.traveler-chip .chip-nobed { font-size: 10px; opacity: 0.7; }
+		.chip-pool { display: flex; flex-wrap: wrap; gap: 6px; }
+
+		/* ── Visa Management Section ── */
+		.visa-mgmt-traveler-card {
+			border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px;
+		}
+		.visa-mgmt-card-header {
+			display: flex; justify-content: space-between; align-items: center;
+			margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+		}
+		.visa-mgmt-card-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+		.visa-mgmt-card-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+		.visa-mgmt-type-badge {
+			display: inline-block; padding: 2px 8px; border-radius: 4px;
+			font-size: 11px; font-weight: 600; text-transform: uppercase;
+		}
+		.visa-mgmt-type-badge.adult { background: #dbeafe; color: #1d4ed8; }
+		.visa-mgmt-type-badge.child { background: #fef3c7; color: #b45309; }
+		.visa-mgmt-type-badge.infant { background: #fce7f3; color: #be185d; }
+		.visa-mgmt-type-badge.group { background: #ede9fe; color: #7c3aed; }
+		.visa-mgmt-type-badge.individual { background: #e0f2fe; color: #0369a1; }
+		.visa-mgmt-status-badge {
+			display: inline-block; padding: 2px 10px; border-radius: 12px;
+			font-size: 11px; font-weight: 600; white-space: nowrap;
+		}
+		.visa-mgmt-status-badge.pending { background: #fff7ed; color: #ea580c; }
+		.visa-mgmt-status-badge.reviewing { background: #eff6ff; color: #2563eb; }
+		.visa-mgmt-status-badge.approved { background: #f0fdf4; color: #16a34a; }
+		.visa-mgmt-status-badge.rejected { background: #fef2f2; color: #dc2626; }
+		.visa-mgmt-docs-section { margin-top: 10px; }
+		.visa-mgmt-docs-title {
+			font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px;
+		}
+		.visa-mgmt-doc-row {
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 5px 0; font-size: 13px; border-bottom: 1px solid #f9fafb;
+		}
+		.visa-mgmt-doc-row:last-child { border-bottom: none; }
+		.visa-mgmt-doc-name { color: #374151; }
+		.visa-mgmt-doc-actions { display: flex; gap: 4px; }
+		.visa-mgmt-doc-actions button {
+			padding: 2px 8px; font-size: 11px; border: 1px solid #d1d5db;
+			border-radius: 4px; background: #fff; cursor: pointer; color: #374151;
+		}
+		.visa-mgmt-doc-actions button:hover { background: #f3f4f6; }
+		.visa-mgmt-doc-none { color: #9ca3af; font-size: 12px; font-style: italic; }
+		.visa-mgmt-visa-file-section {
+			margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb;
+		}
+		.visa-mgmt-visa-file-title {
+			font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px;
+		}
+		.visa-mgmt-visa-file-row {
+			display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+		}
+		.visa-mgmt-visa-file-row .file-name {
+			font-size: 13px; color: #1d4ed8; word-break: break-all;
+		}
+		.visa-mgmt-visa-file-actions { display: flex; gap: 4px; }
+		.visa-mgmt-visa-file-actions button {
+			padding: 3px 10px; font-size: 11px; border: 1px solid #d1d5db;
+			border-radius: 4px; background: #fff; cursor: pointer; color: #374151;
+		}
+		.visa-mgmt-visa-file-actions button:hover { background: #f3f4f6; }
+		.visa-mgmt-visa-file-actions button.delete-btn { color: #dc2626; border-color: #fecaca; }
+		.visa-mgmt-visa-file-actions button.delete-btn:hover { background: #fef2f2; }
+		.visa-mgmt-upload-btn {
+			padding: 5px 14px; font-size: 12px; font-weight: 500;
+			border: 1px dashed #d1d5db; border-radius: 4px; background: #f9fafb;
+			cursor: pointer; color: #374151;
+		}
+		.visa-mgmt-upload-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
+		.visa-mgmt-view-link {
+			display: inline-block; margin-top: 10px; font-size: 12px;
+			color: #2563eb; text-decoration: none;
+		}
+		.visa-mgmt-view-link:hover { text-decoration: underline; }
+		.visa-mgmt-send-badge {
+			display: inline-block; padding: 2px 8px; border-radius: 4px;
+			font-size: 11px; font-weight: 600;
+		}
+		.visa-mgmt-send-badge.yes { background: #f0fdf4; color: #16a34a; }
+		.visa-mgmt-send-badge.no { background: #f3f4f6; color: #6b7280; }
 	</style>
 
 	<!-- 기본 스크립트 -->
 	<script src="../js/default.js"></script>
 	<script src="../js/agent.js"></script>
-	<script src="../js/agent-reservation-detail.js?v=20260203c"></script>
+	<script src="../js/agent-reservation-detail.js?v=20260220b"></script>
 	<script>
 		init({
 			headerUrl: '../inc/header.html',
@@ -1124,11 +1435,30 @@
 		}
 	}
 
+	function switchDetailTab(btn) {
+		const targetId = btn.dataset.tabTarget;
+		// 탭 버튼 active 토글
+		btn.closest('.detail-tabs-nav').querySelectorAll('.detail-tab-btn').forEach(function(b) {
+			b.classList.remove('is-active');
+		});
+		btn.classList.add('is-active');
+		// 탭 패널 토글
+		btn.closest('.detail-tabs').querySelectorAll('.detail-tab-panel').forEach(function(p) {
+			p.style.display = 'none';
+			p.classList.remove('is-active');
+		});
+		var panel = document.getElementById(targetId);
+		if (panel) {
+			panel.style.display = '';
+			panel.classList.add('is-active');
+		}
+	}
+
 	(function() {
 		const sections = [
 			'section-product', 'section-reservation', 'section-payment',
-			'section-agent-notes', 'section-flight',
-			'section-customer', 'section-traveler'
+			'section-traveler', 'section-flight',
+			'section-agent-notes'
 		];
 
 		function updateActiveSection() {
