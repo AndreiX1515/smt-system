@@ -46,7 +46,7 @@
 						</select>
 
 						<div class="search-field">
-							<input type="text" class="search-input" id="searchInput" placeholder=" " data-lan-eng-placeholder="Branch Name Search">
+							<input type="text" class="search-input" id="searchInput" placeholder="Agency Name or Email" data-lan-eng-placeholder="Agency Name or Email">
 							<button type="submit" class="jw-button search-btn" aria-label="">
 								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
 							</button>
@@ -60,21 +60,19 @@
 						<col class="col-60"> <!-- No -->
 						<col> <!-- Agent Name -->
 						<col> <!-- Person in charge -->
-						<col class="col-200"> <!-- Contract period -->
-						<col class="col-140"> <!-- Activity status -->
+						<col> <!-- Email -->
 					</colgroup>
 					<thead>
 						<tr>
 							<th class="no is-center">No</th>
 							<th class="is-center" data-lan-eng="Agency Name">Agency Name</th>
 							<th class="is-center" data-lan-eng="Person in charge">Person in charge</th>
-							<th class="is-center" data-lan-eng="Contract period">Contract period</th>
-							<th class="is-center" data-lan-eng="Activity status">Activity status</th>
+							<th class="is-center" data-lan-eng="Email">Email</th>
 						</tr>
 					</thead>
 					<tbody id="agentsTableBody">
 						<tr>
-							<td colspan="5" class="is-center" data-lan-eng="Loading data...">Loading data...</td>
+							<td colspan="4" class="is-center" data-lan-eng="Loading data...">Loading data...</td>
 						</tr>
 					</tbody>
 				</table>
@@ -160,7 +158,7 @@
 			try {
 				const tbody = document.getElementById('agentsTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="5" class="is-center">  ...</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="4" class="is-center">  ...</td></tr>';
 				}
 
 				const params = new URLSearchParams({
@@ -188,21 +186,16 @@
 
 					if (tbody) {
 						if (agents.length === 0) {
-							tbody.innerHTML = '<tr><td colspan="5" class="is-center"> .</td></tr>';
+							tbody.innerHTML = '<tr><td colspan="4" class="is-center"> .</td></tr>';
 						} else {
 							tbody.innerHTML = agents.map((agent) => {
-								const contractStart = agent.contractStartDate ? String(agent.contractStartDate).slice(0, 10) : '';
-								const contractEnd = agent.contractEndDate ? String(agent.contractEndDate).slice(0, 10) : '';
-								const contractPeriod = (contractStart && contractEnd) ? `${contractStart} ~ ${contractEnd}` : '-';
-								const activityStatusLabel = (agent.activityStatus === 'contract_ended') ? 'Contract Ended' : 'Under Contract';
 								const agentName = agent.branchName || agent.companyName || '';
 								return `
 									<tr data-href="agent-detail.html?id=${escapeHtml(agent.agentId)}">
 										<td class="no is-center">${agent.rowNum || ''}</td>
 										<td class="is-center">${escapeHtml(agentName)}</td>
 										<td class="is-center">${escapeHtml(agent.managerName || '')}</td>
-										<td class="is-center">${escapeHtml(contractPeriod)}</td>
-										<td class="is-center">${escapeHtml(activityStatusLabel)}</td>
+										<td class="is-center">${escapeHtml(agent.emailAddress || '')}</td>
 									</tr>
 								`;
 							}).join('');
@@ -215,14 +208,14 @@
 				} else {
 					const tbody = document.getElementById('agentsTableBody');
 					if (tbody) {
-						tbody.innerHTML = `<tr><td colspan="5" class="is-center">${escapeHtml(result.message || '    .')}</td></tr>`;
+						tbody.innerHTML = `<tr><td colspan="4" class="is-center">${escapeHtml(result.message || '    .')}</td></tr>`;
 					}
 				}
 			} catch (error) {
 				console.error('Error loading agents:', error);
 				const tbody = document.getElementById('agentsTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="5" class="is-center">    .</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="4" class="is-center">    .</td></tr>';
 				}
 			}
 		}

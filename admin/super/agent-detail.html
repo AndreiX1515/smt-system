@@ -16,11 +16,6 @@
 	<link rel="stylesheet" href="../css/a_components.css">
 	<link rel="stylesheet" href="../css/a_contents.css">
 
-	<!--     ( ) -->
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
-	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 </head>
 
 <body>
@@ -40,12 +35,6 @@
 					<span data-lan-eng="Return to list">Return to list</span>
 				</a>
 
-				<div class="page-toolbar-actions">
-					<select class="select" id="contractStatusSelect" disabled>
-						<option value="under_contract" selected data-lan-eng="In Contract">In Contract</option>
-						<option value="contract_ended" data-lan-eng="Contract Ended">Contract Ended</option>
-					</select>
-				</div>
 			</div>
 
 			<h1 class="page-title" data-lan-eng="Agent Details">Agent Details</h1>
@@ -117,26 +106,6 @@
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Contract Information">Contract Information</h2>
-			<div class="card-panel jw-mgt16">
-				<div class="grid-wrap">
-					<!--   -->
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Contract period">Contract period</label>
-						<div class="field-row">
-							<input type="text" class="form-control" id="contract-period" placeholder="YYYY-MM-DD ~ YYYY-MM-DD"
-								value="" readonly>
-							<button type="button" class="btn-icon calendar" aria-label=" " data-target="#contract-period"></button>
-						</div>
-					</div>
-
-					<!--  (%) -->
-					<div class="grid-item">
-						<label class="label-name" data-lan-eng="Deposit ratio (%)">Deposit ratio (%)</label>
-						<input type="number" class="form-control" id="depositRatio" value="" min="0" max="100" step="1" placeholder="0">
-					</div>
-				</div>
-			</div>
 
 
 		</section>
@@ -171,7 +140,6 @@
 	<!--   -->
 	<script src="../js/default.js?v=20251226_agentdetailfix1"></script>
 	<script src="../js/super.js?v=20251226_agentdetailfix1"></script>
-	<script src="../js/datepicker.js"></script>
 
 	<script>
 		init({
@@ -198,11 +166,6 @@
 				
 				const urlParams = new URLSearchParams(window.location.search);
 				agentId = urlParams.get('id') || urlParams.get('agentId');
-				//       
-				try {
-					const s = document.getElementById('contractStatusSelect');
-					if (s) s.disabled = true;
-				} catch (_) { }
 
 				//   (+)
 				await loadCountryCodeOptions();
@@ -314,27 +277,8 @@
 					if ($('commissionRate') && agent.comissionRate !== undefined && agent.comissionRate !== null) {
 						$('commissionRate').value = agent.comissionRate;
 					}
-					if ($('contract-period')) {
-						const s = agent.contractStartDate ? String(agent.contractStartDate).slice(0, 10) : '';
-						const e = agent.contractEndDate ? String(agent.contractEndDate).slice(0, 10) : '';
-						$('contract-period').value = (s && e) ? `${s} ~ ${e}` : '';
-					}
-
-					// :     select 
+					// :     select
 					if (agent.contactNo) applyCountryCodeAndLocalNumber(agent.contactNo);
-					
-					//  
-					const statusSelect = document.getElementById('contractStatusSelect');
-					if (statusSelect) {
-						//  (activityStatus)      
-						if (agent.activityStatus === 'contract_ended' || agent.activityStatus === 'under_contract') {
-							statusSelect.value = agent.activityStatus;
-						} else {
-							updateContractStatusFromInput();
-						}
-						// disabled select  jw_select UI   
-						try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
-					}
 
 					if ($('customerCount')) $('customerCount').value = String(agent.customerCount ?? 0);
 					if ($('memo')) $('memo').value = agent.memo || '';
@@ -349,21 +293,7 @@
 		}
 
 		function updateContractStatusFromInput() {
-			const statusSelect = document.getElementById('contractStatusSelect');
-			const input = document.getElementById('contract-period');
-			if (!statusSelect || !input) return;
-			const v = (input.value || '').trim();
-			const m = v.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
-			if (!m) {
-				statusSelect.value = 'under_contract';
-				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
-				return;
-			}
-			const end = m[2];
-			const today = new Date(new Date().toISOString().slice(0, 10));
-			const ended = end && (new Date(end) < today);
-			statusSelect.value = ended ? 'contract_ended' : 'under_contract';
-			try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			// Contract Information 삭제됨 - 호환성을 위해 빈 함수 유지
 		}
 		
 		async function loadActivityLogs() {
@@ -407,11 +337,7 @@
 				const region = (document.getElementById('branchName')?.value || '').trim(); // UI: Area
 				const username = (document.getElementById('username')?.value || '').trim();
 				const passwordRaw = (document.getElementById('passwordMasked')?.value || '').trim();
-				const contractPeriod = (document.getElementById('contract-period')?.value || '').trim();
-				const depositRatio = (document.getElementById('depositRatio')?.value || '').trim();
-				const commissionRate = (document.getElementById('commissionRate')?.value || '').trim();
 				const memo = (document.getElementById('memo')?.value || '').trim();
-				const statusSelect = document.getElementById('contractStatusSelect');
 
 				if (!managerName || !emailAddress || !contactLocal) {
 					alert('   .');
@@ -448,46 +374,6 @@
 					formData.append('password', passwordRaw);
 				}
 				formData.append('memo', memo);
-
-				//  (YYYY-MM-DD ~ YYYY-MM-DD)
-				if (contractPeriod) {
-					const m = contractPeriod.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
-					if (!m) {
-						alert('    . (YYYY-MM-DD ~ YYYY-MM-DD)');
-						return;
-					}
-					formData.append('contractStartDate', m[1]);
-					formData.append('contractEndDate', m[2]);
-				} else {
-					//  NULL ( '' -> NULL )
-					formData.append('contractStartDate', '');
-					formData.append('contractEndDate', '');
-				}
-
-				//   / 
-				if (depositRatio !== '') {
-					const v = Number(depositRatio);
-					if (!Number.isFinite(v) || v < 0 || v > 100) {
-						alert('  0~100   .');
-						return;
-					}
-					formData.append('depositRatio', String(Math.round(v)));
-				} else {
-					formData.append('depositRatio', '');
-				}
-
-				if (commissionRate !== '') {
-					const v = Number(commissionRate);
-					if (!Number.isFinite(v) || v < 0 || v > 100) {
-						alert(' 0~100   .');
-						return;
-					}
-					// DB : comissionRate
-					formData.append('comissionRate', String(Math.round(v)));
-				}
-
-				// UI   contractEndDate  (     )
-				updateContractStatusFromInput();
 				
 				const response = await fetch('../backend/api/super-api.php', {
 					method: 'POST',
@@ -514,29 +400,6 @@
 			}
 		}
 
-		//   (daterangepicker) 
-		(function initContractPicker() {
-			if (typeof window.jQuery === 'undefined' || typeof window.moment === 'undefined') return;
-			const $input = $('#contract-period');
-			if (!$input.length || typeof $input.daterangepicker !== 'function') return;
-
-			$input.daterangepicker({
-				autoUpdateInput: false,
-				locale: { format: 'YYYY-MM-DD', separator: ' ~ ', applyLabel: '', cancelLabel: '' }
-			});
-			$input.on('apply.daterangepicker', function(ev, picker) {
-				$(this).val(picker.startDate.format('YYYY-MM-DD') + ' ~ ' + picker.endDate.format('YYYY-MM-DD'));
-				updateContractStatusFromInput();
-			});
-			$input.on('cancel.daterangepicker', function() {
-				$(this).val('');
-				updateContractStatusFromInput();
-			});
-			document.querySelector('.btn-icon.calendar')?.addEventListener('click', (e) => {
-				e.preventDefault();
-				$input.trigger('click');
-			});
-		})();
 	</script>
 </body>
 
