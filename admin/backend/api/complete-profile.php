@@ -66,12 +66,21 @@ try {
     $mNameValue = $mName ?: null;
 
     if (!$agent) {
+        // 새 agentId 생성 (AGT000XXX 형식)
+        $maxRes = $conn->query("SELECT agentId FROM agent ORDER BY id DESC LIMIT 1");
+        $maxRow = $maxRes ? $maxRes->fetch_assoc() : null;
+        if ($maxRow && preg_match('/AGT(\d+)/', $maxRow['agentId'], $m)) {
+            $newAgentId = 'AGT' . str_pad((int)$m[1] + 1, 6, '0', STR_PAD_LEFT);
+        } else {
+            $newAgentId = 'AGT000001';
+        }
+
         // agent 레코드가 없으면 새로 INSERT
         $insertStmt = $conn->prepare("
-            INSERT INTO agent (accountId, agencyName, fName, mName, lName, personInChargeEmail, contactNo)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO agent (agentId, accountId, agencyName, fName, mName, lName, personInChargeEmail, contactNo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $insertStmt->bind_param("issssss", $accountId, $agencyName, $fName, $mNameValue, $lName, $personInChargeEmail, $contactNo);
+        $insertStmt->bind_param("sissssss", $newAgentId, $accountId, $agencyName, $fName, $mNameValue, $lName, $personInChargeEmail, $contactNo);
 
         if ($insertStmt->execute()) {
             $insertStmt->close();
