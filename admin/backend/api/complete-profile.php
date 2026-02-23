@@ -63,45 +63,54 @@ try {
     $agent = $result->fetch_assoc();
     $checkStmt->close();
 
-    if (!$agent) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'message' => 'Agent record not found.'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    // agent 테이블 업데이트
-    $updateStmt = $conn->prepare("
-        UPDATE agent
-        SET agencyName = ?,
-            fName = ?,
-            mName = ?,
-            lName = ?,
-            personInChargeEmail = ?,
-            contactNo = ?
-        WHERE accountId = ?
-    ");
-
     $mNameValue = $mName ?: null;
-    $updateStmt->bind_param("ssssssi", $agencyName, $fName, $mNameValue, $lName, $personInChargeEmail, $contactNo, $accountId);
 
-    if ($updateStmt->execute()) {
-        $updateStmt->close();
+    if (!$agent) {
+        // agent 레코드가 없으면 새로 INSERT
+        $insertStmt = $conn->prepare("
+            INSERT INTO agent (accountId, agencyName, fName, mName, lName, personInChargeEmail, contactNo)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $insertStmt->bind_param("issssss", $accountId, $agencyName, $fName, $mNameValue, $lName, $personInChargeEmail, $contactNo);
 
-        // accounts 테이블의 displayName 업데이트 (fName + lName)
-        $displayName = trim($fName . ' ' . $lName);
-        $accountStmt = $conn->prepare("UPDATE accounts SET displayName = ? WHERE accountId = ?");
-        $accountStmt->bind_param("si", $displayName, $accountId);
-        $accountStmt->execute();
-        $accountStmt->close();
-
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'message' => 'Profile saved successfully!'
-        ], JSON_UNESCAPED_UNICODE);
+        if ($insertStmt->execute()) {
+            $insertStmt->close();
+        } else {
+            throw new Exception("Failed to insert agent profile: " . $conn->error);
+        }
     } else {
-        throw new Exception("Failed to update agent profile: " . $conn->error);
+        // agent 레코드가 있으면 UPDATE
+        $updateStmt = $conn->prepare("
+            UPDATE agent
+            SET agencyName = ?,
+                fName = ?,
+                mName = ?,
+                lName = ?,
+                personInChargeEmail = ?,
+                contactNo = ?
+            WHERE accountId = ?
+        ");
+        $updateStmt->bind_param("ssssssi", $agencyName, $fName, $mNameValue, $lName, $personInChargeEmail, $contactNo, $accountId);
+
+        if ($updateStmt->execute()) {
+            $updateStmt->close();
+        } else {
+            throw new Exception("Failed to update agent profile: " . $conn->error);
+        }
     }
+
+    // accounts 테이블의 displayName 업데이트 (fName + lName)
+    $displayName = trim($fName . ' ' . $lName);
+    $accountStmt = $conn->prepare("UPDATE accounts SET displayName = ? WHERE accountId = ?");
+    $accountStmt->bind_param("si", $displayName, $accountId);
+    $accountStmt->execute();
+    $accountStmt->close();
+
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Profile saved successfully!'
+    ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     error_log("Complete profile error: " . $e->getMessage());
