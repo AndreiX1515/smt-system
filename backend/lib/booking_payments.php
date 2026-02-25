@@ -389,10 +389,12 @@ function getPendingPaymentReminders($conn, $daysBeforeDue = 3) {
     $stmt = $conn->prepare("
         SELECT bp.*, b.bookingId, b.packageName, b.departureDate, b.totalAmount,
                b.bookingStatus, b.paymentType, b.agentId, b.contactEmail,
-               a.email as agentEmail, a.name as agentName
+               COALESCE(ag.personInChargeEmail, a.emailAddress) as agentEmail,
+               COALESCE(ag.agencyName, ag.personInCharge, a.displayName, CONCAT(COALESCE(a.firstName, ''), ' ', COALESCE(a.lastName, ''))) as agentName
         FROM booking_payments bp
         JOIN bookings b ON bp.bookingId = b.bookingId
-        LEFT JOIN accounts a ON b.agentId = a.id
+        LEFT JOIN accounts a ON b.agentId = a.accountId
+        LEFT JOIN agent ag ON a.accountId = ag.accountId
         WHERE bp.dueDate BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
         AND bp.status = 'pending'
         AND b.bookingStatus NOT IN ('cancelled', 'refunded', 'completed', 'rejected', 'confirmed', 'waiting_cancelled', 'draft')

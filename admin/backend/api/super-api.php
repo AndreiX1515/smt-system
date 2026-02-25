@@ -12983,6 +12983,18 @@ function getB2BBookingDetail($conn, $input) {
 
                     // 자동취소 히스토리 기록
                     __log_booking_status_change($conn, $bookingId, $previousStatus, 'cancelled', 'System (Auto-Cancel)', 'system');
+
+                    // 에이전트에게 자동 취소 알림 이메일 발송
+                    try {
+                        if (function_exists('send_rejection_notification_email')) {
+                            $cancelReason = $shouldCancelDeposit
+                                ? 'Down payment due date has passed without payment proof submission. The booking has been automatically cancelled.'
+                                : 'Balance payment due date has passed without payment proof submission. The booking has been automatically cancelled.';
+                            send_rejection_notification_email($conn, $bookingId, 'auto_cancellation', $cancelReason);
+                        }
+                    } catch (Throwable $emailEx) {
+                        error_log("Auto-cancel email failed for {$bookingId}: " . $emailEx->getMessage());
+                    }
                 }
             }
         } catch (Throwable $e) {
