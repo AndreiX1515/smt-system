@@ -1868,7 +1868,7 @@
 
 				if (result.success) {
 					let successMsg = 'Booking approved.';
-					if (isPendingUpdate && isProductEdit) {
+					if (isPendingUpdate && typeof isProductEdit !== 'undefined' && isProductEdit) {
 						const newBookingId = result.data?.newBookingId || '';
 						successMsg = 'Product/date change approved.\n\nOld booking cancelled.\nNew booking created' + (newBookingId ? ': ' + newBookingId : '.');
 						if (newBookingId) {
