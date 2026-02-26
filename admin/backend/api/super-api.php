@@ -973,6 +973,17 @@ try {
             getAnnouncementTargetCountApi($conn, $input);
             break;
 
+        // 이메일 알림 로그
+        case 'getEmailNotificationLogs':
+            getEmailNotificationLogs($conn, $input);
+            break;
+        case 'getEmailNotificationStats':
+            getEmailNotificationStats($conn);
+            break;
+        case 'exportEmailNotificationLogsCsv':
+            exportEmailNotificationLogsCsv($conn, $input);
+            break;
+
         // 로그인 이력 관리
         case 'getAdminLoginHistory':
             getAdminLoginHistory($conn, $input);
@@ -17044,6 +17055,276 @@ function getAnnouncementTargetCountApi($conn, $input) {
     } catch (Exception $e) {
         error_log("getAnnouncementTargetCountApi error: " . $e->getMessage());
         send_success_response(['count' => 0]);
+    }
+}
+
+// ============================================
+// 이메일 알림 로그 함수들
+// ============================================
+
+/**
+ * 이메일 알림 로그 목록 조회
+ */
+function getEmailNotificationLogs($conn, $input) {
+    try {
+        $page = isset($input['page']) ? max(1, intval($input['page'])) : 1;
+        $limit = isset($input['limit']) ? max(1, min(100, intval($input['limit']))) : 15;
+        $offset = ($page - 1) * $limit;
+
+        // 필터 파라미터
+        $search = trim($input['search'] ?? '');
+        $status = trim($input['status'] ?? '');
+        $type = trim($input['type'] ?? '');
+        $startDate = trim($input['startDate'] ?? '');
+        $endDate = trim($input['endDate'] ?? '');
+
+        // WHERE 조건 빌드
+        $where = [];
+        $params = [];
+        $types = '';
+
+        if ($search !== '') {
+            $where[] = "(e.recipientEmail LIKE ? OR e.bookingId LIKE ?)";
+            $searchLike = '%' . $search . '%';
+            $params[] = $searchLike;
+            $params[] = $searchLike;
+            $types .= 'ss';
+        }
+
+        if ($status !== '' && in_array($status, ['sent', 'failed'])) {
+            $where[] = "e.status = ?";
+            $params[] = $status;
+            $types .= 's';
+        }
+
+        if ($type !== '') {
+            // 타입 필터는 prefix 매칭 (날짜 접미사 제거 대응)
+            $where[] = "e.notificationType LIKE ?";
+            $params[] = $type . '%';
+            $types .= 's';
+        }
+
+        if ($startDate !== '') {
+            $where[] = "DATE(e.sentAt) >= ?";
+            $params[] = $startDate;
+            $types .= 's';
+        }
+
+        if ($endDate !== '') {
+            $where[] = "DATE(e.sentAt) <= ?";
+            $params[] = $endDate;
+            $types .= 's';
+        }
+
+        $whereClause = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        // 총 개수 조회
+        $countSql = "SELECT COUNT(*) as total FROM email_notification_logs e $whereClause";
+        $countStmt = $conn->prepare($countSql);
+        if ($types !== '' && count($params) > 0) {
+            $countStmt->bind_param($types, ...$params);
+        }
+        $countStmt->execute();
+        $totalCount = $countStmt->get_result()->fetch_assoc()['total'];
+        $countStmt->close();
+
+        // 데이터 조회
+        $sql = "
+            SELECT
+                e.id,
+                e.bookingId,
+                e.notificationType,
+                e.recipientEmail,
+                e.status,
+                e.sentAt,
+                e.errorMessage
+            FROM email_notification_logs e
+            $whereClause
+            ORDER BY e.sentAt DESC
+            LIMIT ?, ?
+        ";
+
+        $params[] = $offset;
+        $params[] = $limit;
+        $types .= 'ii';
+
+        $stmt = $conn->prepare($sql);
+        if ($types !== '' && count($params) > 0) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $logs = [];
+        $rowNum = $totalCount - $offset;
+
+        while ($row = $result->fetch_assoc()) {
+            $logs[] = [
+                'rowNum' => $rowNum--,
+                'id' => $row['id'],
+                'bookingId' => $row['bookingId'],
+                'notificationType' => $row['notificationType'],
+                'recipientEmail' => $row['recipientEmail'],
+                'status' => $row['status'],
+                'sentAt' => $row['sentAt'],
+                'errorMessage' => $row['errorMessage']
+            ];
+        }
+        $stmt->close();
+
+        send_success_response([
+            'logs' => $logs,
+            'pagination' => [
+                'currentPage' => $page,
+                'totalPages' => ceil($totalCount / $limit),
+                'totalCount' => intval($totalCount),
+                'limit' => $limit
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        error_log("getEmailNotificationLogs error: " . $e->getMessage());
+        send_error_response('Failed to load email notification logs: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 이메일 알림 통계 조회
+ */
+function getEmailNotificationStats($conn) {
+    try {
+        $sql = "
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+            FROM email_notification_logs
+        ";
+        $result = $conn->query($sql);
+        $stats = $result->fetch_assoc();
+
+        send_success_response([
+            'total' => intval($stats['total'] ?? 0),
+            'sent' => intval($stats['sent'] ?? 0),
+            'failed' => intval($stats['failed'] ?? 0)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("getEmailNotificationStats error: " . $e->getMessage());
+        send_error_response('Failed to load email notification stats: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 이메일 알림 로그 CSV 다운로드
+ */
+function exportEmailNotificationLogsCsv($conn, $input) {
+    try {
+        // 필터 파라미터
+        $search = trim($input['search'] ?? '');
+        $status = trim($input['status'] ?? '');
+        $type = trim($input['type'] ?? '');
+        $startDate = trim($input['startDate'] ?? '');
+        $endDate = trim($input['endDate'] ?? '');
+
+        // WHERE 조건 빌드
+        $where = [];
+        $params = [];
+        $types = '';
+
+        if ($search !== '') {
+            $where[] = "(e.recipientEmail LIKE ? OR e.bookingId LIKE ?)";
+            $searchLike = '%' . $search . '%';
+            $params[] = $searchLike;
+            $params[] = $searchLike;
+            $types .= 'ss';
+        }
+
+        if ($status !== '' && in_array($status, ['sent', 'failed'])) {
+            $where[] = "e.status = ?";
+            $params[] = $status;
+            $types .= 's';
+        }
+
+        if ($type !== '') {
+            $where[] = "e.notificationType LIKE ?";
+            $params[] = $type . '%';
+            $types .= 's';
+        }
+
+        if ($startDate !== '') {
+            $where[] = "DATE(e.sentAt) >= ?";
+            $params[] = $startDate;
+            $types .= 's';
+        }
+
+        if ($endDate !== '') {
+            $where[] = "DATE(e.sentAt) <= ?";
+            $params[] = $endDate;
+            $types .= 's';
+        }
+
+        $whereClause = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "
+            SELECT
+                e.bookingId,
+                e.notificationType,
+                e.recipientEmail,
+                e.status,
+                e.sentAt,
+                e.errorMessage
+            FROM email_notification_logs e
+            $whereClause
+            ORDER BY e.sentAt DESC
+            LIMIT 10000
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if ($types !== '' && count($params) > 0) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        // CSV 출력
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $filename = 'email_notification_logs_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+
+        $output = fopen('php://output', 'w');
+
+        // BOM for Excel
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+        // 헤더
+        fputcsv($output, ['Booking ID', 'Notification Type', 'Recipient Email', 'Status', 'Sent At', 'Error Message']);
+
+        while ($row = $result->fetch_assoc()) {
+            fputcsv($output, [
+                $row['bookingId'],
+                $row['notificationType'],
+                $row['recipientEmail'],
+                $row['status'] === 'sent' ? 'Sent' : 'Failed',
+                $row['sentAt'],
+                $row['errorMessage'] ?? ''
+            ]);
+        }
+
+        fclose($output);
+        $stmt->close();
+        exit;
+
+    } catch (Exception $e) {
+        error_log("exportEmailNotificationLogsCsv error: " . $e->getMessage());
+        http_response_code(500);
+        echo "Error exporting CSV: " . $e->getMessage();
+        exit;
     }
 }
 
