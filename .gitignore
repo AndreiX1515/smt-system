@@ -7,6 +7,15 @@ uploads/
 CLAUDE.md
 image.png
 2026 FEB APP Invoice.xlsx
-image.png
 backend/config/google-sa-key.json
 _temp_files/
+SMT Escape App (with access).xlsx
+.gitignore
+payment-rules-flowchart-ko.html
+roominglist sample.xlsx
+waiting-cancelled-flowchart-ko.html
+.claude/settings.local.json
+backend/cron/_test_find_pkgid.php
+logs/sheets_sync.log
+DEPLOY_SHEETS_SYNC.md
+excel.png
