@@ -290,9 +290,14 @@ try {
         ]);
     }
 
+    // lastLoginAt 갱신
+    $stmt = $conn->prepare("UPDATE accounts SET lastLoginAt = NOW() WHERE accountId = ?");
+    $stmt->bind_param("i", $user['accountId']);
+    $stmt->execute();
+
     // 로그 기록
     log_activity($user['accountId'], "user_login", "User login: {$user['emailAddress']} (ID: {$user['accountId']})");
-    
+
     // 응답 데이터
     $response = [
         'success' => true,
