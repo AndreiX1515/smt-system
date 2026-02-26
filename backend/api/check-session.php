@@ -183,6 +183,11 @@ if (isset($_SESSION['user_id']) || isset($_SESSION['accountId'])) {
             $insertStmt->bind_param("siss", $session_id, $row['accountId'], $ip_address, $user_agent);
             $insertStmt->execute();
 
+            // lastLoginAt 갱신
+            $loginStmt = $conn->prepare("UPDATE accounts SET lastLoginAt = NOW() WHERE accountId = ?");
+            $loginStmt->bind_param("i", $row['accountId']);
+            $loginStmt->execute();
+
             // PHP 세션 생성
             if (session_status() == PHP_SESSION_NONE) {
                 session_start();

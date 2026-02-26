@@ -224,6 +224,12 @@ try {
         }
     }
     
+    // lastLoginAt 갱신
+    $stmt = $conn->prepare("UPDATE accounts SET lastLoginAt = NOW() WHERE accountId = ?");
+    $stmt->bind_param("i", $account['accountId']);
+    $stmt->execute();
+    $stmt->close();
+
     // 로그인 성공 이력 저장
     saveLoginHistory($conn, $account['accountId'], $emailOrUser, $rawType, 'success', null);
 

@@ -115,7 +115,12 @@ function handleLogin() {
             $_SESSION['lastName'] = $user['lastName'];
             $_SESSION['isLoggedIn'] = true;
             
-            //    
+            // lastLoginAt 갱신
+            $loginStmt = $conn->prepare("UPDATE accounts SET lastLoginAt = NOW() WHERE accountId = ?");
+            $loginStmt->bind_param("i", $user['accountId']);
+            $loginStmt->execute();
+
+            //
             log_activity($user['accountId'], 'login', 'User logged in successfully');
             
             //     ( ) -  DB    
