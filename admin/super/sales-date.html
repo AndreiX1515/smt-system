@@ -26,7 +26,7 @@
 		.tab-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
 
 		.summary-stats {
-			display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
+			display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px;
 		}
 		.stat-card {
 			background: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center;
@@ -162,6 +162,10 @@
 						<div class="stat-value" id="summaryBooked">-</div>
 					</div>
 					<div class="stat-card">
+						<div class="stat-label">Available Seats</div>
+						<div class="stat-value" id="summaryAvailable">-</div>
+					</div>
+					<div class="stat-card">
 						<div class="stat-label">Total Amount (&#8369;)</div>
 						<div class="stat-value" id="summaryAmount">-</div>
 					</div>
@@ -179,26 +183,28 @@
 
 				<table class="jw-tableA">
 					<colgroup>
-						<col style="width:60px">
-						<col style="width:120px">
-						<col style="width:140px">
-						<col style="width:140px">
-						<col style="width:200px">
-						<col>
+						<col style="width:5%">
+						<col style="width:12%">
+						<col style="width:12%">
+						<col style="width:10%">
+						<col style="width:11%">
+						<col style="width:22%">
+						<col style="width:28%">
 					</colgroup>
 					<thead>
 						<tr>
 							<th class="no is-center">No</th>
 							<th class="is-center">Month</th>
-							<th class="is-center">Total Inventory</th>
-							<th class="is-center">Booked Seats</th>
-							<th class="is-center">Occupancy Rate</th>
-							<th class="is-center">Total Amount (&#8369;)</th>
+							<th class="is-center">Inventory</th>
+							<th class="is-center">Booked</th>
+							<th class="is-center">Available</th>
+							<th class="is-center">Occupancy</th>
+							<th class="is-center">Amount (&#8369;)</th>
 						</tr>
 					</thead>
 					<tbody id="salesTableBody">
 						<tr>
-							<td colspan="6" class="is-center">Loading...</td>
+							<td colspan="7" class="is-center">Loading...</td>
 						</tr>
 					</tbody>
 				</table>
@@ -310,7 +316,7 @@
 			try {
 				const tbody = document.getElementById('salesTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="6" class="is-center">Loading...</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">Loading...</td></tr>';
 				}
 
 				const params = new URLSearchParams({
@@ -341,7 +347,7 @@
 				console.error('Error loading dashboard:', error);
 				const tbody = document.getElementById('salesTableBody');
 				if (tbody) {
-					tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load data.</td></tr>';
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">Failed to load data.</td></tr>';
 				}
 			}
 		}
@@ -393,6 +399,7 @@
 
 			document.getElementById('summaryCapacity').textContent = Number(totals.cap).toLocaleString();
 			document.getElementById('summaryBooked').textContent = Number(totals.seats).toLocaleString();
+			document.getElementById('summaryAvailable').textContent = Number(Math.max(0, totals.cap - totals.seats)).toLocaleString();
 			document.getElementById('summaryAmount').textContent = '\u20B1' + Number(totals.amt).toLocaleString();
 			document.getElementById('summaryOccupancy').textContent = occ + '%';
 
@@ -404,7 +411,7 @@
 			if (!tbody) return;
 
 			if (!months || months.length === 0) {
-				tbody.innerHTML = '<tr><td colspan="6" class="is-center">No data available.</td></tr>';
+				tbody.innerHTML = '<tr><td colspan="7" class="is-center">No data available.</td></tr>';
 				return;
 			}
 
@@ -414,11 +421,13 @@
 				const pct = v.cap > 0 ? (v.seats / v.cap * 100).toFixed(1) : '0.0';
 				const colorClass = pct < 50 ? 'occupancy-green' : pct < 80 ? 'occupancy-orange' : 'occupancy-red';
 
+				const avail = Math.max(0, v.cap - v.seats);
 				return `<tr>
 					<td class="no is-center" data-label="No">${rowNum}</td>
 					<td class="is-center" data-label="Month">${escapeHtml(item.yearMonth)}</td>
 					<td class="is-center" data-label="Total Inventory">${Number(v.cap).toLocaleString()}</td>
 					<td class="is-center" data-label="Booked Seats">${Number(v.seats).toLocaleString()}</td>
+					<td class="is-center" data-label="Available Seats">${Number(avail).toLocaleString()}</td>
 					<td class="is-center" data-label="Occupancy Rate">
 						<div class="occupancy-bar-wrap ${colorClass}">
 							<div class="occupancy-bar"><div class="occupancy-bar-fill" style="width:${Math.min(pct, 100)}%"></div></div>
@@ -433,11 +442,13 @@
 			const totalPct = totals.cap > 0 ? (totals.seats / totals.cap * 100).toFixed(1) : '0.0';
 			const totalColor = totalPct < 50 ? 'occupancy-green' : totalPct < 80 ? 'occupancy-orange' : 'occupancy-red';
 
+			const totalAvail = Math.max(0, totals.cap - totals.seats);
 			html += `<tr class="total-row">
 				<td class="no is-center" data-label="No"></td>
 				<td class="is-center" data-label="Month">TOTAL</td>
 				<td class="is-center" data-label="Total Inventory">${Number(totals.cap).toLocaleString()}</td>
 				<td class="is-center" data-label="Booked Seats">${Number(totals.seats).toLocaleString()}</td>
+				<td class="is-center" data-label="Available Seats">${Number(totalAvail).toLocaleString()}</td>
 				<td class="is-center" data-label="Occupancy Rate">
 					<div class="occupancy-bar-wrap ${totalColor}">
 						<div class="occupancy-bar"><div class="occupancy-bar-fill" style="width:${Math.min(totalPct, 100)}%"></div></div>
