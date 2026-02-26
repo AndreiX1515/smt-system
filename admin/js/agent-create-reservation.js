@@ -1795,6 +1795,7 @@ function renderTravelerCards() {
                         <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source of Income" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
                     </div>
                 </div>
+                ${renderFlightOptionsForTraveler(index)}
             </div>
         `;
     });
@@ -2448,6 +2449,18 @@ function updateTravelerSummary() {
     const countEl = document.getElementById('traveler-summary-count');
 
     if (!listEl) return;
+
+    // 배지 업데이트
+    const travelerBadge = document.getElementById('badge-travelers');
+    if (travelerBadge) {
+        if (travelers && travelers.length > 0) {
+            travelerBadge.textContent = `${travelers.length} Set`;
+            travelerBadge.className = 'tab-badge is-set';
+        } else {
+            travelerBadge.textContent = 'Not Set';
+            travelerBadge.className = 'tab-badge not-set';
+        }
+    }
 
     if (!travelers || travelers.length === 0) {
         listEl.innerHTML = '<p class="no-traveler-message">No travelers added yet. Click "Manage Travelers" to add.</p>';
@@ -5172,6 +5185,19 @@ function updateRoomOptionDisplay() {
     const roomOptionBtn = document.getElementById('room_option_btn');
     const roomListEl = document.getElementById('selected-rooms-list');
 
+    // 배지 업데이트
+    const roomBadge = document.getElementById('badge-room-options');
+    if (roomBadge) {
+        if (selectedRooms && selectedRooms.length > 0) {
+            const badgeCount = selectedRooms.reduce((sum, room) => sum + (room.count || 0), 0);
+            roomBadge.textContent = `${badgeCount} Set`;
+            roomBadge.className = 'tab-badge is-set';
+        } else {
+            roomBadge.textContent = 'Not Set';
+            roomBadge.className = 'tab-badge not-set';
+        }
+    }
+
     if (roomOptionBtn && selectedRooms.length > 0) {
         const totalRooms = selectedRooms.reduce((sum, room) => sum + room.count, 0);
         const lang = getCurrentLang();
@@ -5854,7 +5880,12 @@ async function handleSave() {
             if (visaType === 'group') visaFeeTotal += 1500;
             else if (visaType === 'individual') visaFeeTotal += 1900;
 
-            // Flight Option Fee는 Extra Options 페이지에서 별도 관리 (예약 생성 시 0)
+            // Flight Option Fee 계산
+            if (t.flightOptionPrices && typeof t.flightOptionPrices === 'object') {
+                Object.values(t.flightOptionPrices).forEach(price => {
+                    flightOptionFeeTotal += Number(price) || 0;
+                });
+            }
         });
 
         const seatRequestValue = getEditorPlainText('seat_req_editor');
@@ -5893,9 +5924,9 @@ async function handleSave() {
                 passportPhotoKey: null,
                 // visaDocumentKey는 FormData 파일 필드명과 매칭(backend가 업로드 후 visaDocument로 저장)
                 visaDocumentKey: null,
-                // 항공 옵션은 Extra Options 페이지에서 별도 관리
-                flightOptions: {},
-                flightOptionPrices: {}
+                // 항공 옵션
+                flightOptions: t.flightOptions || [],
+                flightOptionPrices: t.flightOptionPrices || {}
             })),
             adults: adults,
             children: children,
