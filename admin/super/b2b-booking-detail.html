@@ -3843,7 +3843,7 @@
 				'waiting_second_payment', 'checking_second_payment',
 				'waiting_balance', 'checking_balance',
 				'waiting_full_payment', 'checking_full_payment',
-				'rejected', 'confirmed', 'completed', 'cancelled', 'refunded'
+				'rejected', 'confirmed', 'completed', 'waiting_cancelled', 'cancelled', 'refunded'
 			];
 			if (validStatuses.includes(bs)) return bs;
 			// 하위 호환성
@@ -3864,6 +3864,7 @@
 				'rejected': 'Payment Rejected',
 				'confirmed': 'Reservation Confirmed',
 				'completed': 'Trip Completed',
+				'waiting_cancelled': 'Waiting for Cancellation',
 				'cancelled': 'Reservation Cancelled',
 				'refunded': 'Refund Completed'
 			};

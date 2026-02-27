@@ -13394,7 +13394,9 @@ function updateB2BBooking($conn, $input) {
             $elevenStepStatuses = [
                 'waiting_down_payment', 'checking_down_payment',
                 'waiting_second_payment', 'checking_second_payment',
-                'waiting_balance', 'checking_balance', 'rejected'
+                'waiting_balance', 'checking_balance',
+                'waiting_full_payment', 'checking_full_payment',
+                'pending_update', 'check_reject', 'rejected'
             ];
 
             // 모든 상태 변경 시 사유 필수
@@ -13433,6 +13435,13 @@ function updateB2BBooking($conn, $input) {
                 $types .= 's';
                 $updates[] = "paymentStatus = ?";
                 $values[] = 'paid';
+                $types .= 's';
+            } elseif ($k === 'waiting_cancelled') {
+                $updates[] = "bookingStatus = ?";
+                $values[] = 'waiting_cancelled';
+                $types .= 's';
+                $updates[] = "paymentStatus = ?";
+                $values[] = 'failed';
                 $types .= 's';
             } elseif ($k === 'cancelled') {
                 $updates[] = "bookingStatus = ?";
