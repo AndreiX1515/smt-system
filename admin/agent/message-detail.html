@@ -121,6 +121,10 @@
 							<label class="label-name">Submitted Booking ID</label>
 							<a id="threadBookingIdLink" href="#" style="display:flex; align-items:center; height:46px; padding:0 12px; border-radius:12px; border:1px solid #D4D4D4; background:#F3F3F3; color:#2563EB; text-decoration:underline; font-size:14px;"></a>
 						</div>
+						<div class="grid-item" id="threadStartDateWrap" style="display:none;">
+							<label class="label-name">Travel Start Date</label>
+							<input type="text" class="form-control" id="threadStartDate" disabled>
+						</div>
 						<div class="grid-item col-span-3">
 							<label class="label-name" data-lan-eng="Subject">Subject</label>
 							<input type="text" class="form-control" id="threadSubjectField" disabled>
@@ -343,6 +347,7 @@
 						link.href = `reservation-detail.html?bookingId=${encodeURIComponent(thread.bookingId)}`;
 						wrap.style.display = '';
 					}
+					showBookingStartDate(thread.bookingId);
 				}
 
 				renderMessages(messages);
@@ -383,6 +388,27 @@
 				}
 			} catch (e) { alert('Error: ' + e.message); }
 			finally { btn.disabled = false; btn.textContent = 'Send'; }
+		}
+
+		async function showBookingStartDate(bookingId) {
+			const wrap = document.getElementById('threadStartDateWrap');
+			const field = document.getElementById('threadStartDate');
+			if (!wrap || !field || !bookingId) { if (wrap) wrap.style.display = 'none'; return; }
+			try {
+				const res = await fetch(`../backend/api/agent-api.php?action=getReservationDetail&bookingId=${encodeURIComponent(bookingId)}`, { credentials: 'same-origin' });
+				const json = await res.json();
+				const booking = json.success && json.data ? json.data.booking : null;
+				const dep = booking ? (booking.departureDate || '') : '';
+				if (dep) {
+					field.value = dep;
+					wrap.style.display = '';
+				} else {
+					wrap.style.display = 'none';
+				}
+			} catch (e) {
+				console.error('Failed to load booking start date:', e);
+				wrap.style.display = 'none';
+			}
 		}
 
 		let currentBookingId = null;
@@ -534,8 +560,10 @@
 						link.textContent = val;
 						link.href = `reservation-detail.html?bookingId=${encodeURIComponent(val)}`;
 						linkWrap.style.display = '';
+						showBookingStartDate(val);
 					} else if (linkWrap) {
 						linkWrap.style.display = 'none';
+						showBookingStartDate(null);
 					}
 				});
 
@@ -564,6 +592,7 @@
 						link.href = `reservation-detail.html?bookingId=${encodeURIComponent(currentBookingId)}`;
 						wrap.style.display = '';
 					}
+					showBookingStartDate(currentBookingId);
 				}
 
 				// Initialize reply editor (same as existing thread mode)

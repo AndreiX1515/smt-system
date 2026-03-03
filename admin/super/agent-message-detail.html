@@ -66,6 +66,10 @@
 						<label class="label-name">Submitted Booking ID</label>
 						<a id="threadBookingIdLink" href="#" style="display:flex; align-items:center; height:46px; padding:0 12px; border-radius:12px; border:1px solid #D4D4D4; background:#F3F3F3; color:#2563EB; text-decoration:underline; font-size:14px;"></a>
 					</div>
+					<div class="grid-item" id="threadStartDateWrap" style="display:none;">
+						<label class="label-name">Travel Start Date</label>
+						<input type="text" class="form-control" id="threadStartDate" disabled>
+					</div>
 				</div>
 			</div>
 
@@ -135,6 +139,27 @@
 		let selectedFiles = [];
 		let currentBookingId = null;
 		let currentAgentInfo = null;
+
+		async function showBookingStartDate(bookingId) {
+			const wrap = document.getElementById('threadStartDateWrap');
+			const field = document.getElementById('threadStartDate');
+			if (!wrap || !field || !bookingId) { if (wrap) wrap.style.display = 'none'; return; }
+			try {
+				const res = await fetch(`../backend/api/super-api.php?action=getBookingDetail&bookingId=${encodeURIComponent(bookingId)}`, { credentials: 'same-origin' });
+				const json = await res.json();
+				const booking = json.success && json.data ? json.data.booking : null;
+				const dep = booking ? (booking.departureDate || '') : '';
+				if (dep) {
+					field.value = dep;
+					wrap.style.display = '';
+				} else {
+					wrap.style.display = 'none';
+				}
+			} catch (e) {
+				console.error('Failed to load booking start date:', e);
+				wrap.style.display = 'none';
+			}
+		}
 
 		function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
@@ -241,6 +266,7 @@
 						link.href = `b2b-booking-detail.html?id=${encodeURIComponent(thread.bookingId)}`;
 						field.style.display = '';
 					}
+					showBookingStartDate(thread.bookingId);
 				}
 
 				renderMessages(messages);
@@ -433,6 +459,7 @@
 						link.href = `b2b-booking-detail.html?id=${encodeURIComponent(currentBookingId)}`;
 						field.style.display = '';
 					}
+					showBookingStartDate(currentBookingId);
 					document.getElementById('threadCategory').value = 'Booking';
 
 					// Initialize reply editor (same as existing thread mode)
