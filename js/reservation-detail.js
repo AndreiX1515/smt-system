@@ -593,7 +593,7 @@ function updateGuestInfo(booking) {
     }
 
     if (children > 0) {
-        const childElement = createGuestElement(`아동x${children}`, formatPrice(packagePrice * children * 0.8)); // 20% discount for children
+        const childElement = createGuestElement(`아동x${children}`, formatPrice(Math.max(packagePrice - 5000, 0) * children));
         const lastGuestElement = document.querySelector('.align.both.vm.mt8') || guestContainer;
         lastGuestElement.parentNode.insertBefore(childElement, lastGuestElement.nextSibling);
     }

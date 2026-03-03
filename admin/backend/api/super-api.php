@@ -14152,9 +14152,8 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
 
                 // totalAmount 계산 (approveB2BBooking과 동일한 로직)
                 $adultPrice = floatval($bkInfo['adultPrice'] ?? 0);
-                $childWithRoomPrice = $adultPrice;
-                $childNoRoomPrice = floatval($bkInfo['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
-                $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 10000;
+                $childPriceVal = floatval($bkInfo['childPrice'] ?? 0) ?: max($adultPrice - 5000, 0);
+                $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 9000;
 
                 $calculatedNewTotal = 0;
                 $calculatedVisaFee = 0;
@@ -14164,8 +14163,7 @@ function updateB2BBookingTravelersAndRooms($conn, $input) {
                     if ($type === 'adult') {
                         $calculatedNewTotal += $adultPrice;
                     } elseif ($type === 'child') {
-                        $hasRoom = ($t['childRoom'] ?? false) === true || ($t['childRoom'] ?? '') === 'yes' || ($t['childRoom'] ?? '') === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
-                        $calculatedNewTotal += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+                        $calculatedNewTotal += $childPriceVal;
                     } elseif ($type === 'infant') {
                         $calculatedNewTotal += $infantPriceVal;
                     }
@@ -15054,12 +15052,11 @@ function approveB2BBooking($conn, $input) {
 
                 $oldTotalAmount = floatval($priceData['totalAmount'] ?? 0);
                 $adultPrice = floatval($priceData['adultPrice'] ?? 0);
-                $childWithRoomPrice = $adultPrice;
-                $childNoRoomPrice = floatval($priceData['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
-                $infantPrice = floatval($priceData['infantPrice'] ?? 0) ?: 10000;
+                $childPriceVal = floatval($priceData['childPrice'] ?? 0) ?: max($adultPrice - 5000, 0);
+                $infantPrice = floatval($priceData['infantPrice'] ?? 0) ?: 9000;
 
                 // 새로운 총액 계산 함수
-                $calculateTotal = function($travelers, $rooms) use ($adultPrice, $childWithRoomPrice, $childNoRoomPrice, $infantPrice) {
+                $calculateTotal = function($travelers, $rooms) use ($adultPrice, $childPriceVal, $infantPrice) {
                     $total = 0;
                     // Traveler 요금
                     foreach ($travelers as $t) {
@@ -15067,8 +15064,7 @@ function approveB2BBooking($conn, $input) {
                         if ($type === 'adult') {
                             $total += $adultPrice;
                         } elseif ($type === 'child') {
-                            $hasRoom = $t['childRoom'] === true || $t['childRoom'] === 'yes' || $t['childRoom'] === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
-                            $total += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+                            $total += $childPriceVal;
                         } elseif ($type === 'infant') {
                             $total += $infantPrice;
                         }

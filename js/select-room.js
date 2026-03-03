@@ -914,8 +914,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // URL에서 가져온 가격 정보로 화면 업데이트
     function updatePricingFromURL() {
         const basePrice = currentBooking.packagePrice;
-        const childPrice = Math.round(basePrice * 0.8);
-        const infantPrice = Math.round(basePrice * 0.1);
+        const childPrice = Math.max(basePrice - 5000, 0);
+        const infantPrice = 9000;
         
         console.log('가격 계산:', { basePrice, childPrice, infantPrice });
         console.log('인원 수:', { adults: currentBooking.adults, children: currentBooking.children, infants: currentBooking.infants });

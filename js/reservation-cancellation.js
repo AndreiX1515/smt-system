@@ -194,7 +194,7 @@ function updateGuestInfo(booking) {
                 guestIndex++;
             } else if (guestIndex === 1 && children > 0) {
                 textElement.textContent = `x${children}`;
-                priceElement.textContent = formatPrice(packagePrice * children * 0.8);
+                priceElement.textContent = formatPrice(Math.max(packagePrice - 5000, 0) * children);
                 guestIndex++;
             }
         }

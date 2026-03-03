@@ -2771,9 +2771,9 @@ function createReservation($conn, $input) {
 
             // B2B 가격 우선 사용 (없으면 일반가격 fallback)
             $adultPrice = (!empty($package['b2b_price'])) ? $package['b2b_price'] : ($package['packagePrice'] ?? 0);
-            $childPrice = (!empty($package['b2b_child_price'])) ? $package['b2b_child_price'] : ($package['childPrice'] ?? ($adultPrice * 0.8));
-            // Infant 가격: 설정 안되어 있으면 기본 10000페소
-            $infantPrice = (!empty($package['b2b_infant_price'])) ? $package['b2b_infant_price'] : (!empty($package['infantPrice']) ? $package['infantPrice'] : 10000);
+            $childPrice = (!empty($package['b2b_child_price'])) ? $package['b2b_child_price'] : ($package['childPrice'] ?? max($adultPrice - 5000, 0));
+            // Infant 가격: 설정 안되어 있으면 기본 9000페소
+            $infantPrice = (!empty($package['b2b_infant_price'])) ? $package['b2b_infant_price'] : (!empty($package['infantPrice']) ? $package['infantPrice'] : 9000);
             $infantSeatPrice = (!empty($package['b2b_infant_seat_price']))
                 ? $package['b2b_infant_seat_price']
                 : (!empty($package['infant_seat_price']) ? $package['infant_seat_price'] : $infantPrice);
@@ -2830,8 +2830,8 @@ function createReservation($conn, $input) {
                         } elseif (!empty($dateRow['childPrice'])) {
                             $childPrice = (float)$dateRow['childPrice'];
                         } else {
-                            // 날짜별 childPrice가 없으면 업데이트된 adultPrice 기준 80%로 재계산
-                            $childPrice = $adultPrice * 0.8;
+                            // 날짜별 childPrice가 없으면 adultPrice - 5000으로 재계산
+                            $childPrice = max($adultPrice - 5000, 0);
                         }
                         if (!empty($dateRow['b2b_infant_price'])) {
                             $infantPrice = (float)$dateRow['b2b_infant_price'];
@@ -9948,9 +9948,8 @@ function updateTravelerInfo($conn, $input) {
 
                 // totalAmount 계산
                 $adultPrice = floatval($bkInfo['adultPrice'] ?? 0);
-                $childWithRoomPrice = $adultPrice;
-                $childNoRoomPrice = floatval($bkInfo['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
-                $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 10000;
+                $childPriceVal = floatval($bkInfo['childPrice'] ?? 0) ?: max($adultPrice - 5000, 0);
+                $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 9000;
 
                 $calculatedNewTotal = 0;
                 $calculatedVisaFee = 0;
@@ -9960,8 +9959,7 @@ function updateTravelerInfo($conn, $input) {
                     if ($type === 'adult') {
                         $calculatedNewTotal += $adultPrice;
                     } elseif ($type === 'child') {
-                        $hasRoom = ($t['childRoom'] ?? false) === true || ($t['childRoom'] ?? '') === 'yes' || ($t['childRoom'] ?? '') === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
-                        $calculatedNewTotal += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+                        $calculatedNewTotal += $childPriceVal;
                     } elseif ($type === 'infant') {
                         $calculatedNewTotal += $infantPriceVal;
                     }
@@ -10158,9 +10156,8 @@ function updateTravelerInfo($conn, $input) {
 
         // totalAmount 계산
         $adultPrice = floatval($bkInfo['adultPrice'] ?? 0);
-        $childWithRoomPrice = $adultPrice;
-        $childNoRoomPrice = floatval($bkInfo['childPrice'] ?? 0) ?: ($adultPrice * 0.8);
-        $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 10000;
+        $childPriceVal = floatval($bkInfo['childPrice'] ?? 0) ?: max($adultPrice - 5000, 0);
+        $infantPriceVal = floatval($bkInfo['infantPrice'] ?? 0) ?: 9000;
 
         $calculatedNewTotal = 0;
         $calculatedVisaFee = 0;
@@ -10170,8 +10167,7 @@ function updateTravelerInfo($conn, $input) {
             if ($type === 'adult') {
                 $calculatedNewTotal += $adultPrice;
             } elseif ($type === 'child') {
-                $hasRoom = ($t['childRoom'] ?? false) === true || ($t['childRoom'] ?? '') === 'yes' || ($t['childRoom'] ?? '') === 'Yes' || intval($t['childRoom'] ?? 0) === 1;
-                $calculatedNewTotal += $hasRoom ? $childWithRoomPrice : $childNoRoomPrice;
+                $calculatedNewTotal += $childPriceVal;
             } elseif ($type === 'infant') {
                 $calculatedNewTotal += $infantPriceVal;
             }

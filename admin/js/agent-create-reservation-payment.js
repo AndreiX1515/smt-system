@@ -248,17 +248,11 @@ function displayAmountBreakdown(data) {
                 if (hasInfantSeat && infantSeatPrice > 0) {
                     packageTotal += infantSeatPrice;
                 } else {
-                    packageTotal += (infantPrice > 0) ? infantPrice : 10000;
+                    packageTotal += (infantPrice > 0) ? infantPrice : 9000;
                 }
             } else if (type.includes('child') || type.includes('kid')) {
-                // Child: Room Yes → adult price, Room No → childPrice or adult×80%
-                const childRoom = t.childRoom === true || t.childRoom === 1 || t.childRoom === '1';
-                if (childRoom) {
-                    packageTotal += originalPackagePrice;
-                    adultCount++; // Child with room도 할인 적용
-                } else {
-                    packageTotal += (childPrice > 0) ? childPrice : Math.round(originalPackagePrice * 0.8);
-                }
+                // Child: childRoom 무관, 성인가 - 5,000
+                packageTotal += (childPrice > 0) ? childPrice : Math.max(originalPackagePrice - 5000, 0);
             } else {
                 // Adult - 할인 전 가격 사용
                 packageTotal += originalPackagePrice;
@@ -272,8 +266,8 @@ function displayAmountBreakdown(data) {
         const infants = parseInt(data.infants) || 0;
         adultCount = adults;
         packageTotal = (adults * originalPackagePrice) +
-                       (children * ((childPrice > 0) ? childPrice : Math.round(originalPackagePrice * 0.8))) +
-                       (infants * ((infantPrice > 0) ? infantPrice : 10000));
+                       (children * ((childPrice > 0) ? childPrice : Math.max(originalPackagePrice - 5000, 0))) +
+                       (infants * ((infantPrice > 0) ? infantPrice : 9000));
     }
 
     // 총 할인 금액 계산

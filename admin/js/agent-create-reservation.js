@@ -126,9 +126,8 @@ function __getUnitPrice(type) {
 }
 
 // 여행자별 가격 계산 (Infant/Child 특별 로직 적용)
-// - Infant: DB 가격 있으면 사용, 없으면 기본 10,000페소
-// - Child (Room Yes): 항상 성인 가격
-// - Child (Room No): DB 가격 있으면 DB 가격, 없으면 성인가격×70%
+// - Infant: DB 가격 있으면 사용, 없으면 기본 9,000페소
+// - Child: DB 가격 있으면 DB 가격, 없으면 성인가격 - 5,000 (childRoom 무관)
 function __getTravelerPrice(traveler) {
     if (!traveler) return 0;
     const type = __classifyTypeKey(traveler.type);
@@ -140,17 +139,13 @@ function __getTravelerPrice(traveler) {
             if (Number.isFinite(seatPrice) && seatPrice > 0) return seatPrice;
         }
         const dbPrice = __pricingByTravelerType['infant'];
-        return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : 10000;
+        return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : 9000;
     }
 
     if (type === 'child') {
-        // Child Room = Yes → 항상 성인 가격
-        if (traveler.childRoom === true) {
-            return adultPrice;
-        }
-        // Child Room = No → DB 가격 있으면 DB 가격, 없으면 성인가격×80%
+        // Child: DB 가격 있으면 DB 가격, 없으면 성인가격 - 5,000
         const dbPrice = __pricingByTravelerType['child'];
-        return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : Math.round(adultPrice * 0.8);
+        return (Number.isFinite(dbPrice) && dbPrice > 0) ? dbPrice : Math.max(adultPrice - 5000, 0);
     }
 
     // Adult (및 기타 타입)
@@ -5946,7 +5941,7 @@ async function handleSave() {
             // 예약 시점 단가 및 비용 정보
             adultPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('adult') : 0) || 0,
             childPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('child') : 0) || 0,
-            infantPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('infant') : 0) || 10000,
+            infantPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('infant') : 0) || 9000,
             visaFee: visaFeeTotal || 0,
             flightOptionFee: flightOptionFeeTotal || 0
         };

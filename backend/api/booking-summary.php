@@ -72,17 +72,18 @@ try {
     }
     
     if ($children > 0) {
-        $childPrice = $basePrice * 0.8 * $children; // 80% of adult price
+        $childUnitPrice = max($basePrice - 5000, 0);
+        $childPrice = $childUnitPrice * $children;
         $guestPricing[] = [
             'type' => '',
-            'count' => $children, 
-            'unitPrice' => $basePrice * 0.8,
+            'count' => $children,
+            'unitPrice' => $childUnitPrice,
             'totalPrice' => $childPrice
         ];
     }
-    
+
     if ($infants > 0) {
-        $infantUnitPrice = 10000;
+        $infantUnitPrice = 9000;
         $infantPrice = $infantUnitPrice * $infants;
         $guestPricing[] = [
             'type' => '',

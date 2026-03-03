@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (currentBooking.children > 0) {
                 // childPrice DB    ( packagePrice * 0.8)
-                const childPrice = currentBooking.childPrice || (currentBooking.packagePrice * 0.8);
+                const childPrice = currentBooking.childPrice || Math.max(currentBooking.packagePrice - 5000, 0);
                 const childTotal = childPrice * currentBooking.children;
                 html += `
                     <li class="align both vm mt8">
@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (currentBooking.infants > 0) {
                 // infantPrice DB    ( packagePrice * 0.1)
-                const infantPrice = currentBooking.infantPrice || (currentBooking.packagePrice * 0.1);
+                const infantPrice = currentBooking.infantPrice || 9000;
                 const infantTotal = infantPrice * currentBooking.infants;
                 html += `
                     <li class="align both vm mt8">
@@ -938,11 +938,11 @@ document.addEventListener('DOMContentLoaded', function() {
             baseAmount += currentBooking.packagePrice * currentBooking.adults;
         }
         if (currentBooking.children > 0) {
-            const childPrice = currentBooking.childPrice || (currentBooking.packagePrice * 0.8);
+            const childPrice = currentBooking.childPrice || Math.max(currentBooking.packagePrice - 5000, 0);
             baseAmount += childPrice * currentBooking.children;
         }
         if (currentBooking.infants > 0) {
-            const infantPrice = currentBooking.infantPrice || (currentBooking.packagePrice * 0.1);
+            const infantPrice = currentBooking.infantPrice || 9000;
             baseAmount += infantPrice * currentBooking.infants;
         }
 
@@ -1209,11 +1209,11 @@ document.addEventListener('DOMContentLoaded', function() {
             baseAmount += currentBooking.packagePrice * currentBooking.adults;
         }
         if (currentBooking.children > 0) {
-            const childPrice = currentBooking.childPrice || (currentBooking.packagePrice * 0.8);
+            const childPrice = currentBooking.childPrice || Math.max(currentBooking.packagePrice - 5000, 0);
             baseAmount += childPrice * currentBooking.children;
         }
         if (currentBooking.infants > 0) {
-            const infantPrice = currentBooking.infantPrice || (currentBooking.packagePrice * 0.1);
+            const infantPrice = currentBooking.infantPrice || 9000;
             baseAmount += infantPrice * currentBooking.infants;
         }
         return baseAmount;

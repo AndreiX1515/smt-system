@@ -122,7 +122,7 @@ function collectBookingData() {
 
     //    (  )
     const basePrice = 34000;
-    const totalAmount = (adults * basePrice) + (children * basePrice * 0.8) + (infants * basePrice * 0.1);
+    const totalAmount = (adults * basePrice) + (children * Math.max(basePrice - 5000, 0)) + (infants * 9000);
 
     // B2B/B2C 가격 티어 설정
     const priceTier = isB2BUser() ? 'B2B' : 'B2C';

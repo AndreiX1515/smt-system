@@ -633,8 +633,8 @@ function renderReservationDetail(data) {
 
             // DB에 저장된 단가 사용 (이미 할인 적용된 가격)
             const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
-            const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
-            const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+            const childPrice = parseFloat(booking.childPrice || 0) || Math.max(adultPrice - 5000, 0);
+            const infantPrice = parseFloat(booking.infantPrice || 0) || 9000;
             const infantSeatPrice = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
             // 할인 전 원래 가격 계산 (adultPrice에 할인액 더하기)
@@ -642,8 +642,7 @@ function renderReservationDetail(data) {
 
             // 인원 수 계산 (travelers 배열에서)
             let adults = 0;
-            let childrenWithRoom = 0;
-            let childrenNoRoom = 0;
+            let children = 0;
             let infants = 0;
             let infantsWithSeat = 0;
             let infantsNoSeat = 0;
@@ -654,12 +653,7 @@ function renderReservationDetail(data) {
                     if (type === 'adult') {
                         adults++;
                     } else if (type === 'child') {
-                        const hasRoom = parseInt(t.childRoom || 0) === 1;
-                        if (hasRoom) {
-                            childrenWithRoom++;
-                        } else {
-                            childrenNoRoom++;
-                        }
+                        children++;
                     } else if (type === 'infant') {
                         infants++;
                         if (parseInt(t.infantSeat || 0) === 1) {
@@ -671,18 +665,15 @@ function renderReservationDetail(data) {
                 });
             }
 
-            // 할인 적용 대상 인원 (Adult + Child with Room)
-            const discountableCount = adults + childrenWithRoom;
+            // 할인 적용 대상 인원 (Adult만)
+            const discountableCount = adults;
 
             // Package Price 표시 (할인 전 가격 기준)
             if (adults > 0 && originalAdultPrice > 0) {
                 items.push({ label: 'Adult x ' + adults, amount: adults * originalAdultPrice });
             }
-            if (childrenWithRoom > 0 && originalAdultPrice > 0) {
-                items.push({ label: 'Child (Room) x ' + childrenWithRoom, amount: childrenWithRoom * originalAdultPrice });
-            }
-            if (childrenNoRoom > 0 && childPrice > 0) {
-                items.push({ label: 'Child x ' + childrenNoRoom, amount: childrenNoRoom * childPrice });
+            if (children > 0 && childPrice > 0) {
+                items.push({ label: 'Child x ' + children, amount: children * childPrice });
             }
             if (infantsWithSeat > 0) {
                 items.push({ label: 'Infant (Seat) x ' + infantsWithSeat, amount: infantsWithSeat * infantSeatPrice });
@@ -4865,19 +4856,16 @@ function updateOrderSummary() {
 
     // 1. 여행자별 가격 계산
     const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
-    const childWithRoomPrice = adultPrice; // 성인가격 100%
-    const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8); // 80%
-    const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+    const childPriceVal = parseFloat(booking.childPrice || 0) || Math.max(adultPrice - 5000, 0);
+    const infantPrice = parseFloat(booking.infantPrice || 0) || 9000;
     const infantSeatPriceVal = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
-    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWSeat = 0, infantsNSeat = 0;
+    let adults = 0, childrenCount = 0, infantsWSeat = 0, infantsNSeat = 0;
     travelers.forEach(t => {
         const type = (t.travelerType || t.type || '').toLowerCase();
         if (type === 'adult') adults++;
         else if (type === 'child') {
-            const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || parseInt(t.childRoom || 0) === 1;
-            if (hasRoom) childrenWithRoom++;
-            else childrenNoRoom++;
+            childrenCount++;
         }
         else if (type === 'infant') {
             if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) {
@@ -4895,15 +4883,10 @@ function updateOrderSummary() {
         totalAmount += adultTotal;
         summaryHtml += `<div class="order-summary-item"><span>Adult x${adults}</span><span>₱${adultTotal.toLocaleString()}</span></div>`;
     }
-    if (childrenWithRoom > 0) {
-        const childRoomTotal = childrenWithRoom * childWithRoomPrice;
-        totalAmount += childRoomTotal;
-        summaryHtml += `<div class="order-summary-item"><span>Child (Room) x${childrenWithRoom}</span><span>₱${childRoomTotal.toLocaleString()}</span></div>`;
-    }
-    if (childrenNoRoom > 0) {
-        const childNoRoomTotal = childrenNoRoom * childNoRoomPrice;
-        totalAmount += childNoRoomTotal;
-        summaryHtml += `<div class="order-summary-item"><span>Child x${childrenNoRoom}</span><span>₱${Math.round(childNoRoomTotal).toLocaleString()}</span></div>`;
+    if (childrenCount > 0) {
+        const childTotal = childrenCount * childPriceVal;
+        totalAmount += childTotal;
+        summaryHtml += `<div class="order-summary-item"><span>Child x${childrenCount}</span><span>₱${Math.round(childTotal).toLocaleString()}</span></div>`;
     }
     if (infantsWSeat > 0) {
         const infantSeatTotal = infantsWSeat * infantSeatPriceVal;
@@ -5085,24 +5068,20 @@ function showChangeSummaryModal() {
 
     // 가격 정보 (이미 할인 적용된 가격)
     const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
-    const childWithRoomPrice = adultPrice;
-    const childNoRoomPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
-    const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+    const childPrice = parseFloat(booking.childPrice || 0) || Math.max(adultPrice - 5000, 0);
+    const infantPrice = parseFloat(booking.infantPrice || 0) || 9000;
     const infantSeatPriceV = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
     // 할인 전 원래 가격 계산
     const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
-    const originalChildWithRoomPrice = originalAdultPrice;
 
-    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWS = 0, infantsNS = 0;
+    let adults = 0, childrenCount = 0, infantsWS = 0, infantsNS = 0;
     afterTravelers.forEach(t => {
         const type = (t.travelerType || t.type || '').toLowerCase();
         console.log('Processing traveler type:', type, 'visaType:', t.visaType);
         if (type === 'adult') adults++;
         else if (type === 'child') {
-            const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || parseInt(t.childRoom || 0) === 1;
-            if (hasRoom) childrenWithRoom++;
-            else childrenNoRoom++;
+            childrenCount++;
         }
         else if (type === 'infant') {
             if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) {
@@ -5113,10 +5092,10 @@ function showChangeSummaryModal() {
         }
     });
 
-    // 할인 적용 대상 인원 (Adult + Child with Room)
-    const discountableCount = adults + childrenWithRoom;
+    // 할인 적용 대상 인원 (Adult만)
+    const discountableCount = adults;
 
-    console.log('Breakdown counts:', { adults, childrenWithRoom, childrenNoRoom, infantsWS, infantsNS, discountableCount });
+    console.log('Breakdown counts:', { adults, childrenCount, infantsWS, infantsNS, discountableCount });
 
     let breakdownHtml = '';
     let subtotal = 0;
@@ -5127,15 +5106,10 @@ function showChangeSummaryModal() {
         subtotal += amt;
         breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Adult x${adults}</span><span>₱${amt.toLocaleString()}</span></div>`;
     }
-    if (childrenWithRoom > 0) {
-        const amt = childrenWithRoom * originalChildWithRoomPrice;
+    if (childrenCount > 0) {
+        const amt = childrenCount * childPrice;
         subtotal += amt;
-        breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Child (with room) x${childrenWithRoom}</span><span>₱${amt.toLocaleString()}</span></div>`;
-    }
-    if (childrenNoRoom > 0) {
-        const amt = childrenNoRoom * childNoRoomPrice;
-        subtotal += amt;
-        breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Child (no room) x${childrenNoRoom}</span><span>₱${amt.toLocaleString()}</span></div>`;
+        breakdownHtml += `<div style="display:flex; justify-content:space-between; padding: 6px 0;"><span>Child x${childrenCount}</span><span>₱${amt.toLocaleString()}</span></div>`;
     }
     if (infantsWS > 0) {
         const amt = infantsWS * infantSeatPriceV;
@@ -5363,15 +5337,15 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
 
     // DB에 저장된 단가 사용
     const adultPrice = parseFloat(booking.adultPrice || booking.packagePrice || 0);
-    const childPrice = parseFloat(booking.childPrice || 0) || (adultPrice * 0.8);
-    const infantPrice = parseFloat(booking.infantPrice || 0) || 10000;
+    const childPrice = parseFloat(booking.childPrice || 0) || Math.max(adultPrice - 5000, 0);
+    const infantPrice = parseFloat(booking.infantPrice || 0) || 9000;
     const infantSeatPriceC = parseFloat(booking.infantSeatPrice || 0) || infantPrice;
 
     // 할인 전 원래 가격
     const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
 
     // 인원 수 계산
-    let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeatC = 0, infantsNoSeatC = 0;
+    let adults = 0, childrenCount = 0, infantsWithSeatC = 0, infantsNoSeatC = 0;
     let visaFeeTotal = 0;
     let flightOptionsTotal = 0;
 
@@ -5390,9 +5364,7 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
         if (type === 'adult') {
             adults++;
         } else if (type === 'child') {
-            const hasRoom = parseInt(t.childRoom || 0) === 1;
-            if (hasRoom) childrenWithRoom++;
-            else childrenNoRoom++;
+            childrenCount++;
         } else if (type === 'infant') {
             if (parseInt(t.infantSeat || 0) === 1) {
                 infantsWithSeatC++;
@@ -5419,13 +5391,12 @@ function calculateTotalFromTravelersAgent(booking, travelers) {
     // Package price 계산
     let packageTotal = 0;
     packageTotal += adults * originalAdultPrice;
-    packageTotal += childrenWithRoom * originalAdultPrice;
-    packageTotal += childrenNoRoom * childPrice;
+    packageTotal += childrenCount * childPrice;
     packageTotal += infantsWithSeatC * infantSeatPriceC;
     packageTotal += infantsNoSeatC * infantPrice;
 
-    // 할인 대상 인원
-    const discountableCount = adults + childrenWithRoom;
+    // 할인 대상 인원 (Adult만)
+    const discountableCount = adults;
     const totalDiscount = saleDiscountAmount * discountableCount;
 
     // 총액 계산

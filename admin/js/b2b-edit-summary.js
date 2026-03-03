@@ -169,24 +169,20 @@ function renderAmountBreakdown() {
 
 	// 가격 정보 (이미 할인 적용된 가격)
 	const adultPrice = parseFloat(bookingData.adultPrice || 0);
-	const childWithRoomPrice = adultPrice;
-	const childNoRoomPrice = parseFloat(bookingData.childPrice || 0) || (adultPrice * 0.8);
-	const infantPrice = parseFloat(bookingData.infantPrice || 0) || 10000;
+	const childPrice = parseFloat(bookingData.childPrice || 0) || Math.max(adultPrice - 5000, 0);
+	const infantPrice = parseFloat(bookingData.infantPrice || 0) || 9000;
 	const infantSeatPrice = parseFloat(bookingData.infantSeatPrice || 0) || infantPrice;
 
 	// 할인 전 원래 가격 계산
 	const originalAdultPrice = saleDiscountAmount > 0 ? (adultPrice + saleDiscountAmount) : adultPrice;
-	const originalChildWithRoomPrice = originalAdultPrice;
 
 	// 인원별 계산
-	let adults = 0, childrenWithRoom = 0, childrenNoRoom = 0, infantsWithSeat = 0, infantsNoSeat = 0;
+	let adults = 0, childrenCount = 0, infantsWithSeat = 0, infantsNoSeat = 0;
 	travelers.forEach(t => {
 		const type = (t.travelerType || t.type || '').toLowerCase();
 		if (type === 'adult') adults++;
 		else if (type === 'child') {
-			const hasRoom = t.childRoom === true || t.childRoom === 'yes' || t.childRoom === 'Yes' || parseInt(t.childRoom || 0) === 1;
-			if (hasRoom) childrenWithRoom++;
-			else childrenNoRoom++;
+			childrenCount++;
 		}
 		else if (type === 'infant') {
 			if (t.infantSeat === true || t.infantSeat === 'yes' || t.infantSeat === 'Yes' || parseInt(t.infantSeat || 0) === 1) {
@@ -197,8 +193,8 @@ function renderAmountBreakdown() {
 		}
 	});
 
-	// 할인 적용 대상 인원 (Adult + Child with Room)
-	const discountableCount = adults + childrenWithRoom;
+	// 할인 적용 대상 인원 (Adult만)
+	const discountableCount = adults;
 
 	// Package Price 표시 (할인 전 가격 기준)
 	if (adults > 0 && originalAdultPrice > 0) {
@@ -206,15 +202,10 @@ function renderAmountBreakdown() {
 		subtotal += amount;
 		items.push({ label: `Adult x ${adults}`, amount });
 	}
-	if (childrenWithRoom > 0 && originalChildWithRoomPrice > 0) {
-		const amount = childrenWithRoom * originalChildWithRoomPrice;
+	if (childrenCount > 0 && childPrice > 0) {
+		const amount = childrenCount * childPrice;
 		subtotal += amount;
-		items.push({ label: `Child (Room) x ${childrenWithRoom}`, amount });
-	}
-	if (childrenNoRoom > 0 && childNoRoomPrice > 0) {
-		const amount = childrenNoRoom * childNoRoomPrice;
-		subtotal += amount;
-		items.push({ label: `Child x ${childrenNoRoom}`, amount: Math.round(amount) });
+		items.push({ label: `Child x ${childrenCount}`, amount: Math.round(amount) });
 	}
 	if (infantsWithSeat > 0) {
 		const amount = infantsWithSeat * infantSeatPrice;
