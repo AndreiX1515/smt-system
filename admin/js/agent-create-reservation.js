@@ -5810,7 +5810,12 @@ function clearDepositProofFile() {
 }
 
 // 저장 처리
+let _savingInProgress = false;
 async function handleSave() {
+    if (_savingInProgress) return;
+    _savingInProgress = true;
+    const saveButton = document.getElementById('saveBtn');
+    if (saveButton) saveButton.disabled = true;
     try {
         // 필수 필드 검증
         if (!selectedPackage || !selectedPackage.packageId) {
@@ -6017,6 +6022,9 @@ async function handleSave() {
     } catch (error) {
         console.error('Error saving:', error);
         alert(getText('reservationError'));
+    } finally {
+        _savingInProgress = false;
+        if (saveButton) saveButton.disabled = false;
     }
 }
 
