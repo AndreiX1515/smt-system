@@ -900,7 +900,7 @@ async function handleSave() {
         // 예약 완료 플래그 설정 (페이지 이탈 시 삭제 방지)
         isReservationCompleted = true;
 
-        alert('Reservation completed successfully!');
+        alert('The booking will be completed after admin approval.');
         window.location.href = `reservation-detail.html?id=${currentBookingId}`;
 
     } catch (error) {
