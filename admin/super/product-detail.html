@@ -1691,11 +1691,18 @@
 			}
 
 			//  / (   )
+			let __dfghsTemplate = null; // fallback template for when all sight blocks are deleted
 			function template_detail_dfghs(btn) {
 				const panel = btn.closest('.sub-panel');
 				if (!panel) return;
-				const tpl = panel.querySelector('.dfghs');
-				if (!tpl) return;
+				let tpl = panel.querySelector('.dfghs');
+				// Store template on first use for fallback
+				if (tpl && !__dfghsTemplate) __dfghsTemplate = tpl.cloneNode(true);
+				// If no .dfghs block exists (all deleted), use stored template
+				if (!tpl) {
+					if (!__dfghsTemplate) return;
+					tpl = __dfghsTemplate;
+				}
 				const copy = tpl.cloneNode(true);
 				copy.removeAttribute('id');
 				// Clear stale image references from cloned block
@@ -1704,7 +1711,7 @@
 				panel.appendChild(copy);
 				__resetInputs(copy);
 				__resetEditors(copy);
-				// DOM   jw_select   select 
+				// DOM   jw_select   select
 				__resetSelectWidgets(copy);
 				try { copy.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
 				return copy;
@@ -3617,6 +3624,12 @@
 
 			const __boot = async () => {
 				try {
+					// Store dfghs template before data loading can remove all blocks
+					if (!__dfghsTemplate) {
+						const tpl = document.querySelector('.dfghs');
+						if (tpl) __dfghsTemplate = tpl.cloneNode(true);
+					}
+
 					const sessionRes = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
 					const sessionData = await sessionRes.json().catch(() => ({}));
 					if (!sessionData?.authenticated) { window.location.href = '../index.html'; return; }
