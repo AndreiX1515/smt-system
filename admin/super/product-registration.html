@@ -1532,7 +1532,11 @@
 				copy.removeAttribute('id');
 				copy.dataset.day = String(day);
 				copy.classList.add('nday-panel');
-				//   
+				// Clear stale image references inherited from source day panel
+				copy.querySelectorAll('.dfghs').forEach(b => { delete b.dataset.existingImage; });
+				copy.querySelectorAll('.sub-panel').forEach(sp => { delete sp.dataset.existingImage; });
+				copy.querySelectorAll('input[type="file"]').forEach(inp => { delete inp.dataset.existing; });
+				//
 				const dayBtn = copy.querySelector('h3 button');
 				if (dayBtn) {
 					dayBtn.setAttribute('onclick', 'ndasdtoggle(this)');
@@ -3611,11 +3615,11 @@
 						if (descEditor) setEditorHtml(descEditor, String(accom.description || ''), 12);
 
 						// 이미지
-						if (accom.image && imageGrid) {
+						try { block.dataset.existingImage = String(accom.image || ''); } catch (_) {}
+						if (imageGrid) {
 							const fileInput = imageGrid.querySelector('input[type="file"]');
-							try { block.dataset.existingImage = String(accom.image || ''); } catch (_) {}
 							if (fileInput) setExistingFile(fileInput, accom.image || '');
-							setSinglePreview(imageGrid, accom.image || '');
+							if (accom.image) setSinglePreview(imageGrid, accom.image);
 						}
 
 						// 제목 업데이트

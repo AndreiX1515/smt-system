@@ -1621,6 +1621,10 @@
 					copy.removeAttribute('id');
 					copy.dataset.day = String(day);
 					copy.classList.add('nday-panel');
+					// Clear stale image references inherited from Day 1
+					copy.querySelectorAll('.dfghs').forEach(b => { delete b.dataset.existingImage; });
+					copy.querySelectorAll('.sub-panel').forEach(sp => { delete sp.dataset.existingImage; });
+					copy.querySelectorAll('input[type="file"]').forEach(inp => { delete inp.dataset.existing; });
 
 					const dayBtn = copy.querySelector('h3 button');
 					if (dayBtn) {
@@ -3479,9 +3483,9 @@
 							const fi = b.querySelector('.upload-grid input[type="file"]');
 							if (fi) {
 								const ex = String(a.image || '').trim();
+								b.dataset.existingImage = ex;
+								fi.dataset.existing = ex;
 								if (ex) {
-									b.dataset.existingImage = ex;
-									fi.dataset.existing = ex;
 									setPreviewExistingInSlot(fi, ex);
 								}
 							}
@@ -3498,10 +3502,10 @@
 								if (ed) setEditorHtml(ed, d.accommodation?.descriptionHtml || '');
 								const fi = accomPanel.querySelector('.upload-grid input[type="file"]');
 								const ex = String(d.accommodation?.image || '').trim();
-								if (fi && ex) {
+								if (fi) {
 									accomPanel.dataset.existingImage = ex;
 									fi.dataset.existing = ex;
-									setPreviewExistingInSlot(fi, ex);
+									if (ex) setPreviewExistingInSlot(fi, ex);
 								}
 							}
 							const transPanel = Array.from(p.querySelectorAll('.sub-panel')).find(sp => sp.querySelector('[data-lan-eng="Transportation Information"]'));
