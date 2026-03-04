@@ -1618,7 +1618,10 @@
 			if (!tpl) return;
 			const copy = tpl.cloneNode(true);
 			copy.removeAttribute('id');
-			//    /   
+			// Clear stale image references from cloned block
+			delete copy.dataset.existingImage;
+			copy.querySelectorAll('input[type="file"]').forEach(inp => { delete inp.dataset.existing; });
+			//    /
 			__resetInputs(copy);
 			panel.appendChild(copy);
 			// editor  DOM        
@@ -4695,6 +4698,12 @@
 
 		// Fill a dfghs block with sight data
 		function fillSightBlock(block, sight) {
+			// Update block.dataset.existingImage so it matches the new sight image
+			// (prevents stale values from cloneNode taking priority)
+			if (block && sight) {
+				block.dataset.existingImage = sight.sightImage || '';
+			}
+
 			// Fill in the data
 			const inputs = Array.from(block.querySelectorAll('input.form-control'));
 

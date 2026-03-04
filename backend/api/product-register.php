@@ -555,6 +555,12 @@ try {
 
         //  (/uploads/...) copy
         if (!$isUrl && $isUploadsPath) {
+            // sight 이미지 경로(/uploads/sights/)는 복사하지 않고 basename만 반환
+            // sight 이미지는 원본 위치에서 직접 참조해야 함
+            if (preg_match('#^/?uploads/sights/#', $src)) {
+                return basename($src);
+            }
+
             $rel = ltrim($src, '/');
             $abs = $root . '/' . $rel;
             if (!is_file($abs)) return basename($src);
