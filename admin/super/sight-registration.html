@@ -185,6 +185,10 @@
 			} catch (e) {
 				console.error('loadSightDetail error:', e);
 				alert('Error loading sight: ' + e.message);
+				// Sight not found (deleted) — fall back to create mode
+				sightId = null;
+				document.getElementById('pageTitle').textContent = 'Register Sight';
+				document.getElementById('pageTitle').setAttribute('data-lan-eng', 'Register Sight');
 			}
 		}
 
