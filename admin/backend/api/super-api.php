@@ -14928,6 +14928,9 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
 
+                // 같은 타입의 오래된 pending 요청 자동 reject
+                __reject_superseded_change_requests($conn, $bookingId, $changeRequest['id'], $changeRequest['changeType'], $processedBy);
+
                 // 상태 변경 히스토리 저장
                 __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Status change request approved');
 
@@ -15041,6 +15044,9 @@ function approveB2BBooking($conn, $input) {
                     $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
                     $updateReqStmt->execute();
                     $updateReqStmt->close();
+
+                    // 같은 타입의 오래된 pending 요청 자동 reject
+                    __reject_superseded_change_requests($conn, $bookingId, $changeRequest['id'], $changeRequest['changeType'], $processedBy);
 
                     // 상태 변경 히스토리 저장
                     __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Customer info change approved');
@@ -15334,6 +15340,9 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
 
+                // 같은 타입의 오래된 pending 요청 자동 reject
+                __reject_superseded_change_requests($conn, $bookingId, $changeRequest['id'], $changeRequest['changeType'], $processedBy);
+
                 // 상태 변경 히스토리 저장
                 __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Traveler changes approved');
 
@@ -15395,6 +15404,9 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
 
+                // 같은 타입의 오래된 pending 요청 자동 reject
+                __reject_superseded_change_requests($conn, $bookingId, $changeRequest['id'], $changeRequest['changeType'], $processedBy);
+
                 // 이력 추가
                 $historyLabels = [
                     'down' => 'Down Payment deadline',
@@ -15428,6 +15440,9 @@ function approveB2BBooking($conn, $input) {
                 $updateReqStmt->bind_param('si', $processedBy, $changeRequest['id']);
                 $updateReqStmt->execute();
                 $updateReqStmt->close();
+
+                // 같은 타입의 오래된 pending 요청 자동 reject
+                __reject_superseded_change_requests($conn, $bookingId, $changeRequest['id'], $changeRequest['changeType'], $processedBy);
 
                 // 상태 변경 히스토리 저장
                 __log_booking_status_change($conn, $bookingId, 'pending_update', $newStatus, null, null, 'Booking update approved');
@@ -18472,6 +18487,31 @@ function __get_true_original_status($conn, $bookingId, $currentStatus) {
  * - originalStatus가 pending_update/check_reject이면 올바른 상태 조회
  * - 현재 승인하는 요청 외에 남은 pending 요청이 있으면 pending_update 유지
  */
+/**
+ * 변경 요청 승인 시 같은 bookingId + 같은 changeType의 오래된 pending 요청을 자동 reject
+ * (최신 요청이 승인되면 이전 요청은 의미 없으므로 superseded 처리)
+ */
+function __reject_superseded_change_requests($conn, $bookingId, $approvedRequestId, $changeType, $processedBy = 'system') {
+    try {
+        $stmt = $conn->prepare(
+            "UPDATE booking_change_requests SET status = 'rejected', rejectReason = 'Automatically superseded by newer approved request', processedBy = ?, processedAt = NOW() WHERE bookingId = ? AND changeType = ? AND status = 'pending' AND id != ?"
+        );
+        if ($stmt) {
+            $stmt->bind_param('sssi', $processedBy, $bookingId, $changeType, $approvedRequestId);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            if ($affected > 0) {
+                error_log("Auto-rejected {$affected} superseded '{$changeType}' change request(s) for booking {$bookingId}");
+            }
+            return $affected;
+        }
+    } catch (Throwable $e) {
+        error_log("__reject_superseded_change_requests error: " . $e->getMessage());
+    }
+    return 0;
+}
+
 function __resolve_post_approval_status($conn, $bookingId, $changeRequestId, $originalStatus) {
     $resolvedStatus = $originalStatus;
     if (in_array($resolvedStatus, ['pending_update', 'check_reject'])) {
