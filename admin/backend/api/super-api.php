@@ -20858,6 +20858,19 @@ function getExtraOptionsDetailSuper($conn, $input) {
             ];
         }
 
+        // Extra options 변경 이력 조회
+        $history = [];
+        try {
+            $hStmt = $conn->prepare("SELECT description, changedBy, changedByType, createdAt FROM booking_history WHERE bookingId = ? AND changeType = 'extra_options' ORDER BY createdAt DESC LIMIT 20");
+            $hStmt->bind_param('s', $bookingId);
+            $hStmt->execute();
+            $hResult = $hStmt->get_result();
+            while ($h = $hResult->fetch_assoc()) {
+                $history[] = $h;
+            }
+            $hStmt->close();
+        } catch (Throwable $e) {}
+
         send_success_response([
             'booking' => [
                 'bookingId' => $booking['bookingId'],
@@ -20874,7 +20887,8 @@ function getExtraOptionsDetailSuper($conn, $input) {
             'travelerOptions' => $travelerOptions,
             'airlineName' => $airlineName,
             'categories' => $categories,
-            'paymentInfo' => $paymentInfo
+            'paymentInfo' => $paymentInfo,
+            'history' => $history
         ]);
     } catch (Exception $e) {
         send_error_response('Failed to load extra options detail: ' . $e->getMessage(), 500);
@@ -20893,7 +20907,7 @@ function saveExtraOptionsSuper($conn, $input) {
     if (empty($bookingId)) send_error_response('Booking ID is required', 400);
 
     // 예약 존재 확인
-    $chk = $conn->prepare("SELECT bookingId, DATE(departureDate) as depDate FROM bookings WHERE bookingId = ? LIMIT 1");
+    $chk = $conn->prepare("SELECT bookingId, DATE(departureDate) as depDate, COALESCE(flightOptionFee, 0) as prevFee FROM bookings WHERE bookingId = ? LIMIT 1");
     $chk->bind_param('s', $bookingId);
     $chk->execute();
     $chkRow = $chk->get_result()->fetch_assoc();
@@ -20955,6 +20969,26 @@ function saveExtraOptionsSuper($conn, $input) {
         $upsertStmt->bind_param('ssd', $bookingId, $newStatus, $totalOptionFee);
         $upsertStmt->execute();
         $upsertStmt->close();
+
+        // booking_history에 이력 기록
+        try {
+            $prevFee = floatval($chkRow['prevFee'] ?? 0);
+            $adminName = '';
+            $anStmt = $conn->prepare("SELECT CONCAT(COALESCE(firstName,''),' ',COALESCE(lastName,'')) as name FROM accounts WHERE accountId = ? LIMIT 1");
+            $anStmt->bind_param('i', $adminAccountId);
+            $anStmt->execute();
+            $anRow = $anStmt->get_result()->fetch_assoc();
+            $anStmt->close();
+            if ($anRow) $adminName = trim($anRow['name']);
+
+            $desc = 'Extra options updated by Admin' . ($adminName ? " ({$adminName})" : '') . '. Option fee: ₱' . number_format($prevFee, 0) . ' → ₱' . number_format($totalOptionFee, 0);
+            $hStmt = $conn->prepare("INSERT INTO booking_history (bookingId, description, changeType, changedBy, changedByType) VALUES (?, ?, 'extra_options', ?, 'admin')");
+            $hStmt->bind_param('sss', $bookingId, $desc, $adminName);
+            $hStmt->execute();
+            $hStmt->close();
+        } catch (Throwable $e) {
+            error_log('Failed to log extra options history: ' . $e->getMessage());
+        }
 
         $conn->commit();
         send_success_response(['status' => $newStatus, 'amount' => $totalOptionFee], 'Extra options saved successfully');

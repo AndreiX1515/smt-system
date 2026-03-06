@@ -732,6 +732,13 @@
 								<button type="button" class="btn-reject" onclick="rejectOptionPaymentModal()">Reject</button>
 							</div>
 						</div>
+
+						<!-- Extra Options Change History -->
+						<div class="card-panel jw-mgt16" id="extraOptHistorySection" style="display:none;">
+							<h3 class="card-panel-title" style="margin-bottom:12px;">Change History</h3>
+							<div class="card-panel-divider"></div>
+							<div id="extraOptHistoryList" class="jw-mgt12" style="max-height:300px; overflow-y:auto;"></div>
+						</div>
 					</div>
 				</div>
 
@@ -4886,6 +4893,7 @@
 		var _extraOpt_travelerOptionsData = {};
 		var _extraOpt_categoriesData = [];
 		var _extraOpt_paymentInfoData = null;
+		var _extraOpt_historyData = [];
 		var _extraOpt_bookingData = null;
 
 		async function loadExtraOptions() {
@@ -4900,12 +4908,12 @@
 			var selectedOptions = booking.selectedOptions || {};
 			var flights = booking.flights || {};
 			var hasFlight = !!(
-				(flights.departure && flights.departure.flightNumber) ||
-				(flights.return && flights.return.flightNumber) ||
-				(flights.outbound && flights.outbound.flightNumber) ||
-				(flights.DEPARTURE && flights.DEPARTURE.flightNumber) ||
-				(booking.outboundFlight && booking.outboundFlight.flightNumber) ||
-				(booking.inboundFlight && booking.inboundFlight.flightNumber) ||
+				(flights.departure && (flights.departure.flightNumber || flights.departure.flight_number)) ||
+				(flights.return && (flights.return.flightNumber || flights.return.flight_number)) ||
+				(flights.outbound && (flights.outbound.flightNumber || flights.outbound.flight_number)) ||
+				(flights.DEPARTURE && (flights.DEPARTURE.flightNumber || flights.DEPARTURE.flight_number)) ||
+				(booking.outboundFlight && (booking.outboundFlight.flightNumber || booking.outboundFlight.flight_number)) ||
+				(booking.inboundFlight && (booking.inboundFlight.flightNumber || booking.inboundFlight.flight_number)) ||
 				selectedOptions.flightInfo
 			);
 			if (!hasFlight) { tabBtn.style.display = 'none'; return; }
@@ -4928,10 +4936,13 @@
 
 				tabBtn.style.display = '';
 
+				_extraOpt_historyData = json.data.history || [];
+
 				_extraOpt_renderStatusBadge();
 				_extraOpt_renderTravelerOptions();
 				_extraOpt_updateTotalFee();
 				_extraOpt_renderPaymentProof();
+				_extraOpt_renderHistory();
 				_extraOpt_checkDeadline();
 			} catch (e) {
 				console.error('Failed to load extra options:', e);
@@ -5202,6 +5213,34 @@
 				console.error('Failed to delete:', e);
 				alert('Failed to delete: ' + e.message);
 			}
+		}
+
+		function _extraOpt_renderHistory() {
+			var section = document.getElementById('extraOptHistorySection');
+			var list = document.getElementById('extraOptHistoryList');
+			if (!section || !list) return;
+
+			if (!_extraOpt_historyData || _extraOpt_historyData.length === 0) {
+				section.style.display = 'none';
+				return;
+			}
+
+			section.style.display = '';
+			var html = '';
+			_extraOpt_historyData.forEach(function(item) {
+				var date = item.createdAt ? new Date(item.createdAt).toLocaleString() : '-';
+				var badge = item.changedByType === 'agent'
+					? '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Agent</span>'
+					: '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Admin</span>';
+				html += '<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">'
+					+ '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+					+ badge
+					+ '<span style="color:#9ca3af;font-size:12px;">' + date + '</span>'
+					+ '</div>'
+					+ '<div style="color:#374151;">' + (item.description || '-') + '</div>'
+					+ '</div>';
+			});
+			list.innerHTML = html;
 		}
 
 		function _extraOpt_checkDeadline() {

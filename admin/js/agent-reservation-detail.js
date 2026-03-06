@@ -1434,6 +1434,13 @@ function openTravelerEditModal() {
     __tempPassportImages = {};
     renderTravelerEditCards();
     document.getElementById('travelerEditAllModal').style.display = 'flex';
+
+    // 빈 여권 업로드 버튼에 강조 효과 적용
+    setTimeout(() => {
+        if (typeof applyPassportUploadEmphasis === 'function') {
+            applyPassportUploadEmphasis();
+        }
+    }, 100);
 }
 
 // 여행자 수정 모달 닫기
@@ -1728,7 +1735,7 @@ function renderTravelerEditCards() {
                     <div class="form-group">
                         <label>Passport Photo</label>
                         <div class="passport-photo-upload">
-                            <input type="file" id="passport_file_${index}" accept="image/*" style="display:none;" onchange="handlePassportUpload(${index}, this)">
+                            <input type="file" id="passport_file_${index}" accept="image/*" style="display:none;" onchange="handlePassportUploadWithOcr(${index}, this)">
                             <button type="button" class="btn-upload-photo" onclick="document.getElementById('passport_file_${index}').click()">
                                 <img src="../image/upload.svg" alt="" onerror="this.style.display='none'"> Upload Photo
                             </button>

@@ -11441,7 +11441,7 @@ function saveExtraOptions($conn, $input) {
     if (empty($bookingId)) send_error_response('Booking ID is required', 400);
 
     // 권한 확인 + 출발일 조회
-    $chk = $conn->prepare("SELECT bookingId, DATE(departureDate) as depDate FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
+    $chk = $conn->prepare("SELECT bookingId, DATE(departureDate) as depDate, COALESCE(flightOptionFee, 0) as prevFee FROM bookings WHERE bookingId = ? AND agentId IN (SELECT id FROM agent WHERE accountId = ?) LIMIT 1");
     $chk->bind_param('si', $bookingId, $agentAccountId);
     $chk->execute();
     $chkRow = $chk->get_result()->fetch_assoc();
@@ -11505,6 +11505,27 @@ function saveExtraOptions($conn, $input) {
         $upsertStmt->bind_param('ssd', $bookingId, $newStatus, $totalOptionFee);
         $upsertStmt->execute();
         $upsertStmt->close();
+
+        // booking_history에 이력 기록
+        try {
+            $prevFee = floatval($chkRow['prevFee'] ?? 0);
+
+            $agentName = '';
+            $anStmt = $conn->prepare("SELECT COALESCE(NULLIF(agencyName,''), CONCAT(fName,' ',lName)) as name FROM agent WHERE accountId = ? LIMIT 1");
+            $anStmt->bind_param('i', $agentAccountId);
+            $anStmt->execute();
+            $anRow = $anStmt->get_result()->fetch_assoc();
+            $anStmt->close();
+            if ($anRow) $agentName = trim($anRow['name']);
+
+            $desc = 'Extra options updated by Agent' . ($agentName ? " ({$agentName})" : '') . '. Option fee: ₱' . number_format($prevFee, 0) . ' → ₱' . number_format($totalOptionFee, 0);
+            $hStmt = $conn->prepare("INSERT INTO booking_history (bookingId, description, changeType, changedBy, changedByType) VALUES (?, ?, 'extra_options', ?, 'agent')");
+            $hStmt->bind_param('sss', $bookingId, $desc, $agentName);
+            $hStmt->execute();
+            $hStmt->close();
+        } catch (Throwable $e) {
+            error_log('Failed to log extra options history: ' . $e->getMessage());
+        }
 
         $conn->commit();
         send_success_response(['status' => $newStatus, 'amount' => $totalOptionFee], 'Extra options saved successfully');
