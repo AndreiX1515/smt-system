@@ -82,31 +82,34 @@ try {
     exit(1);
 }
 
-// ========== 3시간 데드라인 초과 full payment 예약 자동 취소 ==========
-echo $logPrefix . "Checking for expired 3-hour full payment bookings...\n";
+// ========== DATETIME 데드라인 초과 full payment 예약 자동 처리 ==========
+// < 34일: +3시간 deadline → 즉시 cancelled (waiting_cancelled 없음)
+// 34~39일: +24시간 deadline → waiting_cancelled 전환 (24시간 유예 후 최종 취소)
+echo $logPrefix . "Checking for expired DATETIME full payment bookings...\n";
 try {
     // fullPaymentDueDate가 DATETIME이고, 현재시각을 초과했고, 결제증빙 미업로드인 예약
-    $stmt3h = $conn->prepare("
-        SELECT bookingId FROM bookings
+    $stmtDT = $conn->prepare("
+        SELECT bookingId, fullPaymentDueDate, departureDate FROM bookings
         WHERE paymentType = 'full'
           AND fullPaymentDueDate IS NOT NULL
           AND fullPaymentDueDate <= NOW()
+          AND LENGTH(fullPaymentDueDate) > 10
           AND bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft')
           AND COALESCE(fullPaymentFile, '') = ''
     ");
-    $stmt3h->execute();
-    $result3h = $stmt3h->get_result();
+    $stmtDT->execute();
+    $resultDT = $stmtDT->get_result();
 
-    $expired3hBookings = [];
-    while ($row3h = $result3h->fetch_assoc()) {
-        $expired3hBookings[] = $row3h['bookingId'];
+    $expiredDTBookings = [];
+    while ($rowDT = $resultDT->fetch_assoc()) {
+        $expiredDTBookings[] = $rowDT;
     }
-    $stmt3h->close();
+    $stmtDT->close();
 
-    if (empty($expired3hBookings)) {
-        echo $logPrefix . "No expired 3-hour full payment bookings found.\n";
+    if (empty($expiredDTBookings)) {
+        echo $logPrefix . "No expired DATETIME full payment bookings found.\n";
     } else {
-        echo $logPrefix . "Found " . count($expired3hBookings) . " expired 3-hour full payment booking(s).\n";
+        echo $logPrefix . "Found " . count($expiredDTBookings) . " expired DATETIME full payment booking(s).\n";
 
         // Email notification service
         $email_service_file = __DIR__ . '/../services/email_notification_service.php';
@@ -115,12 +118,28 @@ try {
         }
 
         $cancelledCount = 0;
-        foreach ($expired3hBookings as $bookingId3h) {
+        $waitingCancelledCount = 0;
+        foreach ($expiredDTBookings as $dtRow) {
+            $bookingIdDT = $dtRow['bookingId'];
+
+            // 출발일까지 남은 일수로 3시간 vs 24시간 구분
+            $daysUntilDep = null;
+            if (!empty($dtRow['departureDate'])) {
+                $nowDT = new DateTime();
+                $nowDT->setTime(0, 0, 0);
+                $depDT = new DateTime($dtRow['departureDate']);
+                $depDT->setTime(0, 0, 0);
+                $daysUntilDep = (int)$nowDT->diff($depDT)->format('%r%a');
+            }
+
+            // < 34일: 즉시 cancelled (3시간 deadline)
+            $isImmediateCancel = ($daysUntilDep !== null && $daysUntilDep < 34);
+
             $conn->begin_transaction();
             try {
                 // Lock and verify
                 $chk = $conn->prepare("SELECT bookingStatus FROM bookings WHERE bookingId = ? FOR UPDATE");
-                $chk->bind_param('s', $bookingId3h);
+                $chk->bind_param('s', $bookingIdDT);
                 $chk->execute();
                 $chkRow = $chk->get_result()->fetch_assoc();
                 $chk->close();
@@ -130,41 +149,65 @@ try {
                     continue;
                 }
 
-                // 즉시 cancelled (waiting_cancelled 거치지 않음)
-                $upd = $conn->prepare("UPDATE bookings SET bookingStatus = 'cancelled', paymentStatus = 'failed', updatedAt = NOW() WHERE bookingId = ?");
-                $upd->bind_param('s', $bookingId3h);
-                $upd->execute();
-                $upd->close();
-
-                // booking_status_history 기록
-                $changedAt3h = date('Y-m-d H:i:s');
-                $hist = $conn->prepare("
-                    INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt)
-                    VALUES (?, ?, 'cancelled', 'System (3hr-Deadline)', 'system', ?)
-                ");
                 $prevStatus = $chkRow['bookingStatus'];
-                $hist->bind_param('sss', $bookingId3h, $prevStatus, $changedAt3h);
-                $hist->execute();
-                $hist->close();
+                $changedAtDT = date('Y-m-d H:i:s');
 
-                $conn->commit();
-                $cancelledCount++;
-                echo $logPrefix . "  Cancelled 3hr-expired booking: {$bookingId3h}\n";
+                if ($isImmediateCancel) {
+                    // 즉시 cancelled (waiting_cancelled 거치지 않음)
+                    $upd = $conn->prepare("UPDATE bookings SET bookingStatus = 'cancelled', paymentStatus = 'failed', updatedAt = NOW() WHERE bookingId = ?");
+                    $upd->bind_param('s', $bookingIdDT);
+                    $upd->execute();
+                    $upd->close();
 
-                // Send cancellation email
-                if (function_exists('send_rejection_notification_email')) {
-                    $reason3h = 'Full payment was not completed within the 3-hour deadline. The booking has been automatically cancelled.';
-                    send_rejection_notification_email($conn, $bookingId3h, 'auto_cancellation', $reason3h);
+                    $hist = $conn->prepare("
+                        INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt, changeReason)
+                        VALUES (?, ?, 'cancelled', 'System (3hr-Deadline)', 'system', ?, 'Full payment not completed within 3-hour deadline')
+                    ");
+                    $hist->bind_param('sss', $bookingIdDT, $prevStatus, $changedAtDT);
+                    $hist->execute();
+                    $hist->close();
+
+                    $conn->commit();
+                    $cancelledCount++;
+                    echo $logPrefix . "  Cancelled 3hr-expired booking: {$bookingIdDT}\n";
+
+                    if (function_exists('send_rejection_notification_email')) {
+                        $reason3h = 'Full payment was not completed within the 3-hour deadline. The booking has been automatically cancelled.';
+                        send_rejection_notification_email($conn, $bookingIdDT, 'auto_cancellation', $reason3h);
+                    }
+                } else {
+                    // 34~39일: waiting_cancelled 전환 (24시간 유예)
+                    $upd = $conn->prepare("UPDATE bookings SET bookingStatus = 'waiting_cancelled', paymentStatus = 'failed', updatedAt = NOW() WHERE bookingId = ?");
+                    $upd->bind_param('s', $bookingIdDT);
+                    $upd->execute();
+                    $upd->close();
+
+                    $hist = $conn->prepare("
+                        INSERT INTO booking_status_history (bookingId, previousStatus, newStatus, changedBy, changedByType, changedAt, changeReason)
+                        VALUES (?, ?, 'waiting_cancelled', 'System (24hr-Deadline)', 'system', ?, 'Full payment not completed within 24-hour deadline')
+                    ");
+                    $hist->bind_param('sss', $bookingIdDT, $prevStatus, $changedAtDT);
+                    $hist->execute();
+                    $hist->close();
+
+                    $conn->commit();
+                    $waitingCancelledCount++;
+                    echo $logPrefix . "  Moved to waiting_cancelled (24hr grace): {$bookingIdDT}\n";
+
+                    if (function_exists('send_pending_cancellation_email')) {
+                        $reason24h = 'Full payment was not completed within the 24-hour deadline. You have 24 hours to resolve this before permanent cancellation.';
+                        send_pending_cancellation_email($conn, $bookingIdDT, $reason24h);
+                    }
                 }
-            } catch (Exception $e3h) {
+            } catch (Exception $eDT) {
                 $conn->rollback();
-                echo $logPrefix . "  ERROR cancelling {$bookingId3h}: " . $e3h->getMessage() . "\n";
+                echo $logPrefix . "  ERROR processing {$bookingIdDT}: " . $eDT->getMessage() . "\n";
             }
         }
-        echo $logPrefix . "Cancelled {$cancelledCount} expired 3-hour full payment booking(s).\n";
+        echo $logPrefix . "Processed: Cancelled={$cancelledCount}, WaitingCancelled={$waitingCancelledCount}\n";
     }
 } catch (Exception $e) {
-    echo $logPrefix . "ERROR in 3-hour check: " . $e->getMessage() . "\n";
+    echo $logPrefix . "ERROR in DATETIME deadline check: " . $e->getMessage() . "\n";
 }
 
 $elapsed = round(microtime(true) - $startTime, 2);

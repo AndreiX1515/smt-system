@@ -765,3 +765,105 @@ ADJHTML;
 </html>
 HTML;
 }
+
+/**
+ * Deadline Extended Email Template
+ */
+function get_deadline_extended_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+    $newDueDate = htmlspecialchars($data['newDueDate'] ?? '');
+    $extendedBy = htmlspecialchars($data['extendedBy'] ?? 'System');
+
+    $stepLabels = [
+        'down' => 'Down Payment', 'second' => 'Second Payment',
+        'balance' => 'Balance Payment', 'full' => 'Full Payment',
+        'middle' => 'Middle Payment', 'middle_balance' => 'Middle Balance Payment'
+    ];
+    $stepLabel = $stepLabels[$data['paymentStep'] ?? ''] ?? ucfirst($data['paymentStep'] ?? '');
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+    {$styles}
+    <div class="email-container">
+        <div class="header"><h1>Payment Deadline Extended</h1></div>
+        <div class="content">
+            <p>Dear {$agentName},</p>
+            <p>The payment deadline for your booking has been extended.</p>
+            <div class="highlight-box">
+                <table class="info-table">
+                    <tr><td class="label">Booking ID:</td><td class="value">{$bookingId}</td></tr>
+                    <tr><td class="label">Package:</td><td class="value">{$packageName}</td></tr>
+                    <tr><td class="label">Payment Step:</td><td class="value">{$stepLabel}</td></tr>
+                    <tr><td class="label">New Due Date:</td><td class="value" style="color: #059669; font-weight: bold;">{$newDueDate}</td></tr>
+                    <tr><td class="label">Extended By:</td><td class="value">{$extendedBy}</td></tr>
+                </table>
+            </div>
+            <p>Please ensure payment is completed before the new deadline to avoid cancellation.</p>
+        </div>
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
+
+/**
+ * Payment Step Change Email Template
+ */
+function get_payment_step_change_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+    $nextDueDate = htmlspecialchars($data['nextDueDate'] ?? 'N/A');
+
+    $stepLabels = [
+        'down' => 'Down Payment', 'second' => 'Second Payment',
+        'balance' => 'Balance Payment', 'full' => 'Full Payment',
+        'middle' => 'Middle Payment', 'middle_balance' => 'Middle Balance Payment'
+    ];
+    $completedLabel = $stepLabels[$data['completedStep'] ?? ''] ?? ucfirst($data['completedStep'] ?? '');
+    $nextLabel = $stepLabels[$data['nextStep'] ?? ''] ?? ucfirst($data['nextStep'] ?? '');
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+    {$styles}
+    <div class="email-container">
+        <div class="header"><h1>Payment Step Confirmed</h1></div>
+        <div class="content">
+            <p>Dear {$agentName},</p>
+            <p>Your <strong>{$completedLabel}</strong> has been confirmed. Please proceed with the next payment step.</p>
+            <div class="highlight-box">
+                <table class="info-table">
+                    <tr><td class="label">Booking ID:</td><td class="value">{$bookingId}</td></tr>
+                    <tr><td class="label">Package:</td><td class="value">{$packageName}</td></tr>
+                    <tr><td class="label">Completed:</td><td class="value" style="color: #059669;">{$completedLabel} &#10003;</td></tr>
+                    <tr><td class="label">Next Step:</td><td class="value" style="color: #dc2626; font-weight: bold;">{$nextLabel}</td></tr>
+                    <tr><td class="label">Due Date:</td><td class="value" style="font-weight: bold;">{$nextDueDate}</td></tr>
+                </table>
+            </div>
+            <p>Please ensure the next payment is completed before the deadline.</p>
+        </div>
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}

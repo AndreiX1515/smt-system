@@ -113,8 +113,9 @@ try {
 
         // 즉시 취소 조건:
         // 1) down/middle payment 증빙 미업로드
-        // 2) 출발 34일 미만
-        $shouldImmediateCancel = !$hasDownOrMiddleProof || ($daysUntilDep !== null && $daysUntilDep < 34);
+        // 2) 출발 34일 미만 full payment
+        $isShortTermFull = ($daysUntilDep !== null && $daysUntilDep < 34 && ($row['paymentType'] ?? '') === 'full');
+        $shouldImmediateCancel = !$hasDownOrMiddleProof || $isShortTermFull;
 
         if ($shouldImmediateCancel) {
             // 즉시 cancelled (유예 없음)

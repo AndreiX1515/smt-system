@@ -4,8 +4,8 @@
  * Payment Due Reminder Cron Script
  *
  * Sends email reminders to agents for upcoming payment deadlines:
- * - 7 days before due date
- * - 1 day before due date
+ * - 3 days before due date (except down/middle payment)
+ * - 1 day before due date (all payment types)
  *
  * Payment types covered:
  * - Down Payment

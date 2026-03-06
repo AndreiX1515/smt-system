@@ -14675,6 +14675,24 @@ function confirmPayment($conn, $input) {
         }
         $stmt->close();
 
+        // Send next payment step notification email
+        $nextStepMap = [
+            'down' => ($bookingPaymentType === 'middle') ? null : 'second',
+            'second' => 'balance',
+            'balance' => null,
+            'full' => null
+        ];
+        $nextStep = $nextStepMap[$paymentType] ?? null;
+        if ($nextStep) {
+            try {
+                if (function_exists('send_payment_step_change_email')) {
+                    send_payment_step_change_email($conn, $bookingId, $paymentType, $nextStep);
+                }
+            } catch (Throwable $emailEx) {
+                error_log("Failed to send payment step change email for {$bookingId}: " . $emailEx->getMessage());
+            }
+        }
+
         send_success_response(['confirmedAt' => $now], 'Payment confirmed successfully');
     } catch (Exception $e) {
         send_error_response('Failed to confirm payment: ' . $e->getMessage());
@@ -14850,14 +14868,113 @@ function approveB2BBooking($conn, $input) {
             if (!in_array($adminUserType, ['admin_kr', 'admin_ph'], true)) {
                 send_error_response('Only admin_kr or admin_ph can approve new bookings', 403);
             }
-            // paymentType에 따라 다른 상태로 변경
-            $newStatus = ($booking['paymentType'] === 'full') ? 'waiting_full_payment' : 'waiting_down_payment';
 
-            $sql = "UPDATE bookings SET bookingStatus = ?, updatedAt = NOW() WHERE bookingId = ?";
+            // === Deadline 재계산 (승인일 기준) ===
+            require_once __DIR__ . '/../../../backend/lib/deadline_calculator.php';
+            require_once __DIR__ . '/../../../backend/lib/booking_payments.php';
+
+            $approvalDate = date('Y-m-d H:i:s');
+            $departureDate = $booking['departureDate'] ?? null;
+            $currentPaymentType = $booking['paymentType'] ?? 'staged';
+            $totalAmount = (float)($booking['totalAmount'] ?? 0);
+
+            // 출발일까지 남은 일수 재계산
+            $daysUntilDeparture = null;
+            if (!empty($departureDate)) {
+                $depDT = new DateTime($departureDate);
+                $todayDT = new DateTime();
+                $todayDT->setTime(0, 0, 0);
+                $depDT->setTime(0, 0, 0);
+                $daysUntilDeparture = (int)$todayDT->diff($depDT)->format('%r%a');
+            }
+
+            // Deadline 계산
+            $deadlines = calculateBookingDeadlines($currentPaymentType, $daysUntilDeparture, $departureDate, $approvalDate);
+            $finalPaymentType = $deadlines['paymentType'];
+
+            // paymentType에 따라 다른 상태로 변경
+            $newStatus = getInitialPaymentStatus($finalPaymentType);
+
+            // bookings 테이블 UPDATE: deadlines + approvedAt + paymentType
+            $updateFields = "bookingStatus = ?, paymentType = ?, approvedAt = ?, updatedAt = NOW()";
+            $updateTypes = 'sss';
+            $updateValues = [$newStatus, $finalPaymentType, $approvalDate];
+
+            // Set deadline columns
+            if ($deadlines['fullPaymentDueDate'] !== null) {
+                $updateFields .= ", fullPaymentDueDate = ?";
+                $updateTypes .= 's';
+                $updateValues[] = $deadlines['fullPaymentDueDate'];
+                // fullPaymentAmount
+                $updateFields .= ", fullPaymentAmount = ?";
+                $updateTypes .= 'd';
+                $updateValues[] = $totalAmount;
+            } else {
+                $updateFields .= ", fullPaymentDueDate = NULL, fullPaymentAmount = NULL";
+            }
+
+            if ($finalPaymentType === 'middle') {
+                // Middle: downPaymentDueDate stores middle deadline, advancePaymentDueDate unused
+                $updateFields .= ", downPaymentDueDate = ?";
+                $updateTypes .= 's';
+                $updateValues[] = $deadlines['secondPaymentDueDate']; // middle deadline stored in downPaymentDueDate
+                $updateFields .= ", advancePaymentDueDate = NULL";
+            } else if ($deadlines['downPaymentDueDate'] !== null) {
+                $updateFields .= ", downPaymentDueDate = ?";
+                $updateTypes .= 's';
+                $updateValues[] = $deadlines['downPaymentDueDate'];
+            } else if ($finalPaymentType === 'full') {
+                $updateFields .= ", downPaymentDueDate = NULL";
+            }
+
+            if ($finalPaymentType !== 'middle') {
+                if ($deadlines['secondPaymentDueDate'] !== null) {
+                    $updateFields .= ", advancePaymentDueDate = ?";
+                    $updateTypes .= 's';
+                    $updateValues[] = $deadlines['secondPaymentDueDate'];
+                } else if ($finalPaymentType === 'full') {
+                    $updateFields .= ", advancePaymentDueDate = NULL";
+                }
+            }
+
+            if ($deadlines['balanceDueDate'] !== null) {
+                $updateFields .= ", balanceDueDate = ?";
+                $updateTypes .= 's';
+                $updateValues[] = $deadlines['balanceDueDate'];
+            } else if ($finalPaymentType === 'full') {
+                $updateFields .= ", balanceDueDate = NULL";
+            }
+
+            $updateValues[] = $bookingId;
+            $updateTypes .= 's';
+
+            $sql = "UPDATE bookings SET {$updateFields} WHERE bookingId = ?";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param('ss', $newStatus, $bookingId);
+            $stmt->bind_param($updateTypes, ...$updateValues);
             $stmt->execute();
             $stmt->close();
+
+            // booking_payments 테이블 dueDate 갱신
+            $payments = getPaymentsByBookingId($conn, $bookingId);
+            if (!empty($payments)) {
+                $stepDeadlineMap = [];
+                if ($finalPaymentType === 'staged') {
+                    $stepDeadlineMap['down'] = $deadlines['downPaymentDueDate'];
+                    $stepDeadlineMap['second'] = $deadlines['secondPaymentDueDate'];
+                    $stepDeadlineMap['balance'] = $deadlines['balanceDueDate'];
+                } elseif ($finalPaymentType === 'middle') {
+                    $stepDeadlineMap['middle'] = $deadlines['secondPaymentDueDate'];
+                    $stepDeadlineMap['middle_balance'] = $deadlines['balanceDueDate'];
+                } elseif ($finalPaymentType === 'full') {
+                    $stepDeadlineMap['full'] = $deadlines['fullPaymentDueDate'];
+                }
+
+                foreach ($stepDeadlineMap as $step => $dueDate) {
+                    if ($dueDate !== null) {
+                        upsertPayment($conn, $bookingId, $step, ['dueDate' => $dueDate]);
+                    }
+                }
+            }
 
             // Google Sheets APP 동기화
             try {
@@ -14868,7 +14985,8 @@ function approveB2BBooking($conn, $input) {
             }
 
             // 상태 변경 히스토리 저장
-            __log_booking_status_change($conn, $bookingId, 'pending', $newStatus, null, null, 'New booking approved');
+            $approvalReason = "New booking approved (paymentType: {$finalPaymentType}, daysUntilDeparture: {$daysUntilDeparture})";
+            __log_booking_status_change($conn, $bookingId, 'pending', $newStatus, null, null, $approvalReason);
 
             // Send booking confirmation email to agent upon approval
             try {
@@ -15932,6 +16050,28 @@ function setPaymentDeadline($conn, $input) {
             'previousData' => json_encode(['type' => $deadlineType, 'deadline' => $currentDeadline]),
             'newData' => json_encode(['type' => $deadlineType, 'deadline' => $deadlineDate])
         ]);
+
+        // booking_payments 테이블도 동기화
+        $stepMap = [
+            'down' => 'down', 'deposit' => 'down',
+            'second' => 'second', 'advance' => 'second',
+            'balance' => 'balance',
+            'full' => 'full'
+        ];
+        $paymentStep = $stepMap[$deadlineType] ?? $deadlineType;
+        if (function_exists('upsertPayment')) {
+            upsertPayment($conn, $bookingId, $paymentStep, ['dueDate' => $deadlineDate]);
+        }
+
+        // Send deadline changed email
+        try {
+            if (function_exists('send_deadline_extended_email')) {
+                $adminName = $_SESSION['admin_username'] ?? 'Admin';
+                send_deadline_extended_email($conn, $bookingId, $paymentStep, $deadlineDate, $adminName);
+            }
+        } catch (Throwable $emailEx) {
+            error_log("Failed to send deadline changed email for {$bookingId}: " . $emailEx->getMessage());
+        }
 
         send_success_response(['directUpdate' => true], 'Payment deadline updated successfully.');
     } catch (Exception $e) {

@@ -220,7 +220,7 @@ class EmailNotificationService {
     private function getPendingPaymentReminders(): array {
         $reminders = [];
 
-        // First, get reminders from the new booking_payments table
+        // First, get reminders from the new booking_payments table (3 days before due)
         $newTableReminders = getPendingPaymentReminders($this->conn, 3);
 
         foreach ($newTableReminders as $row) {
@@ -242,6 +242,17 @@ class EmailNotificationService {
                 'middle_balance' => 'middle_balance'
             ];
             $paymentType = $stepToType[$row['paymentStep']] ?? $row['paymentStep'];
+
+            // Down payment: 1일 전 리마인더만 (3일 전 스킵)
+            $isDownPayment = in_array($row['paymentStep'], ['down', 'middle']);
+            if ($isDownPayment && $daysRemaining > 1) {
+                continue; // Skip 3-day reminder for down/middle payment
+            }
+
+            // Only send at 3 days and 1 day before
+            if ($daysRemaining !== 3 && $daysRemaining !== 1) {
+                continue;
+            }
 
             $notificationType = $paymentType . '_' . ($daysRemaining == 1 ? '1day' : '3day');
 
@@ -779,4 +790,109 @@ function send_pending_cancellation_email(
 ): array {
     $service = new EmailNotificationService($conn);
     return $service->sendPendingCancellationNotification($bookingId, $reason);
+}
+
+/**
+ * Send deadline extended notification email
+ */
+function send_deadline_extended_email(
+    $conn,
+    string $bookingId,
+    string $paymentStep,
+    string $newDueDate,
+    string $extendedBy = 'System'
+): array {
+    try {
+        // Get booking with agent info
+        $sql = "SELECT b.bookingId, b.packageName, b.departureDate,
+                       COALESCE(ag.personInChargeEmail, a.emailAddress) as agentEmail,
+                       COALESCE(ag.agencyName, ag.personInCharge, a.displayName) as agentName
+                FROM bookings b
+                LEFT JOIN accounts a ON b.agentId = a.accountId
+                LEFT JOIN agent ag ON a.accountId = ag.accountId
+                WHERE b.bookingId = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$booking || empty($booking['agentEmail'])) {
+            return ['success' => false, 'message' => 'Booking or agent email not found'];
+        }
+
+        $templateData = [
+            'bookingId' => $bookingId,
+            'packageName' => $booking['packageName'] ?? '',
+            'agentName' => $booking['agentName'] ?? 'Agent',
+            'paymentStep' => $paymentStep,
+            'newDueDate' => $newDueDate,
+            'extendedBy' => $extendedBy,
+        ];
+
+        $htmlBody = get_deadline_extended_template($templateData);
+        $subject = "[SMT Escape] Payment Deadline Extended - {$bookingId}";
+
+        $result = mailer_send($booking['agentEmail'], $subject, $htmlBody);
+        return ['success' => $result['ok'] ?? false, 'message' => $result['error'] ?? 'OK'];
+    } catch (Throwable $e) {
+        error_log("send_deadline_extended_email error: " . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+/**
+ * Send payment step change notification email
+ */
+function send_payment_step_change_email(
+    $conn,
+    string $bookingId,
+    string $completedStep,
+    string $nextStep
+): array {
+    try {
+        $sql = "SELECT b.bookingId, b.packageName, b.departureDate,
+                       COALESCE(ag.personInChargeEmail, a.emailAddress) as agentEmail,
+                       COALESCE(ag.agencyName, ag.personInCharge, a.displayName) as agentName
+                FROM bookings b
+                LEFT JOIN accounts a ON b.agentId = a.accountId
+                LEFT JOIN agent ag ON a.accountId = ag.accountId
+                WHERE b.bookingId = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$booking || empty($booking['agentEmail'])) {
+            return ['success' => false, 'message' => 'Booking or agent email not found'];
+        }
+
+        // Get next step due date
+        $nextDueDate = 'N/A';
+        if (function_exists('getPaymentByStep')) {
+            $nextPayment = getPaymentByStep($conn, $bookingId, $nextStep);
+            if ($nextPayment && !empty($nextPayment['dueDate'])) {
+                $nextDueDate = $nextPayment['dueDate'];
+            }
+        }
+
+        $templateData = [
+            'bookingId' => $bookingId,
+            'packageName' => $booking['packageName'] ?? '',
+            'agentName' => $booking['agentName'] ?? 'Agent',
+            'completedStep' => $completedStep,
+            'nextStep' => $nextStep,
+            'nextDueDate' => $nextDueDate,
+        ];
+
+        $htmlBody = get_payment_step_change_template($templateData);
+        $subject = "[SMT Escape] Payment Step Confirmed - Next: " . ucfirst($nextStep) . " - {$bookingId}";
+
+        $result = mailer_send($booking['agentEmail'], $subject, $htmlBody);
+        return ['success' => $result['ok'] ?? false, 'message' => $result['error'] ?? 'OK'];
+    } catch (Throwable $e) {
+        error_log("send_payment_step_change_email error: " . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
 }

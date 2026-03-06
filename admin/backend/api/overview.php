@@ -560,7 +560,7 @@ function applyB2BAutoCancellation($conn) {
 try {
     $data = [];
     ensurePackageViewsTable($conn);
-    applyB2BAutoCancellation($conn); // 자동취소 활성화
+    // applyB2BAutoCancellation() removed - auto-cancel logic moved to deadline_expiry_cron.php (midnight cron)
 
     // 1. 예약 현황: bookingStatus 컬럼 값 기준 카운트 (단순화)
     // - 빈 bookingStatus는 제외

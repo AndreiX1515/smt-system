@@ -434,9 +434,10 @@ function getDaysUntilDeparture(departureDate) {
 
 /**
  * 결제 타입 제한 적용
- * - <34일: Full Payment Only (3시간 이내)
- * - 34~44일: Middle Payment Only (+3일)
- * - ≥45일: Staged/Middle/Full 모두 선택 가능
+ * - <40일: Full Payment Only
+ * - 40~44일: Middle 또는 Full 선택
+ * - >44일: Staged/Middle/Full 모두 선택 가능
+ * ※ 최종 deadline은 관리자 승인 시 확정됩니다
  */
 function applyPaymentTypeRestrictions(daysUntilDeparture, existingPaymentType) {
     const stagedTabBtn = document.querySelector('[data-payment-type="staged"]');
@@ -444,102 +445,67 @@ function applyPaymentTypeRestrictions(daysUntilDeparture, existingPaymentType) {
     const fullTabBtn = document.querySelector('[data-payment-type="full"]');
     const warningBox = document.getElementById('payment-warning-box');
 
+    function enableTab(btn) {
+        if (!btn) return;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.title = '';
+    }
+    function disableTab(btn, reason) {
+        if (!btn) return;
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+        btn.title = reason;
+    }
+
     // Warning 메시지 업데이트
     if (warningBox) {
         if (daysUntilDeparture !== null && daysUntilDeparture < 34) {
             warningBox.style.background = '#FFF0F0';
             warningBox.style.borderColor = '#FF4444';
             warningBox.style.color = '#CC0000';
-            warningBox.innerHTML = `<strong>Warning:</strong> 현재 출발일로부터 34일 이내의 예약을 선택하셨기때문에, 3시간이내 full payment 로 결제를 완료해주셔야 예약이 확정될수있습니다. 만약 3시간동안 결제가 이루어지지 않을경우 예약은 즉시 취소됩니다`;
+            warningBox.innerHTML = `<strong>Warning:</strong> 출발일까지 34일 미만입니다. Full Payment만 가능하며, 승인 후 3시간 이내에 결제를 완료해야 합니다. 미완료 시 예약이 즉시 취소됩니다.`;
+        } else if (daysUntilDeparture !== null && daysUntilDeparture <= 39) {
+            warningBox.style.background = '#FFF0F0';
+            warningBox.style.borderColor = '#FF4444';
+            warningBox.style.color = '#CC0000';
+            warningBox.innerHTML = `<strong>Warning:</strong> 출발일까지 34~39일입니다. Full Payment만 가능하며, 승인 후 24시간 이내에 결제를 완료해야 합니다.`;
         } else if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
             warningBox.style.background = '#FFF8E6';
             warningBox.style.borderColor = '#FFE082';
             warningBox.style.color = '#8B6914';
-            warningBox.innerHTML = `<strong>Info:</strong> 현재 출발일로부터 34일~44일 이내 예약을 선택하셨기때문에, 3일이내에 결제를 완료해주셔야 예약이 확정될수있습니다. 만약 3일 이내에 결제가 이루어지지 않을경우 예약이 취소될수있습니다`;
+            warningBox.innerHTML = `<strong>Info:</strong> 출발일까지 40~44일입니다. Middle Payment 또는 Full Payment를 선택할 수 있습니다. 최종 deadline은 관리자 승인 시 확정됩니다.`;
         } else {
             warningBox.style.background = '#F0F7FF';
             warningBox.style.borderColor = '#0050C8';
             warningBox.style.color = '#0050C8';
-            warningBox.innerHTML = `<strong>Info:</strong> Staged Payment(3단계), Middle Payment(2단계), Full Payment 중 선택하실 수 있습니다.`;
+            warningBox.innerHTML = `<strong>Info:</strong> Staged Payment(3단계), Middle Payment(2단계), Full Payment 중 선택하실 수 있습니다. 최종 deadline은 관리자 승인 시 확정됩니다.`;
         }
     }
 
-    // <34일: Full Payment만 가능
-    if (daysUntilDeparture !== null && daysUntilDeparture < 34) {
-        // Staged 탭 비활성화
-        if (stagedTabBtn) {
-            stagedTabBtn.disabled = true;
-            stagedTabBtn.style.opacity = '0.5';
-            stagedTabBtn.style.cursor = 'not-allowed';
-            stagedTabBtn.title = 'Only Full Payment available (departure within 34 days)';
-        }
-        // Middle 탭 비활성화
-        if (middleTabBtn) {
-            middleTabBtn.disabled = true;
-            middleTabBtn.style.opacity = '0.5';
-            middleTabBtn.style.cursor = 'not-allowed';
-            middleTabBtn.title = 'Only Full Payment available (departure within 34 days)';
-        }
-        // Full 탭 활성화
-        if (fullTabBtn) {
-            fullTabBtn.disabled = false;
-            fullTabBtn.style.opacity = '1';
-            fullTabBtn.style.cursor = 'pointer';
-            fullTabBtn.title = '';
-        }
-        // Full Payment 강제 선택
+    // <40일: Full Payment만 가능
+    if (daysUntilDeparture !== null && daysUntilDeparture < 40) {
+        disableTab(stagedTabBtn, 'Only Full Payment available (departure within 40 days)');
+        disableTab(middleTabBtn, 'Only Full Payment available (departure within 40 days)');
+        enableTab(fullTabBtn);
         switchPaymentType('full');
     }
-    // 34~44일: Middle Payment만 가능
+    // 40~44일: Middle 또는 Full
     else if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
-        // Staged 탭 비활성화
-        if (stagedTabBtn) {
-            stagedTabBtn.disabled = true;
-            stagedTabBtn.style.opacity = '0.5';
-            stagedTabBtn.style.cursor = 'not-allowed';
-            stagedTabBtn.title = 'Not available (departure 34-44 days)';
-        }
-        // Middle 탭 활성화
-        if (middleTabBtn) {
-            middleTabBtn.disabled = false;
-            middleTabBtn.style.opacity = '1';
-            middleTabBtn.style.cursor = 'pointer';
-            middleTabBtn.title = '';
-        }
-        // Full 탭 비활성화
-        if (fullTabBtn) {
-            fullTabBtn.disabled = true;
-            fullTabBtn.style.opacity = '0.5';
-            fullTabBtn.style.cursor = 'not-allowed';
-            fullTabBtn.title = 'Not available (departure 34-44 days, Middle Payment only)';
-        }
-        // Middle Payment 강제 선택
-        switchPaymentType('middle');
+        disableTab(stagedTabBtn, 'Not available (departure 40-44 days)');
+        enableTab(middleTabBtn);
+        enableTab(fullTabBtn);
+        // 기존 타입이 middle/full이면 유지, 아니면 middle 선택
+        const paymentType = ['middle', 'full'].includes(existingPaymentType) ? existingPaymentType : 'middle';
+        switchPaymentType(paymentType);
     }
-    // ≥45일: Staged/Middle/Full 모두 선택 가능
+    // >44일: Staged/Middle/Full 모두 선택 가능
     else {
-        // Staged 탭 활성화
-        if (stagedTabBtn) {
-            stagedTabBtn.disabled = false;
-            stagedTabBtn.style.opacity = '1';
-            stagedTabBtn.style.cursor = 'pointer';
-            stagedTabBtn.title = '';
-        }
-        // Middle 탭 활성화
-        if (middleTabBtn) {
-            middleTabBtn.disabled = false;
-            middleTabBtn.style.opacity = '1';
-            middleTabBtn.style.cursor = 'pointer';
-            middleTabBtn.title = '';
-        }
-        // Full 탭 활성화
-        if (fullTabBtn) {
-            fullTabBtn.disabled = false;
-            fullTabBtn.style.opacity = '1';
-            fullTabBtn.style.cursor = 'pointer';
-            fullTabBtn.title = '';
-        }
-        // 기존 결제 타입 유지 또는 기본값 staged
+        enableTab(stagedTabBtn);
+        enableTab(middleTabBtn);
+        enableTab(fullTabBtn);
         const paymentType = ['staged', 'middle', 'full'].includes(existingPaymentType) ? existingPaymentType : 'staged';
         switchPaymentType(paymentType);
     }
@@ -580,20 +546,20 @@ function calculatePaymentAmounts(totalAmount, travelerCount, visaFee = 0) {
 }
 
 /**
- * 결제 데드라인 계산
+ * 결제 데드라인 계산 (임시 표시용 - 최종 deadline은 관리자 승인 시 확정)
  * 규칙:
- * - 출발 <34일: Full Payment만, deadline = +3시간 (DATETIME)
- * - 출발 34~44일: Middle Payment만, middle = +3일, middle_balance = +3일
- * - 출발 ≥45일: Staged/Middle/Full 선택
- *   - Staged: Down(+3일), Second(예약일+30일), Balance(출발-45일)
- *   - Middle: +3일/+3일
+ * - 출발 <34일: Full only, 승인 후 +3시간
+ * - 출발 34~39일: Full only, 승인 후 +24시간
+ * - 출발 40~44일: Middle(+24시간)/Full(+3일)
+ * - 출발 >44일: Staged/Middle/Full
+ *   - Staged: Down(+3일), Second(승인일+30일), Balance(출발-40일)
+ *   - Middle: +3일, Balance(출발-40일)
  *   - Full: +3일
  */
 function calculatePaymentDeadlines(departureDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 출발일까지 남은 일수 계산
     let daysUntilDeparture = null;
     let departure = null;
     if (departureDate) {
@@ -602,71 +568,84 @@ function calculatePaymentDeadlines(departureDate) {
         daysUntilDeparture = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
     }
 
-    // Full Payment Deadline 계산
+    const approvalNote = ' (confirmed upon approval)';
+
+    // Full Payment Deadline
     const fullPaymentDeadlineEl = document.getElementById('full_payment_deadline_display');
     if (fullPaymentDeadlineEl) {
         if (daysUntilDeparture !== null && daysUntilDeparture < 34) {
-            // <34일: +3시간 (DATETIME)
-            const deadline3h = new Date(Date.now() + 3 * 60 * 60 * 1000);
-            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-            fullPaymentDeadlineEl.textContent = `By ${deadline3h.toLocaleString('en-US', options)}`;
+            fullPaymentDeadlineEl.textContent = `Within 3 hours after approval`;
+        } else if (daysUntilDeparture !== null && daysUntilDeparture <= 39) {
+            fullPaymentDeadlineEl.textContent = `Within 24 hours after approval`;
+        } else if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+            const deadline3d = new Date(today);
+            deadline3d.setDate(deadline3d.getDate() + 3);
+            fullPaymentDeadlineEl.textContent = `~${formatDisplayDate(deadline3d.toISOString().split('T')[0])}${approvalNote}`;
         } else {
-            // ≥34일: +3일
-            const fullPaymentDeadline = new Date(today);
-            fullPaymentDeadline.setDate(fullPaymentDeadline.getDate() + 3);
-            fullPaymentDeadlineEl.textContent = `By ${formatDisplayDate(fullPaymentDeadline.toISOString().split('T')[0])}`;
+            const deadline3d = new Date(today);
+            deadline3d.setDate(deadline3d.getDate() + 3);
+            fullPaymentDeadlineEl.textContent = `~${formatDisplayDate(deadline3d.toISOString().split('T')[0])}${approvalNote}`;
         }
     }
 
-    // Down Payment Deadline (Staged인 경우만 사용): +3일
-    const downPaymentDeadline = new Date(today);
-    downPaymentDeadline.setDate(downPaymentDeadline.getDate() + 3);
+    // Down Payment Deadline (Staged): +3일
     const downPaymentDeadlineEl = document.getElementById('down_payment_deadline_display');
     if (downPaymentDeadlineEl) {
-        downPaymentDeadlineEl.textContent = `By ${formatDisplayDate(downPaymentDeadline.toISOString().split('T')[0])}`;
+        const downDeadline = new Date(today);
+        downDeadline.setDate(downDeadline.getDate() + 3);
+        downPaymentDeadlineEl.textContent = `~${formatDisplayDate(downDeadline.toISOString().split('T')[0])}${approvalNote}`;
     }
 
-    // Second Payment Deadline (Staged): 예약일 + 30일
+    // Second Payment Deadline (Staged): 승인일+30일 (MAX departure-40)
     const secondPaymentDeadlineEl = document.getElementById('second_payment_deadline_display');
     if (secondPaymentDeadlineEl) {
         const secondDeadline = new Date(today);
         secondDeadline.setDate(secondDeadline.getDate() + 30);
-        // Balance 기한보다 늦으면 Balance에 맞춤
         if (departure) {
             const balanceDeadline = new Date(departure);
-            balanceDeadline.setDate(balanceDeadline.getDate() - 45);
+            balanceDeadline.setDate(balanceDeadline.getDate() - 40);
             if (secondDeadline > balanceDeadline) {
-                secondPaymentDeadlineEl.textContent = `By ${formatDisplayDate(balanceDeadline.toISOString().split('T')[0])}`;
+                secondPaymentDeadlineEl.textContent = `~${formatDisplayDate(balanceDeadline.toISOString().split('T')[0])}${approvalNote}`;
             } else {
-                secondPaymentDeadlineEl.textContent = `By ${formatDisplayDate(secondDeadline.toISOString().split('T')[0])}`;
+                secondPaymentDeadlineEl.textContent = `~${formatDisplayDate(secondDeadline.toISOString().split('T')[0])}${approvalNote}`;
             }
         } else {
-            secondPaymentDeadlineEl.textContent = `By ${formatDisplayDate(secondDeadline.toISOString().split('T')[0])}`;
+            secondPaymentDeadlineEl.textContent = `~${formatDisplayDate(secondDeadline.toISOString().split('T')[0])}${approvalNote}`;
         }
     }
 
-    // Balance Deadline (Staged): 출발 -45일
+    // Balance Deadline (Staged): 출발 -40일
     const balanceDeadlineEl = document.getElementById('balance_deadline_display');
     if (balanceDeadlineEl && departure) {
         const balanceDeadline = new Date(departure);
-        balanceDeadline.setDate(balanceDeadline.getDate() - 45);
+        balanceDeadline.setDate(balanceDeadline.getDate() - 40);
         balanceDeadlineEl.textContent = `By ${formatDisplayDate(balanceDeadline.toISOString().split('T')[0])}`;
     }
 
-    // Middle Payment Deadline: +3일
-    const middlePaymentDeadline = new Date(today);
-    middlePaymentDeadline.setDate(middlePaymentDeadline.getDate() + 3);
+    // Middle Payment Deadline
     const middlePaymentDeadlineEl = document.getElementById('middle_payment_deadline_display');
     if (middlePaymentDeadlineEl) {
-        middlePaymentDeadlineEl.textContent = `By ${formatDisplayDate(middlePaymentDeadline.toISOString().split('T')[0])}`;
+        if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+            middlePaymentDeadlineEl.textContent = `Within 24 hours after approval`;
+        } else {
+            const middleDeadline = new Date(today);
+            middleDeadline.setDate(middleDeadline.getDate() + 3);
+            middlePaymentDeadlineEl.textContent = `~${formatDisplayDate(middleDeadline.toISOString().split('T')[0])}${approvalNote}`;
+        }
     }
 
-    // Middle Balance Deadline: +3일
+    // Middle Balance Deadline: 출발 -40일 (>44일) or 승인일+3일 (40~44일)
     const middleBalanceDeadlineEl = document.getElementById('middle_balance_deadline_display');
     if (middleBalanceDeadlineEl) {
-        const middleBalanceDeadline = new Date(today);
-        middleBalanceDeadline.setDate(middleBalanceDeadline.getDate() + 3);
-        middleBalanceDeadlineEl.textContent = `By ${formatDisplayDate(middleBalanceDeadline.toISOString().split('T')[0])}`;
+        if (daysUntilDeparture !== null && daysUntilDeparture <= 44) {
+            const mbDeadline = new Date(today);
+            mbDeadline.setDate(mbDeadline.getDate() + 3);
+            middleBalanceDeadlineEl.textContent = `~${formatDisplayDate(mbDeadline.toISOString().split('T')[0])}${approvalNote}`;
+        } else if (departure) {
+            const mbDeadline = new Date(departure);
+            mbDeadline.setDate(mbDeadline.getDate() - 40);
+            middleBalanceDeadlineEl.textContent = `By ${formatDisplayDate(mbDeadline.toISOString().split('T')[0])}`;
+        }
     }
 }
 
