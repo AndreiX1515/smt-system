@@ -3472,10 +3472,16 @@ function updateAgent($conn, $input) {
 
         // NOTE:
         // - contractStartDate/contractEndDate : date (nullable)
+        // companyName -> agencyName 매핑 (프론트에서 companyName으로 전송)
+        if (isset($input['companyName']) && !isset($input['agencyName'])) {
+            $input['agencyName'] = $input['companyName'];
+        }
+
         $updatableFields = [
             'fName',
             'lName',
             'contactNo',
+            'agencyName',
             'agentType',
             'agentRole',
             'contractStartDate',
