@@ -2629,8 +2629,42 @@ function createReservation($conn, $input) {
             }
         }
 
-        // 결제 deadline은 출발일 기준으로 아래에서 자동 계산됨
-        // (규칙은 2570~2647 라인 참조)
+        // 출발일 임박 예약 (10일 이내) 시 여행자 정보 필수 검증
+        $departureDate = $input['departureDate'];
+        $today = new DateTime('today');
+        $depDate = new DateTime($departureDate);
+        $diffDays = (int)$today->diff($depDate)->format('%r%a');
+        if ($diffDays <= 10) {
+            $travelers = $input['travelers'] ?? [];
+            foreach ($travelers as $idx => $t) {
+                $missingFields = [];
+                if (empty($t['firstName'])) $missingFields[] = 'First Name';
+                if (empty($t['lastName'])) $missingFields[] = 'Last Name';
+                if (empty($t['birthDate'])) $missingFields[] = 'Date of Birth';
+                if (empty($t['nationality'])) $missingFields[] = 'Nationality';
+                if (empty($t['passportNumber']) && empty($t['passportNo'])) $missingFields[] = 'Passport No.';
+                if (empty($t['passportIssueDate'])) $missingFields[] = 'Passport Issue Date';
+                if (empty($t['passportExpiry'])) $missingFields[] = 'Passport Expiration Date';
+                if (empty($t['profile_source'])) $missingFields[] = 'Profile/Source of Income';
+                // 여권 사진 체크 (파일 업로드 또는 기존 URL)
+                $passportPhotoKey = "passportPhoto_{$idx}";
+                if (empty($files[$passportPhotoKey]['name']) && empty($t['passportImage'])) {
+                    $missingFields[] = 'Passport Photo';
+                }
+                // with_visa인 경우 비자 서류 필수
+                $visaType = strtolower($t['visaType'] ?? '');
+                if ($visaType === 'with_visa') {
+                    $visaDocKey = "visaDocument_{$idx}";
+                    if (empty($files[$visaDocKey]['name']) && empty($t['visaDocument'])) {
+                        $missingFields[] = 'Visa Document';
+                    }
+                }
+                if (!empty($missingFields)) {
+                    $num = $idx + 1;
+                    throw new Exception("Traveler {$num}: The departure date is approaching soon. Please complete all traveler information. Missing: " . implode(', ', $missingFields));
+                }
+            }
+        }
 
         // 트랜잭션 시작
         $conn->begin_transaction();

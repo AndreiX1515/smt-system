@@ -17,6 +17,30 @@ let calendarCurrentYear = new Date().getFullYear(); // 현재 캘린더 연도
 let selectedDateInCalendar = null; // 캘린더에서 선택한 날짜 (YYYY-MM-DD 형식)
 let availableDatesByMonth = {}; // 월별 가용 가능한 날짜 (캐싱용)
 
+// 출발일 임박 여부 (10일 이내)
+let isUrgentDeparture = false;
+
+// 출발일 임박 여부 체크 (오늘로부터 10일 이내인지)
+function checkUrgentDeparture(departureDateStr) {
+    if (!departureDateStr) {
+        isUrgentDeparture = false;
+        return false;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const departure = new Date(departureDateStr);
+    departure.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
+    isUrgentDeparture = diffDays <= 10;
+
+    // 배너 표시/숨김
+    const banner = document.getElementById('urgent-departure-banner');
+    if (banner) {
+        banner.style.display = isUrgentDeparture ? 'block' : 'none';
+    }
+    return isUrgentDeparture;
+}
+
 // 날짜 선택 뷰 관련 전역 변수
 let currentDateView = 'calendar';  // 'calendar' 또는 'table'
 let currentDateSort = 'date';      // 'date' 또는 'price'
@@ -665,6 +689,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                         selectedDateInCalendar = preselectedDate;
                         document.getElementById('departure_date').value = displayDate;
                         document.getElementById('departure_date_value').value = preselectedDate;
+
+                        // 출발일 임박 여부 체크
+                        checkUrgentDeparture(preselectedDate);
 
                         // 선택한 날짜의 가용성 정보 찾기
                         const dateYear = dateObj.getFullYear();
@@ -1632,6 +1659,17 @@ function renderTravelerCards() {
     if (countEl) countEl.textContent = `${travelerModalData.length} Traveler${travelerModalData.length > 1 ? 's' : ''}`;
 
     let html = '';
+
+    // 출발일 임박 경고 배너 (traveler 모달 내)
+    if (isUrgentDeparture) {
+        html += `
+            <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">⚠️</span>
+                <span style="color: #92400E; font-size: 13px; font-weight: 500;">The departure date is approaching soon. Since you are booking close to the departure, please complete all traveler information including passport photo upload.</span>
+            </div>
+        `;
+    }
+
     travelerModalData.forEach((traveler, index) => {
         const isPrimary = traveler.isPrimary || index === 0;
         const hasPassportPhoto = traveler.passportPhotoFile || traveler.passportPhotoUrl;
@@ -1687,25 +1725,25 @@ function renderTravelerCards() {
                         <input type="text" id="traveler-age-${index}" value="${traveler.age != null ? traveler.age : '-'}" readonly class="readonly-field">
                     </div>
                     <div class="form-group">
-                        <label>Date of Birth</label>
+                        <label>Date of Birth ${isUrgentDeparture ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <input type="date" value="${traveler.birthDate || ''}" min="1900-01-01" max="2099-12-31" onchange="updateTravelerBirthDate(${index}, this.value)">
                     </div>
                     <div class="form-group">
-                        <label>Nationality</label>
+                        <label>Nationality ${isUrgentDeparture ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <input type="text" value="${escapeHtml(traveler.nationality || '')}" onchange="updateTravelerField(${index}, 'nationality', this.value)" placeholder="Nationality">
                     </div>
 
                     <!-- Row 3: Passport No., Issue Date, Expiration Date, Visa Application -->
                     <div class="form-group">
-                        <label>Passport No.</label>
+                        <label>Passport No. ${isUrgentDeparture ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <input type="text" value="${escapeHtml(traveler.passportNo || '')}" onchange="updateTravelerField(${index}, 'passportNo', this.value)" placeholder="Passport Number">
                     </div>
                     <div class="form-group">
-                        <label>Passport Issue Date</label>
+                        <label>Passport Issue Date ${isUrgentDeparture ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <input type="date" value="${traveler.passportIssueDate || ''}" min="1900-01-01" max="2099-12-31" onchange="updatePassportIssueDate(${index}, this.value)">
                     </div>
                     <div class="form-group">
-                        <label>Passport Expiration Date</label>
+                        <label>Passport Expiration Date ${isUrgentDeparture ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <input type="date" value="${traveler.passportExpiry || ''}" min="1900-01-01" max="2099-12-31" onchange="updatePassportExpirationDate(${index}, this.value)">
                     </div>
                     <div class="form-group">
@@ -1726,7 +1764,7 @@ function renderTravelerCards() {
 
                     <!-- Row 4: Passport Photo + Visa Upload + Child Room Option -->
                     <div class="form-group">
-                        <label>Passport Photo</label>
+                        <label>Passport Photo ${isUrgentDeparture ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <div class="passport-photo-upload">
                             <input type="file" id="passport-photo-${index}" accept="image/*" onchange="handlePassportPhotoUpload(${index}, this)" style="display:none;">
                             <button type="button" class="btn-upload-photo" onclick="document.getElementById('passport-photo-${index}').click()">
@@ -1749,7 +1787,7 @@ function renderTravelerCards() {
                         </div>
                     </div>
                     <div class="form-group visa-upload-container" id="visa-upload-container-${index}" style="display: ${traveler.visaType === 'with_visa' || traveler.visaType === 'foreign' ? 'block' : 'none'};">
-                        <label>Visa Document</label>
+                        <label>Visa Document ${isUrgentDeparture && (traveler.visaType === 'with_visa') ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <div class="visa-document-upload">
                             <input type="file" id="visa-document-${index}" accept="image/*,.pdf" onchange="handleVisaDocumentUpload(${index}, this)" style="display:none;">
                             <button type="button" class="btn-upload-photo" onclick="document.getElementById('visa-document-${index}').click()">
@@ -2384,8 +2422,24 @@ function saveTravelersFromModal() {
         if (!t.firstName) missing.push('First Name');
         if (!t.lastName) missing.push('Last Name');
         if (!t.profile_source || !t.profile_source.trim()) missing.push('Profile/Source of Income');
+
+        // 출발일 임박 시 추가 필수 필드 검증
+        if (isUrgentDeparture) {
+            if (!t.birthDate) missing.push('Date of Birth');
+            if (!t.nationality || !t.nationality.trim()) missing.push('Nationality');
+            if (!t.passportNo || !t.passportNo.trim()) missing.push('Passport No.');
+            if (!t.passportIssueDate) missing.push('Passport Issue Date');
+            if (!t.passportExpiry) missing.push('Passport Expiration Date');
+            if (!t.passportPhotoFile && !t.passportPhotoUrl) missing.push('Passport Photo');
+            if (t.visaType === 'with_visa' && !t.visaDocumentFile && !t.visaDocumentUrl) missing.push('Visa Document');
+        }
+
         if (missing.length > 0) {
-            alert(`Traveler ${i + 1}: ${missing.join(', ')} is required.`);
+            if (isUrgentDeparture && missing.length > 3) {
+                alert(`Traveler ${i + 1}: The departure date is approaching soon. Please complete all required fields.\n\nMissing: ${missing.join(', ')}`);
+            } else {
+                alert(`Traveler ${i + 1}: ${missing.join(', ')} is required.`);
+            }
             return;
         }
     }
@@ -3351,7 +3405,10 @@ async function confirmDateSelection() {
     if (departureDateValueInput) {
         departureDateValueInput.value = formattedDate;
     }
-    
+
+    // 출발일 임박 여부 체크
+    checkUrgentDeparture(formattedDate);
+
     // 여행 종료일 계산
     updateReturnDate();
     
@@ -5839,12 +5896,32 @@ async function handleSave() {
             return;
         }
 
+        // 출발일 임박 여부 재확인
+        checkUrgentDeparture(departureDateValueInput.value);
+
         // 여행자 정보 검증
         for (let i = 0; i < travelers.length; i++) {
             const traveler = travelers[i];
             if (!traveler.firstName || !traveler.lastName) {
                 alert(getText('requiredFields') + '\n' + getText('enterTravelerName', { index: i + 1 }));
                 return;
+            }
+
+            // 출발일 임박 시 추가 필수 필드 검증
+            if (isUrgentDeparture) {
+                const missing = [];
+                if (!traveler.birthDate) missing.push('Date of Birth');
+                if (!traveler.nationality) missing.push('Nationality');
+                if (!traveler.passportNumber && !traveler.passportNo) missing.push('Passport No.');
+                if (!traveler.passportIssueDate) missing.push('Passport Issue Date');
+                if (!traveler.passportExpiry) missing.push('Passport Expiration Date');
+                if (!traveler.profile_source) missing.push('Profile/Source of Income');
+                if (!traveler.passportPhotoFile && !traveler.passportImage) missing.push('Passport Photo');
+                if (traveler.visaType === 'with_visa' && !traveler.visaDocumentFile && !traveler.visaDocument) missing.push('Visa Document');
+                if (missing.length > 0) {
+                    alert(`Traveler ${i + 1}: The departure date is approaching soon. Please complete all traveler information.\n\nMissing: ${missing.join(', ')}`);
+                    return;
+                }
             }
         }
 

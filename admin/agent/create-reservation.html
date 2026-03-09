@@ -86,6 +86,14 @@
 					<div class="grid-item"></div>
 					<div class="grid-item"></div>
 
+					<!-- 출발일 임박 경고 배너 -->
+					<div id="urgent-departure-banner" class="grid-item" style="grid-column: 1 / -1; display: none;">
+						<div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+							<span style="font-size: 20px;">⚠️</span>
+							<span style="color: #92400E; font-size: 13px; font-weight: 500;">The departure date is approaching soon. Since you are booking close to the departure, please complete all traveler information.</span>
+						</div>
+					</div>
+
 					<!-- 아래 3개는 여행 시작일 선택 후 표시 -->
 					<div class="grid-item hidden" id="trip_range_wrap">
 						<label class="label-name" for="trip_range" data-lan-eng="Travel period">여행 기간</label>
