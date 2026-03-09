@@ -10,7 +10,7 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 .membermenu > .position { display:none; position:absolute; bottom:0; right:10px; z-index: 2000; }
 .membermenu > .position > .wrap { position:relative; }
 .membermenu > .position.on { display:inline-block; }
-.header_memberinfo { position:absolute; top:100%; right:0; z-index: 2001; background:#fff; width:240px; min-height:296px; height:auto; padding:24px 0; display:flex; flex-direction:column; justify-content:center;  align-items:center; box-shadow: 0px 0px 20px 0 rgba(0,0,0,0.1); pointer-events: auto; }
+.header_memberinfo { position:absolute; top:100%; right:0; z-index: 2001; background:#fff; width:240px; height:296px; display:flex; flex-direction:column; justify-content:center;  align-items:center; box-shadow: 0px 0px 20px 0 rgba(0,0,0,0.1); pointer-events: auto; }
 .header_memberinfo .avatar { position:relative; width:60px; height:60px; border-radius:50%; overflow:hidden; background:#EDF4FF; display:flex; justify-content:center; align-items:center; }
 .header_memberinfo .avatar > img { position:absolute; max-width:100%; max-height:100%; object-fit: cover; }
 .header_memberinfo .name { font-size:20px; font-weight:bold; }

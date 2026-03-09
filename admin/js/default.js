@@ -818,13 +818,6 @@ async function hydrateAdminIdentityUI(root) {
 		const roleEl = scope.querySelector('.header_memberinfo .role');
 		if (nameEl) nameEl.textContent = data.displayName || 'ADMIN';
 		if (roleEl) roleEl.textContent = data.roleLabel || 'Employee';
-
-		// agent인 경우 Change Profile 버튼 표시
-		const ut2 = String(data.userType || '');
-		const cpBtn = scope.querySelector('#changeProfileBtn');
-		if (cpBtn && ut2 === 'agent') {
-			cpBtn.style.display = '';
-		}
 	} catch (_) {
 		// ignore
 	}
