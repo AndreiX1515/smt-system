@@ -872,8 +872,10 @@ function renderReservationDetail(data) {
         // 현재 선택된 룸 옵션 저장 (수정용)
         window.currentSelectedRooms = selectedOptions.selectedRooms || [];
 
-        // Room Options 탭 표시 (selectedRooms가 있을 때)
-        if (Array.isArray(window.currentSelectedRooms) && window.currentSelectedRooms.some(r => r && (r.count > 0 || r.quantity > 0))) {
+        // Room Options 탭 표시 (selectedRooms가 있거나, 여행자가 있으면 항상 표시)
+        const hasRooms = Array.isArray(window.currentSelectedRooms) && window.currentSelectedRooms.some(r => r && (r.count > 0 || r.quantity > 0));
+        const hasTravelers = Array.isArray(window.currentTravelers) && window.currentTravelers.length > 0;
+        if (hasRooms || hasTravelers) {
             const roomTabBtn = document.getElementById('roomOptionsTabBtn');
             if (roomTabBtn) roomTabBtn.style.display = '';
             initRoomAssignmentTab();
