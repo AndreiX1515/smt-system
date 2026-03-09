@@ -20574,7 +20574,7 @@ function getRoomingList($conn, $input) {
         // 메인 쿼리: 예약 + 여행객 + 방 배정 정보
         $sql = "SELECT
                     b.bookingId, b.departureDate, b.adults, b.children, b.infants,
-                    b.roomOption, b.selectedRooms, b.bookingStatus, b.specialRequests, b.seatRequest,
+                    b.roomOption, b.selectedRooms, b.selectedOptions, b.bookingStatus, b.specialRequests, b.seatRequest,
                     b.price_tier, b.contactEmail, b.contactPhone,
                     COALESCE(NULLIF(b.packageName,''), p.packageName) AS packageName,
                     p.duration_days, p.common_accommodation_name,
@@ -20656,7 +20656,7 @@ function getRoomingList($conn, $input) {
                 $remarks = implode('; ', $parts);
             }
 
-            // roomOptions JSON 파싱 (selectedRooms 우선, 없으면 roomOption 사용)
+            // roomOptions JSON 파싱 (selectedRooms 컬럼 → roomOption 컬럼 → selectedOptions JSON 내 selectedRooms)
             $selectedRooms = [];
             $rawRooms = $row['selectedRooms'] ?? '';
             if (empty($rawRooms) || $rawRooms === '[]') {
@@ -20673,6 +20673,19 @@ function getRoomingList($conn, $input) {
                         $obj = json_decode($objStr, true);
                         if ($obj && isset($obj['roomId'])) {
                             $selectedRooms[] = $obj;
+                        }
+                    }
+                }
+            }
+            // fallback: selectedOptions JSON 내 selectedRooms
+            if (empty($selectedRooms)) {
+                $rawSelOpts = $row['selectedOptions'] ?? '';
+                if (!empty($rawSelOpts)) {
+                    $selOptsDecoded = json_decode($rawSelOpts, true);
+                    if (is_array($selOptsDecoded)) {
+                        $rooms = $selOptsDecoded['selectedRooms'] ?? [];
+                        if (is_array($rooms) && !empty($rooms)) {
+                            $selectedRooms = $rooms;
                         }
                     }
                 }
