@@ -6438,6 +6438,9 @@ async function saveRoomAssignments() {
         });
     });
 
+    // selectedRooms도 함께 전송하여 bookings 테이블에 저장
+    const selectedRooms = (window.currentSelectedRooms || []).filter(r => r.count > 0 || r.quantity > 0);
+
     try {
         const resp = await fetch('../backend/api/agent-api.php', {
             method: 'POST',
@@ -6446,7 +6449,8 @@ async function saveRoomAssignments() {
             body: JSON.stringify({
                 action: 'saveRoomingAssignments',
                 bookingId: currentBookingId,
-                assignments: assignments
+                assignments: assignments,
+                selectedRooms: selectedRooms
             })
         });
         const json = await resp.json();

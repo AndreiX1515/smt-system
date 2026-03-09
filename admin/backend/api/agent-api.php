@@ -13298,7 +13298,7 @@ function saveAgentRoomingAssignments($conn, $input) {
         }
 
         // 예약 소유권 확인 + departureDate, packageId 자동 조회
-        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
+        $checkSql = "SELECT bookingId, departureDate, packageId, selectedOptions FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param('sii', $bookingId, $agentAccountId, $agentAccountId);
         $checkStmt->execute();
@@ -13313,6 +13313,29 @@ function saveAgentRoomingAssignments($conn, $input) {
 
         $departureDate = $booking['departureDate'] ?? '';
         $packageId = (int)($booking['packageId'] ?? 0);
+
+        // selectedRooms가 전달되면 bookings.selectedRooms와 selectedOptions에 저장
+        $selectedRooms = $input['selectedRooms'] ?? null;
+        if (is_array($selectedRooms)) {
+            $selectedRoomsJson = json_encode($selectedRooms, JSON_UNESCAPED_UNICODE);
+
+            // selectedOptions에도 반영
+            $existingOptions = [];
+            if (!empty($booking['selectedOptions'])) {
+                $existingOptions = json_decode($booking['selectedOptions'], true);
+                if (!is_array($existingOptions)) {
+                    $existingOptions = [];
+                }
+            }
+            $existingOptions['selectedRooms'] = $selectedRooms;
+            $updatedOptionsJson = json_encode($existingOptions, JSON_UNESCAPED_UNICODE);
+
+            $roomUpdateSql = "UPDATE bookings SET selectedRooms = ?, selectedOptions = ?, updatedAt = NOW() WHERE bookingId = ?";
+            $roomUpdateStmt = $conn->prepare($roomUpdateSql);
+            $roomUpdateStmt->bind_param('sss', $selectedRoomsJson, $updatedOptionsJson, $bookingId);
+            $roomUpdateStmt->execute();
+            $roomUpdateStmt->close();
+        }
 
         if (empty($departureDate)) {
             send_error_response('Departure date not found for this booking', 400);
