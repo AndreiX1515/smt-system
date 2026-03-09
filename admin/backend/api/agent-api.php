@@ -9596,9 +9596,9 @@ function updateCustomerInfo($conn, $input) {
         }
 
         // 예약 정보 조회 및 소유권 확인
-        $checkSql = "SELECT bookingId, accountId, selectedOptions, createdAt FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkSql = "SELECT bookingId, accountId, selectedOptions, createdAt FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
         $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
+        $checkStmt->bind_param('sii', $bookingId, $agentAccountId, $agentAccountId);
         $checkStmt->execute();
         $result = $checkStmt->get_result();
 
@@ -10731,9 +10731,9 @@ function updateRoomOptions($conn, $input) {
         }
 
         // 예약 정보 조회 및 소유권 확인
-        $checkSql = "SELECT bookingId, accountId, selectedOptions FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkSql = "SELECT bookingId, accountId, selectedOptions FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
         $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
+        $checkStmt->bind_param('sii', $bookingId, $agentAccountId, $agentAccountId);
         $checkStmt->execute();
         $result = $checkStmt->get_result();
 
@@ -13211,9 +13211,9 @@ function getRoomingAssignments($conn, $input) {
         }
 
         // 예약 소유권 확인 + departureDate, packageId 조회
-        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
         $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
+        $checkStmt->bind_param('sii', $bookingId, $agentAccountId, $agentAccountId);
         $checkStmt->execute();
         $result = $checkStmt->get_result();
 
@@ -13298,9 +13298,9 @@ function saveAgentRoomingAssignments($conn, $input) {
         }
 
         // 예약 소유권 확인 + departureDate, packageId 자동 조회
-        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND accountId = ?";
+        $checkSql = "SELECT bookingId, departureDate, packageId FROM bookings WHERE bookingId = ? AND (accountId = ? OR agentId IN (SELECT id FROM agent WHERE accountId = ?))";
         $checkStmt = $conn->prepare($checkSql);
-        $checkStmt->bind_param('si', $bookingId, $agentAccountId);
+        $checkStmt->bind_param('sii', $bookingId, $agentAccountId, $agentAccountId);
         $checkStmt->execute();
         $result = $checkStmt->get_result();
 
