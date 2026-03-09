@@ -2432,6 +2432,15 @@ function updateProduct($conn, $input) {
 
         $salesStart = trim((string)($input['salesStartDate'] ?? ''));
         $salesEnd = trim((string)($input['salesEndDate'] ?? ''));
+        // salesPeriod ("YYYY-MM-DD ~ YYYY-MM-DD") 에서도 start/end 파싱
+        if ($salesStart === '' && $salesEnd === '') {
+            $salesPeriodInput = trim((string)($input['salesPeriod'] ?? $_POST['salesPeriod'] ?? ''));
+            if ($salesPeriodInput !== '') {
+                $spParts = preg_split('/\s*~\s*/', $salesPeriodInput);
+                $salesStart = isset($spParts[0]) ? trim($spParts[0]) : '';
+                $salesEnd = isset($spParts[1]) ? trim($spParts[1]) : '';
+            }
+        }
         if ($salesStart !== '' || $salesEnd !== '') {
             $spType = get_column_type($conn, 'packages', 'sales_period');
             $spTypeLower = strtolower((string)$spType);
@@ -2448,6 +2457,18 @@ function updateProduct($conn, $input) {
             $updates[] = "sales_period = ?";
             $values[] = $salesPeriod;
             $types .= 's';
+
+            // sales_start_date, sales_end_date 컬럼도 함께 업데이트
+            if ($salesStart !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesStart)) {
+                $updates[] = "sales_start_date = ?";
+                $values[] = $salesStart;
+                $types .= 's';
+            }
+            if ($salesEnd !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesEnd)) {
+                $updates[] = "sales_end_date = ?";
+                $values[] = $salesEnd;
+                $types .= 's';
+            }
         }
 
         if (isset($input['maxParticipants'])) {
