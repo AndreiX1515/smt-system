@@ -45,7 +45,7 @@ try {
         JOIN bookings b ON bp.bookingId = b.bookingId
         WHERE bp.dueDate < CURDATE()
           AND bp.status != 'confirmed'
-          AND b.bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft', 'rejected')
+          AND b.bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft', 'pending', 'rejected')
         ORDER BY bp.dueDate ASC
     ");
     $stmt->execute();
@@ -130,7 +130,7 @@ try {
     $legacySql = "
         SELECT b.bookingId, b.bookingStatus, b.paymentType
         FROM bookings b
-        WHERE b.bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft', 'rejected')
+        WHERE b.bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft', 'pending', 'rejected')
         AND b.bookingId NOT IN (SELECT DISTINCT bookingId FROM booking_payments)
         AND (
             (b.downPaymentDueDate IS NOT NULL AND DATE(b.downPaymentDueDate) < CURDATE() AND COALESCE(b.downPaymentFile, '') = '')

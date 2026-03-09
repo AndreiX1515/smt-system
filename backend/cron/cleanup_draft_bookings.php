@@ -94,7 +94,7 @@ try {
           AND fullPaymentDueDate IS NOT NULL
           AND fullPaymentDueDate <= NOW()
           AND LENGTH(fullPaymentDueDate) > 10
-          AND bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft')
+          AND bookingStatus NOT IN ('cancelled', 'confirmed', 'completed', 'waiting_cancelled', 'draft', 'pending', 'rejected')
           AND COALESCE(fullPaymentFile, '') = ''
     ");
     $stmtDT->execute();
