@@ -1,5 +1,7 @@
 _e2e/
 _reports/
+vendor/
+composer.lock
 .venv-e2e/
 .waitfordel/
 .images/

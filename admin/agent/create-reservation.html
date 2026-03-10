@@ -1132,7 +1132,8 @@
 	<!-- 기본 스크립트 -->
 	<script src="../js/default.js"></script>
 	<script src="../js/agent.js"></script>
-<script src="../js/agent-create-reservation.js?v=20260212"></script>
+<script src="../js/agent-create-reservation.js?v=20260310"></script>
+<script src="../js/passport-ocr.js"></script>
 <script src="../js/datepicker.js"></script>
 <script src="../js/multi-editor.js"></script>
 
@@ -1166,6 +1167,16 @@
 				document.getElementById('traveler-modals-container').innerHTML = html;
 			})
 			.catch(err => console.error('Traveler modal load error:', err));
+
+		// Passport OCR 모달 로드
+		fetch('../inc/modals/passport-ocr-modal.html')
+			.then(res => res.text())
+			.then(html => {
+				const container = document.createElement('div');
+				container.innerHTML = html;
+				document.body.appendChild(container);
+			})
+			.catch(err => console.error('Passport OCR modal load error:', err));
 	</script>
 </body>
 

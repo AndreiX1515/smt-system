@@ -2036,19 +2036,77 @@ window.updateTravelerBirthDate = function(index, birthDate) {
     }
 };
 
-// 여권 사진 업로드 처리
+// 여권 사진 업로드 처리 (OCR 연동)
 window.handlePassportPhotoUpload = function(index, input) {
     if (input.files && input.files[0]) {
-        const file = input.files[0];
-        travelerModalData[index].passportPhotoFile = file;
-
-        // UI 업데이트
-        const infoEl = document.getElementById(`passport-photo-info-${index}`);
-        if (infoEl) {
-            infoEl.classList.remove('hidden');
-            const filenameEl = infoEl.querySelector('.photo-filename');
-            if (filenameEl) filenameEl.textContent = file.name;
+        // OCR 모듈이 있으면 OCR 처리, 없으면 기존 방식
+        if (typeof handlePassportUploadWithOcr === 'function') {
+            handlePassportUploadWithOcr(index, input);
+        } else {
+            const file = input.files[0];
+            travelerModalData[index].passportPhotoFile = file;
+            const infoEl = document.getElementById(`passport-photo-info-${index}`);
+            if (infoEl) {
+                infoEl.classList.remove('hidden');
+                const filenameEl = infoEl.querySelector('.photo-filename');
+                if (filenameEl) filenameEl.textContent = file.name;
+            }
         }
+    }
+};
+
+// OCR 콜백 등록 — OCR 완료 시 traveler 데이터에 반영
+window.__ocrOnConfirm = function(index, ocrData, file, base64) {
+    if (!travelerModalData[index]) return;
+
+    // 파일 저장 (이미지)
+    travelerModalData[index].passportPhotoFile = file;
+
+    // UI 업데이트 — 파일명 표시
+    const infoEl = document.getElementById(`passport-photo-info-${index}`);
+    if (infoEl) {
+        infoEl.classList.remove('hidden');
+        const filenameEl = infoEl.querySelector('.photo-filename');
+        if (filenameEl && file) filenameEl.textContent = file.name;
+    }
+
+    // OCR 데이터가 있으면 traveler 필드에 반영
+    if (ocrData) {
+        if (ocrData.firstName) {
+            travelerModalData[index].firstName = ocrData.firstName;
+            updateTravelerField(index, 'firstName', ocrData.firstName);
+        }
+        if (ocrData.lastName) {
+            travelerModalData[index].lastName = ocrData.lastName;
+            updateTravelerField(index, 'lastName', ocrData.lastName);
+        }
+        if (ocrData.dateOfBirth) {
+            travelerModalData[index].birthDate = ocrData.dateOfBirth;
+            updateTravelerBirthDate(index, ocrData.dateOfBirth);
+        }
+        if (ocrData.passportNumber) {
+            travelerModalData[index].passportNo = ocrData.passportNumber;
+            updateTravelerField(index, 'passportNo', ocrData.passportNumber);
+        }
+        if (ocrData.passportIssueDate) {
+            travelerModalData[index].passportIssueDate = ocrData.passportIssueDate;
+            updateTravelerField(index, 'passportIssueDate', ocrData.passportIssueDate);
+        }
+        if (ocrData.passportExpiryDate) {
+            travelerModalData[index].passportExpiry = ocrData.passportExpiryDate;
+            updateTravelerField(index, 'passportExpiry', ocrData.passportExpiryDate);
+        }
+        if (ocrData.nationality) {
+            travelerModalData[index].nationality = ocrData.nationality;
+            updateTravelerField(index, 'nationality', ocrData.nationality);
+        }
+        if (ocrData.gender) {
+            travelerModalData[index].gender = ocrData.gender;
+            updateTravelerField(index, 'gender', ocrData.gender);
+        }
+
+        // 카드 UI 다시 렌더링하여 변경사항 반영
+        renderTravelerCards();
     }
 };
 

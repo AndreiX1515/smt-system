@@ -1280,6 +1280,44 @@ function scrollToTravelerEditCard(index) {
 // 임시 저장용 여권 이미지 (base64)
 let __tempPassportImages = {};
 
+// OCR 콜백 등록 — OCR 완료 시 예약 상세 페이지 필드에 반영
+window.__ocrOnConfirm = function(index, ocrData, file, base64) {
+    // 이미지 저장
+    if (base64) {
+        __tempPassportImages[index] = base64;
+    }
+
+    // 파일 정보 UI 업데이트
+    const infoEl = document.getElementById('passport-photo-info-' + index);
+    if (infoEl) {
+        infoEl.classList.remove('hidden');
+        const filenameEl = infoEl.querySelector('.photo-filename');
+        if (filenameEl && file) filenameEl.textContent = file.name;
+    }
+
+    // OCR 데이터가 있으면 폼 필드에 반영
+    if (ocrData) {
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+        setVal(`edit_firstname_${index}`, ocrData.firstName);
+        setVal(`edit_lastname_${index}`, ocrData.lastName);
+        setVal(`edit_middlename_${index}`, ocrData.middleName);
+        setVal(`edit_passport_${index}`, ocrData.passportNumber);
+        setVal(`edit_passport_issue_${index}`, ocrData.passportIssueDate);
+        setVal(`edit_passport_expiry_${index}`, ocrData.passportExpiryDate);
+        setVal(`edit_nationality_${index}`, ocrData.nationality);
+        if (ocrData.gender) {
+            const genderEl = document.getElementById(`edit_gender_${index}`);
+            if (genderEl) genderEl.value = ocrData.gender;
+        }
+        if (ocrData.dateOfBirth) {
+            setVal(`edit_birthdate_${index}`, ocrData.dateOfBirth);
+            if (typeof updateTravelerAgeInEdit === 'function') {
+                updateTravelerAgeInEdit(index, ocrData.dateOfBirth);
+            }
+        }
+    }
+};
+
 // Flight Options 전역 변수
 window.__flightOptionCategories = [];
 window.__currentAirlineName = '';
@@ -1852,6 +1890,13 @@ function updateTravelerAgeInEdit(index, birthDate) {
     if (infantSeatContainer) {
         infantSeatContainer.style.display = type.toLowerCase() === 'infant' ? 'block' : 'none';
     }
+}
+
+// OCR 모듈 미로드 시 폴백 (기존 방식으로 업로드)
+if (typeof handlePassportUploadWithOcr === 'undefined') {
+    window.handlePassportUploadWithOcr = function(index, input) {
+        handlePassportUpload(index, input);
+    };
 }
 
 // 여권 이미지 업로드 처리

@@ -1366,7 +1366,8 @@
 	<!-- 기본 스크립트 -->
 	<script src="../js/default.js"></script>
 	<script src="../js/agent.js"></script>
-	<script src="../js/agent-reservation-detail.js?v=20260220c"></script>
+	<script src="../js/agent-reservation-detail.js?v=20260310"></script>
+	<script src="../js/passport-ocr.js"></script>
 	<script>
 		init({
 			headerUrl: '../inc/header.html',
@@ -1381,6 +1382,16 @@
 			const container = document.getElementById('traveler-modals-container');
 			if (container) container.innerHTML = viewHtml + editHtml;
 		}).catch(err => console.error('Traveler modal load error:', err));
+
+		// Passport OCR 모달 로드
+		fetch('../inc/modals/passport-ocr-modal.html')
+			.then(res => res.text())
+			.then(html => {
+				const container = document.createElement('div');
+				container.innerHTML = html;
+				document.body.appendChild(container);
+			})
+			.catch(err => console.error('Passport OCR modal load error:', err));
 	</script>
 	<script>
 		(function () {
