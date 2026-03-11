@@ -6071,8 +6071,8 @@ async function handleSave() {
             seatRequest: seatRequestValue,
             otherRequest: otherRequestValue,
             memo: memoValue,
-            // Payment Type - 기본값 staged (Step 2에서 설정)
-            paymentType: 'staged',
+            // Payment Type - 사용자 선택값 반영
+            paymentType: selectedPaymentType || 'staged',
             // 예약 시점 단가 및 비용 정보
             adultPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('adult') : 0) || 0,
             childPrice: (typeof __getUnitPrice === 'function' ? __getUnitPrice('child') : 0) || 0,

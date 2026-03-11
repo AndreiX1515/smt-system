@@ -41,7 +41,10 @@ function calculateBookingDeadlines($paymentType, $daysUntilDeparture, $departure
     ];
 
     // Force payment type based on days until departure
-    if ($daysUntilDeparture < 34) {
+    // NULL 방어: daysUntilDeparture가 null이면 비교하지 않음 (원래 타입 유지)
+    if ($daysUntilDeparture === null) {
+        // daysUntilDeparture를 계산할 수 없으면 원래 paymentType 유지
+    } elseif ($daysUntilDeparture < 34) {
         $result['paymentType'] = 'full';
     } elseif ($daysUntilDeparture >= 34 && $daysUntilDeparture <= 39) {
         $result['paymentType'] = 'full';
@@ -140,6 +143,9 @@ function calculateBookingDeadlines($paymentType, $daysUntilDeparture, $departure
  * @return array List of valid payment type strings
  */
 function getValidPaymentTypes($daysUntilDeparture) {
+    if ($daysUntilDeparture === null) {
+        return ['staged', 'middle', 'full'];
+    }
     if ($daysUntilDeparture < 34) {
         return ['full'];
     } elseif ($daysUntilDeparture >= 34 && $daysUntilDeparture <= 39) {

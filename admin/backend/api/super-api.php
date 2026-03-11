@@ -14870,7 +14870,7 @@ function approveB2BBooking($conn, $input) {
         }
 
         // pending/pending_update 상태인지 확인 및 paymentType 조회
-        $checkSql = "SELECT bookingStatus, paymentType FROM bookings WHERE bookingId = ?";
+        $checkSql = "SELECT bookingStatus, paymentType, departureDate, totalAmount FROM bookings WHERE bookingId = ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param('s', $bookingId);
         $checkStmt->execute();
