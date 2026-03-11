@@ -1828,7 +1828,6 @@ function renderTravelerCards() {
                         <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source of Income" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
                     </div>
                 </div>
-                ${renderFlightOptionsForTraveler(index)}
             </div>
         `;
     });
@@ -2603,6 +2602,9 @@ function updateTravelerSummary() {
     });
 
     listEl.innerHTML = html;
+
+    // Extra Options 탭 업데이트 (여행자 변경 시 재렌더링)
+    _createExtraOpt_renderTravelerOptions();
 }
 
 // 파일 뷰어 모달 열기 (공통)
@@ -3753,6 +3755,7 @@ function removeFlightInfoSection() {
     // 항공 옵션도 초기화
     currentAirlineName = '';
     airlineOptionCategories = [];
+    _createExtraOpt_updateTab();
 }
 
 // Flight number에서 항공사명 추출 (예: "5J188" → "Cebu Pacific")
@@ -3808,6 +3811,7 @@ async function loadAirlineOptions(airlineName) {
         currentAirlineName = '';
         airlineOptionCategories = [];
     }
+    _createExtraOpt_updateTab();
 }
 
 // 여행자 카드에 항공 옵션 섹션 HTML 생성
@@ -6633,4 +6637,172 @@ function initializeFullPaymentFileUpload() {
         (file) => { fullPaymentFile = file; },
         () => { fullPaymentFile = null; }
     );
+}
+
+// ============================================
+// Extra Options (Create Reservation)
+// ============================================
+
+/**
+ * Extra Options 탭 표시/숨김 및 렌더링
+ * - airlineOptionCategories가 로드되면 탭 표시
+ * - travelers 배열 기반으로 여행자별 옵션 렌더링
+ */
+function _createExtraOpt_updateTab() {
+    const tabBtn = document.getElementById('extraOptTabBtn');
+    if (!tabBtn) return;
+
+    if (!airlineOptionCategories || airlineOptionCategories.length === 0) {
+        tabBtn.style.display = 'none';
+        return;
+    }
+
+    tabBtn.style.display = '';
+    _createExtraOpt_renderTravelerOptions();
+}
+
+function _createExtraOpt_renderTravelerOptions() {
+    const container = document.getElementById('createExtraOptTravelerContainer');
+    if (!container) return;
+
+    if (!travelers || travelers.length === 0) {
+        container.innerHTML = '<p class="is-center" style="color:#6b7280;">Add travelers first, then select extra options.</p>';
+        return;
+    }
+
+    if (!airlineOptionCategories || airlineOptionCategories.length === 0) {
+        container.innerHTML = '<p class="is-center" style="color:#6b7280;">No flight options available for this package.</p>';
+        return;
+    }
+
+    container.innerHTML = travelers.map(function(traveler, idx) {
+        const name = ((traveler.firstName || '') + ' ' + (traveler.lastName || '')).trim() || ('Traveler ' + (idx + 1));
+        const type = (traveler.type || 'adult').toLowerCase();
+        const selectedIds = (traveler.flightOptions || []).map(id => Number(id));
+
+        const categoriesHtml = airlineOptionCategories.map(function(cat) {
+            const optionsHtml = (cat.options || []).map(function(opt) {
+                const optId = Number(opt.option_id);
+                const checked = selectedIds.includes(optId) ? 'checked' : '';
+                const priceText = '₱' + Number(opt.price).toLocaleString('en-US');
+                return '<div class="extra-opt-item">' +
+                    '<label>' +
+                    '<input type="checkbox" value="' + optId + '"' +
+                    ' data-ceo-traveler="' + idx + '" data-ceo-option="' + optId + '" data-ceo-price="' + opt.price + '"' +
+                    ' data-ceo-category="' + cat.category_id + '"' +
+                    ' ' + checked + ' onchange="_createExtraOpt_onOptionChange(this)">' +
+                    escapeHtml(opt.option_name_en || opt.option_name) +
+                    '</label>' +
+                    '<span class="extra-opt-price">' + priceText + '</span>' +
+                    '</div>';
+            }).join('');
+
+            return '<div class="extra-opt-category">' +
+                '<div class="extra-opt-category-title">' + escapeHtml(cat.category_name_en || cat.category_name) + '</div>' +
+                optionsHtml +
+                '</div>';
+        }).join('');
+
+        return '<div class="extra-opt-traveler-card" data-ceo-card="' + idx + '">' +
+            '<div class="extra-opt-traveler-card-header" onclick="_createExtraOpt_toggleCard(this)">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<h4>' + escapeHtml(name) + '</h4>' +
+            '<span class="extra-opt-type-badge ' + type + '">' + type + '</span>' +
+            '</div>' +
+            '<span class="ceo-chevron">&#9660;</span>' +
+            '</div>' +
+            '<div class="extra-opt-traveler-card-body">' +
+            categoriesHtml +
+            '<div class="extra-opt-subtotal" id="createExtraOptSubtotal_' + idx + '">Subtotal: ₱0</div>' +
+            '</div>' +
+            '</div>';
+    }).join('');
+
+    // 초기 서브토탈 계산
+    travelers.forEach(function(_, idx) { _createExtraOpt_updateSubtotal(idx); });
+    _createExtraOpt_updateTotalFee();
+}
+
+window._createExtraOpt_onOptionChange = function(checkbox) {
+    const travelerIdx = parseInt(checkbox.dataset.ceoTraveler);
+    const categoryId = checkbox.dataset.ceoCategory;
+    const optionId = Number(checkbox.dataset.ceoOption);
+    const price = Number(checkbox.dataset.ceoPrice) || 0;
+
+    // 같은 카테고리 내에서는 하나만 선택 (라디오 동작)
+    if (checkbox.checked) {
+        document.querySelectorAll('input[data-ceo-traveler="' + travelerIdx + '"][data-ceo-category="' + categoryId + '"]').forEach(function(cb) {
+            if (cb !== checkbox) cb.checked = false;
+        });
+    }
+
+    // travelers 배열에 선택 반영
+    if (travelers[travelerIdx]) {
+        if (!travelers[travelerIdx].flightOptions) travelers[travelerIdx].flightOptions = [];
+        if (!travelers[travelerIdx].flightOptionPrices) travelers[travelerIdx].flightOptionPrices = {};
+
+        const options = travelers[travelerIdx].flightOptions;
+        const prices = travelers[travelerIdx].flightOptionPrices;
+
+        // 같은 카테고리의 기존 선택 제거
+        document.querySelectorAll('input[data-ceo-traveler="' + travelerIdx + '"][data-ceo-category="' + categoryId + '"]').forEach(function(cb) {
+            const id = Number(cb.dataset.ceoOption);
+            const idx = options.indexOf(id);
+            if (idx !== -1) options.splice(idx, 1);
+            delete prices[id];
+        });
+
+        // 새로 체크된 옵션 추가
+        if (checkbox.checked) {
+            options.push(optionId);
+            prices[optionId] = price;
+        }
+    }
+
+    _createExtraOpt_updateSubtotal(travelerIdx);
+    _createExtraOpt_updateTotalFee();
+};
+
+function _createExtraOpt_updateSubtotal(travelerIdx) {
+    const checkboxes = document.querySelectorAll('input[data-ceo-traveler="' + travelerIdx + '"]:checked');
+    let subtotal = 0;
+    checkboxes.forEach(function(cb) { subtotal += parseFloat(cb.dataset.ceoPrice) || 0; });
+    const el = document.getElementById('createExtraOptSubtotal_' + travelerIdx);
+    if (el) el.textContent = 'Subtotal: ₱' + Number(subtotal).toLocaleString('en-US');
+}
+
+function _createExtraOpt_updateTotalFee() {
+    let total = 0;
+    document.querySelectorAll('input[data-ceo-traveler]:checked').forEach(function(cb) {
+        total += parseFloat(cb.dataset.ceoPrice) || 0;
+    });
+    const el = document.getElementById('createExtraOptTotalFee');
+    if (el) el.textContent = '₱' + Number(total).toLocaleString('en-US');
+    const notice = document.getElementById('createExtraOptBalanceNotice');
+    if (notice) notice.style.display = total > 0 ? 'flex' : 'none';
+}
+
+window._createExtraOpt_toggleCard = function(headerEl) {
+    const card = headerEl.closest('.extra-opt-traveler-card');
+    if (card) card.classList.toggle('collapsed');
+};
+
+function _createExtraOpt_getSelectedOptions() {
+    const options = [];
+    document.querySelectorAll('input[data-ceo-traveler]:checked').forEach(function(cb) {
+        options.push({
+            travelerIndex: parseInt(cb.dataset.ceoTraveler),
+            optionId: parseInt(cb.dataset.ceoOption),
+            price: parseFloat(cb.dataset.ceoPrice) || 0
+        });
+    });
+    return options;
+}
+
+function _createExtraOpt_getTotalFee() {
+    let total = 0;
+    document.querySelectorAll('input[data-ceo-traveler]:checked').forEach(function(cb) {
+        total += parseFloat(cb.dataset.ceoPrice) || 0;
+    });
+    return total;
 }

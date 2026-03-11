@@ -226,6 +226,7 @@
 			<div class="detail-tabs-nav">
 				<button type="button" class="detail-tab-btn is-active" data-tab-target="tabCreateTravelers" onclick="switchDetailTab(this)">Travelers <span class="tab-badge not-set" id="badge-travelers">Not Set</span></button>
 				<button type="button" class="detail-tab-btn" data-tab-target="tabCreateRoomOptions" onclick="switchDetailTab(this)">Room Options <span class="tab-badge not-set" id="badge-room-options">Not Set</span></button>
+				<button type="button" class="detail-tab-btn" id="extraOptTabBtn" data-tab-target="tabCreateExtraOptions" onclick="switchDetailTab(this)" style="display:none;">Extra Options</button>
 			</div>
 
 			<!-- Tab: Travelers -->
@@ -298,6 +299,26 @@
 				</div>
 			</div><!-- /card-panel -->
 			</div><!-- /tabCreateRoomOptions -->
+
+			<!-- Tab: Extra Options -->
+			<div class="detail-tab-panel" id="tabCreateExtraOptions" style="display:none;">
+				<div class="card-panel">
+					<div id="createExtraOptTravelerContainer">
+						<p class="is-center" style="color:#6b7280;">Add travelers first, then select extra options.</p>
+					</div>
+				</div>
+				<div class="card-panel jw-mgt16">
+					<div id="createExtraOptBalanceNotice" class="extra-opt-balance-notice" style="display:none;">
+						<svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;"><circle cx="8" cy="8" r="7" stroke="#2563eb" stroke-width="1.5"/><path d="M8 7v4M8 5.5v-.01" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/></svg>
+						<span>This fee will be included in the balance payment.</span>
+					</div>
+					<div class="extra-opt-total-summary">
+						<span>Total Option Fee</span>
+						<span class="extra-opt-total-amount" id="createExtraOptTotalFee">&#8369;0</span>
+					</div>
+				</div>
+			</div><!-- /tabCreateExtraOptions -->
+
 		</div><!-- /detail-tabs -->
 		<style>
 			/* ── Detail Tabs ── */
@@ -335,6 +356,54 @@
 				color: #059669;
 			}
 			.detail-tab-panel { padding-top: 16px; }
+			/* ── Extra Options ── */
+			.extra-opt-traveler-card {
+				border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px;
+			}
+			.extra-opt-traveler-card-header {
+				display: flex; justify-content: space-between; align-items: center;
+				margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+			}
+			.extra-opt-traveler-card-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+			.extra-opt-type-badge {
+				display: inline-block; padding: 2px 8px; border-radius: 4px;
+				font-size: 11px; font-weight: 600; text-transform: uppercase;
+			}
+			.extra-opt-type-badge.adult { background: #dbeafe; color: #1d4ed8; }
+			.extra-opt-type-badge.child { background: #fef3c7; color: #b45309; }
+			.extra-opt-type-badge.infant { background: #fce7f3; color: #be185d; }
+			.extra-opt-category { margin-bottom: 12px; }
+			.extra-opt-category-title {
+				font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;
+			}
+			.extra-opt-item {
+				display: flex; align-items: center; gap: 8px; padding: 6px 0;
+			}
+			.extra-opt-item label {
+				display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;
+			}
+			.extra-opt-price { color: #6b7280; font-size: 12px; margin-left: auto; }
+			.extra-opt-subtotal {
+				text-align: right; font-weight: 600; font-size: 14px; color: #1d4ed8;
+				padding-top: 8px; border-top: 1px solid #e5e7eb; margin-top: 8px;
+			}
+			.extra-opt-total-summary {
+				display: flex; justify-content: space-between; align-items: center;
+				padding: 16px 20px; background: #f0f9ff; border-radius: 8px;
+				font-size: 16px; font-weight: 700;
+			}
+			.extra-opt-total-amount { color: #1d4ed8; font-size: 20px; }
+			.extra-opt-balance-notice {
+				display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+				background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;
+				font-size: 13px; color: #1e40af; margin-bottom: 12px;
+			}
+			.extra-opt-traveler-card-header { cursor: pointer; user-select: none; }
+			.extra-opt-traveler-card-header .ceo-chevron {
+				transition: transform 0.2s; font-size: 12px; color: #9ca3af; margin-left: 8px;
+			}
+			.extra-opt-traveler-card.collapsed .extra-opt-traveler-card-body { display: none; }
+			.extra-opt-traveler-card.collapsed .ceo-chevron { transform: rotate(-90deg); }
 			/* ── Traveler Summary ── */
 			.traveler-summary-section {
 				padding: 8px 0;

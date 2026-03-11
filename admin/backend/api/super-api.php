@@ -20490,6 +20490,12 @@ function confirmOptionPayment($conn, $input) {
         $stmt->execute();
         $stmt->close();
 
+        // 미결제 separate 옵션들을 결제완료로 마킹
+        $markPaid = $conn->prepare("UPDATE booking_traveler_options SET is_paid = 1 WHERE booking_id = ? AND paid_via = 'separate' AND is_paid = 0");
+        $markPaid->bind_param('s', $bookingId);
+        $markPaid->execute();
+        $markPaid->close();
+
         send_success_response(['confirmedAt' => $now], 'Option payment confirmed successfully');
     } catch (Exception $e) {
         send_error_response('Failed to confirm option payment: ' . $e->getMessage(), 500);
@@ -20967,7 +20973,7 @@ function getExtraOptionsDetailSuper($conn, $input) {
         $travelersStmt->close();
 
         // 여행자별 기존 옵션 조회
-        $optionsSql = "SELECT traveler_index, option_id, price, paid_via FROM booking_traveler_options WHERE booking_id = ?";
+        $optionsSql = "SELECT traveler_index, option_id, price, paid_via, is_paid FROM booking_traveler_options WHERE booking_id = ?";
         $optionsStmt = $conn->prepare($optionsSql);
         $optionsStmt->bind_param('s', $bookingId);
         $optionsStmt->execute();
@@ -20979,7 +20985,8 @@ function getExtraOptionsDetailSuper($conn, $input) {
             $travelerOptions[$idx][] = [
                 'optionId' => intval($opt['option_id']),
                 'price' => floatval($opt['price']),
-                'paidVia' => $opt['paid_via'] ?? 'separate'
+                'paidVia' => $opt['paid_via'] ?? 'separate',
+                'isPaid' => intval($opt['is_paid'] ?? 0)
             ];
         }
         $optionsStmt->close();
@@ -21177,66 +21184,151 @@ function saveExtraOptionsSuper($conn, $input) {
             $upsertStmt->execute();
             $upsertStmt->close();
         } else {
-            // ▶ 확정 후: balance 옵션은 보존, separate 옵션만 교체
-            $balanceStmt = $conn->prepare("SELECT traveler_index, option_id, price FROM booking_traveler_options WHERE booking_id = ? AND paid_via = 'balance'");
-            $balanceStmt->bind_param('s', $bookingId);
-            $balanceStmt->execute();
-            $balanceResult = $balanceStmt->get_result();
-            $balanceOptions = [];
-            $balanceFee = 0;
-            while ($bOpt = $balanceResult->fetch_assoc()) {
-                $key = $bOpt['traveler_index'] . '_' . $bOpt['option_id'];
-                $balanceOptions[$key] = true;
-                $balanceFee += floatval($bOpt['price']);
-            }
-            $balanceStmt->close();
+            // ▶ 확정 후 (Super Admin): 모든 옵션 수정 가능 (balance/paid separate 해제 = 환불)
 
-            // separate 옵션만 삭제 (balance는 보존)
-            $delStmt = $conn->prepare("DELETE FROM booking_traveler_options WHERE booking_id = ? AND paid_via = 'separate'");
+            // 1) 기존 모든 옵션 조회
+            $existStmt = $conn->prepare("SELECT traveler_index, option_id, price, paid_via, is_paid FROM booking_traveler_options WHERE booking_id = ?");
+            $existStmt->bind_param('s', $bookingId);
+            $existStmt->execute();
+            $existResult = $existStmt->get_result();
+            $existingOptions = [];
+            while ($eOpt = $existResult->fetch_assoc()) {
+                $key = $eOpt['traveler_index'] . '_' . $eOpt['option_id'];
+                $existingOptions[$key] = $eOpt;
+            }
+            $existStmt->close();
+
+            // 2) 프론트엔드 제출 옵션 세트
+            $submittedKeys = [];
+            foreach ($travelerOptions as $item) {
+                $key = intval($item['travelerIndex']) . '_' . intval($item['optionId']);
+                $submittedKeys[$key] = $item;
+            }
+
+            // 3) 제거된 옵션 감지
+            $removedBalanceFee = 0;
+            $removedPaidSeparateFee = 0;
+            $removedDescriptions = [];
+            foreach ($existingOptions as $key => $eOpt) {
+                if (!isset($submittedKeys[$key])) {
+                    $fee = floatval($eOpt['price']);
+                    if ($eOpt['paid_via'] === 'balance') {
+                        $removedBalanceFee += $fee;
+                        $removedDescriptions[] = "Balance option (traveler {$eOpt['traveler_index']}, option {$eOpt['option_id']}) ₱" . number_format($fee, 0);
+                    } else if ($eOpt['paid_via'] === 'separate' && intval($eOpt['is_paid']) === 1) {
+                        $removedPaidSeparateFee += $fee;
+                        $removedDescriptions[] = "Paid separate option (traveler {$eOpt['traveler_index']}, option {$eOpt['option_id']}) ₱" . number_format($fee, 0);
+                    }
+                }
+            }
+
+            // 4) 전체 삭제 후 재삽입 (기존 paid_via/is_paid 보존)
+            $delStmt = $conn->prepare("DELETE FROM booking_traveler_options WHERE booking_id = ?");
             $delStmt->bind_param('s', $bookingId);
             $delStmt->execute();
             $delStmt->close();
 
-            // 새로운 옵션 중 balance에 없는 것만 separate로 삽입
             $separateFee = 0;
-            if (!empty($travelerOptions)) {
-                $insStmt = $conn->prepare("INSERT INTO booking_traveler_options (booking_id, traveler_index, option_id, price, paid_via) VALUES (?, ?, ?, ?, 'separate')");
-                foreach ($travelerOptions as $item) {
+            if (!empty($submittedKeys)) {
+                $insStmt = $conn->prepare("INSERT INTO booking_traveler_options (booking_id, traveler_index, option_id, price, paid_via, is_paid) VALUES (?, ?, ?, ?, ?, ?)");
+                foreach ($submittedKeys as $key => $item) {
                     $travelerIndex = intval($item['travelerIndex']);
                     $optionId = intval($item['optionId']);
                     $price = floatval($item['price'] ?? 0);
-                    $key = $travelerIndex . '_' . $optionId;
-                    if (!isset($balanceOptions[$key])) {
-                        $insStmt->bind_param('siid', $bookingId, $travelerIndex, $optionId, $price);
-                        $insStmt->execute();
+
+                    if (isset($existingOptions[$key])) {
+                        // 기존 옵션: 원래 paid_via, is_paid 유지
+                        $paidVia = $existingOptions[$key]['paid_via'];
+                        $isPaid = intval($existingOptions[$key]['is_paid']);
+                    } else {
+                        // 새 옵션: separate, is_paid=0
+                        $paidVia = 'separate';
+                        $isPaid = 0;
                         $separateFee += $price;
                     }
+                    $insStmt->bind_param('siidsi', $bookingId, $travelerIndex, $optionId, $price, $paidVia, $isPaid);
+                    $insStmt->execute();
                 }
                 $insStmt->close();
             }
 
-            // flightOptionFee = 전체 옵션 합계
-            $feeStmt = $conn->prepare("UPDATE bookings SET flightOptionFee = ? WHERE bookingId = ?");
-            $feeStmt->bind_param('ds', $totalOptionFee, $bookingId);
-            $feeStmt->execute();
-            $feeStmt->close();
+            // 5) 금액 업데이트
+            $paymentType = $chkRow['paymentType'] ?? 'staged';
+            if ($removedBalanceFee > 0) {
+                // balance 환불: totalAmount, balanceAmount/fullPaymentAmount 재계산
+                $oldTotal = floatval($chkRow['totalAmount'] ?? 0);
+                $newTotal = $oldTotal - $removedBalanceFee;
+                if ($paymentType === 'full') {
+                    $feeStmt = $conn->prepare("UPDATE bookings SET flightOptionFee = ?, totalAmount = ?, fullPaymentAmount = ? WHERE bookingId = ?");
+                    $feeStmt->bind_param('ddds', $totalOptionFee, $newTotal, $newTotal, $bookingId);
+                } else {
+                    $oldBalance = floatval($chkRow['balanceAmount'] ?? 0);
+                    $newBalance = max(0, $oldBalance - $removedBalanceFee);
+                    $feeStmt = $conn->prepare("UPDATE bookings SET flightOptionFee = ?, totalAmount = ?, balanceAmount = ? WHERE bookingId = ?");
+                    $feeStmt->bind_param('ddds', $totalOptionFee, $newTotal, $newBalance, $bookingId);
+                }
+                $feeStmt->execute();
+                $feeStmt->close();
+            } else {
+                // balance 환불 없음: flightOptionFee만 업데이트
+                $feeStmt = $conn->prepare("UPDATE bookings SET flightOptionFee = ? WHERE bookingId = ?");
+                $feeStmt->bind_param('ds', $totalOptionFee, $bookingId);
+                $feeStmt->execute();
+                $feeStmt->close();
+            }
 
-            // 별도 결제 금액 = separate 옵션 합계만
-            $newStatus = ($separateFee > 0) ? 'pending_payment' : 'not_set';
-            $upsertSql = "INSERT INTO booking_option_payments (booking_id, option_payment_status, option_payment_amount)
-                           VALUES (?, ?, ?)
-                           ON DUPLICATE KEY UPDATE
-                               option_payment_status = VALUES(option_payment_status),
-                               option_payment_amount = VALUES(option_payment_amount),
-                               option_payment_file = NULL,
-                               option_payment_file_name = NULL,
-                               option_payment_uploaded_at = NULL,
-                               option_payment_rejected_at = NULL,
-                               option_payment_rejection_reason = NULL";
-            $upsertStmt = $conn->prepare($upsertSql);
-            $upsertStmt->bind_param('ssd', $bookingId, $newStatus, $separateFee);
-            $upsertStmt->execute();
-            $upsertStmt->close();
+            // 6) 미결제 separate 결제 상태 관리
+            if ($separateFee > 0) {
+                $newStatus = 'pending_payment';
+                $upsertSql = "INSERT INTO booking_option_payments (booking_id, option_payment_status, option_payment_amount)
+                               VALUES (?, ?, ?)
+                               ON DUPLICATE KEY UPDATE
+                                   option_payment_status = VALUES(option_payment_status),
+                                   option_payment_amount = VALUES(option_payment_amount),
+                                   option_payment_file = NULL,
+                                   option_payment_file_name = NULL,
+                                   option_payment_uploaded_at = NULL,
+                                   option_payment_rejected_at = NULL,
+                                   option_payment_rejection_reason = NULL";
+                $upsertStmt = $conn->prepare($upsertSql);
+                $upsertStmt->bind_param('ssd', $bookingId, $newStatus, $separateFee);
+                $upsertStmt->execute();
+                $upsertStmt->close();
+            } else {
+                $newStatus = 'not_set';
+                $payChk = $conn->prepare("SELECT option_payment_status FROM booking_option_payments WHERE booking_id = ? LIMIT 1");
+                $payChk->bind_param('s', $bookingId);
+                $payChk->execute();
+                $payChkRow = $payChk->get_result()->fetch_assoc();
+                $payChk->close();
+                if ($payChkRow) {
+                    $newStatus = $payChkRow['option_payment_status'];
+                }
+            }
+
+            // 7) 환불 이력 기록
+            if ($removedBalanceFee > 0 || $removedPaidSeparateFee > 0) {
+                try {
+                    $adminName = '';
+                    $anStmt2 = $conn->prepare("SELECT CONCAT(COALESCE(firstName,''),' ',COALESCE(lastName,'')) as name FROM accounts WHERE accountId = ? LIMIT 1");
+                    $anStmt2->bind_param('i', $adminAccountId);
+                    $anStmt2->execute();
+                    $anRow2 = $anStmt2->get_result()->fetch_assoc();
+                    $anStmt2->close();
+                    if ($anRow2) $adminName = trim($anRow2['name']);
+
+                    $refundParts = [];
+                    if ($removedBalanceFee > 0) $refundParts[] = 'Balance refund: ₱' . number_format($removedBalanceFee, 0);
+                    if ($removedPaidSeparateFee > 0) $refundParts[] = 'Separate refund: ₱' . number_format($removedPaidSeparateFee, 0);
+                    $refundDesc = 'Extra options refund by Admin' . ($adminName ? " ({$adminName})" : '') . '. ' . implode(', ', $refundParts);
+                    $hStmt2 = $conn->prepare("INSERT INTO booking_history (bookingId, description, changeType, changedBy, changedByType) VALUES (?, ?, 'extra_options_refund', ?, 'admin')");
+                    $hStmt2->bind_param('sss', $bookingId, $refundDesc, $adminName);
+                    $hStmt2->execute();
+                    $hStmt2->close();
+                } catch (Throwable $e) {
+                    error_log('Failed to log refund history: ' . $e->getMessage());
+                }
+            }
         }
 
         // booking_history에 이력 기록

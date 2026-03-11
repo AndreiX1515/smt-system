@@ -1837,7 +1837,6 @@ function renderTravelerEditCards() {
                         <input type="text" id="edit_profile_source_${index}" value="${escapeHtml(profileSource)}" placeholder="Profile/Source of Income">
                     </div>
                 </div>
-                ${renderFlightOptionsInEdit(index, traveler.flightOptions || [])}
             </div>
         `;
     }).join('');
@@ -5673,6 +5672,18 @@ async function loadExtraOptions() {
 function _extraOpt_renderStatusBadge() {
     var badge = document.getElementById('extraOptStatusBadge');
     if (!badge) return;
+
+    var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+    var paymentStatus = _extraOpt_bookingData?.paymentStatus || '';
+    var isConfirmed = (bookingStatus === 'confirmed' && paymentStatus === 'paid');
+
+    if (!isConfirmed) {
+        // 미확정: balance에 포함되므로 별도 결제 상태 대신 안내
+        badge.textContent = 'Included in Balance';
+        badge.className = 'extra-opt-status-badge checking';
+        return;
+    }
+
     var status = _extraOpt_paymentInfoData?.status || 'not_set';
     var labels = {
         'not_set': 'Not Set',
@@ -5699,23 +5710,38 @@ function _extraOpt_renderTravelerOptions() {
         return;
     }
 
+    var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+    var paymentStatus = _extraOpt_bookingData?.paymentStatus || '';
+    var isConfirmed = (bookingStatus === 'confirmed' && paymentStatus === 'paid');
+
     container.innerHTML = _extraOpt_travelersData.map(function(traveler, idx) {
         var name = ((traveler.firstName || '') + ' ' + (traveler.lastName || '')).trim() || ('Traveler ' + (idx + 1));
         var type = traveler.travelerType || 'adult';
         var selectedOptions = _extraOpt_travelerOptionsData[idx] || [];
         var selectedIds = selectedOptions.map(function(o) { return o.optionId; });
+        // 결제 완료된 옵션 (balance 또는 paid separate)
+        var balanceIds = selectedOptions.filter(function(o) { return o.paidVia === 'balance'; }).map(function(o) { return o.optionId; });
+        var paidSeparateIds = selectedOptions.filter(function(o) { return o.paidVia === 'separate' && o.isPaid === 1; }).map(function(o) { return o.optionId; });
 
         var categoriesHtml = _extraOpt_categoriesData.map(function(cat) {
             var optionsHtml = cat.options.map(function(opt) {
                 var checked = selectedIds.includes(opt.option_id) ? 'checked' : '';
-                return '<div class="extra-opt-item">' +
+                var isPaidBalance = isConfirmed && balanceIds.includes(opt.option_id);
+                var isPaidSeparate = isConfirmed && paidSeparateIds.includes(opt.option_id);
+                var isLocked = isPaidBalance || isPaidSeparate;
+                var disabledAttr = isLocked ? ' disabled' : '';
+                var paidBadge = isPaidBalance ? '<span class="extra-opt-paid-badge">Paid (Balance)</span>' :
+                                isPaidSeparate ? '<span class="extra-opt-paid-badge" style="background:#E8F5E9;color:#2E7D32;">Paid (Separate)</span>' : '';
+                var paidViaAttr = isPaidBalance ? 'balance' : (isPaidSeparate ? 'paid_separate' : 'separate');
+                return '<div class="extra-opt-item' + (isLocked ? ' paid-balance' : '') + '">' +
                     '<label>' +
                     '<input type="checkbox" name="eo_opt_' + idx + '_' + cat.category_id + '" value="' + opt.option_id + '"' +
                     ' data-eo-traveler="' + idx + '" data-eo-option="' + opt.option_id + '" data-eo-price="' + opt.price + '"' +
-                    ' data-eo-category="' + cat.category_id + '"' +
-                    ' ' + checked + ' onchange="_extraOpt_onOptionChange(this)">' +
+                    ' data-eo-category="' + cat.category_id + '" data-eo-paid-via="' + paidViaAttr + '"' +
+                    ' ' + checked + disabledAttr + ' onchange="_extraOpt_onOptionChange(this)">' +
                     escapeHtml(opt.option_name_en || opt.option_name) +
                     '</label>' +
+                    paidBadge +
                     '<span class="extra-opt-price">₱' + Number(opt.price).toLocaleString('en-US') + '</span>' +
                     '</div>';
             }).join('');
@@ -5727,12 +5753,17 @@ function _extraOpt_renderTravelerOptions() {
         }).join('');
 
         return '<div class="extra-opt-traveler-card" id="extraOptTravelerCard_' + idx + '">' +
-            '<div class="extra-opt-traveler-card-header">' +
+            '<div class="extra-opt-traveler-card-header" onclick="_extraOpt_toggleCard(this)">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
             '<h4>' + escapeHtml(name) + '</h4>' +
             '<span class="extra-opt-type-badge ' + type + '">' + type + '</span>' +
             '</div>' +
+            '<span class="eo-chevron">&#9660;</span>' +
+            '</div>' +
+            '<div class="extra-opt-traveler-card-body">' +
             categoriesHtml +
             '<div class="extra-opt-subtotal" id="extraOptSubtotal_' + idx + '">Subtotal: ₱0</div>' +
+            '</div>' +
             '</div>';
     }).join('');
 
@@ -5745,10 +5776,11 @@ function _extraOpt_onOptionChange(checkbox) {
     var categoryId = checkbox.dataset.eoCategory;
 
     // 같은 카테고리 내에서는 하나만 선택 가능 (라디오 동작)
+    // 결제 완료된 옵션(balance, paid_separate)은 건드리지 않음
     if (checkbox.checked) {
         var sameCat = document.querySelectorAll('input[data-eo-traveler="' + travelerIdx + '"][data-eo-category="' + categoryId + '"]');
         sameCat.forEach(function(cb) {
-            if (cb !== checkbox) cb.checked = false;
+            if (cb !== checkbox && cb.dataset.eoPaidVia !== 'balance' && cb.dataset.eoPaidVia !== 'paid_separate') cb.checked = false;
         });
     }
 
@@ -5766,11 +5798,55 @@ function _extraOpt_updateSubtotal(travelerIdx) {
 
 function _extraOpt_updateTotalFee() {
     var total = 0;
+    var balanceTotal = 0;
+    var paidSeparateTotal = 0;
+    var unpaidSeparateTotal = 0;
     document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
-        total += parseFloat(cb.dataset.eoPrice) || 0;
+        var price = parseFloat(cb.dataset.eoPrice) || 0;
+        total += price;
+        if (cb.dataset.eoPaidVia === 'balance') {
+            balanceTotal += price;
+        } else if (cb.dataset.eoPaidVia === 'paid_separate') {
+            paidSeparateTotal += price;
+        } else {
+            unpaidSeparateTotal += price;
+        }
     });
+
+    var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+    var paymentStatusVal = _extraOpt_bookingData?.paymentStatus || '';
+    var isConfirmed = (bookingStatus === 'confirmed' && paymentStatusVal === 'paid');
+
     var el = document.getElementById('extraOptTotalFee');
     if (el) el.textContent = '₱' + Number(total).toLocaleString('en-US');
+
+    // balance 포함 안내 표시 (미확정 상태에서만)
+    var notice = document.getElementById('extraOptBalanceNotice');
+    if (notice) {
+        notice.style.display = (!isConfirmed && total > 0) ? '' : 'none';
+    }
+
+    // 확정 후: balance/paid separate/unpaid separate 분리 표시
+    var breakdownEl = document.getElementById('extraOptFeeBreakdown');
+    if (breakdownEl) {
+        var hasPaid = balanceTotal > 0 || paidSeparateTotal > 0;
+        if (isConfirmed && (hasPaid || unpaidSeparateTotal > 0)) {
+            var html = '';
+            if (balanceTotal > 0) {
+                html += '<div class="extra-opt-fee-breakdown-row"><span>Paid via Balance</span><span>₱' + Number(balanceTotal).toLocaleString('en-US') + '</span></div>';
+            }
+            if (paidSeparateTotal > 0) {
+                html += '<div class="extra-opt-fee-breakdown-row"><span>Paid (Separate)</span><span>₱' + Number(paidSeparateTotal).toLocaleString('en-US') + '</span></div>';
+            }
+            if (unpaidSeparateTotal > 0) {
+                html += '<div class="extra-opt-fee-breakdown-row separate"><span>Additional Payment Required</span><span>₱' + Number(unpaidSeparateTotal).toLocaleString('en-US') + '</span></div>';
+            }
+            breakdownEl.innerHTML = html;
+            breakdownEl.style.display = '';
+        } else {
+            breakdownEl.style.display = 'none';
+        }
+    }
 }
 
 function _extraOpt_getSelectedOptions() {
@@ -5820,22 +5896,29 @@ async function _extraOpt_saveOptions() {
 }
 
 function _extraOpt_renderPaymentProof() {
-    var section = document.getElementById('extraOptPaymentSection');
-    var statusBadge = document.getElementById('extraOptPaymentStatusBadge');
-    var rejectionAlert = document.getElementById('extraOptRejectionAlert');
-    var fileDisplay = document.getElementById('extraOptFileDisplay');
-    var fileUpload = document.getElementById('extraOptFileUpload');
-    var deleteBtn = document.getElementById('extraOptDeleteFileBtn');
-
+    var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+    var paymentStatusVal = _extraOpt_bookingData?.paymentStatus || '';
+    var isConfirmed = (bookingStatus === 'confirmed' && paymentStatusVal === 'paid');
     var status = _extraOpt_paymentInfoData?.status || 'not_set';
 
-    if (status === 'not_set') {
-        section.style.display = 'none';
-        return;
-    }
+    // 모든 payment inline 섹션 숨김
+    var allSections = document.querySelectorAll('.extra-opt-payment-inline');
+    allSections.forEach(function(s) { s.style.display = 'none'; });
+
+    // 미확정이거나 not_set이면 표시하지 않음
+    if (!isConfirmed || status === 'not_set') return;
+
+    // 현재 표시 중인 payment type 판별
+    var sectionId = 'extraOptPaymentSection_staged';
+    var fullSec = document.getElementById('fullPaymentSection');
+    var middleSec = document.getElementById('middlePaymentSections');
+    if (fullSec && fullSec.style.display !== 'none') sectionId = 'extraOptPaymentSection_full';
+    else if (middleSec && middleSec.style.display !== 'none') sectionId = 'extraOptPaymentSection_middle';
+
+    var section = document.getElementById(sectionId);
+    if (!section) return;
     section.style.display = '';
 
-    // 상태 뱃지
     var statusLabels = {
         'not_set': 'Not Set',
         'pending_payment': 'Pending Payment',
@@ -5843,33 +5926,62 @@ function _extraOpt_renderPaymentProof() {
         'confirmed': 'Confirmed',
         'rejected': 'Rejected'
     };
-    statusBadge.textContent = statusLabels[status] || status;
-    statusBadge.className = 'extra-opt-status-badge ' + status;
 
-    // 반려 알림
-    if (status === 'rejected' && _extraOpt_paymentInfoData.rejectionReason) {
-        rejectionAlert.style.display = '';
-        document.getElementById('extraOptRejectionReason').textContent = _extraOpt_paymentInfoData.rejectionReason || 'No reason provided';
-        document.getElementById('extraOptRejectionDate').textContent = _extraOpt_paymentInfoData.rejectedAt ? ('Rejected at: ' + _extraOpt_paymentInfoData.rejectedAt) : '';
-    } else {
-        rejectionAlert.style.display = 'none';
-    }
-
-    // 파일 표시
-    if (_extraOpt_paymentInfoData.file) {
-        fileDisplay.style.display = 'flex';
-        document.getElementById('extraOptFileName').textContent = _extraOpt_paymentInfoData.fileName || 'Payment proof';
-        deleteBtn.style.display = (status === 'confirmed') ? 'none' : '';
-        fileUpload.style.display = 'none';
-    } else {
-        fileDisplay.style.display = 'none';
-        fileUpload.style.display = (status === 'pending_payment' || status === 'rejected') ? '' : 'none';
-    }
+    // 모든 인라인 섹션의 공통 요소 업데이트
+    allSections.forEach(function(sec) {
+        // 금액 (input과 span 모두 업데이트)
+        var payAmt = _extraOpt_paymentInfoData?.amount || 0;
+        var amtText = payAmt > 0 ? Number(payAmt).toLocaleString('en-US') : '-';
+        sec.querySelectorAll('.extraOptPaymentAmount').forEach(function(el) {
+            if (el.tagName === 'INPUT') el.value = amtText;
+            else el.textContent = '₱' + amtText;
+        });
+        // 상태 뱃지
+        var badge = sec.querySelector('.extraOptPaymentStatusBadge');
+        if (badge) {
+            badge.textContent = statusLabels[status] || status;
+            badge.className = 'payment-status ' + status;
+        }
+        // 반려
+        var rejAlert = sec.querySelector('.extraOptRejectionAlert');
+        if (rejAlert) {
+            if (status === 'rejected' && _extraOpt_paymentInfoData?.rejectionReason) {
+                rejAlert.style.display = '';
+                var reasonEl = sec.querySelector('.extraOptRejectionReason');
+                var dateEl = sec.querySelector('.extraOptRejectionDate');
+                if (reasonEl) reasonEl.textContent = _extraOpt_paymentInfoData.rejectionReason || 'No reason provided';
+                if (dateEl) dateEl.textContent = _extraOpt_paymentInfoData.rejectedAt ? ('Rejected at: ' + _extraOpt_paymentInfoData.rejectedAt) : '';
+            } else {
+                rejAlert.style.display = 'none';
+            }
+        }
+        // 파일
+        var fileDisp = sec.querySelector('.extraOptFileDisplay');
+        var fileUpload = sec.querySelector('.extraOptFileUpload');
+        var delBtn = sec.querySelector('.extraOptDeleteFileBtn');
+        if (_extraOpt_paymentInfoData?.file) {
+            if (fileDisp) {
+                fileDisp.style.display = 'flex';
+                var nameEl = sec.querySelector('.extraOptFileName');
+                if (nameEl) nameEl.textContent = _extraOpt_paymentInfoData.fileName || 'Payment proof';
+            }
+            if (delBtn) delBtn.style.display = (status === 'confirmed') ? 'none' : '';
+            if (fileUpload) fileUpload.style.display = 'none';
+        } else {
+            if (fileDisp) fileDisp.style.display = 'none';
+            if (fileUpload) fileUpload.style.display = (status === 'pending_payment' || status === 'rejected') ? '' : 'none';
+        }
+    });
 }
 
-async function _extraOpt_uploadFile() {
-    var fileInput = document.getElementById('extraOptFileInput');
-    if (!fileInput.files.length) return;
+// Payment Information 섹션의 인라인 option payment에서 호출
+window._extraOpt_uploadFileFromInput = function(inputEl) {
+    if (!inputEl || !inputEl.files.length) return;
+    _extraOpt_doUpload(inputEl);
+};
+
+async function _extraOpt_doUpload(fileInput) {
+    if (!fileInput || !fileInput.files.length) return;
 
     var formData = new FormData();
     formData.append('file', fileInput.files[0]);
@@ -5930,6 +6042,11 @@ async function _extraOpt_deleteFile() {
         console.error('Failed to delete:', e);
         alert('Failed to delete: ' + e.message);
     }
+}
+
+function _extraOpt_toggleCard(headerEl) {
+    var card = headerEl.closest('.extra-opt-traveler-card');
+    if (card) card.classList.toggle('collapsed');
 }
 
 function _extraOpt_checkDeadline() {

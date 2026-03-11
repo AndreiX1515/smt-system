@@ -365,6 +365,49 @@
 					</div>
 				</div>
 			</div>
+			<!-- Extra Option Payment (below staged balance) -->
+			<div class="card-panel jw-mgt16 extra-opt-payment-inline" id="extraOptPaymentSection_staged" style="display:none;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Extra Option Payment</h3>
+					<div class="extraOptPaymentStatusBadge payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="extraOptRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div class="extraOptRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div class="extraOptRejectionDate" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16" style="grid-template-columns: 1fr 1fr auto;">
+					<div class="grid-item">
+						<label class="label-name">Amount (₱)</label>
+						<input type="text" class="form-control extraOptPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="field-row jw-center">
+								<div class="jw-center jw-gap10 extraOptProofInfo">-</div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF extraOptViewBtn" aria-label="View" disabled title="View" onclick="_extraOpt_viewFile()"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF extraOptDownloadBtn" aria-label="Download" disabled title="Download" onclick="_extraOpt_downloadFile()"><img src="../image/buttun-download.svg" alt=""></button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="grid-item extraOptAdminActions" style="display: none;">
+						<label class="label-name" style="visibility: hidden;">Action</label>
+						<div style="display: flex; gap: 8px;">
+							<button type="button" class="jw-button typeC" onclick="rejectOptionPaymentModal()" style="background: #DC3545; color: white; padding: 8px 16px;"><span>Reject</span></button>
+							<button type="button" class="jw-button typeB" onclick="confirmOptionPayment()" style="background: #28A745; color: white; padding: 8px 16px;"><span>Accept</span></button>
+						</div>
+					</div>
+				</div>
+			</div>
 			</div><!-- End Staged Payment Sections -->
 
 			<!-- Middle Payment Sections (2-Step) -->
@@ -462,6 +505,49 @@
 					</div>
 				</div>
 			</div>
+			<!-- Extra Option Payment (below middle balance) -->
+			<div class="card-panel jw-mgt16 extra-opt-payment-inline" id="extraOptPaymentSection_middle" style="display:none;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Extra Option Payment</h3>
+					<div class="extraOptPaymentStatusBadge payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="extraOptRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div class="extraOptRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div class="extraOptRejectionDate" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16" style="grid-template-columns: 1fr 1fr auto;">
+					<div class="grid-item">
+						<label class="label-name">Amount (₱)</label>
+						<input type="text" class="form-control extraOptPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="field-row jw-center">
+								<div class="jw-center jw-gap10 extraOptProofInfo">-</div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF extraOptViewBtn" aria-label="View" disabled title="View" onclick="_extraOpt_viewFile()"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF extraOptDownloadBtn" aria-label="Download" disabled title="Download" onclick="_extraOpt_downloadFile()"><img src="../image/buttun-download.svg" alt=""></button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="grid-item extraOptAdminActions" style="display: none;">
+						<label class="label-name" style="visibility: hidden;">Action</label>
+						<div style="display: flex; gap: 8px;">
+							<button type="button" class="jw-button typeC" onclick="rejectOptionPaymentModal()" style="background: #DC3545; color: white; padding: 8px 16px;"><span>Reject</span></button>
+							<button type="button" class="jw-button typeB" onclick="confirmOptionPayment()" style="background: #28A745; color: white; padding: 8px 16px;"><span>Accept</span></button>
+						</div>
+					</div>
+				</div>
+			</div>
 			</div><!-- End Middle Payment Sections -->
 
 			<!-- Full Payment Section -->
@@ -506,6 +592,49 @@
 							<button type="button" class="jw-button typeB" onclick="confirmPayment('full')" style="background: #28A745; color: white; padding: 8px 16px;">
 								<span>Accept</span>
 							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- Extra Option Payment (below full payment) -->
+			<div class="card-panel jw-mgt16 extra-opt-payment-inline" id="extraOptPaymentSection_full" style="display:none;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Extra Option Payment</h3>
+					<div class="extraOptPaymentStatusBadge payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="extraOptRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div class="extraOptRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div class="extraOptRejectionDate" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16" style="grid-template-columns: 1fr 1fr auto;">
+					<div class="grid-item">
+						<label class="label-name">Amount (₱)</label>
+						<input type="text" class="form-control extraOptPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="field-row jw-center">
+								<div class="jw-center jw-gap10 extraOptProofInfo">-</div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF extraOptViewBtn" aria-label="View" disabled title="View" onclick="_extraOpt_viewFile()"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF extraOptDownloadBtn" aria-label="Download" disabled title="Download" onclick="_extraOpt_downloadFile()"><img src="../image/buttun-download.svg" alt=""></button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="grid-item extraOptAdminActions" style="display: none;">
+						<label class="label-name" style="visibility: hidden;">Action</label>
+						<div style="display: flex; gap: 8px;">
+							<button type="button" class="jw-button typeC" onclick="rejectOptionPaymentModal()" style="background: #DC3545; color: white; padding: 8px 16px;"><span>Reject</span></button>
+							<button type="button" class="jw-button typeB" onclick="confirmOptionPayment()" style="background: #28A745; color: white; padding: 8px 16px;"><span>Accept</span></button>
 						</div>
 					</div>
 				</div>
@@ -686,53 +815,6 @@
 							<div id="extraOptFeeBreakdown" style="display:none; margin-top: 8px;"></div>
 							<div id="extraOptBalanceNotice" style="display:none; margin-top: 8px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 13px; color: #1E40AF;">
 								This fee is included in the balance payment.
-							</div>
-
-							<!-- Payment Proof for Extra Options (inline) -->
-							<div id="extraOptPaymentSection" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-									<h3 class="card-panel-title" style="margin:0;" data-lan-eng="Option Payment">Option Payment</h3>
-									<div style="display:flex; align-items:center; gap:8px;">
-										<span class="extra-opt-payment-amount" id="extraOptPaymentAmount"></span>
-										<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
-									</div>
-								</div>
-
-								<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert" style="display:none;">
-									<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
-									<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
-									<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
-								</div>
-
-								<div>
-									<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
-										<div class="extra-opt-file-info">
-											<img src="../image/file.svg" alt="" style="width:16px;">
-											<span id="extraOptFileName"></span>
-										</div>
-										<div class="extra-opt-file-actions">
-											<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
-												<img src="../image/eye.svg" alt="">
-											</button>
-											<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
-												<img src="../image/buttun-download.svg" alt="">
-											</button>
-											<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
-												<img src="../image/button-close2.svg" alt="">
-											</button>
-										</div>
-									</div>
-									<div id="extraOptFileUpload">
-										<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
-										<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
-									</div>
-								</div>
-
-								<!-- Super Admin: Confirm/Reject buttons (visible when status=checking) -->
-								<div id="extraOptAdminActions" class="extra-opt-admin-actions" style="display:none;">
-									<button type="button" class="btn-accept" onclick="confirmOptionPayment()">Accept</button>
-									<button type="button" class="btn-reject" onclick="rejectOptionPaymentModal()">Reject</button>
-								</div>
 							</div>
 
 							<div style="text-align: right; margin-top: 12px;">
@@ -4925,6 +5007,8 @@
 		var _extraOpt_paymentInfoData = null;
 		var _extraOpt_historyData = [];
 		var _extraOpt_bookingData = null;
+		var _extraOpt_initialBalanceFee = 0;
+		var _extraOpt_initialPaidSeparateFee = 0;
 
 		async function loadExtraOptions() {
 			var tabBtn = document.getElementById('extraOptTabBtn');
@@ -4958,6 +5042,16 @@
 				_extraOpt_travelerOptionsData = json.data.travelerOptions || {};
 				_extraOpt_categoriesData = json.data.categories || [];
 				_extraOpt_paymentInfoData = json.data.paymentInfo;
+
+				// 초기 결제완료 금액 기록 (환불 감지용)
+				_extraOpt_initialBalanceFee = 0;
+				_extraOpt_initialPaidSeparateFee = 0;
+				Object.values(_extraOpt_travelerOptionsData).forEach(function(opts) {
+					opts.forEach(function(o) {
+						if (o.paidVia === 'balance') _extraOpt_initialBalanceFee += o.price;
+						else if (o.paidVia === 'separate' && o.isPaid === 1) _extraOpt_initialPaidSeparateFee += o.price;
+					});
+				});
 
 				if (_extraOpt_categoriesData.length === 0) {
 					tabBtn.style.display = 'none';
@@ -5030,19 +5124,23 @@
 				var selectedOptions = _extraOpt_travelerOptionsData[idx] || [];
 				var selectedIds = selectedOptions.map(function(o) { return o.optionId; });
 				var balanceIds = selectedOptions.filter(function(o) { return o.paidVia === 'balance'; }).map(function(o) { return o.optionId; });
+				var paidSeparateIds = selectedOptions.filter(function(o) { return o.paidVia === 'separate' && o.isPaid === 1; }).map(function(o) { return o.optionId; });
 
 				var categoriesHtml = _extraOpt_categoriesData.map(function(cat) {
 					var optionsHtml = cat.options.map(function(opt) {
 						var checked = selectedIds.includes(opt.option_id) ? 'checked' : '';
 						var isPaidBalance = isConfirmed && balanceIds.includes(opt.option_id);
-						var disabledAttr = isPaidBalance ? ' disabled' : '';
-						var paidBadge = isPaidBalance ? '<span class="extra-opt-paid-badge">Paid (Balance)</span>' : '';
-						return '<div class="extra-opt-item' + (isPaidBalance ? ' paid-balance' : '') + '">' +
+						var isPaidSeparate = isConfirmed && paidSeparateIds.includes(opt.option_id);
+						// Super admin: 결제완료 옵션도 해제 가능 (disabled 아님)
+						var paidBadge = isPaidBalance ? '<span class="extra-opt-paid-badge">Paid (Balance)</span>' :
+										isPaidSeparate ? '<span class="extra-opt-paid-badge" style="background:#E8F5E9;color:#2E7D32;">Paid (Separate)</span>' : '';
+						var paidViaAttr = isPaidBalance ? 'balance' : (isPaidSeparate ? 'paid_separate' : 'separate');
+						return '<div class="extra-opt-item' + ((isPaidBalance || isPaidSeparate) ? ' paid-balance' : '') + '">' +
 							'<label>' +
 							'<input type="checkbox" name="eo_opt_' + idx + '_' + cat.category_id + '" value="' + opt.option_id + '"' +
 							' data-eo-traveler="' + idx + '" data-eo-option="' + opt.option_id + '" data-eo-price="' + opt.price + '"' +
-							' data-eo-category="' + cat.category_id + '" data-eo-paid-via="' + (isPaidBalance ? 'balance' : 'separate') + '"' +
-							' ' + checked + disabledAttr + ' onchange="_extraOpt_onOptionChange(this)">' +
+							' data-eo-category="' + cat.category_id + '" data-eo-paid-via="' + paidViaAttr + '"' +
+							' ' + checked + ' onchange="_extraOpt_onOptionChange(this)">' +
 							escapeHtml(opt.option_name_en || opt.option_name) +
 							'</label>' +
 							paidBadge +
@@ -5078,10 +5176,11 @@
 			var travelerIdx = parseInt(checkbox.dataset.eoTraveler);
 			var categoryId = checkbox.dataset.eoCategory;
 
+			// Super admin: 같은 카테고리 내 라디오 동작 (결제완료 옵션도 해제 가능)
 			if (checkbox.checked) {
 				var sameCat = document.querySelectorAll('input[data-eo-traveler="' + travelerIdx + '"][data-eo-category="' + categoryId + '"]');
 				sameCat.forEach(function(cb) {
-					if (cb !== checkbox && cb.dataset.eoPaidVia !== 'balance') cb.checked = false;
+					if (cb !== checkbox) cb.checked = false;
 				});
 			}
 
@@ -5100,14 +5199,17 @@
 		function _extraOpt_updateTotalFee() {
 			var total = 0;
 			var balanceTotal = 0;
-			var separateTotal = 0;
+			var paidSeparateTotal = 0;
+			var unpaidSeparateTotal = 0;
 			document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
 				var price = parseFloat(cb.dataset.eoPrice) || 0;
 				total += price;
 				if (cb.dataset.eoPaidVia === 'balance') {
 					balanceTotal += price;
+				} else if (cb.dataset.eoPaidVia === 'paid_separate') {
+					paidSeparateTotal += price;
 				} else {
-					separateTotal += price;
+					unpaidSeparateTotal += price;
 				}
 			});
 
@@ -5123,12 +5225,31 @@
 				notice.style.display = (!isConfirmed && total > 0) ? '' : 'none';
 			}
 
+			// 환불 금액 계산 (초기 결제 금액 - 현재 체크된 금액)
+			var balanceRefund = _extraOpt_initialBalanceFee - balanceTotal;
+			var paidSeparateRefund = _extraOpt_initialPaidSeparateFee - paidSeparateTotal;
+
 			var breakdownEl = document.getElementById('extraOptFeeBreakdown');
 			if (breakdownEl) {
-				if (isConfirmed && balanceTotal > 0) {
-					breakdownEl.innerHTML =
-						'<div class="extra-opt-fee-breakdown-row"><span>Paid via Balance</span><span>\u20B1' + Number(balanceTotal).toLocaleString('en-US') + '</span></div>' +
-						(separateTotal > 0 ? '<div class="extra-opt-fee-breakdown-row separate"><span>Additional Payment Required</span><span>\u20B1' + Number(separateTotal).toLocaleString('en-US') + '</span></div>' : '');
+				var hasInfo = balanceTotal > 0 || paidSeparateTotal > 0 || unpaidSeparateTotal > 0 || balanceRefund > 0 || paidSeparateRefund > 0;
+				if (isConfirmed && hasInfo) {
+					var html = '';
+					if (balanceTotal > 0) {
+						html += '<div class="extra-opt-fee-breakdown-row"><span>Paid via Balance</span><span>\u20B1' + Number(balanceTotal).toLocaleString('en-US') + '</span></div>';
+					}
+					if (paidSeparateTotal > 0) {
+						html += '<div class="extra-opt-fee-breakdown-row"><span>Paid (Separate)</span><span>\u20B1' + Number(paidSeparateTotal).toLocaleString('en-US') + '</span></div>';
+					}
+					if (unpaidSeparateTotal > 0) {
+						html += '<div class="extra-opt-fee-breakdown-row separate"><span>Additional Payment Required</span><span>\u20B1' + Number(unpaidSeparateTotal).toLocaleString('en-US') + '</span></div>';
+					}
+					if (balanceRefund > 0) {
+						html += '<div class="extra-opt-fee-breakdown-row" style="color:#DC2626;"><span>Balance Refund</span><span>-\u20B1' + Number(balanceRefund).toLocaleString('en-US') + '</span></div>';
+					}
+					if (paidSeparateRefund > 0) {
+						html += '<div class="extra-opt-fee-breakdown-row" style="color:#DC2626;"><span>Separate Payment Refund</span><span>-\u20B1' + Number(paidSeparateRefund).toLocaleString('en-US') + '</span></div>';
+					}
+					breakdownEl.innerHTML = html;
 					breakdownEl.style.display = '';
 				} else {
 					breakdownEl.style.display = 'none';
@@ -5160,6 +5281,22 @@
 			var travelerOptions = _extraOpt_getSelectedOptions();
 			var totalOptionFee = _extraOpt_getTotalFee();
 
+			// 환불 확인: 결제완료 옵션이 해제된 경우 경고
+			var curBalance = 0, curPaidSep = 0;
+			document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
+				if (cb.dataset.eoPaidVia === 'balance') curBalance += parseFloat(cb.dataset.eoPrice) || 0;
+				else if (cb.dataset.eoPaidVia === 'paid_separate') curPaidSep += parseFloat(cb.dataset.eoPrice) || 0;
+			});
+			var balRefund = _extraOpt_initialBalanceFee - curBalance;
+			var sepRefund = _extraOpt_initialPaidSeparateFee - curPaidSep;
+			if (balRefund > 0 || sepRefund > 0) {
+				var refundMsg = 'The following paid options will be removed:\n';
+				if (balRefund > 0) refundMsg += '  - Balance refund: \u20B1' + Number(balRefund).toLocaleString('en-US') + '\n';
+				if (sepRefund > 0) refundMsg += '  - Separate payment refund: \u20B1' + Number(sepRefund).toLocaleString('en-US') + '\n';
+				refundMsg += '\nThis will adjust the booking amounts. Continue?';
+				if (!confirm(refundMsg)) return;
+			}
+
 			try {
 				var res = await fetch('../backend/api/super-api.php?action=saveExtraOptions', {
 					method: 'POST',
@@ -5174,8 +5311,13 @@
 				var json = await res.json();
 				if (!json.success) throw new Error(json.message);
 
-				alert('Options saved successfully!');
-				loadExtraOptions();
+				if (balRefund > 0 || sepRefund > 0) {
+					alert('Options saved and refund amounts adjusted successfully!');
+					location.reload(); // 결제 섹션 금액도 갱신 필요
+				} else {
+					alert('Options saved successfully!');
+					loadExtraOptions();
+				}
 			} catch (e) {
 				console.error('Failed to save options:', e);
 				alert('Failed to save: ' + e.message);
@@ -5183,38 +5325,28 @@
 		}
 
 		function _extraOpt_renderPaymentProof() {
-			var section = document.getElementById('extraOptPaymentSection');
-			var statusBadge = document.getElementById('extraOptPaymentStatusBadge');
-			var rejectionAlert = document.getElementById('extraOptRejectionAlert');
-			var fileDisplay = document.getElementById('extraOptFileDisplay');
-			var fileUpload = document.getElementById('extraOptFileUpload');
-			var deleteBtn = document.getElementById('extraOptDeleteFileBtn');
-			var adminActions = document.getElementById('extraOptAdminActions');
-
 			var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
-			var paymentStatus = _extraOpt_bookingData?.paymentStatus || '';
-			var isConfirmed = (bookingStatus === 'confirmed' && paymentStatus === 'paid');
-
+			var paymentStatusVal = _extraOpt_bookingData?.paymentStatus || '';
+			var isConfirmed = (bookingStatus === 'confirmed' && paymentStatusVal === 'paid');
 			var status = _extraOpt_paymentInfoData?.status || 'not_set';
 
-			// 미확정 상태: 옵션 비용이 balance에 포함
-			if (!isConfirmed) {
-				section.style.display = 'none';
-				return;
-			}
+			// 모든 payment inline 섹션 숨김
+			var allSections = document.querySelectorAll('.extra-opt-payment-inline');
+			allSections.forEach(function(s) { s.style.display = 'none'; });
 
-			if (status === 'not_set') {
-				section.style.display = 'none';
-				return;
-			}
+			if (!isConfirmed || status === 'not_set') return;
+
+			// 현재 payment type에 맞는 섹션 표시
+			// 현재 표시 중인 payment type 판별
+			var sectionId = 'extraOptPaymentSection_staged';
+			var fullSec = document.getElementById('fullPaymentSection');
+			var middleSec = document.getElementById('middlePaymentSections');
+			if (fullSec && fullSec.style.display !== 'none') sectionId = 'extraOptPaymentSection_full';
+			else if (middleSec && middleSec.style.display !== 'none') sectionId = 'extraOptPaymentSection_middle';
+
+			var section = document.getElementById(sectionId);
+			if (!section) return;
 			section.style.display = '';
-
-			// 결제 금액 표시
-			var amountEl = document.getElementById('extraOptPaymentAmount');
-			if (amountEl) {
-				var payAmt = _extraOpt_paymentInfoData?.amount || 0;
-				amountEl.textContent = payAmt > 0 ? ('\u20B1' + Number(payAmt).toLocaleString('en-US')) : '';
-			}
 
 			var statusLabels = {
 				'not_set': 'Not Set',
@@ -5223,38 +5355,64 @@
 				'confirmed': 'Confirmed',
 				'rejected': 'Rejected'
 			};
-			statusBadge.textContent = statusLabels[status] || status;
-			statusBadge.className = 'extra-opt-status-badge ' + status;
 
-			// Rejection alert
-			if (status === 'rejected' && _extraOpt_paymentInfoData.rejectionReason) {
-				rejectionAlert.style.display = '';
-				document.getElementById('extraOptRejectionReason').textContent = _extraOpt_paymentInfoData.rejectionReason || 'No reason provided';
-				document.getElementById('extraOptRejectionDate').textContent = _extraOpt_paymentInfoData.rejectedAt ? ('Rejected at: ' + _extraOpt_paymentInfoData.rejectedAt) : '';
-			} else {
-				rejectionAlert.style.display = 'none';
-			}
-
-			// File display
-			if (_extraOpt_paymentInfoData.file) {
-				fileDisplay.style.display = 'flex';
-				document.getElementById('extraOptFileName').textContent = _extraOpt_paymentInfoData.fileName || 'Payment proof';
-				deleteBtn.style.display = (status === 'confirmed') ? 'none' : '';
-				fileUpload.style.display = 'none';
-			} else {
-				fileDisplay.style.display = 'none';
-				fileUpload.style.display = (status === 'pending_payment' || status === 'rejected') ? '' : 'none';
-			}
-
-			// Super admin: Confirm/Reject buttons when status is 'checking'
-			if (adminActions) {
-				adminActions.style.display = (status === 'checking') ? 'flex' : 'none';
-			}
+			allSections.forEach(function(sec) {
+				// 금액
+				var payAmt = _extraOpt_paymentInfoData?.amount || 0;
+				var amtText = payAmt > 0 ? Number(payAmt).toLocaleString('en-US') : '-';
+				sec.querySelectorAll('.extraOptPaymentAmount').forEach(function(el) {
+					if (el.tagName === 'INPUT') el.value = amtText;
+					else el.textContent = '\u20B1' + amtText;
+				});
+				// 상태 뱃지
+				var badge = sec.querySelector('.extraOptPaymentStatusBadge');
+				if (badge) {
+					badge.textContent = statusLabels[status] || status;
+					badge.className = 'payment-status ' + status;
+				}
+				// 반려 알림
+				var rejAlert = sec.querySelector('.extraOptRejectionAlert');
+				if (rejAlert) {
+					if (status === 'rejected' && _extraOpt_paymentInfoData?.rejectionReason) {
+						rejAlert.style.display = '';
+						var reasonEl = sec.querySelector('.extraOptRejectionReason');
+						var dateEl = sec.querySelector('.extraOptRejectionDate');
+						if (reasonEl) reasonEl.textContent = _extraOpt_paymentInfoData.rejectionReason || 'No reason provided';
+						if (dateEl) dateEl.textContent = _extraOpt_paymentInfoData.rejectedAt ? ('Rejected at: ' + _extraOpt_paymentInfoData.rejectedAt) : '';
+					} else {
+						rejAlert.style.display = 'none';
+					}
+				}
+				// Proof file info (super admin grid format)
+				var proofInfo = sec.querySelector('.extraOptProofInfo');
+				var viewBtn = sec.querySelector('.extraOptViewBtn');
+				var dlBtn = sec.querySelector('.extraOptDownloadBtn');
+				if (_extraOpt_paymentInfoData?.file) {
+					if (proofInfo) {
+						proofInfo.innerHTML = '<img src="../image/file.svg" alt="" style="width:16px;"> ' + escapeHtml(_extraOpt_paymentInfoData.fileName || 'Payment proof');
+					}
+					if (viewBtn) { viewBtn.disabled = false; }
+					if (dlBtn) { dlBtn.disabled = false; }
+				} else {
+					if (proofInfo) proofInfo.textContent = '-';
+					if (viewBtn) { viewBtn.disabled = true; }
+					if (dlBtn) { dlBtn.disabled = true; }
+				}
+				// Admin actions (Accept/Reject)
+				var adminActions = sec.querySelector('.extraOptAdminActions');
+				if (adminActions) {
+					adminActions.style.display = (status === 'checking') ? '' : 'none';
+				}
+			});
 		}
 
-		async function _extraOpt_uploadFile() {
-			var fileInput = document.getElementById('extraOptFileInput');
-			if (!fileInput.files.length) return;
+		window._extraOpt_uploadFileFromInput = function(inputEl) {
+			if (!inputEl || !inputEl.files.length) return;
+			_extraOpt_doUpload(inputEl);
+		};
+
+		async function _extraOpt_doUpload(fileInput) {
+			if (!fileInput || !fileInput.files.length) return;
 
 			var formData = new FormData();
 			formData.append('file', fileInput.files[0]);

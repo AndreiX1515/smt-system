@@ -457,6 +457,49 @@
 					</div>
 				</div>
 			</div>
+			<!-- Extra Option Payment (below balance) -->
+			<div class="card-panel jw-mgt16 extra-opt-payment-inline" id="extraOptPaymentSection_staged" style="display:none;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Extra Option Payment</h3>
+					<div class="extraOptPaymentStatusBadge payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="extraOptRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div class="extraOptRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div class="extraOptRejectionDate" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Amount (₱)</label>
+						<input type="text" class="form-control extraOptPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="extraOptFileDisplay field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span class="extraOptFileName"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div class="extraOptFileUpload">
+								<input type="file" class="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFileFromInput(this)">
+								<button type="button" class="jw-button typeA" onclick="this.previousElementSibling.click()">Upload File</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 			</div><!-- End of stagedPaymentSections -->
 
 			<!-- Middle Payment Sections (2-Step) -->
@@ -565,6 +608,49 @@
 					</div>
 				</div>
 			</div>
+			<!-- Extra Option Payment (below middle balance) -->
+			<div class="card-panel jw-mgt16 extra-opt-payment-inline" id="extraOptPaymentSection_middle" style="display:none;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Extra Option Payment</h3>
+					<div class="extraOptPaymentStatusBadge payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="extraOptRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div class="extraOptRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div class="extraOptRejectionDate" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Amount (₱)</label>
+						<input type="text" class="form-control extraOptPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="extraOptFileDisplay field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span class="extraOptFileName"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div class="extraOptFileUpload">
+								<input type="file" class="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFileFromInput(this)">
+								<button type="button" class="jw-button typeA" onclick="this.previousElementSibling.click()">Upload File</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 			</div><!-- End of middlePaymentSections -->
 
 			<!-- Full Payment Section -->
@@ -620,6 +706,49 @@
 					</div>
 				</div>
 			</div><!-- End of fullPaymentSection -->
+			<!-- Extra Option Payment (below full payment) -->
+			<div class="card-panel jw-mgt16 extra-opt-payment-inline" id="extraOptPaymentSection_full" style="display:none;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+					<h3 class="card-panel-title" style="margin: 0;">Extra Option Payment</h3>
+					<div class="extraOptPaymentStatusBadge payment-status"></div>
+				</div>
+				<div class="card-panel-divider"></div>
+				<div class="extraOptRejectionAlert" style="display: none; margin-top: 16px; padding: 12px 16px; background: #FEF2F2; border: 1px solid #DC2626; border-radius: 8px;">
+					<div style="display: flex; align-items: flex-start; gap: 10px;">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="#DC2626" style="flex-shrink: 0; margin-top: 2px;">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+						</svg>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; color: #DC2626; font-size: 14px; margin-bottom: 4px;">Payment Rejected</div>
+							<div class="extraOptRejectionReason" style="color: #7F1D1D; font-size: 13px; line-height: 1.5;"></div>
+							<div class="extraOptRejectionDate" style="color: #9CA3AF; font-size: 12px; margin-top: 6px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name">Amount (₱)</label>
+						<input type="text" class="form-control extraOptPaymentAmount" placeholder="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">Proof File</label>
+						<div class="cell">
+							<div class="extraOptFileDisplay field-row jw-center" style="display:none;">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span class="extraOptFileName"></span></div>
+								<div class="jw-center jw-gap10">
+									<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()"><img src="../image/eye.svg" alt=""></button>
+									<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()"><img src="../image/buttun-download.svg" alt=""></button>
+									<button type="button" class="jw-button typeF extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+							<div class="extraOptFileUpload">
+								<input type="file" class="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFileFromInput(this)">
+								<button type="button" class="jw-button typeA" onclick="this.previousElementSibling.click()">Upload File</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 
 			<!-- ── Traveler & Extra Options Tabbed Section ── -->
 			<div class="jw-cols jw-between jw-mgt32">
@@ -672,47 +801,6 @@
 							<div id="extraOptFeeBreakdown" style="display:none; margin-top: 8px;"></div>
 							<div id="extraOptBalanceNotice" style="display:none; margin-top: 8px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 13px; color: #1E40AF;">
 								This fee will be included in the balance payment.
-							</div>
-
-							<!-- Payment Proof for Extra Options (inline) -->
-							<div id="extraOptPaymentSection" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-									<h3 class="card-panel-title" style="margin:0;" data-lan-eng="Option Payment">Option Payment</h3>
-									<div style="display:flex; align-items:center; gap:8px;">
-										<span class="extra-opt-payment-amount" id="extraOptPaymentAmount"></span>
-										<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
-									</div>
-								</div>
-
-								<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert" style="display:none;">
-									<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
-									<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
-									<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
-								</div>
-
-								<div>
-									<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
-										<div class="extra-opt-file-info">
-											<img src="../image/file.svg" alt="" style="width:16px;">
-											<span id="extraOptFileName"></span>
-										</div>
-										<div class="extra-opt-file-actions">
-											<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
-												<img src="../image/eye.svg" alt="">
-											</button>
-											<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
-												<img src="../image/buttun-download.svg" alt="">
-											</button>
-											<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
-												<img src="../image/button-close2.svg" alt="">
-											</button>
-										</div>
-									</div>
-									<div id="extraOptFileUpload">
-										<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
-										<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
-									</div>
-								</div>
 							</div>
 
 							<div style="text-align: right; margin-top: 12px;">
