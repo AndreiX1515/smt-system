@@ -1836,6 +1836,14 @@ function renderTravelerEditCards() {
                         <label>Profile/Source of Income</label>
                         <input type="text" id="edit_profile_source_${index}" value="${escapeHtml(profileSource)}" placeholder="Profile/Source of Income">
                     </div>
+
+                    <!-- OCR Upload Hint -->
+                    <div class="form-group col-span-4 ocr-upload-hint-row">
+                        <div class="ocr-upload-hint">
+                            <span class="ocr-upload-hint-icon">&#9432;</span>
+                            Upload your passport photo first — the information on the passport will be automatically read and filled in via OCR. Please upload the passport photo before entering traveler details manually.
+                        </div>
+                    </div>
                 </div>
             </div>
         `;

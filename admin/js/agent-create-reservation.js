@@ -1787,6 +1787,7 @@ function renderTravelerCards() {
                         </div>
                     </div>
                     <div class="form-group visa-upload-container" id="visa-upload-container-${index}" style="display: ${traveler.visaType === 'with_visa' || traveler.visaType === 'foreign' ? 'block' : 'none'};">
+
                         <label>Visa Document ${isUrgentDeparture && (traveler.visaType === 'with_visa') ? '<span style="color:#DC2626;">*</span>' : ''}</label>
                         <div class="visa-document-upload">
                             <input type="file" id="visa-document-${index}" accept="image/*,.pdf" onchange="handleVisaDocumentUpload(${index}, this)" style="display:none;">
@@ -1826,6 +1827,14 @@ function renderTravelerCards() {
                     <div class="form-group">
                         <label>Profile/Source of Income <span style="color:#DC2626;">*</span></label>
                         <input type="text" value="${escapeHtml(traveler.profile_source || '')}" placeholder="Profile/Source of Income" onchange="updateTravelerField(${index}, 'profile_source', this.value)">
+                    </div>
+
+                    <!-- OCR Upload Hint -->
+                    <div class="form-group col-span-4 ocr-upload-hint-row">
+                        <div class="ocr-upload-hint">
+                            <span class="ocr-upload-hint-icon">&#9432;</span>
+                            Upload your passport photo first — the information on the passport will be automatically read and filled in via OCR. Please upload the passport photo before entering traveler details manually.
+                        </div>
                     </div>
                 </div>
             </div>

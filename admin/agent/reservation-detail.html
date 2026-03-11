@@ -1339,6 +1339,7 @@
 		/* ── Detail Tabs ── */
 		.detail-tabs-nav {
 			display: flex; gap: 0; border-bottom: 2px solid #e5e7eb;
+			flex-wrap: wrap;
 		}
 		.detail-tab-btn {
 			padding: 10px 20px; font-size: 14px; font-weight: 600;
@@ -1346,6 +1347,7 @@
 			border-bottom: 2px solid transparent; margin-bottom: -2px;
 			transition: color 0.15s, border-color 0.15s;
 			display: inline-flex; align-items: center;
+			white-space: nowrap;
 		}
 		.detail-tab-btn:hover { color: #374151; }
 		.detail-tab-btn.is-active {

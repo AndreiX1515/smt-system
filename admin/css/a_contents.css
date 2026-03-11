@@ -25,7 +25,32 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 .layout-main { flex: 1; display: flex; }
 
 /* =========  ========= */
-.layout-nav { width: 220px; flex-shrink: 0; background: #fff; padding: 50px 12px; }
+/* Nav Toggle Button */
+.nav-toggle-btn {
+	display: flex; align-items: center; justify-content: center;
+	width: 36px; height: 36px; border-radius: 8px;
+	background: none; border: 1px solid transparent; cursor: pointer;
+	transition: background 0.15s, border-color 0.15s;
+}
+.nav-toggle-btn:hover { background: #D6E4FF; border-color: #A3C7FF; }
+
+/* Layout Nav */
+.layout-nav { width: 220px; flex-shrink: 0; background: #fff; padding: 50px 12px; transition: width 0.25s ease, padding 0.25s ease; overflow: hidden; }
+
+/* Collapsed state */
+.layout-nav.is-collapsed { width: 60px; padding: 50px 6px; }
+.layout-nav.is-collapsed .nav-btn-label { opacity: 0; width: 0; overflow: hidden; }
+.layout-nav.is-collapsed .nav-btn { justify-content: center; padding: 0; gap: 0; }
+.layout-nav.is-collapsed .nav-sub { display: none; }
+.layout-nav.is-collapsed .nav-unread-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 9px; }
+.layout-nav.is-collapsed .nav-item { position: relative; }
+.layout-nav.is-collapsed .nav-item:hover .nav-btn-label {
+	opacity: 1; width: auto; overflow: visible;
+	position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+	background: #333; color: #fff; padding: 4px 12px; border-radius: 6px;
+	font-size: 13px; z-index: 100; pointer-events: none;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.15); margin-left: 8px;
+}
 .layout-nav .nav-list { display: flex; flex-direction: column; gap: 8px; }
 .layout-nav .nav-item { max-height:50px; border-radius: 12px; overflow: hidden; transition: all 0.2s; }
 .layout-nav .nav-item svg { fill: #969696; }
@@ -39,9 +64,9 @@ body { min-height: 100vh; display: flex; flex-direction: column; background: #EC
 .layout-nav .nav-item:hover svg { fill: #0056d9; }
 .layout-nav .nav-item:hover .stroke { stroke: #0056d9; }
 
-.layout-nav .nav-btn { width:100%; display: flex; align-items: center; gap: 12px; height: 50px; padding: 0 16px; border-radius: 12px; font-size: 18px; font-weight: bold; color: #969696; cursor: pointer; }
+.layout-nav .nav-btn { width:100%; display: flex; align-items: center; gap: 12px; height: 50px; padding: 0 16px; border-radius: 12px; font-size: 18px; font-weight: bold; color: #969696; cursor: pointer; transition: padding 0.25s ease, gap 0.25s ease; position: relative; }
 .layout-nav .nav-icon { position: relative; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
-.layout-nav .nav-btn-label { font-size: 16px; font-weight:bold; text-align:left; }
+.layout-nav .nav-btn-label { font-size: 16px; font-weight:bold; text-align:left; white-space: nowrap; transition: opacity 0.2s ease; }
 .layout-nav .nav-sub { flex-direction: column; padding: 8px 0 8px 32px; border-left: 1px solid #E5E7EB; margin-left: 28px; }
 .layout-nav .nav-sub .side-link { display:flex; align-items:center; min-height: 40px; font-size: 14px; font-weight: 500; color: #6B7280; padding: 0 12px; cursor: pointer; border-radius: 6px; margin: 2px 0; transition: all 0.15s ease; }
 .layout-nav .nav-sub .side-link:hover { color: #0056d9; background: #F0F7FF; }
@@ -1881,4 +1906,30 @@ textarea[name="terms"] { width:100%; border-radius:12px; padding:24px; border: 1
 .agent-search-item-name { font-size: 14px; font-weight: 500; color: #333; }
 .agent-search-item-sub { font-size: 12px; color: #888; }
 .agent-search-empty { padding: 16px; text-align: center; color: #999; font-size: 13px; }
+
+/* ============================================== */
+/* Responsive Layout                              */
+/* ============================================== */
+
+/* Tablet / narrow window: stack aside below main */
+@media (max-width: 1200px) {
+	.layout-content.layout-content-aside {
+		grid-template-columns: 1fr;
+	}
+	.layout-content.layout-content-aside .page-toolbar {
+		grid-column: span 1;
+	}
+	.content-aside {
+		position: static;
+		max-height: none;
+		padding-top: 12px;
+	}
+}
+
+/* Smaller screens: reduce content padding */
+@media (max-width: 900px) {
+	.layout-content {
+		padding: 20px;
+	}
+}
 

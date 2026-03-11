@@ -1,7 +1,7 @@
 <?php
 return [
     'service_account_key_path' => '/var/www/html/backend/config/google-sa-key.json',
-    'spreadsheet_id' => '1K7t_9T4wCsZYWPcleJ6yKQVI9Q33SnMCmhC-M_l-Wis',
+    'spreadsheet_id' => '1xCfpolzqQnqOjtDFV3mozpg3C6J02Or7QA6t2kfSLBc',
     'webhook_secret' => 'smt_sheets_webhook_2026_secret',
     'sheets' => [
         [
@@ -11,8 +11,8 @@ return [
             'col_date'        => 'C',
             'col_r'           => 'G',
             'col_app'         => 'Z',
-            'header_row'      => 5,
-            'data_start_row'  => 6,
+            'header_row'      => 9,
+            'data_start_row'  => 10,
         ]
     ],
     'token_cache_path' => '/tmp/google_sheets_token.json',

@@ -16,7 +16,7 @@ var COL_PACKAGE_ID = 29;   // AC열 (packageId)
 var COL_DATE = 3;          // C열 (출발일)
 var COL_R = 7;             // G열 (잔여좌석)
 var COL_APP = 26;          // Z열 (앱 예약 인원)
-var HEADER_ROWS = 5;       // 데이터는 6행부터
+var HEADER_ROWS = 9;       // 데이터는 10행부터
 
 function onEdit(e) {
   var sheet = e.source.getActiveSheet();

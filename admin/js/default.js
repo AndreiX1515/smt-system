@@ -1126,3 +1126,22 @@ function waitForHeaderUserNameAndHydrate(timeoutMs = 3000) {
 		requestAnimationFrame(loop);
 	})();
 }
+
+/* ── Sidebar Toggle ── */
+function toggleLayoutNav() {
+	const nav = document.querySelector('.layout-nav');
+	if (!nav) return;
+	const collapsed = nav.classList.toggle('is-collapsed');
+	// 상태를 localStorage에 저장하여 페이지 이동 시에도 유지
+	try { localStorage.setItem('navCollapsed', collapsed ? '1' : '0'); } catch(e) {}
+}
+
+// 페이지 로드 시 저장된 상태 복원
+document.addEventListener('DOMContentLoaded', function() {
+	try {
+		if (localStorage.getItem('navCollapsed') === '1') {
+			const nav = document.querySelector('.layout-nav');
+			if (nav) nav.classList.add('is-collapsed');
+		}
+	} catch(e) {}
+});
