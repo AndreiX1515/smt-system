@@ -96,8 +96,8 @@
 						</span>
 						<span data-lan-eng="Voucher">Voucher</span>
 					</div>
-					<div class="doc-card-body">
-						<div class="doc-placeholder" data-lan-eng="Coming soon">Coming soon</div>
+					<div class="doc-card-body" id="voucherCardBody">
+						<div class="doc-pending-msg" data-lan-eng="Admin is preparing this document">Admin is preparing this document</div>
 					</div>
 				</div>
 
@@ -211,6 +211,7 @@
 
 				renderDocumentCard('visa', 'visaCardBody');
 				renderDocumentCard('airline_ticket', 'ticketCardBody');
+				renderVoucherCard();
 			} catch (e) {
 				console.error('Load detail error:', e);
 				alert('Failed to load booking detail');
@@ -307,6 +308,31 @@
 		function escapeHtml(str) {
 			if (!str) return '';
 			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+		}
+
+		function renderVoucherCard() {
+			const body = document.getElementById('voucherCardBody');
+			const doc = currentDocuments['voucher'];
+
+			if (doc) {
+				const fileName = escapeHtml(doc.originalName || 'voucher.pdf');
+				const fileSize = doc.fileSize ? formatFileSize(doc.fileSize) : '';
+				const uploadDate = doc.uploadedAt ? doc.uploadedAt.substring(0, 16) : '';
+				body.innerHTML = `
+					<div class="doc-file-info">
+						<div>
+							<div class="doc-file-name">${fileName}</div>
+							<div class="doc-file-meta">${fileSize} ${uploadDate ? '&middot; ' + uploadDate : ''}</div>
+						</div>
+						<div class="doc-actions">
+							<button onclick="previewDocument('voucher')" class="btn-primary" data-lan-eng="Preview">Preview</button>
+							<button onclick="downloadDocument('voucher')" data-lan-eng="Download">Download</button>
+						</div>
+					</div>
+				`;
+			} else {
+				body.innerHTML = `<div class="doc-pending-msg" data-lan-eng="Admin is preparing this document">Admin is preparing this document</div>`;
+			}
 		}
 	</script>
 </body>

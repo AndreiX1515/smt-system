@@ -1133,6 +1133,9 @@ try {
         case 'deleteTravelDocument':
             deleteTravelDocument($conn, $input);
             break;
+        case 'generateVoucher':
+            generateVoucherAction($conn, $input);
+            break;
 
         default:
             send_error_response('Invalid action: ' . $action, 400);
@@ -21959,4 +21962,21 @@ function deleteTravelDocument(mysqli $conn, $input) {
         'success' => true,
         'message' => 'Document deleted successfully'
     ]);
+}
+
+function generateVoucherAction(mysqli $conn, $input) {
+    $bookingId = trim($input['bookingId'] ?? '');
+    if (!$bookingId) {
+        send_error_response('bookingId is required', 400);
+    }
+
+    require_once __DIR__ . '/../../../backend/services/voucher_generator.php';
+
+    $result = generateServiceVoucher($conn, $bookingId);
+
+    if ($result['success']) {
+        send_json_response($result);
+    } else {
+        send_error_response($result['message'], 500);
+    }
 }

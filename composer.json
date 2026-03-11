@@ -1,5 +1,6 @@
 {
     "require": {
-        "aws/aws-sdk-php": "^3.371"
+        "aws/aws-sdk-php": "^3.371",
+        "dompdf/dompdf": "^3.1"
     }
 }

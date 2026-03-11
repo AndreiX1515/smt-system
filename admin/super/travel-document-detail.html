@@ -103,8 +103,8 @@
 						</span>
 						<span data-lan-eng="Voucher">Voucher</span>
 					</div>
-					<div class="doc-card-body">
-						<div class="doc-placeholder" data-lan-eng="Coming soon">Coming soon</div>
+					<div class="doc-card-body" id="voucherCardBody">
+						<div class="doc-placeholder">Loading...</div>
 					</div>
 				</div>
 
@@ -225,6 +225,7 @@
 
 				renderDocumentCard('visa', 'visaCardBody', 'visaFileInput');
 				renderDocumentCard('airline_ticket', 'ticketCardBody', 'ticketFileInput');
+				renderVoucherCard();
 			} catch (e) {
 				console.error('Load detail error:', e);
 				alert('Failed to load booking detail');
@@ -400,6 +401,76 @@
 		function escapeHtml(str) {
 			if (!str) return '';
 			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+		}
+
+		function renderVoucherCard() {
+			const body = document.getElementById('voucherCardBody');
+			const doc = currentDocuments['voucher'];
+
+			if (doc) {
+				const fileName = escapeHtml(doc.originalName || 'voucher.pdf');
+				const fileSize = doc.fileSize ? formatFileSize(doc.fileSize) : '';
+				const uploadDate = doc.uploadedAt ? doc.uploadedAt.substring(0, 16) : '';
+				body.innerHTML = `
+					<div class="doc-file-info">
+						<div>
+							<div class="doc-file-name">${fileName}</div>
+							<div class="doc-file-meta">${fileSize} ${uploadDate ? '&middot; ' + uploadDate : ''}</div>
+						</div>
+						<div class="doc-actions">
+							<button onclick="previewDocument('voucher')" class="btn-primary" data-lan-eng="Preview">Preview</button>
+							<button onclick="downloadDocument('voucher')" data-lan-eng="Download">Download</button>
+							<button onclick="deleteDocument(${doc.documentId}, 'voucher')" class="btn-danger" data-lan-eng="Delete">Delete</button>
+						</div>
+					</div>
+					<div style="margin-top:12px;">
+						<button onclick="generateVoucher()" style="padding:8px 18px;border:1px solid #0050C8;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;color:#0050C8;font-weight:500;" data-lan-eng="Regenerate Voucher">Regenerate Voucher</button>
+					</div>
+				`;
+			} else {
+				body.innerHTML = `
+					<div style="text-align:center;padding:20px;">
+						<p style="color:#666;margin-bottom:12px;">No voucher generated yet.</p>
+						<button onclick="generateVoucher()" class="btn-primary" style="padding:10px 24px;border-radius:8px;border:none;background:#0050C8;color:#fff;cursor:pointer;font-size:14px;font-weight:500;">Generate Voucher</button>
+					</div>
+				`;
+			}
+		}
+
+		async function generateVoucher() {
+			if (!currentBookingId) return;
+
+			const btn = event.target;
+			const originalText = btn.textContent;
+			btn.disabled = true;
+			btn.textContent = 'Generating...';
+			btn.style.opacity = '0.6';
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'generateVoucher',
+						bookingId: currentBookingId
+					})
+				});
+				const result = await res.json();
+
+				if (result.success) {
+					await loadDetail();
+				} else {
+					alert(result.message || 'Failed to generate voucher');
+				}
+			} catch (e) {
+				console.error('Generate voucher error:', e);
+				alert('Failed to generate voucher');
+			} finally {
+				btn.disabled = false;
+				btn.textContent = originalText;
+				btn.style.opacity = '1';
+			}
 		}
 	</script>
 </body>
