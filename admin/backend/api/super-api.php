@@ -246,19 +246,20 @@ if (!function_exists('generateBookingId')) {
         $prefix = 'BK';
         $date = date('Ymd');
 
-        // 오늘 날짜로 시작하는 예약 번호 개수 확인
-        $sql = "SELECT COUNT(*) as count FROM bookings WHERE bookingId LIKE ?";
+        // 오늘 날짜의 마지막 시퀀스 번호 조회 (삭제된 예약이 있어도 중복 방지)
+        $sql = "SELECT MAX(CAST(SUBSTRING(bookingId, ?) AS UNSIGNED)) as lastSeq FROM bookings WHERE bookingId LIKE ?";
         $likePattern = $prefix . $date . '%';
+        $substringStart = strlen($prefix . $date) + 1;
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $likePattern);
+        $stmt->bind_param("is", $substringStart, $likePattern);
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
-        $count = (int)$row['count'] + 1;
+        $nextSeq = ($row['lastSeq'] !== null) ? (int)$row['lastSeq'] + 1 : 1;
         $stmt->close();
 
         // 3자리 숫자로 포맷
-        $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+        $sequence = str_pad($nextSeq, 3, '0', STR_PAD_LEFT);
 
         return $prefix . $date . $sequence;
     }

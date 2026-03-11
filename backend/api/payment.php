@@ -529,10 +529,26 @@ function createBooking($bookingData, $userId, $bookingStatus = 'pending', $booki
 
 //  ID  
 function generateBookingId() {
+    global $conn;
     $prefix = 'BK';
     $date = date('Ymd');
-    $random = str_pad(mt_rand(1, 999), 3, '0', STR_PAD_LEFT);
-    return $prefix . $date . $random;
+
+    // 오늘 날짜의 마지막 시퀀스 번호 조회 (삭제된 예약이 있어도 중복 방지)
+    $sql = "SELECT MAX(CAST(SUBSTRING(bookingId, ?) AS UNSIGNED)) as lastSeq FROM bookings WHERE bookingId LIKE ?";
+    $likePattern = $prefix . $date . '%';
+    $substringStart = strlen($prefix . $date) + 1;
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("is", $substringStart, $likePattern);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $nextSeq = ($row['lastSeq'] !== null) ? (int)$row['lastSeq'] + 1 : 1;
+    $stmt->close();
+
+    // 3자리 숫자로 포맷
+    $sequence = str_pad($nextSeq, 3, '0', STR_PAD_LEFT);
+
+    return $prefix . $date . $sequence;
 }
 
 //   
