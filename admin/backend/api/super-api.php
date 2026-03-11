@@ -1120,6 +1120,20 @@ try {
             saveRoomingAssignmentsByBookingSuper($conn, $input);
             break;
 
+        // Travel Document
+        case 'getTravelDocumentBookings':
+            getTravelDocumentBookings($conn, $input);
+            break;
+        case 'getTravelDocumentDetail':
+            getTravelDocumentDetail($conn, $input);
+            break;
+        case 'uploadTravelDocument':
+            uploadTravelDocument($conn, $input);
+            break;
+        case 'deleteTravelDocument':
+            deleteTravelDocument($conn, $input);
+            break;
+
         default:
             send_error_response('Invalid action: ' . $action, 400);
     }
@@ -21708,4 +21722,241 @@ function saveRoomingAssignmentsByBookingSuper($conn, $input) {
     } catch (Exception $e) {
         send_error_response('Failed to save rooming assignments: ' . $e->getMessage(), 500);
     }
+}
+
+// ========================
+// Travel Document Functions
+// ========================
+
+function getTravelDocumentBookings(mysqli $conn, $input) {
+    $search = trim($input['search'] ?? '');
+    $agentName = trim($input['agentName'] ?? '');
+    $travelStartDate = trim($input['travelStartDate'] ?? '');
+
+    $sql = "SELECT b.bookingId, b.packageName, b.departureDate,
+                   b.adults, b.children, b.infants, (b.adults + b.children + b.infants) AS numberOfPeople, b.bookingStatus, b.agentId,
+                   a.username AS agentName,
+                   CONCAT(bt.firstName,' ',bt.lastName) AS travelerName,
+                   (SELECT COUNT(*) FROM booking_documents bd WHERE bd.bookingId=b.bookingId AND bd.documentType='visa') AS hasVisa,
+                   (SELECT COUNT(*) FROM booking_documents bd WHERE bd.bookingId=b.bookingId AND bd.documentType='airline_ticket') AS hasTicket
+            FROM bookings b
+            LEFT JOIN accounts a ON b.agentId=a.accountId
+            LEFT JOIN booking_travelers bt ON bt.transactNo=b.bookingId AND bt.isMainTraveler=1
+            WHERE b.bookingStatus IN ('confirmed','completed')
+              AND (b.agentId IS NOT NULL OR b.price_tier='B2B')";
+
+    $types = '';
+    $params = [];
+
+    // Date range filter
+    if ($travelStartDate && strpos($travelStartDate, '~') !== false) {
+        $parts = array_map('trim', explode('~', $travelStartDate));
+        if (count($parts) === 2 && $parts[0] && $parts[1]) {
+            $sql .= " AND b.departureDate >= ? AND b.departureDate <= ?";
+            $types .= 'ss';
+            $params[] = $parts[0];
+            $params[] = $parts[1];
+        }
+    }
+
+    // Agent name filter
+    if ($agentName) {
+        $sql .= " AND a.username LIKE ?";
+        $types .= 's';
+        $params[] = '%' . $agentName . '%';
+    }
+
+    // Search filter
+    if ($search) {
+        $sql .= " AND (b.bookingId LIKE ? OR b.packageName LIKE ? OR CONCAT(bt.firstName,' ',bt.lastName) LIKE ?)";
+        $types .= 'sss';
+        $params[] = '%' . $search . '%';
+        $params[] = '%' . $search . '%';
+        $params[] = '%' . $search . '%';
+    }
+
+    $sql .= " GROUP BY b.bookingId ORDER BY b.departureDate DESC";
+
+    $stmt = $conn->prepare($sql);
+    if ($types && count($params) > 0) {
+        mysqli_bind_params_by_ref($stmt, $types, $params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $bookings = [];
+    while ($row = $result->fetch_assoc()) {
+        $bookings[] = $row;
+    }
+    $stmt->close();
+
+    send_json_response([
+        'success' => true,
+        'data' => ['bookings' => $bookings]
+    ]);
+}
+
+function getTravelDocumentDetail(mysqli $conn, $input) {
+    $bookingId = trim($input['bookingId'] ?? '');
+    if (!$bookingId) {
+        send_error_response('bookingId is required', 400);
+    }
+
+    // Get booking info
+    $sql = "SELECT b.bookingId, b.packageName, b.departureDate,
+                   b.adults, b.children, b.infants, (b.adults + b.children + b.infants) AS numberOfPeople, b.bookingStatus, b.agentId,
+                   a.username AS agentName,
+                   CONCAT(bt.firstName,' ',bt.lastName) AS travelerName
+            FROM bookings b
+            LEFT JOIN accounts a ON b.agentId=a.accountId
+            LEFT JOIN booking_travelers bt ON bt.transactNo=b.bookingId AND bt.isMainTraveler=1
+            WHERE b.bookingId = ?
+            LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $bookingId);
+    $stmt->execute();
+    $booking = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$booking) {
+        send_error_response('Booking not found', 404);
+    }
+
+    // Get documents
+    $sql2 = "SELECT documentId, bookingId, documentType, filePath, originalName, fileSize, mimeType, uploadedBy, uploadedAt, updatedAt
+             FROM booking_documents WHERE bookingId = ?";
+    $stmt2 = $conn->prepare($sql2);
+    $stmt2->bind_param('s', $bookingId);
+    $stmt2->execute();
+    $docs = [];
+    $res = $stmt2->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $docs[] = $row;
+    }
+    $stmt2->close();
+
+    send_json_response([
+        'success' => true,
+        'data' => [
+            'booking' => $booking,
+            'documents' => $docs
+        ]
+    ]);
+}
+
+function uploadTravelDocument(mysqli $conn, $input) {
+    $bookingId = trim($_POST['bookingId'] ?? '');
+    $documentType = trim($_POST['documentType'] ?? '');
+
+    if (!$bookingId || !$documentType) {
+        send_error_response('bookingId and documentType are required', 400);
+    }
+    if (!in_array($documentType, ['visa', 'airline_ticket'])) {
+        send_error_response('Invalid documentType', 400);
+    }
+
+    if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        send_error_response('No file uploaded or upload error', 400);
+    }
+
+    $file = $_FILES['file'];
+    $maxSize = 10 * 1024 * 1024; // 10MB
+    if ($file['size'] > $maxSize) {
+        send_error_response('File size must be less than 10MB', 400);
+    }
+
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    if (!in_array($mimeType, $allowedMimes)) {
+        send_error_response('Only images and PDF files are allowed', 400);
+    }
+
+    // Delete existing document of same type for this booking
+    $existing = $conn->prepare("SELECT documentId, filePath FROM booking_documents WHERE bookingId = ? AND documentType = ?");
+    $existing->bind_param('ss', $bookingId, $documentType);
+    $existing->execute();
+    $existingResult = $existing->get_result();
+    while ($old = $existingResult->fetch_assoc()) {
+        $oldPath = __DIR__ . '/../../../' . ltrim($old['filePath'], '/');
+        if (file_exists($oldPath)) {
+            @unlink($oldPath);
+        }
+        $delStmt = $conn->prepare("DELETE FROM booking_documents WHERE documentId = ?");
+        $delStmt->bind_param('i', $old['documentId']);
+        $delStmt->execute();
+        $delStmt->close();
+    }
+    $existing->close();
+
+    // Save new file
+    $uploadDir = __DIR__ . '/../../../uploads/travel_documents/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
+    $fileName = $bookingId . '_' . $documentType . '_' . time() . '.' . $safeExt;
+    $destPath = $uploadDir . $fileName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+        send_error_response('Failed to save file', 500);
+    }
+
+    $filePath = '/uploads/travel_documents/' . $fileName;
+    $originalName = $file['name'];
+    $fileSize = $file['size'];
+    $uploadedBy = $_SESSION['admin_accountId'] ?? $_SESSION['accountId'] ?? null;
+
+    $stmt = $conn->prepare("INSERT INTO booking_documents (bookingId, documentType, filePath, originalName, fileSize, mimeType, uploadedBy) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param('ssssisi', $bookingId, $documentType, $filePath, $originalName, $fileSize, $mimeType, $uploadedBy);
+    $stmt->execute();
+    $docId = $stmt->insert_id;
+    $stmt->close();
+
+    send_json_response([
+        'success' => true,
+        'message' => 'Document uploaded successfully',
+        'data' => [
+            'documentId' => $docId,
+            'filePath' => $filePath,
+            'originalName' => $originalName
+        ]
+    ]);
+}
+
+function deleteTravelDocument(mysqli $conn, $input) {
+    $documentId = (int)($input['documentId'] ?? 0);
+    if (!$documentId) {
+        send_error_response('documentId is required', 400);
+    }
+
+    // Get file path
+    $stmt = $conn->prepare("SELECT filePath FROM booking_documents WHERE documentId = ?");
+    $stmt->bind_param('i', $documentId);
+    $stmt->execute();
+    $doc = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$doc) {
+        send_error_response('Document not found', 404);
+    }
+
+    // Delete physical file
+    $fullPath = __DIR__ . '/../../../' . ltrim($doc['filePath'], '/');
+    if (file_exists($fullPath)) {
+        @unlink($fullPath);
+    }
+
+    // Delete DB record
+    $del = $conn->prepare("DELETE FROM booking_documents WHERE documentId = ?");
+    $del->bind_param('i', $documentId);
+    $del->execute();
+    $del->close();
+
+    send_json_response([
+        'success' => true,
+        'message' => 'Document deleted successfully'
+    ]);
 }

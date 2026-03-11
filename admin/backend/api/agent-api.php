@@ -606,6 +606,14 @@ try {
             deleteOptionPaymentProof($conn, $input);
             break;
 
+        // Travel Document
+        case 'getTravelDocumentBookings':
+            getAgentTravelDocumentBookings($conn, $input);
+            break;
+        case 'getTravelDocumentDetail':
+            getAgentTravelDocumentDetail($conn, $input);
+            break;
+
         default:
             // 브라우저/확장프로그램/프리로드 등으로 agent-api.php가 파라미터 없이 호출되는 경우가 있어
             // 콘솔에 400이 남는 문제를 방지합니다. (의도치 않은 GET에 한해 조용히 종료)
@@ -13542,6 +13550,120 @@ function saveAgentRoomingAssignments($conn, $input) {
     } catch (Exception $e) {
         send_error_response('Failed to save rooming assignments: ' . $e->getMessage(), 500);
     }
+}
+
+// ========================
+// Travel Document Functions (Agent - Read Only)
+// ========================
+
+function getAgentTravelDocumentBookings(mysqli $conn, $input) {
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (!$agentAccountId) {
+        send_error_response('Agent login required', 401);
+    }
+
+    $search = trim($input['search'] ?? '');
+    $travelStartDate = trim($input['travelStartDate'] ?? '');
+
+    $sql = "SELECT b.bookingId, b.packageName, b.departureDate,
+                   b.adults, b.children, b.infants, (b.adults + b.children + b.infants) AS numberOfPeople, b.bookingStatus,
+                   CONCAT(bt.firstName,' ',bt.lastName) AS travelerName,
+                   (SELECT COUNT(*) FROM booking_documents bd WHERE bd.bookingId=b.bookingId AND bd.documentType='visa') AS hasVisa,
+                   (SELECT COUNT(*) FROM booking_documents bd WHERE bd.bookingId=b.bookingId AND bd.documentType='airline_ticket') AS hasTicket
+            FROM bookings b
+            LEFT JOIN booking_travelers bt ON bt.transactNo=b.bookingId AND bt.isMainTraveler=1
+            WHERE b.bookingStatus IN ('confirmed','completed')
+              AND b.agentId = ?";
+
+    $types = 'i';
+    $params = [$agentAccountId];
+
+    // Date range filter
+    if ($travelStartDate && strpos($travelStartDate, '~') !== false) {
+        $parts = array_map('trim', explode('~', $travelStartDate));
+        if (count($parts) === 2 && $parts[0] && $parts[1]) {
+            $sql .= " AND b.departureDate >= ? AND b.departureDate <= ?";
+            $types .= 'ss';
+            $params[] = $parts[0];
+            $params[] = $parts[1];
+        }
+    }
+
+    // Search filter
+    if ($search) {
+        $sql .= " AND (b.bookingId LIKE ? OR b.packageName LIKE ?)";
+        $types .= 'ss';
+        $params[] = '%' . $search . '%';
+        $params[] = '%' . $search . '%';
+    }
+
+    $sql .= " GROUP BY b.bookingId ORDER BY b.departureDate DESC";
+
+    $stmt = $conn->prepare($sql);
+    mysqli_bind_params_by_ref($stmt, $types, $params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $bookings = [];
+    while ($row = $result->fetch_assoc()) {
+        $bookings[] = $row;
+    }
+    $stmt->close();
+
+    send_json_response([
+        'success' => true,
+        'data' => ['bookings' => $bookings]
+    ]);
+}
+
+function getAgentTravelDocumentDetail(mysqli $conn, $input) {
+    $agentAccountId = $_SESSION['agent_accountId'] ?? null;
+    if (!$agentAccountId) {
+        send_error_response('Agent login required', 401);
+    }
+
+    $bookingId = trim($input['bookingId'] ?? '');
+    if (!$bookingId) {
+        send_error_response('bookingId is required', 400);
+    }
+
+    // Get booking info (verify ownership)
+    $sql = "SELECT b.bookingId, b.packageName, b.departureDate,
+                   b.adults, b.children, b.infants, (b.adults + b.children + b.infants) AS numberOfPeople, b.bookingStatus,
+                   CONCAT(bt.firstName,' ',bt.lastName) AS travelerName
+            FROM bookings b
+            LEFT JOIN booking_travelers bt ON bt.transactNo=b.bookingId AND bt.isMainTraveler=1
+            WHERE b.bookingId = ? AND b.agentId = ?
+            LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('si', $bookingId, $agentAccountId);
+    $stmt->execute();
+    $booking = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$booking) {
+        send_error_response('Booking not found or access denied', 404);
+    }
+
+    // Get documents
+    $sql2 = "SELECT documentId, bookingId, documentType, filePath, originalName, fileSize, mimeType, uploadedAt
+             FROM booking_documents WHERE bookingId = ?";
+    $stmt2 = $conn->prepare($sql2);
+    $stmt2->bind_param('s', $bookingId);
+    $stmt2->execute();
+    $docs = [];
+    $res = $stmt2->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $docs[] = $row;
+    }
+    $stmt2->close();
+
+    send_json_response([
+        'success' => true,
+        'data' => [
+            'booking' => $booking,
+            'documents' => $docs
+        ]
+    ]);
 }
 
 ?>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>Travel Document</title>
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20260311">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+<body>
+	<header class="layout-header"></header>
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Travel Document">Travel Document</h1>
+
+			<!-- Filter Panel -->
+			<div class="card-panel jw-mgt32">
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Total">Total</span>
+						<span class="result-count__num" id="totalCount">0</span>
+						<span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" id="filterForm" onsubmit="return false;">
+						<input type="text" class="form-control" readonly id="travelStartDate" placeholder="Travel Date" style="width:200px;">
+						<button type="button" class="btn-icon calendar" onclick="$('#travelStartDate').trigger('click')">
+							<img src="../image/calendar.svg" alt="">
+						</button>
+						<input type="text" class="form-control search-input" id="searchInput" placeholder="Booking ID / Product Name">
+						<button type="button" class="jw-button search-btn" onclick="applyFilters()">
+							<img src="../image/search.svg" alt="">
+						</button>
+					</form>
+				</div>
+			</div>
+
+			<!-- Table -->
+			<div class="card-panel jw-mgt24">
+				<table class="jw-tableA" style="table-layout:auto;">
+					<thead>
+						<tr>
+							<th class="is-center">No</th>
+							<th class="is-center" data-lan-eng="Booking ID">Booking ID</th>
+							<th data-lan-eng="Product">Product</th>
+							<th class="is-center" data-lan-eng="Departure">Departure</th>
+							<th class="is-center" data-lan-eng="PAX">PAX</th>
+							<th class="is-center" data-lan-eng="Status">Status</th>
+						</tr>
+					</thead>
+					<tbody id="bookingTableBody">
+					</tbody>
+				</table>
+				<div class="pagination-wrap" id="paginationWrap"></div>
+			</div>
+		</section>
+	</main>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/agent.js?v=20260311"></script>
+	<script src="../js/datepicker.js?v=20251231"></script>
+	<script src="../js/agent-travel-document-list.js?v=20260311"></script>
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_agent.html'
+		});
+	</script>
+</body>
+</html>

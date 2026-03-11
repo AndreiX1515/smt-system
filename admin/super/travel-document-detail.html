@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>Travel Document Detail</title>
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20260311">
+	<style>
+		.doc-cards { display: flex; flex-direction: column; gap: 24px; margin-top: 24px; }
+		.doc-card { border: 1px solid #e0e0e0; border-radius: 12px; padding: 24px; background: #fff; }
+		.doc-card-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+		.doc-card-title .icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+		.doc-card-body { min-height: 60px; }
+		.doc-placeholder { color: #999; font-size: 14px; padding: 20px; text-align: center; background: #f9f9f9; border-radius: 8px; }
+		.doc-file-info { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f5f8ff; border-radius: 8px; flex-wrap: wrap; }
+		.doc-file-name { font-size: 14px; font-weight: 500; color: #333; word-break: break-all; }
+		.doc-file-meta { font-size: 12px; color: #999; }
+		.doc-actions { display: flex; gap: 8px; margin-left: auto; }
+		.doc-actions button { padding: 6px 14px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 13px; }
+		.doc-actions button:hover { background: #f0f0f0; }
+		.doc-actions button.btn-danger { color: #e53935; border-color: #e53935; }
+		.doc-actions button.btn-danger:hover { background: #fce4ec; }
+		.doc-actions button.btn-primary { color: #fff; background: #0050C8; border-color: #0050C8; }
+		.doc-actions button.btn-primary:hover { background: #003d99; }
+		.upload-area { display: flex; align-items: center; justify-content: center; padding: 24px; border: 2px dashed #ddd; border-radius: 8px; cursor: pointer; color: #666; font-size: 14px; transition: border-color 0.2s; }
+		.upload-area:hover { border-color: #0050C8; color: #0050C8; }
+
+		/* File viewer modal */
+		.file-viewer-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
+		.file-viewer-container { background: #fff; border-radius: 12px; max-width: 90vw; max-height: 90vh; overflow: auto; position: relative; min-width: 400px; }
+		.file-viewer-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #eee; }
+		.file-viewer-header h3 { margin: 0; font-size: 16px; }
+		.file-viewer-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 4px; }
+		.file-viewer-body { padding: 20px; text-align: center; }
+		.file-viewer-body img { max-width: 100%; max-height: 70vh; object-fit: contain; }
+		.file-viewer-body iframe { width: 100%; height: 70vh; border: none; }
+	</style>
+</head>
+<body>
+	<header class="layout-header"></header>
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+		<section class="layout-content">
+			<!-- Toolbar -->
+			<div class="page-toolbar">
+				<a href="travel-document-list.html" class="jw-button">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Travel Document">Travel Document</h1>
+
+			<!-- Booking Info -->
+			<h2 class="section-title jw-mgt32" data-lan-eng="Booking Information">Booking Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Product Name">Product Name</label>
+						<input type="text" class="form-control" id="infoProduct" value="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Booking ID">Booking ID</label>
+						<input type="text" class="form-control" id="infoBookingId" value="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Departure">Departure</label>
+						<input type="text" class="form-control" id="infoDeparture" value="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Status">Status</label>
+						<input type="text" class="form-control" id="infoStatus" value="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Agent">Agent</label>
+						<input type="text" class="form-control" id="infoAgent" value="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Main Traveler">Main Traveler</label>
+						<input type="text" class="form-control" id="infoTraveler" value="-" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="PAX">PAX</label>
+						<input type="text" class="form-control" id="infoPax" value="-" disabled>
+					</div>
+				</div>
+			</div>
+
+			<!-- Document Cards -->
+			<h2 class="section-title jw-mgt32" data-lan-eng="Travel Documents">Travel Documents</h2>
+			<div class="doc-cards">
+				<!-- Voucher -->
+				<div class="doc-card">
+					<div class="doc-card-title">
+						<span class="icon">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0050C8" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+						</span>
+						<span data-lan-eng="Voucher">Voucher</span>
+					</div>
+					<div class="doc-card-body">
+						<div class="doc-placeholder" data-lan-eng="Coming soon">Coming soon</div>
+					</div>
+				</div>
+
+				<!-- Visa -->
+				<div class="doc-card">
+					<div class="doc-card-title">
+						<span class="icon">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/><circle cx="7" cy="15" r="2"/></svg>
+						</span>
+						<span data-lan-eng="Visa">Visa</span>
+					</div>
+					<div class="doc-card-body" id="visaCardBody">
+						<div class="upload-area" onclick="document.getElementById('visaFileInput').click()">
+							Click to upload visa document
+						</div>
+						<input type="file" id="visaFileInput" accept="image/*,.pdf" style="display:none;" onchange="uploadDocument('visa', this)">
+					</div>
+				</div>
+
+				<!-- Airline Ticket -->
+				<div class="doc-card">
+					<div class="doc-card-title">
+						<span class="icon">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9800" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+						</span>
+						<span data-lan-eng="Airline Ticket">Airline Ticket</span>
+					</div>
+					<div class="doc-card-body" id="ticketCardBody">
+						<div class="upload-area" onclick="document.getElementById('ticketFileInput').click()">
+							Click to upload airline ticket
+						</div>
+						<input type="file" id="ticketFileInput" accept="image/*,.pdf" style="display:none;" onchange="uploadDocument('airline_ticket', this)">
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<!-- File Viewer Modal -->
+	<div class="file-viewer-overlay" id="fileViewerModal" onclick="closeFileViewer(event)">
+		<div class="file-viewer-container" onclick="event.stopPropagation()">
+			<div class="file-viewer-header">
+				<h3 id="fileViewerTitle">File Preview</h3>
+				<button class="file-viewer-close" onclick="closeFileViewer()">&times;</button>
+			</div>
+			<div class="file-viewer-body" id="fileViewerBody"></div>
+		</div>
+	</div>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_b2bbookingfix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentBookingId = null;
+		let currentDocuments = {};
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			const urlParams = new URLSearchParams(window.location.search);
+			currentBookingId = urlParams.get('bookingId');
+			if (!currentBookingId) {
+				alert('Booking ID is required');
+				window.location.href = 'travel-document-list.html';
+				return;
+			}
+
+			// Session check
+			try {
+				const res = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
+				const session = await res.json();
+				if (!session.success || !session.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+			} catch (e) {
+				window.location.href = '../index.html';
+				return;
+			}
+
+			await loadDetail();
+		});
+
+		async function loadDetail() {
+			try {
+				const params = new URLSearchParams({
+					action: 'getTravelDocumentDetail',
+					bookingId: currentBookingId
+				});
+				const res = await fetch(`../backend/api/super-api.php?${params}`, { credentials: 'same-origin' });
+				const result = await res.json();
+
+				if (!result.success) {
+					alert(result.message || 'Failed to load');
+					return;
+				}
+
+				const data = result.data;
+				const booking = data.booking;
+
+				// Populate info
+				document.getElementById('infoBookingId').value = booking.bookingId || '-';
+				document.getElementById('infoAgent').value = booking.agentName || '-';
+				document.getElementById('infoTraveler').value = booking.travelerName || '-';
+				document.getElementById('infoProduct').value = booking.packageName || '-';
+				document.getElementById('infoPax').value = booking.numberOfPeople || '-';
+				document.getElementById('infoDeparture').value = booking.departureDate || '-';
+				document.getElementById('infoStatus').value = booking.bookingStatus || '-';
+
+				// Store documents
+				currentDocuments = {};
+				(data.documents || []).forEach(doc => {
+					currentDocuments[doc.documentType] = doc;
+				});
+
+				renderDocumentCard('visa', 'visaCardBody', 'visaFileInput');
+				renderDocumentCard('airline_ticket', 'ticketCardBody', 'ticketFileInput');
+			} catch (e) {
+				console.error('Load detail error:', e);
+				alert('Failed to load booking detail');
+			}
+		}
+
+		function renderDocumentCard(docType, bodyId, inputId) {
+			const body = document.getElementById(bodyId);
+			const doc = currentDocuments[docType];
+
+			if (doc) {
+				const fileName = escapeHtml(doc.originalName || 'file');
+				const fileSize = doc.fileSize ? formatFileSize(doc.fileSize) : '';
+				const uploadDate = doc.uploadedAt ? doc.uploadedAt.substring(0, 16) : '';
+				body.innerHTML = `
+					<div class="doc-file-info">
+						<div>
+							<div class="doc-file-name">${fileName}</div>
+							<div class="doc-file-meta">${fileSize} ${uploadDate ? '&middot; ' + uploadDate : ''}</div>
+						</div>
+						<div class="doc-actions">
+							<button onclick="previewDocument('${docType}')" class="btn-primary" data-lan-eng="Preview">Preview</button>
+							<button onclick="downloadDocument('${docType}')" data-lan-eng="Download">Download</button>
+							<button onclick="deleteDocument(${doc.documentId}, '${docType}')" class="btn-danger" data-lan-eng="Delete">Delete</button>
+						</div>
+					</div>
+					<div style="margin-top:12px;">
+						<button onclick="document.getElementById('${inputId}').click()" style="padding:6px 14px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;" data-lan-eng="Replace file">Replace file</button>
+						<input type="file" id="${inputId}" accept="image/*,.pdf" style="display:none;" onchange="uploadDocument('${docType}', this)">
+					</div>
+				`;
+			} else {
+				body.innerHTML = `
+					<div class="upload-area" onclick="document.getElementById('${inputId}').click()">
+						Click to upload ${docType === 'visa' ? 'visa document' : 'airline ticket'}
+					</div>
+					<input type="file" id="${inputId}" accept="image/*,.pdf" style="display:none;" onchange="uploadDocument('${docType}', this)">
+				`;
+			}
+		}
+
+		async function uploadDocument(docType, inputEl) {
+			const file = inputEl.files[0];
+			if (!file) return;
+
+			// Validate
+			const maxSize = 10 * 1024 * 1024; // 10MB
+			if (file.size > maxSize) {
+				alert('File size must be less than 10MB');
+				inputEl.value = '';
+				return;
+			}
+
+			const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+			if (!allowedTypes.includes(file.type)) {
+				alert('Only images (JPG, PNG, GIF, WebP) and PDF files are allowed');
+				inputEl.value = '';
+				return;
+			}
+
+			const formData = new FormData();
+			formData.append('action', 'uploadTravelDocument');
+			formData.append('bookingId', currentBookingId);
+			formData.append('documentType', docType);
+			formData.append('file', file);
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: formData
+				});
+				const result = await res.json();
+				if (result.success) {
+					await loadDetail();
+				} else {
+					alert(result.message || 'Upload failed');
+				}
+			} catch (e) {
+				console.error('Upload error:', e);
+				alert('Upload failed');
+			}
+
+			inputEl.value = '';
+		}
+
+		async function deleteDocument(documentId, docType) {
+			if (!confirm('Are you sure you want to delete this document?')) return;
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'deleteTravelDocument',
+						documentId: documentId
+					})
+				});
+				const result = await res.json();
+				if (result.success) {
+					await loadDetail();
+				} else {
+					alert(result.message || 'Delete failed');
+				}
+			} catch (e) {
+				console.error('Delete error:', e);
+				alert('Delete failed');
+			}
+		}
+
+		function previewDocument(docType) {
+			const doc = currentDocuments[docType];
+			if (!doc) return;
+
+			const fileUrl = getFileUrl(doc.filePath);
+			const modal = document.getElementById('fileViewerModal');
+			const body = document.getElementById('fileViewerBody');
+			const title = document.getElementById('fileViewerTitle');
+
+			title.textContent = doc.originalName || 'File Preview';
+
+			if (/\.(jpg|jpeg|png|gif|webp)$/i.test(doc.filePath)) {
+				body.innerHTML = `<img src="${fileUrl}" alt="Preview" onerror="this.parentElement.innerHTML='<div style=\\'color:#f44336;padding:40px;\\'>Failed to load image</div>'">`;
+			} else if (/\.pdf$/i.test(doc.filePath)) {
+				body.innerHTML = `<iframe src="${fileUrl}" title="PDF Viewer"></iframe>`;
+			} else {
+				body.innerHTML = `<div style="padding:40px;color:#666;">Cannot preview this file type. Please download instead.</div>`;
+			}
+
+			modal.style.display = 'flex';
+			document.addEventListener('keydown', handleEsc);
+		}
+
+		function downloadDocument(docType) {
+			const doc = currentDocuments[docType];
+			if (!doc) return;
+
+			const fileUrl = getFileUrl(doc.filePath);
+			const a = document.createElement('a');
+			a.href = fileUrl;
+			a.download = doc.originalName || 'file';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+		}
+
+		function closeFileViewer(event) {
+			if (event && event.target !== event.currentTarget) return;
+			document.getElementById('fileViewerModal').style.display = 'none';
+			document.removeEventListener('keydown', handleEsc);
+		}
+
+		function handleEsc(e) {
+			if (e.key === 'Escape') closeFileViewer();
+		}
+
+		function getFileUrl(filePath) {
+			if (!filePath) return '';
+			let p = String(filePath).trim();
+			if (/^https?:\/\//i.test(p)) return p;
+			p = p.replace(/\\/g, '/');
+			return (window.location.origin || '') + (p.startsWith('/') ? p : '/' + p);
+		}
+
+		function formatFileSize(bytes) {
+			if (!bytes) return '';
+			if (bytes < 1024) return bytes + ' B';
+			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+			return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+		}
+
+		function escapeHtml(str) {
+			if (!str) return '';
+			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+		}
+	</script>
+</body>
+</html>
