@@ -717,6 +717,128 @@ class EmailNotificationService {
 
         return $stats;
     }
+
+    /**
+     * Send visa document reminder email when booking is approved
+     */
+    public function sendVisaReminder(string $bookingId): array {
+        try {
+            $booking = $this->getBookingWithAgentInfo($bookingId);
+            if (!$booking) {
+                return ['success' => false, 'message' => 'Booking not found'];
+            }
+
+            $agentEmail = $booking['agentEmail'] ?? '';
+            if (empty($agentEmail)) {
+                return ['success' => false, 'message' => 'Agent email not found'];
+            }
+
+            // Check for duplicate
+            if ($this->isNotificationSent($bookingId, 'visa_reminder', $agentEmail)) {
+                return ['success' => true, 'message' => 'Notification already sent'];
+            }
+
+            // Calculate deadline (2 weeks from now)
+            $deadline = new DateTime();
+            $deadline->modify('+14 days');
+            $deadlineDate = $deadline->format('F j, Y');
+
+            $packageName = $booking['packageName'] ?? $booking['productName'] ?? '';
+            $agentName = $booking['agentName'] ?? 'Agent';
+
+            $baseUrl = 'https://smpoc.site';
+            $reservationUrl = $baseUrl . '/admin/agent/reservation-detail.html?id=' . urlencode($bookingId);
+
+            $templateData = [
+                'bookingId' => $bookingId,
+                'packageName' => $packageName,
+                'agentName' => $agentName,
+                'reservationUrl' => $reservationUrl,
+                'deadlineDate' => $deadlineDate,
+            ];
+
+            $htmlBody = get_visa_reminder_template($templateData);
+            $subject = "[SMT Escape] Visa Document Reminder - {$bookingId}";
+
+            $result = mailer_send($agentEmail, $subject, $htmlBody);
+
+            $status = ($result['ok'] ?? false) ? 'sent' : 'failed';
+            $this->logNotification($bookingId, 'visa_reminder', $agentEmail, $status, $result['error'] ?? null);
+
+            return ['success' => $result['ok'] ?? false, 'message' => $result['error'] ?? 'OK'];
+        } catch (Throwable $e) {
+            error_log("sendVisaReminder error for {$bookingId}: " . $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Send visa document follow-up reminder (1 week after initial reminder)
+     */
+    public function sendVisaReminderFollowup(string $bookingId): array {
+        try {
+            $booking = $this->getBookingWithAgentInfo($bookingId);
+            if (!$booking) {
+                return ['success' => false, 'message' => 'Booking not found'];
+            }
+
+            $agentEmail = $booking['agentEmail'] ?? '';
+            if (empty($agentEmail)) {
+                return ['success' => false, 'message' => 'Agent email not found'];
+            }
+
+            if ($this->isNotificationSent($bookingId, 'visa_reminder_followup', $agentEmail)) {
+                return ['success' => true, 'message' => 'Follow-up already sent'];
+            }
+
+            // Get original reminder sent date to calculate remaining deadline
+            $stmt = $this->conn->prepare("
+                SELECT sentAt FROM email_notification_logs
+                WHERE bookingId = ? AND notificationType = 'visa_reminder' AND status = 'sent'
+                ORDER BY sentAt ASC LIMIT 1
+            ");
+            $stmt->bind_param('s', $bookingId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $logRow = $res->fetch_assoc();
+            $stmt->close();
+
+            $originalDeadline = new DateTime();
+            if ($logRow) {
+                $originalDeadline = new DateTime($logRow['sentAt']);
+                $originalDeadline->modify('+14 days');
+            } else {
+                $originalDeadline->modify('+7 days');
+            }
+            $deadlineDate = $originalDeadline->format('F j, Y');
+
+            $packageName = $booking['packageName'] ?? $booking['productName'] ?? '';
+            $agentName = $booking['agentName'] ?? 'Agent';
+            $baseUrl = 'https://smpoc.site';
+            $reservationUrl = $baseUrl . '/admin/agent/reservation-detail.html?id=' . urlencode($bookingId);
+
+            $templateData = [
+                'bookingId' => $bookingId,
+                'packageName' => $packageName,
+                'agentName' => $agentName,
+                'reservationUrl' => $reservationUrl,
+                'deadlineDate' => $deadlineDate,
+            ];
+
+            $htmlBody = get_visa_reminder_followup_template($templateData);
+            $subject = "[SMT Escape] URGENT: Visa Document Reminder - {$bookingId}";
+
+            $result = mailer_send($agentEmail, $subject, $htmlBody);
+
+            $status = ($result['ok'] ?? false) ? 'sent' : 'failed';
+            $this->logNotification($bookingId, 'visa_reminder_followup', $agentEmail, $status, $result['error'] ?? null);
+
+            return ['success' => $result['ok'] ?? false, 'message' => $result['error'] ?? 'OK'];
+        } catch (Throwable $e) {
+            error_log("sendVisaReminderFollowup error for {$bookingId}: " . $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
 }
 
 /**
@@ -895,4 +1017,12 @@ function send_payment_step_change_email(
         error_log("send_payment_step_change_email error: " . $e->getMessage());
         return ['success' => false, 'message' => $e->getMessage()];
     }
+}
+
+/**
+ * Helper function to send visa document reminder email
+ */
+function send_visa_reminder_email($conn, string $bookingId): array {
+    $service = new EmailNotificationService($conn);
+    return $service->sendVisaReminder($bookingId);
 }

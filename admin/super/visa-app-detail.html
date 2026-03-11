@@ -29,11 +29,10 @@
 
 		<section class="layout-content">
 			<div class="page-toolbar">
-				<a href="visa-app-list.html" class="jw-button" aria-label="목록으로 돌아가기">
+				<a id="returnToReservationBtn" href="#" class="jw-button" style="display:none;">
 					<img src="../image/arrow4.svg" alt="">
-					<span data-lan-eng="Return to list">목록으로 돌아가기</span>
+					<span data-lan-eng="Return to Reservation">Return to Reservation</span>
 				</a>
-
 				<div class="page-toolbar-actions">
 					<select class="select" id="statusSelect" disabled>
 						<option value="pending" data-lan-eng="Request Received">Request Received</option>
@@ -186,20 +185,6 @@
 				</div>
 			</div>
 
-			<h2 class="section-title jw-mgt32" data-lan-eng="Visa Upload">비자 업로드</h2>
-			<div class="card-panel jw-mgt16">
-				<div class="grid-wrap">
-					<!-- 첨부파일 -->
-					<div class="grid-item col-span-3">
-						<label class="label-name" data-lan-eng="Visa file">비자 파일</label>
-						<label class="inputFile jw-mgt8">
-							<input id="visaFileInput" type="file">
-							<button type="button" class="btn-upload" id="visaUploadBtn"><img src="../image/upload3.svg" alt="">&nbsp;Upload</button>
-						  </label>
-						<div class="attach-list" id="visaFileList"></div>
-					</div>
-				</div>
-			</div>
 
 
 		</section>
@@ -809,6 +794,22 @@
 						</div>
 					</div>
 				</div>
+
+				<div style="margin-top: 20px; padding: 14px 16px; background: #e8f4fd; border: 1px solid #b6d4fe; border-radius: 6px;">
+					<div style="font-size: 13px; font-weight: 600; color: #0d6efd; margin-bottom: 10px;">DOCUMENT SUBMISSION</div>
+					<div style="margin-bottom: 10px;">
+						<div style="font-size: 12px; font-weight: 600; color: #121212; margin-bottom: 4px;">1) Soft Copy (via Email)</div>
+						<div style="padding-left: 12px; font-size: 13px; color: #495057; line-height: 1.6;">
+							<a href="mailto:smt.escape@travelescapeoffice.com" style="color: #0d6efd; text-decoration: underline;">smt.escape@travelescapeoffice.com</a>
+						</div>
+					</div>
+					<div>
+						<div style="font-size: 12px; font-weight: 600; color: #121212; margin-bottom: 4px;">2) Hard Copy (via Mail)</div>
+						<div style="padding-left: 12px; font-size: 13px; color: #495057; line-height: 1.6;">
+							Unit 2d, Rockford Center, Corner Peralta St, MacArthur Hwy, Angeles, 2009 Pampanga, Philippines
+						</div>
+					</div>
+				</div>
 			`;
 		}
 
@@ -944,7 +945,6 @@
 
 		function __updateUI() {
 			renderDocumentSection();
-			__renderVisaFile();
 			__setSaveEnabled(__hasPendingChanges());
 		}
 
@@ -994,8 +994,16 @@
 				__currentVisaType = visaType;
 
 				// Populate form
-				setValue('bookingIdDisplay', pickFirst(application, ['bookingId', 'transactNo']) || '-');
+				const bookingId = pickFirst(application, ['bookingId', 'transactNo']) || '';
+				setValue('bookingIdDisplay', bookingId || '-');
 				setValue('visaTypeDisplay', visaType === 'individual' ? 'Individual' : 'Group');
+
+				// Set return to reservation button
+				const returnBtn = document.getElementById('returnToReservationBtn');
+				if (returnBtn && bookingId && bookingId !== '-') {
+					returnBtn.href = 'b2b-booking-detail.html?id=' + encodeURIComponent(bookingId);
+					returnBtn.style.display = '';
+				}
 				setValue('productName', pickFirst(application, ['packageName', 'productName', 'destinationCountry']) || '-');
 
 				const createdAt = pickFirst(application, ['submittedAt', 'createdAt', 'applicationDate', 'submitted_at']);

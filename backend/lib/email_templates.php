@@ -913,3 +913,153 @@ function get_payment_step_change_template(array $data): string {
 </html>
 HTML;
 }
+
+/**
+ * Visa Document Reminder Email Template (sent when booking is approved)
+ */
+function get_visa_reminder_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+    $reservationUrl = htmlspecialchars($data['reservationUrl'] ?? '');
+    $deadlineDate = htmlspecialchars($data['deadlineDate'] ?? '');
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visa Document Reminder - {$bookingId}</title>
+    <style>{$styles}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);">
+            <div class="logo">SMT Escape</div>
+            <h1>Visa Document Reminder</h1>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Dear {$agentName},</p>
+
+            <p>Your booking has been <strong>approved</strong>. Please submit the required visa documents within <strong>2 weeks</strong> from the date of reservation.</p>
+
+            <div class="success-box">
+                <h3 style="margin: 0 0 15px 0; color: #065f46;">Booking Information</h3>
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Booking ID:</td>
+                        <td class="value">{$bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Package:</td>
+                        <td class="value">{$packageName}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Visa Submission Deadline:</td>
+                        <td class="value" style="color: #dc2626; font-weight: 600;">{$deadlineDate}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">How to Submit</h3>
+                <p style="margin: 0 0 8px 0; font-size: 14px;">Please go to the <strong>Visa Management</strong> tab in your reservation detail page and submit all required documents for each traveler.</p>
+                <a href="{$reservationUrl}" style="display: inline-block; margin-top: 8px; padding: 10px 20px; background: #0050C8; color: #fff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">View Reservation</a>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 14px; color: #6b7280;">
+                If you have any questions, please contact our support team.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p>&copy; 2024 SMT Escape. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
+
+/**
+ * Visa Document Follow-up Reminder Email Template (1 week after initial reminder)
+ */
+function get_visa_reminder_followup_template(array $data): string {
+    $styles = get_email_styles();
+
+    $bookingId = htmlspecialchars($data['bookingId'] ?? '');
+    $packageName = htmlspecialchars($data['packageName'] ?? '');
+    $agentName = htmlspecialchars($data['agentName'] ?? 'Agent');
+    $reservationUrl = htmlspecialchars($data['reservationUrl'] ?? '');
+    $deadlineDate = htmlspecialchars($data['deadlineDate'] ?? '');
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URGENT: Visa Document Reminder - {$bookingId}</title>
+    <style>{$styles}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+            <div class="logo">SMT Escape</div>
+            <h1>Visa Document Reminder</h1>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Dear {$agentName},</p>
+
+            <p>This is a <strong>follow-up reminder</strong> that the required visa documents for your booking have <strong>not yet been submitted</strong>. The submission deadline is approaching soon.</p>
+
+            <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <h3 style="margin: 0 0 15px 0; color: #991b1b;">&#9888; Action Required</h3>
+                <table class="info-table">
+                    <tr>
+                        <td class="label">Booking ID:</td>
+                        <td class="value">{$bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Package:</td>
+                        <td class="value">{$packageName}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Submission Deadline:</td>
+                        <td class="value" style="color: #dc2626; font-weight: 700;">{$deadlineDate}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">How to Submit</h3>
+                <p style="margin: 0 0 8px 0; font-size: 14px;">Please go to the <strong>Visa Management</strong> tab in your reservation detail page and submit all required documents for each traveler as soon as possible.</p>
+                <a href="{$reservationUrl}" style="display: inline-block; margin-top: 8px; padding: 10px 20px; background: #dc2626; color: #fff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">Submit Visa Documents Now</a>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 14px; color: #6b7280;">
+                If you have any questions or need assistance, please contact our support team immediately.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>SMT Escape</strong></p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p>&copy; 2024 SMT Escape. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}

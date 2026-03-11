@@ -669,47 +669,54 @@
 								<span data-lan-eng="Total Option Fee">Total Option Fee</span>
 								<span class="extra-opt-total-amount" id="extraOptTotalFee">₱0</span>
 							</div>
+							<div id="extraOptFeeBreakdown" style="display:none; margin-top: 8px;"></div>
+							<div id="extraOptBalanceNotice" style="display:none; margin-top: 8px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 13px; color: #1E40AF;">
+								This fee will be included in the balance payment.
+							</div>
+
+							<!-- Payment Proof for Extra Options (inline) -->
+							<div id="extraOptPaymentSection" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+									<h3 class="card-panel-title" style="margin:0;" data-lan-eng="Option Payment">Option Payment</h3>
+									<div style="display:flex; align-items:center; gap:8px;">
+										<span class="extra-opt-payment-amount" id="extraOptPaymentAmount"></span>
+										<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
+									</div>
+								</div>
+
+								<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert" style="display:none;">
+									<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
+									<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
+									<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
+								</div>
+
+								<div>
+									<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
+										<div class="extra-opt-file-info">
+											<img src="../image/file.svg" alt="" style="width:16px;">
+											<span id="extraOptFileName"></span>
+										</div>
+										<div class="extra-opt-file-actions">
+											<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
+												<img src="../image/eye.svg" alt="">
+											</button>
+											<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
+												<img src="../image/buttun-download.svg" alt="">
+											</button>
+											<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
+												<img src="../image/button-close2.svg" alt="">
+											</button>
+										</div>
+									</div>
+									<div id="extraOptFileUpload">
+										<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
+										<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
+									</div>
+								</div>
+							</div>
+
 							<div style="text-align: right; margin-top: 12px;">
 								<button type="button" class="jw-button typeB" id="extraOptSaveBtn" onclick="_extraOpt_saveOptions()">Save Options</button>
-							</div>
-						</div>
-
-						<!-- Payment Proof for Extra Options -->
-						<div class="card-panel jw-mgt16" id="extraOptPaymentSection" style="display:none;">
-							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-								<h3 class="card-panel-title" data-lan-eng="Option Payment Proof">Option Payment Proof</h3>
-								<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
-							</div>
-							<div class="card-panel-divider"></div>
-
-							<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert jw-mgt16" style="display:none;">
-								<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
-								<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
-								<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
-							</div>
-
-							<div class="jw-mgt16">
-								<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
-									<div class="extra-opt-file-info">
-										<img src="../image/file.svg" alt="" style="width:16px;">
-										<span id="extraOptFileName"></span>
-									</div>
-									<div class="extra-opt-file-actions">
-										<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
-											<img src="../image/eye.svg" alt="">
-										</button>
-										<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
-											<img src="../image/buttun-download.svg" alt="">
-										</button>
-										<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
-											<img src="../image/button-close2.svg" alt="">
-										</button>
-									</div>
-								</div>
-								<div id="extraOptFileUpload">
-									<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
-									<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
-								</div>
 							</div>
 						</div>
 					</div>
@@ -717,6 +724,10 @@
 
 				<!-- Tab: Visa Management -->
 				<div class="detail-tab-panel" id="tabVisaManagement" style="display:none;">
+					<div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #856404; display: flex; align-items: center; gap: 8px;">
+						<span style="font-size: 16px;">⚠️</span>
+						<span>Visa documents must be submitted within <strong>2 weeks</strong> from the date of reservation.</span>
+					</div>
 					<div class="card-panel">
 						<div id="visaMgmtContainer"><p class="is-center" style="color:#6b7280;">Loading...</p></div>
 					</div>
@@ -1161,8 +1172,13 @@
 		.extra-opt-traveler-card-header {
 			display: flex; justify-content: space-between; align-items: center;
 			margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+			cursor: pointer; user-select: none;
 		}
 		.extra-opt-traveler-card-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+		.eo-chevron { transition: transform 0.2s; font-size: 12px; color: #9ca3af; }
+		.extra-opt-traveler-card.collapsed .extra-opt-traveler-card-body { display: none; }
+		.extra-opt-traveler-card.collapsed .eo-chevron { transform: rotate(-90deg); }
+		.extra-opt-traveler-card.collapsed .extra-opt-traveler-card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 		.extra-opt-type-badge {
 			display: inline-block; padding: 2px 8px; border-radius: 4px;
 			font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -1193,6 +1209,20 @@
 			font-size: 16px; font-weight: 700;
 		}
 		.extra-opt-total-amount { color: #1d4ed8; font-size: 20px; }
+
+		.extra-opt-paid-badge {
+			display: inline-block; padding: 2px 6px; border-radius: 4px;
+			font-size: 10px; font-weight: 600; background: #d1fae5; color: #065f46;
+			margin-left: 4px;
+		}
+		.extra-opt-item.paid-balance { opacity: 0.7; }
+		.extra-opt-item.paid-balance label { cursor: default; }
+		.extra-opt-fee-breakdown-row {
+			display: flex; justify-content: space-between; padding: 6px 12px;
+			font-size: 13px; color: #6b7280; border-bottom: 1px solid #f3f4f6;
+		}
+		.extra-opt-fee-breakdown-row.separate { color: #dc2626; font-weight: 600; }
+		.extra-opt-payment-amount { font-size: 15px; font-weight: 700; color: #dc2626; }
 
 		.extra-opt-rejection-alert {
 			background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;

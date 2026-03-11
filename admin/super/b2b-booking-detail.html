@@ -683,53 +683,60 @@
 								<span data-lan-eng="Total Option Fee">Total Option Fee</span>
 								<span class="extra-opt-total-amount" id="extraOptTotalFee">&#8369;0</span>
 							</div>
+							<div id="extraOptFeeBreakdown" style="display:none; margin-top: 8px;"></div>
+							<div id="extraOptBalanceNotice" style="display:none; margin-top: 8px; padding: 8px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 13px; color: #1E40AF;">
+								This fee is included in the balance payment.
+							</div>
+
+							<!-- Payment Proof for Extra Options (inline) -->
+							<div id="extraOptPaymentSection" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+									<h3 class="card-panel-title" style="margin:0;" data-lan-eng="Option Payment">Option Payment</h3>
+									<div style="display:flex; align-items:center; gap:8px;">
+										<span class="extra-opt-payment-amount" id="extraOptPaymentAmount"></span>
+										<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
+									</div>
+								</div>
+
+								<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert" style="display:none;">
+									<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
+									<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
+									<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
+								</div>
+
+								<div>
+									<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
+										<div class="extra-opt-file-info">
+											<img src="../image/file.svg" alt="" style="width:16px;">
+											<span id="extraOptFileName"></span>
+										</div>
+										<div class="extra-opt-file-actions">
+											<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
+												<img src="../image/eye.svg" alt="">
+											</button>
+											<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
+												<img src="../image/buttun-download.svg" alt="">
+											</button>
+											<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
+												<img src="../image/button-close2.svg" alt="">
+											</button>
+										</div>
+									</div>
+									<div id="extraOptFileUpload">
+										<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
+										<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
+									</div>
+								</div>
+
+								<!-- Super Admin: Confirm/Reject buttons (visible when status=checking) -->
+								<div id="extraOptAdminActions" class="extra-opt-admin-actions" style="display:none;">
+									<button type="button" class="btn-accept" onclick="confirmOptionPayment()">Accept</button>
+									<button type="button" class="btn-reject" onclick="rejectOptionPaymentModal()">Reject</button>
+								</div>
+							</div>
+
 							<div style="text-align: right; margin-top: 12px;">
 								<button type="button" class="jw-button typeB" id="extraOptSaveBtn" onclick="_extraOpt_saveOptions()">Save Options</button>
-							</div>
-						</div>
-
-						<!-- Payment Proof for Extra Options -->
-						<div class="card-panel jw-mgt16" id="extraOptPaymentSection" style="display:none;">
-							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-								<h3 class="card-panel-title" data-lan-eng="Option Payment Proof">Option Payment Proof</h3>
-								<span class="extra-opt-status-badge" id="extraOptPaymentStatusBadge">-</span>
-							</div>
-							<div class="card-panel-divider"></div>
-
-							<div id="extraOptRejectionAlert" class="extra-opt-rejection-alert jw-mgt16" style="display:none;">
-								<div class="extra-opt-rejection-alert-title">Payment Rejected</div>
-								<div class="extra-opt-rejection-alert-reason" id="extraOptRejectionReason"></div>
-								<div class="extra-opt-rejection-alert-date" id="extraOptRejectionDate"></div>
-							</div>
-
-							<div class="jw-mgt16">
-								<div id="extraOptFileDisplay" class="extra-opt-file-display" style="display:none;">
-									<div class="extra-opt-file-info">
-										<img src="../image/file.svg" alt="" style="width:16px;">
-										<span id="extraOptFileName"></span>
-									</div>
-									<div class="extra-opt-file-actions">
-										<button type="button" class="jw-button typeF" title="View" onclick="_extraOpt_viewFile()">
-											<img src="../image/eye.svg" alt="">
-										</button>
-										<button type="button" class="jw-button typeF" title="Download" onclick="_extraOpt_downloadFile()">
-											<img src="../image/buttun-download.svg" alt="">
-										</button>
-										<button type="button" class="jw-button typeF" id="extraOptDeleteFileBtn" title="Delete" onclick="_extraOpt_deleteFile()">
-											<img src="../image/button-close2.svg" alt="">
-										</button>
-									</div>
-								</div>
-								<div id="extraOptFileUpload">
-									<input type="file" id="extraOptFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none;" onchange="_extraOpt_uploadFile()">
-									<button type="button" class="jw-button typeA" onclick="document.getElementById('extraOptFileInput').click()">Upload Payment Proof</button>
-								</div>
-							</div>
-
-							<!-- Super Admin: Confirm/Reject buttons (visible when status=checking) -->
-							<div id="extraOptAdminActions" class="extra-opt-admin-actions" style="display:none;">
-								<button type="button" class="btn-accept" onclick="confirmOptionPayment()">Accept</button>
-								<button type="button" class="btn-reject" onclick="rejectOptionPaymentModal()">Reject</button>
 							</div>
 						</div>
 
@@ -744,6 +751,10 @@
 
 				<!-- Tab: Visa Management -->
 				<div class="detail-tab-panel" id="tabVisaManagement" style="display:none;">
+					<div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #856404; display: flex; align-items: center; gap: 8px;">
+						<span style="font-size: 16px;">⚠️</span>
+						<span>Visa documents must be submitted within <strong>2 weeks</strong> from the date of reservation.</span>
+					</div>
 					<div class="card-panel">
 						<div id="visaMgmtContainer"><p class="is-center" style="color:#6b7280;">Loading...</p></div>
 					</div>
@@ -1050,8 +1061,13 @@
 		.extra-opt-traveler-card-header {
 			display: flex; justify-content: space-between; align-items: center;
 			margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+			cursor: pointer; user-select: none;
 		}
 		.extra-opt-traveler-card-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+		.eo-chevron { transition: transform 0.2s; font-size: 12px; color: #9ca3af; }
+		.extra-opt-traveler-card.collapsed .extra-opt-traveler-card-body { display: none; }
+		.extra-opt-traveler-card.collapsed .eo-chevron { transform: rotate(-90deg); }
+		.extra-opt-traveler-card.collapsed .extra-opt-traveler-card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 		.extra-opt-type-badge {
 			display: inline-block; padding: 2px 8px; border-radius: 4px;
 			font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -1082,6 +1098,20 @@
 			font-size: 16px; font-weight: 700;
 		}
 		.extra-opt-total-amount { color: #1d4ed8; font-size: 20px; }
+
+		.extra-opt-paid-badge {
+			display: inline-block; padding: 2px 6px; border-radius: 4px;
+			font-size: 10px; font-weight: 600; background: #d1fae5; color: #065f46;
+			margin-left: 4px;
+		}
+		.extra-opt-item.paid-balance { opacity: 0.7; }
+		.extra-opt-item.paid-balance label { cursor: default; }
+		.extra-opt-fee-breakdown-row {
+			display: flex; justify-content: space-between; padding: 6px 12px;
+			font-size: 13px; color: #6b7280; border-bottom: 1px solid #f3f4f6;
+		}
+		.extra-opt-fee-breakdown-row.separate { color: #dc2626; font-weight: 600; }
+		.extra-opt-payment-amount { font-size: 15px; font-weight: 700; color: #dc2626; }
 
 		.extra-opt-rejection-alert {
 			background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
@@ -4953,6 +4983,17 @@
 		function _extraOpt_renderStatusBadge() {
 			var badge = document.getElementById('extraOptStatusBadge');
 			if (!badge) return;
+
+			var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+			var paymentStatus = _extraOpt_bookingData?.paymentStatus || '';
+			var isConfirmed = (bookingStatus === 'confirmed' && paymentStatus === 'paid');
+
+			if (!isConfirmed) {
+				badge.textContent = 'Included in Balance';
+				badge.className = 'extra-opt-status-badge checking';
+				return;
+			}
+
 			var status = _extraOpt_paymentInfoData?.status || 'not_set';
 			var labels = {
 				'not_set': 'Not Set',
@@ -4979,23 +5020,32 @@
 				return;
 			}
 
+			var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+			var paymentStatusVal = _extraOpt_bookingData?.paymentStatus || '';
+			var isConfirmed = (bookingStatus === 'confirmed' && paymentStatusVal === 'paid');
+
 			container.innerHTML = _extraOpt_travelersData.map(function(traveler, idx) {
 				var name = ((traveler.firstName || '') + ' ' + (traveler.lastName || '')).trim() || ('Traveler ' + (idx + 1));
 				var type = traveler.travelerType || 'adult';
 				var selectedOptions = _extraOpt_travelerOptionsData[idx] || [];
 				var selectedIds = selectedOptions.map(function(o) { return o.optionId; });
+				var balanceIds = selectedOptions.filter(function(o) { return o.paidVia === 'balance'; }).map(function(o) { return o.optionId; });
 
 				var categoriesHtml = _extraOpt_categoriesData.map(function(cat) {
 					var optionsHtml = cat.options.map(function(opt) {
 						var checked = selectedIds.includes(opt.option_id) ? 'checked' : '';
-						return '<div class="extra-opt-item">' +
+						var isPaidBalance = isConfirmed && balanceIds.includes(opt.option_id);
+						var disabledAttr = isPaidBalance ? ' disabled' : '';
+						var paidBadge = isPaidBalance ? '<span class="extra-opt-paid-badge">Paid (Balance)</span>' : '';
+						return '<div class="extra-opt-item' + (isPaidBalance ? ' paid-balance' : '') + '">' +
 							'<label>' +
 							'<input type="checkbox" name="eo_opt_' + idx + '_' + cat.category_id + '" value="' + opt.option_id + '"' +
 							' data-eo-traveler="' + idx + '" data-eo-option="' + opt.option_id + '" data-eo-price="' + opt.price + '"' +
-							' data-eo-category="' + cat.category_id + '"' +
-							' ' + checked + ' onchange="_extraOpt_onOptionChange(this)">' +
+							' data-eo-category="' + cat.category_id + '" data-eo-paid-via="' + (isPaidBalance ? 'balance' : 'separate') + '"' +
+							' ' + checked + disabledAttr + ' onchange="_extraOpt_onOptionChange(this)">' +
 							escapeHtml(opt.option_name_en || opt.option_name) +
 							'</label>' +
+							paidBadge +
 							'<span class="extra-opt-price">\u20B1' + Number(opt.price).toLocaleString('en-US') + '</span>' +
 							'</div>';
 					}).join('');
@@ -5007,12 +5057,17 @@
 				}).join('');
 
 				return '<div class="extra-opt-traveler-card" id="extraOptTravelerCard_' + idx + '">' +
-					'<div class="extra-opt-traveler-card-header">' +
+					'<div class="extra-opt-traveler-card-header" onclick="_extraOpt_toggleCard(this)">' +
+					'<div style="display:flex;align-items:center;gap:8px;">' +
 					'<h4>' + escapeHtml(name) + '</h4>' +
 					'<span class="extra-opt-type-badge ' + type + '">' + type + '</span>' +
 					'</div>' +
+					'<span class="eo-chevron">&#9660;</span>' +
+					'</div>' +
+					'<div class="extra-opt-traveler-card-body">' +
 					categoriesHtml +
 					'<div class="extra-opt-subtotal" id="extraOptSubtotal_' + idx + '">Subtotal: \u20B10</div>' +
+					'</div>' +
 					'</div>';
 			}).join('');
 
@@ -5026,7 +5081,7 @@
 			if (checkbox.checked) {
 				var sameCat = document.querySelectorAll('input[data-eo-traveler="' + travelerIdx + '"][data-eo-category="' + categoryId + '"]');
 				sameCat.forEach(function(cb) {
-					if (cb !== checkbox) cb.checked = false;
+					if (cb !== checkbox && cb.dataset.eoPaidVia !== 'balance') cb.checked = false;
 				});
 			}
 
@@ -5044,11 +5099,41 @@
 
 		function _extraOpt_updateTotalFee() {
 			var total = 0;
+			var balanceTotal = 0;
+			var separateTotal = 0;
 			document.querySelectorAll('input[data-eo-traveler]:checked').forEach(function(cb) {
-				total += parseFloat(cb.dataset.eoPrice) || 0;
+				var price = parseFloat(cb.dataset.eoPrice) || 0;
+				total += price;
+				if (cb.dataset.eoPaidVia === 'balance') {
+					balanceTotal += price;
+				} else {
+					separateTotal += price;
+				}
 			});
+
+			var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+			var paymentStatusVal = _extraOpt_bookingData?.paymentStatus || '';
+			var isConfirmed = (bookingStatus === 'confirmed' && paymentStatusVal === 'paid');
+
 			var el = document.getElementById('extraOptTotalFee');
 			if (el) el.textContent = '\u20B1' + Number(total).toLocaleString('en-US');
+
+			var notice = document.getElementById('extraOptBalanceNotice');
+			if (notice) {
+				notice.style.display = (!isConfirmed && total > 0) ? '' : 'none';
+			}
+
+			var breakdownEl = document.getElementById('extraOptFeeBreakdown');
+			if (breakdownEl) {
+				if (isConfirmed && balanceTotal > 0) {
+					breakdownEl.innerHTML =
+						'<div class="extra-opt-fee-breakdown-row"><span>Paid via Balance</span><span>\u20B1' + Number(balanceTotal).toLocaleString('en-US') + '</span></div>' +
+						(separateTotal > 0 ? '<div class="extra-opt-fee-breakdown-row separate"><span>Additional Payment Required</span><span>\u20B1' + Number(separateTotal).toLocaleString('en-US') + '</span></div>' : '');
+					breakdownEl.style.display = '';
+				} else {
+					breakdownEl.style.display = 'none';
+				}
+			}
 		}
 
 		function _extraOpt_getSelectedOptions() {
@@ -5106,13 +5191,30 @@
 			var deleteBtn = document.getElementById('extraOptDeleteFileBtn');
 			var adminActions = document.getElementById('extraOptAdminActions');
 
+			var bookingStatus = _extraOpt_bookingData?.bookingStatus || '';
+			var paymentStatus = _extraOpt_bookingData?.paymentStatus || '';
+			var isConfirmed = (bookingStatus === 'confirmed' && paymentStatus === 'paid');
+
 			var status = _extraOpt_paymentInfoData?.status || 'not_set';
+
+			// 미확정 상태: 옵션 비용이 balance에 포함
+			if (!isConfirmed) {
+				section.style.display = 'none';
+				return;
+			}
 
 			if (status === 'not_set') {
 				section.style.display = 'none';
 				return;
 			}
 			section.style.display = '';
+
+			// 결제 금액 표시
+			var amountEl = document.getElementById('extraOptPaymentAmount');
+			if (amountEl) {
+				var payAmt = _extraOpt_paymentInfoData?.amount || 0;
+				amountEl.textContent = payAmt > 0 ? ('\u20B1' + Number(payAmt).toLocaleString('en-US')) : '';
+			}
 
 			var statusLabels = {
 				'not_set': 'Not Set',
@@ -5241,6 +5343,11 @@
 					+ '</div>';
 			});
 			list.innerHTML = html;
+		}
+
+		function _extraOpt_toggleCard(headerEl) {
+			var card = headerEl.closest('.extra-opt-traveler-card');
+			if (card) card.classList.toggle('collapsed');
 		}
 
 		function _extraOpt_checkDeadline() {
