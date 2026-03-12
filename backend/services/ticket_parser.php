@@ -54,6 +54,9 @@ function parseTicketPdf($pdfPath) {
         // Extract QR code from page 1 (Cebu Pacific has QR in top-right area)
         $qrCodeBase64 = extractQrCodeFromPage($pageFiles[0] ?? '');
 
+        // Extract airline logo from page 1 (AirAsia has logo in top-left area)
+        $logoBase64 = extractLogoFromPage($pageFiles[0] ?? '');
+
         // Detect airline
         $airline = detectAirline($fullText);
 
@@ -82,7 +85,8 @@ function parseTicketPdf($pdfPath) {
             'pageCount' => count($pageFiles),
             'airline' => $airline,
             'bookingDate' => $bookingDate,
-            'qrCodeBase64' => $qrCodeBase64
+            'qrCodeBase64' => $qrCodeBase64,
+            'logoBase64' => $logoBase64
         ];
 
     } finally {
@@ -828,5 +832,52 @@ function extractQrCodeWithGD($pageImagePath) {
     imagedestroy($dst);
 
     $base64 = base64_encode($pngData);
+    return strlen($base64) > 100 ? $base64 : null;
+}
+
+/**
+ * Extract airline logo from rendered PDF page image
+ * AirAsia places the circular red logo in the top-left area of page 1
+ *
+ * @param string $pageImagePath Path to the rendered page PNG
+ * @return string|null Base64-encoded PNG of the logo, or null if extraction fails
+ */
+function extractLogoFromPage($pageImagePath) {
+    if (empty($pageImagePath) || !file_exists($pageImagePath)) {
+        return null;
+    }
+
+    $convert = trim(shell_exec('which convert 2>/dev/null'));
+    $identify = trim(shell_exec('which identify 2>/dev/null'));
+    if (!$convert || !$identify) return null;
+
+    $info = shell_exec(escapeshellarg($identify) . ' -format "%wx%h" ' . escapeshellarg($pageImagePath) . ' 2>/dev/null');
+    if (!preg_match('/(\d+)x(\d+)/', $info, $m)) return null;
+
+    $imgW = (int)$m[1];
+    $imgH = (int)$m[2];
+
+    // AirAsia logo: top-left circular logo, roughly 0-20% from left, 0.5-14% from top
+    $logoX = (int)($imgW * 0.004);
+    $logoY = (int)($imgH * 0.005);
+    $logoSize = (int)($imgW * 0.20);
+
+    $tmpLogo = sys_get_temp_dir() . '/logo_extract_' . uniqid() . '.png';
+
+    // Crop logo region, resize to 100x100 for template use
+    $cmd = escapeshellarg($convert) . ' ' . escapeshellarg($pageImagePath)
+         . ' -crop ' . $logoSize . 'x' . $logoSize . '+' . $logoX . '+' . $logoY
+         . ' +repage -resize 100x100'
+         . ' ' . escapeshellarg($tmpLogo) . ' 2>/dev/null';
+    exec($cmd, $out, $ret);
+
+    if ($ret !== 0 || !file_exists($tmpLogo)) {
+        @unlink($tmpLogo);
+        return null;
+    }
+
+    $base64 = base64_encode(file_get_contents($tmpLogo));
+    @unlink($tmpLogo);
+
     return strlen($base64) > 100 ? $base64 : null;
 }

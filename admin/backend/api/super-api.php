@@ -22068,28 +22068,28 @@ function confirmBulkTicketAction(mysqli $conn, $input) {
     require_once __DIR__ . '/../../../vendor/autoload.php';
     require_once __DIR__ . '/../../../backend/services/ticket_parser.php';
 
-    // Extract QR code from the original PDF for Cebu Pacific tickets
+    // Extract QR code and logo from the original PDF page 1
     $qrCodeBase64 = null;
-    if ($airline === 'cebu_pacific') {
-        $qrCodeBase64 = extractQrCodeFromPage($tmpPath);
-        // If direct extraction fails (tmpPath is PDF, not PNG), render page 1 first
-        if (!$qrCodeBase64) {
-            $pdftoppm = trim(shell_exec('which pdftoppm 2>/dev/null'));
-            if ($pdftoppm) {
-                $qrTmpDir = sys_get_temp_dir() . '/qr_tmp_' . uniqid();
-                @mkdir($qrTmpDir, 0755, true);
-                $cmd = escapeshellarg($pdftoppm) . ' -r 200 -png -f 1 -l 1 '
-                     . escapeshellarg($tmpPath) . ' '
-                     . escapeshellarg($qrTmpDir . '/page');
-                exec($cmd . ' 2>/dev/null');
-                $qrPages = glob($qrTmpDir . '/page-*.png');
-                if (!empty($qrPages)) {
-                    $qrCodeBase64 = extractQrCodeFromPage($qrPages[0]);
-                }
-                foreach (glob($qrTmpDir . '/*') as $f) @unlink($f);
-                @rmdir($qrTmpDir);
+    $logoBase64 = null;
+    $pdftoppm = trim(shell_exec('which pdftoppm 2>/dev/null'));
+    if ($pdftoppm) {
+        $imgTmpDir = sys_get_temp_dir() . '/img_tmp_' . uniqid();
+        @mkdir($imgTmpDir, 0755, true);
+        $cmd = escapeshellarg($pdftoppm) . ' -r 200 -png -f 1 -l 1 '
+             . escapeshellarg($tmpPath) . ' '
+             . escapeshellarg($imgTmpDir . '/page');
+        exec($cmd . ' 2>/dev/null');
+        $imgPages = glob($imgTmpDir . '/page-*.png');
+        if (!empty($imgPages)) {
+            if ($airline === 'cebu_pacific') {
+                $qrCodeBase64 = extractQrCodeFromPage($imgPages[0]);
+            }
+            if ($airline === 'airasia') {
+                $logoBase64 = extractLogoFromPage($imgPages[0]);
             }
         }
+        foreach (glob($imgTmpDir . '/*') as $f) @unlink($f);
+        @rmdir($imgTmpDir);
     }
 
     $uploadDir = __DIR__ . '/../../../uploads/travel_documents/';
@@ -22116,7 +22116,8 @@ function confirmBulkTicketAction(mysqli $conn, $input) {
             'bookingRef' => $bookingRef,
             'airline' => $airline,
             'bookingDate' => $bookingDate,
-            'qrCodeBase64' => $qrCodeBase64
+            'qrCodeBase64' => $qrCodeBase64,
+            'logoBase64' => $logoBase64
         ];
 
         // Render HTML

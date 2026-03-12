@@ -10,6 +10,7 @@ $passengers = $data['passengers'];
 $flights = $data['flights'];
 $bookingRef = $data['bookingRef'];
 $bookingDate = $data['bookingDate'] ?? '';
+$logoBase64 = $data['logoBase64'] ?? null;
 
 $depDetail = $flights['details']['departure'] ?? [];
 $retDetail = $flights['details']['return'] ?? [];
@@ -246,7 +247,11 @@ $retDetail = $flights['details']['return'] ?? [];
 <!-- Header -->
 <div class="header">
     <div class="header-left">
+        <?php if ($logoBase64): ?>
+        <img src="data:image/png;base64,<?php echo $logoBase64; ?>" style="width:80px;height:80px;border-radius:50%;" alt="AirAsia">
+        <?php else: ?>
         <div class="logo-circle">AirAsia</div>
+        <?php endif; ?>
     </div>
     <div class="header-right">
         Booking date: <?php echo htmlspecialchars($bookingDate); ?>
