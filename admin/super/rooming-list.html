@@ -370,6 +370,308 @@
 		/* Gender display */
 		.gender-m { color: #2563eb; font-weight: 600; }
 		.gender-f { color: #db2777; font-weight: 600; }
+
+		/* ===== Toast Notification ===== */
+		.toast-notification {
+			position: fixed;
+			top: 24px;
+			right: 24px;
+			z-index: 10001;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 16px 24px;
+			border-radius: 12px;
+			box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+			font-size: 14px;
+			font-weight: 600;
+			color: #fff;
+			transform: translateX(120%);
+			transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+			max-width: 420px;
+		}
+		.toast-notification.show { transform: translateX(0); }
+		.toast-notification.success { background: #16a34a; }
+		.toast-notification.error { background: #dc2626; }
+		.toast-notification svg { flex-shrink: 0; }
+
+		/* ===== Ticket Success Step ===== */
+		.ticket-success {
+			display: none;
+			text-align: center;
+			padding: 32px 16px;
+		}
+		.ticket-success.active { display: block; }
+		.ticket-success-icon {
+			width: 80px;
+			height: 80px;
+			border-radius: 50%;
+			background: #f0fdf4;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			margin-bottom: 20px;
+			animation: successPop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+		}
+		@keyframes successPop {
+			0% { transform: scale(0); opacity: 0; }
+			60% { transform: scale(1.15); }
+			100% { transform: scale(1); opacity: 1; }
+		}
+		.ticket-success h3 {
+			font-size: 20px;
+			font-weight: 700;
+			color: #16a34a;
+			margin: 0 0 8px 0;
+		}
+		.ticket-success p {
+			font-size: 14px;
+			color: #64748b;
+			margin: 0 0 24px 0;
+		}
+		.ticket-success .success-details {
+			display: inline-flex;
+			gap: 24px;
+			background: #f8fafc;
+			border: 1px solid #e2e8f0;
+			border-radius: 10px;
+			padding: 16px 32px;
+			margin-bottom: 24px;
+		}
+		.ticket-success .success-details .detail-item {
+			text-align: center;
+		}
+		.ticket-success .success-details .detail-num {
+			font-size: 28px;
+			font-weight: 700;
+			color: #16a34a;
+		}
+		.ticket-success .success-details .detail-label {
+			font-size: 12px;
+			color: #64748b;
+			margin-top: 2px;
+		}
+
+		@keyframes spin {
+			from { transform: rotate(0deg); }
+			to { transform: rotate(360deg); }
+		}
+
+		/* ===== Ticket Upload Modal ===== */
+		.ticket-modal-overlay {
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0,0,0,0.5);
+			z-index: 9999;
+			justify-content: center;
+			align-items: flex-start;
+			padding: 40px 20px;
+			overflow-y: auto;
+		}
+		.ticket-modal-overlay.active { display: flex; }
+		.ticket-modal {
+			background: #fff;
+			border-radius: 12px;
+			width: 100%;
+			max-width: 900px;
+			box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+			animation: modalSlideIn 0.2s ease-out;
+		}
+		@keyframes modalSlideIn {
+			from { opacity: 0; transform: translateY(-20px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+		.ticket-modal-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 20px 24px;
+			border-bottom: 1px solid #e2e8f0;
+		}
+		.ticket-modal-header h2 {
+			font-size: 18px;
+			font-weight: 700;
+			color: #1e293b;
+			margin: 0;
+		}
+		.ticket-modal-close {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 4px;
+			color: #94a3b8;
+			transition: color 0.15s;
+		}
+		.ticket-modal-close:hover { color: #1e293b; }
+		.ticket-modal-body { padding: 24px; }
+
+		/* Upload area */
+		.ticket-upload-area {
+			border: 2px dashed #cbd5e1;
+			border-radius: 10px;
+			padding: 32px;
+			text-align: center;
+			transition: border-color 0.2s, background 0.2s;
+			margin-bottom: 16px;
+		}
+		.ticket-upload-area.dragover {
+			border-color: #2563eb;
+			background: #eff6ff;
+		}
+		.ticket-upload-area svg { margin-bottom: 8px; }
+		.ticket-upload-area p { color: #64748b; font-size: 14px; margin: 4px 0; }
+		.ticket-upload-area .file-name {
+			font-weight: 600;
+			color: #1e293b;
+			margin-top: 8px;
+		}
+		.ticket-upload-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 10px 24px;
+			background: #2563eb;
+			color: #fff;
+			border: none;
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: background 0.15s;
+		}
+		.ticket-upload-btn:hover { background: #1d4ed8; }
+		.ticket-upload-btn:disabled {
+			background: #94a3b8;
+			cursor: not-allowed;
+		}
+
+		/* Progress */
+		.ticket-progress {
+			display: none;
+			margin: 16px 0;
+		}
+		.ticket-progress.active { display: block; }
+		.ticket-progress-bar {
+			height: 6px;
+			background: #e2e8f0;
+			border-radius: 3px;
+			overflow: hidden;
+		}
+		.ticket-progress-bar-fill {
+			height: 100%;
+			background: #2563eb;
+			border-radius: 3px;
+			width: 0%;
+			transition: width 0.3s;
+		}
+		.ticket-progress-bar-fill.indeterminate {
+			width: 30%;
+			animation: progressSlide 1.5s ease-in-out infinite;
+		}
+		@keyframes progressSlide {
+			0% { margin-left: 0%; }
+			50% { margin-left: 70%; }
+			100% { margin-left: 0%; }
+		}
+		.ticket-progress-text {
+			font-size: 13px;
+			color: #64748b;
+			margin-top: 6px;
+			text-align: center;
+		}
+
+		/* Match Results */
+		.ticket-results { display: none; }
+		.ticket-results.active { display: block; }
+		.ticket-results-summary {
+			display: flex;
+			gap: 16px;
+			margin-bottom: 16px;
+		}
+		.ticket-stat {
+			flex: 1;
+			padding: 12px 16px;
+			border-radius: 8px;
+			text-align: center;
+		}
+		.ticket-stat.matched { background: #f0fdf4; border: 1px solid #bbf7d0; }
+		.ticket-stat.unmatched { background: #fef2f2; border: 1px solid #fecaca; }
+		.ticket-stat.total { background: #eff6ff; border: 1px solid #bfdbfe; }
+		.ticket-stat .stat-num {
+			font-size: 24px;
+			font-weight: 700;
+		}
+		.ticket-stat.matched .stat-num { color: #16a34a; }
+		.ticket-stat.unmatched .stat-num { color: #dc2626; }
+		.ticket-stat.total .stat-num { color: #2563eb; }
+		.ticket-stat .stat-label {
+			font-size: 12px;
+			color: #64748b;
+			margin-top: 2px;
+		}
+
+		.ticket-match-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+			margin-bottom: 16px;
+		}
+		.ticket-match-table th {
+			background: #f8fafc;
+			padding: 10px 12px;
+			text-align: left;
+			font-weight: 600;
+			color: #475569;
+			border-bottom: 2px solid #e2e8f0;
+			font-size: 12px;
+			text-transform: uppercase;
+		}
+		.ticket-match-table td {
+			padding: 10px 12px;
+			border-bottom: 1px solid #f1f5f9;
+			color: #1e293b;
+		}
+		.ticket-match-table tr:hover td { background: #f8fafc; }
+		.match-status {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 2px 8px;
+			border-radius: 10px;
+			font-size: 11px;
+			font-weight: 600;
+		}
+		.match-status.exact { background: #dcfce7; color: #166534; }
+		.match-status.partial { background: #fef9c3; color: #854d0e; }
+		.match-status.no-match { background: #fee2e2; color: #991b1b; }
+
+		.ticket-unmatched-section {
+			background: #fef2f2;
+			border: 1px solid #fecaca;
+			border-radius: 8px;
+			padding: 16px;
+			margin-bottom: 16px;
+		}
+		.ticket-unmatched-section h4 {
+			color: #991b1b;
+			margin: 0 0 8px 0;
+			font-size: 14px;
+		}
+		.ticket-unmatched-section ul {
+			margin: 0;
+			padding-left: 20px;
+			color: #7f1d1d;
+			font-size: 13px;
+		}
+
+		.ticket-modal-footer {
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+			padding: 16px 24px;
+			border-top: 1px solid #e2e8f0;
+		}
 	</style>
 </head>
 
@@ -433,6 +735,10 @@
 			<div class="action-bar" id="actionBar" style="display:none;">
 				<button type="button" class="jw-button typeA" id="btnSaveAll">Save All</button>
 				<button type="button" class="jw-button typeF" id="btnExportExcel">Export Excel</button>
+				<button type="button" class="jw-button typeB" id="btnUploadTicket" onclick="openTicketModal()">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+					Upload Airline Ticket
+				</button>
 			</div>
 
 			<!-- Rooming List Container -->
@@ -447,6 +753,113 @@
 
 		</section>
 	</main>
+
+	<!-- Ticket Upload Modal -->
+	<div class="ticket-modal-overlay" id="ticketModalOverlay">
+		<div class="ticket-modal">
+			<div class="ticket-modal-header">
+				<h2>Upload Bulk Airline Ticket</h2>
+				<button class="ticket-modal-close" onclick="closeTicketModal()">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="ticket-modal-body">
+				<!-- Step 1: Upload -->
+				<div id="ticketStepUpload">
+					<div class="ticket-upload-area" id="ticketDropZone">
+						<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+							<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+						</svg>
+						<p>Drag & drop airline ticket PDF here, or</p>
+						<input type="file" id="ticketFileInput" accept=".pdf" style="display:none" />
+						<button type="button" class="ticket-upload-btn" onclick="document.getElementById('ticketFileInput').click()">
+							Choose PDF File
+						</button>
+						<div class="file-name" id="ticketFileName" style="display:none"></div>
+					</div>
+
+					<div class="ticket-progress" id="ticketProgress">
+						<div class="ticket-progress-bar">
+							<div class="ticket-progress-bar-fill" id="ticketProgressFill"></div>
+						</div>
+						<div class="ticket-progress-text" id="ticketProgressText">Processing...</div>
+					</div>
+
+					<div style="text-align:right; margin-top:12px;">
+						<button type="button" class="ticket-upload-btn" id="btnParseTicket" onclick="uploadAndParseTicket()" disabled>
+							Upload & Parse
+						</button>
+					</div>
+				</div>
+
+				<!-- Step 2: Matching Results -->
+				<div class="ticket-results" id="ticketStepResults">
+					<div class="ticket-results-summary">
+						<div class="ticket-stat matched">
+							<div class="stat-num" id="statMatched">0</div>
+							<div class="stat-label">Matched</div>
+						</div>
+						<div class="ticket-stat unmatched">
+							<div class="stat-num" id="statUnmatched">0</div>
+							<div class="stat-label">Unmatched</div>
+						</div>
+						<div class="ticket-stat total">
+							<div class="stat-num" id="statTotal">0</div>
+							<div class="stat-label">Total Parsed</div>
+						</div>
+					</div>
+
+					<table class="ticket-match-table">
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Parsed Name</th>
+								<th>Matched Traveler</th>
+								<th>Booking ID</th>
+								<th>Agent</th>
+								<th>Status</th>
+							</tr>
+						</thead>
+						<tbody id="ticketMatchBody"></tbody>
+					</table>
+
+					<div class="ticket-unmatched-section" id="ticketUnmatchedSection" style="display:none">
+						<h4>Unmatched Passengers</h4>
+						<ul id="ticketUnmatchedList"></ul>
+						<p style="font-size:12px;color:#6b7280;margin-top:8px;">These passengers could not be matched to any booking traveler. They will be skipped during ticket generation.</p>
+					</div>
+				</div>
+
+				<!-- Step 3: Success -->
+				<div class="ticket-success" id="ticketStepSuccess">
+					<div class="ticket-success-icon">
+						<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="20 6 9 17 4 12"/>
+						</svg>
+					</div>
+					<h3>Tickets Generated Successfully!</h3>
+					<p id="successMessage">Airline tickets have been created and saved.</p>
+					<div class="success-details">
+						<div class="detail-item">
+							<div class="detail-num" id="successCount">0</div>
+							<div class="detail-label">Bookings</div>
+						</div>
+						<div class="detail-item">
+							<div class="detail-num" id="successPaxCount">0</div>
+							<div class="detail-label">Passengers</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="ticket-modal-footer" id="ticketModalFooter">
+				<button type="button" class="jw-button typeF" onclick="closeTicketModal()" id="btnCloseTicketModal">Cancel</button>
+				<button type="button" class="jw-button typeA" id="btnConfirmGenerate" onclick="confirmAndGenerate()" style="display:none">
+					Confirm & Generate Tickets
+				</button>
+			</div>
+		</div>
+	</div>
 
 	<script src="../js/default.js"></script>
 	<script src="../js/super.js"></script>
@@ -1255,6 +1668,273 @@
 		function escapeAttr(str) {
 			return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
+
+		// ============ Bulk Airline Ticket Upload ============
+		let ticketParseResult = null; // stored after parse for confirm step
+
+		function openTicketModal() {
+			if (!selectedDate || !selectedPackageId) {
+				alert('Please select a departure date and package first.');
+				return;
+			}
+			// Reset modal state
+			ticketParseResult = null;
+			document.getElementById('ticketFileInput').value = '';
+			document.getElementById('ticketFileName').style.display = 'none';
+			document.getElementById('btnParseTicket').disabled = true;
+			document.getElementById('ticketStepUpload').style.display = 'block';
+			document.getElementById('ticketStepResults').classList.remove('active');
+			document.getElementById('ticketProgress').classList.remove('active');
+			document.getElementById('btnConfirmGenerate').style.display = 'none';
+			document.getElementById('ticketStepSuccess').classList.remove('active');
+			document.getElementById('btnCloseTicketModal').textContent = 'Cancel';
+			document.getElementById('ticketModalOverlay').classList.add('active');
+		}
+
+		function closeTicketModal() {
+			document.getElementById('ticketModalOverlay').classList.remove('active');
+		}
+
+		// File input & drag-drop
+		(function() {
+			const dropZone = document.getElementById('ticketDropZone');
+			const fileInput = document.getElementById('ticketFileInput');
+
+			if (!dropZone || !fileInput) return;
+
+			fileInput.addEventListener('change', function() {
+				if (this.files.length > 0) {
+					showSelectedFile(this.files[0]);
+				}
+			});
+
+			dropZone.addEventListener('dragover', function(e) {
+				e.preventDefault();
+				this.classList.add('dragover');
+			});
+			dropZone.addEventListener('dragleave', function() {
+				this.classList.remove('dragover');
+			});
+			dropZone.addEventListener('drop', function(e) {
+				e.preventDefault();
+				this.classList.remove('dragover');
+				const file = e.dataTransfer.files[0];
+				if (file && file.type === 'application/pdf') {
+					fileInput.files = e.dataTransfer.files;
+					showSelectedFile(file);
+				} else {
+					alert('Please drop a PDF file.');
+				}
+			});
+		})();
+
+		function showSelectedFile(file) {
+			const nameEl = document.getElementById('ticketFileName');
+			nameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+			nameEl.style.display = 'block';
+			document.getElementById('btnParseTicket').disabled = false;
+		}
+
+		async function uploadAndParseTicket() {
+			const fileInput = document.getElementById('ticketFileInput');
+			if (!fileInput.files.length) {
+				alert('Please select a PDF file first.');
+				return;
+			}
+
+			const btn = document.getElementById('btnParseTicket');
+			btn.disabled = true;
+			btn.textContent = 'Processing...';
+
+			// Show progress
+			const progress = document.getElementById('ticketProgress');
+			const fill = document.getElementById('ticketProgressFill');
+			const text = document.getElementById('ticketProgressText');
+			progress.classList.add('active');
+			fill.classList.add('indeterminate');
+			text.textContent = 'Uploading PDF and running OCR... This may take a minute.';
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'parseBulkTicket');
+				formData.append('ticketPdf', fileInput.files[0]);
+				formData.append('departureDate', selectedDate);
+				formData.append('packageId', selectedPackageId);
+
+				const resp = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData
+				});
+				const data = await resp.json();
+
+				fill.classList.remove('indeterminate');
+
+				if (!data.success) {
+					fill.style.width = '100%';
+					fill.style.background = '#dc2626';
+					text.textContent = 'Error: ' + (data.message || 'Parse failed');
+					btn.textContent = 'Upload & Parse';
+					btn.disabled = false;
+					return;
+				}
+
+				fill.style.width = '100%';
+				fill.style.background = '#16a34a';
+				text.textContent = 'Parsing complete! ' + data.pageCount + ' pages processed.';
+
+				ticketParseResult = data;
+				renderMatchingResults(data);
+
+			} catch (err) {
+				fill.classList.remove('indeterminate');
+				fill.style.width = '100%';
+				fill.style.background = '#dc2626';
+				text.textContent = 'Network error: ' + err.message;
+				btn.textContent = 'Upload & Parse';
+				btn.disabled = false;
+			}
+		}
+
+		function renderMatchingResults(data) {
+			const matched = data.matched || {};
+			const unmatched = data.unmatched || [];
+
+			// Count matched passengers
+			let matchedCount = 0;
+			Object.values(matched).forEach(b => { matchedCount += b.passengers.length; });
+			const totalCount = matchedCount + unmatched.length;
+
+			document.getElementById('statMatched').textContent = matchedCount;
+			document.getElementById('statUnmatched').textContent = unmatched.length;
+			document.getElementById('statTotal').textContent = totalCount;
+
+			// Build matched table rows
+			const tbody = document.getElementById('ticketMatchBody');
+			let html = '';
+			let rowNum = 1;
+
+			Object.entries(matched).forEach(([bookingId, bookingData]) => {
+				bookingData.passengers.forEach(pax => {
+					const score = pax.matchScore || 0;
+					let statusClass, statusText;
+					if (score >= 95) { statusClass = 'exact'; statusText = 'Exact'; }
+					else if (score >= 80) { statusClass = 'partial'; statusText = 'High'; }
+					else { statusClass = 'partial'; statusText = 'Partial'; }
+
+					html += '<tr>'
+						+ '<td>' + rowNum++ + '</td>'
+						+ '<td><strong>' + escapeHtml(pax.parsedName) + '</strong><br><span style="font-size:11px;color:#6b7280;">' + escapeHtml(pax.parsedType) + '</span></td>'
+						+ '<td>' + escapeHtml(pax.dbFirstName + ' ' + pax.dbLastName) + '</td>'
+						+ '<td><code>' + escapeHtml(bookingId) + '</code></td>'
+						+ '<td>' + escapeHtml(bookingData.agentName || '-') + '</td>'
+						+ '<td><span class="match-status ' + statusClass + '">' + statusText + ' (' + score + '%)</span></td>'
+						+ '</tr>';
+				});
+			});
+
+			tbody.innerHTML = html;
+
+			// Unmatched section
+			const unmatchedSection = document.getElementById('ticketUnmatchedSection');
+			if (unmatched.length > 0) {
+				const ul = document.getElementById('ticketUnmatchedList');
+				ul.innerHTML = unmatched.map(p => '<li>' + escapeHtml(p.parsedName) + ' (' + escapeHtml(p.parsedType) + ')</li>').join('');
+				unmatchedSection.style.display = 'block';
+			} else {
+				unmatchedSection.style.display = 'none';
+			}
+
+			// Show results, hide upload step
+			document.getElementById('ticketStepUpload').style.display = 'none';
+			document.getElementById('ticketStepResults').classList.add('active');
+
+			// Show confirm button only if there are matches
+			if (matchedCount > 0) {
+				document.getElementById('btnConfirmGenerate').style.display = 'inline-flex';
+			}
+		}
+
+		async function confirmAndGenerate() {
+			if (!ticketParseResult) return;
+
+			const btn = document.getElementById('btnConfirmGenerate');
+			btn.disabled = true;
+			btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generating PDFs...';
+
+			try {
+				const resp = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'confirmBulkTicket',
+						tmpFile: ticketParseResult.tmpFile,
+						matchedBookings: ticketParseResult.matched,
+						flights: ticketParseResult.flights,
+						bookingRef: ticketParseResult.bookingRef,
+						departureDate: selectedDate,
+						packageId: selectedPackageId,
+						airline: ticketParseResult.airline || 'unknown',
+						bookingDate: ticketParseResult.bookingDate || ''
+					})
+				});
+				const data = await resp.json();
+
+				if (data.success) {
+					// Count total passengers
+					let totalPax = 0;
+					Object.values(ticketParseResult.matched || {}).forEach(b => { totalPax += (b.passengers || []).length; });
+
+					// Show success step
+					document.getElementById('ticketStepResults').classList.remove('active');
+					document.getElementById('successCount').textContent = data.generatedCount;
+					document.getElementById('successPaxCount').textContent = totalPax;
+					document.getElementById('ticketStepSuccess').classList.add('active');
+
+					// Update footer button
+					btn.style.display = 'none';
+					document.getElementById('btnCloseTicketModal').textContent = 'Close';
+
+					// Show toast notification
+					showToast('success', 'Successfully generated ' + data.generatedCount + ' airline ticket(s) for ' + totalPax + ' passenger(s).');
+				} else {
+					showToast('error', 'Error: ' + (data.message || 'Generation failed'));
+					btn.disabled = false;
+					btn.textContent = 'Confirm & Generate Tickets';
+				}
+			} catch (err) {
+				showToast('error', 'Network error: ' + err.message);
+				btn.disabled = false;
+				btn.textContent = 'Confirm & Generate Tickets';
+			}
+		}
+
+		function showToast(type, message) {
+			// Remove existing toast
+			const existing = document.querySelector('.toast-notification');
+			if (existing) existing.remove();
+
+			const toast = document.createElement('div');
+			toast.className = 'toast-notification ' + type;
+			const icon = type === 'success'
+				? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+				: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+			toast.innerHTML = icon + '<span>' + message + '</span>';
+			document.body.appendChild(toast);
+
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => toast.classList.add('show'));
+			});
+
+			setTimeout(() => {
+				toast.classList.remove('show');
+				setTimeout(() => toast.remove(), 400);
+			}, 5000);
+		}
+
+		// Close modal on overlay click
+		document.getElementById('ticketModalOverlay').addEventListener('click', function(e) {
+			if (e.target === this) closeTicketModal();
+		});
 	</script>
 
 </body>
