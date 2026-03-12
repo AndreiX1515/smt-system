@@ -4,47 +4,20 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); // API JSON 응답을 깨뜨리지 않도록 비활성화
 ini_set('log_errors', 1); // 에러 로깅은 활성화
 
-// 데이터베이스 연결 직접 확인
-$servername = "localhost";
-$username = "root";
-$password = "cloud1234";
-$dbname = "smarttravel";
+// 데이터베이스 연결 (conn.php 사용 - 운영/테스트 환경별 설정 자동 적용)
+require_once __DIR__ . '/../conn.php';
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+// send_json_response는 conn.php에서 제공
 
-if ($conn->connect_error) {
-    error_log("Database connection failed: " . $conn->connect_error);
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => '데이터베이스 연결 실패']);
-    exit;
-}
-
-$conn->set_charset("utf8");
-
-// JSON 응답 함수
-function send_json_response($data, $status_code = 200) {
-    http_response_code($status_code);
-    header('Content-Type: application/json; charset=utf-8');
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-// 입력 데이터 정리 함수
-function sanitize_input($data) {
-    $data = trim($data);
-    $data = stripslashes($data);
-    $data = htmlspecialchars($data);
-    return $data;
-}
-
-// 활동 로그 함수
-function log_activity($message) {
-    global $conn;
-    // activity_logs 테이블이 없거나 구조가 다를 수 있으므로 간단한 로그만 남김
-    error_log("Activity: " . $message);
+// sanitize_input, log_activity는 conn.php에서 제공
+// register.php에서만 사용하는 간단한 sanitize
+if (!function_exists('sanitize_input')) {
+    function sanitize_input($data) {
+        $data = trim($data);
+        $data = stripslashes($data);
+        $data = htmlspecialchars($data);
+        return $data;
+    }
 }
 
 // 디버깅을 위한 로그
