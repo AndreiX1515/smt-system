@@ -1136,6 +1136,12 @@ try {
         case 'generateVoucher':
             generateVoucherAction($conn, $input);
             break;
+        case 'parseBulkTicket':
+            parseBulkTicketAction($conn, $input);
+            break;
+        case 'confirmBulkTicket':
+            confirmBulkTicketAction($conn, $input);
+            break;
 
         default:
             send_error_response('Invalid action: ' . $action, 400);
@@ -21979,4 +21985,198 @@ function generateVoucherAction(mysqli $conn, $input) {
     } else {
         send_error_response($result['message'], 500);
     }
+}
+
+function parseBulkTicketAction(mysqli $conn, $input) {
+    $departureDate = trim($_POST['departureDate'] ?? '');
+    $packageId = (int)($_POST['packageId'] ?? 0);
+
+    if (!$departureDate || !$packageId) {
+        send_error_response('departureDate and packageId are required', 400);
+    }
+
+    $file = $_FILES['ticketPdf'] ?? $_FILES['file'] ?? null;
+    if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+        send_error_response('No file uploaded or upload error', 400);
+    }
+
+    if ($file['size'] > 20 * 1024 * 1024) {
+        send_error_response('File size must be less than 20MB', 400);
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    if ($mimeType !== 'application/pdf') {
+        send_error_response('Only PDF files are allowed', 400);
+    }
+
+    // Save to temp location
+    $tmpDir = __DIR__ . '/../../../uploads/travel_documents/tmp/';
+    if (!is_dir($tmpDir)) mkdir($tmpDir, 0755, true);
+    $tmpName = 'bulk_' . time() . '_' . uniqid() . '.pdf';
+    $tmpPath = $tmpDir . $tmpName;
+
+    if (!move_uploaded_file($file['tmp_name'], $tmpPath)) {
+        send_error_response('Failed to save uploaded file', 500);
+    }
+
+    require_once __DIR__ . '/../../../backend/services/ticket_parser.php';
+
+    $parseResult = parseTicketPdf($tmpPath);
+    if (!$parseResult['success']) {
+        @unlink($tmpPath);
+        send_error_response($parseResult['message'] ?? 'Failed to parse PDF', 500);
+    }
+
+    $matchResult = matchPassengersToTravelers($conn, $parseResult['passengers'], $departureDate, $packageId);
+
+    send_json_response([
+        'success' => true,
+        'tmpFile' => $tmpName,
+        'bookingRef' => $parseResult['bookingRef'],
+        'flights' => $parseResult['flights'],
+        'pageCount' => $parseResult['pageCount'] ?? 0,
+        'totalParsed' => count($parseResult['passengers']),
+        'matched' => $matchResult['matched'],
+        'unmatched' => $matchResult['unmatched'],
+        'airline' => $parseResult['airline'] ?? 'unknown',
+        'bookingDate' => $parseResult['bookingDate'] ?? ''
+    ]);
+}
+
+function confirmBulkTicketAction(mysqli $conn, $input) {
+    $tmpFile = trim($input['tmpFile'] ?? '');
+    $departureDate = trim($input['departureDate'] ?? '');
+    $packageId = (int)($input['packageId'] ?? 0);
+    $bookingRef = trim($input['bookingRef'] ?? '');
+    $flights = $input['flights'] ?? [];
+    $matchedBookings = $input['matchedBookings'] ?? [];
+    $airline = trim($input['airline'] ?? 'unknown');
+    $bookingDate = trim($input['bookingDate'] ?? '');
+
+    if (!$tmpFile || !$departureDate || !$packageId || empty($matchedBookings)) {
+        send_error_response('Missing required fields', 400);
+    }
+
+    // Validate tmp file exists
+    $tmpPath = __DIR__ . '/../../../uploads/travel_documents/tmp/' . basename($tmpFile);
+    if (!file_exists($tmpPath)) {
+        send_error_response('Temporary file expired. Please upload again.', 400);
+    }
+
+    require_once __DIR__ . '/../../../vendor/autoload.php';
+    require_once __DIR__ . '/../../../backend/services/ticket_parser.php';
+
+    // Extract QR code from the original PDF for Cebu Pacific tickets
+    $qrCodeBase64 = null;
+    if ($airline === 'cebu_pacific') {
+        $qrCodeBase64 = extractQrCodeFromPage($tmpPath);
+        // If direct extraction fails (tmpPath is PDF, not PNG), render page 1 first
+        if (!$qrCodeBase64) {
+            $pdftoppm = trim(shell_exec('which pdftoppm 2>/dev/null'));
+            if ($pdftoppm) {
+                $qrTmpDir = sys_get_temp_dir() . '/qr_tmp_' . uniqid();
+                @mkdir($qrTmpDir, 0755, true);
+                $cmd = escapeshellarg($pdftoppm) . ' -r 200 -png -f 1 -l 1 '
+                     . escapeshellarg($tmpPath) . ' '
+                     . escapeshellarg($qrTmpDir . '/page');
+                exec($cmd . ' 2>/dev/null');
+                $qrPages = glob($qrTmpDir . '/page-*.png');
+                if (!empty($qrPages)) {
+                    $qrCodeBase64 = extractQrCodeFromPage($qrPages[0]);
+                }
+                foreach (glob($qrTmpDir . '/*') as $f) @unlink($f);
+                @rmdir($qrTmpDir);
+            }
+        }
+    }
+
+    $uploadDir = __DIR__ . '/../../../uploads/travel_documents/';
+    $uploadedBy = $_SESSION['admin_accountId'] ?? $_SESSION['accountId'] ?? null;
+    $generatedCount = 0;
+
+    foreach ($matchedBookings as $bookingId => $bookingData) {
+        $passengers = $bookingData['passengers'] ?? [];
+        if (empty($passengers)) continue;
+
+        // Get booking info
+        $stmt = $conn->prepare("SELECT bookingId, packageName, departureDate FROM bookings WHERE bookingId = ?");
+        $stmt->bind_param('s', $bookingId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$booking) continue;
+
+        // Build template data
+        $data = [
+            'booking' => $booking,
+            'passengers' => $passengers,
+            'flights' => $flights,
+            'bookingRef' => $bookingRef,
+            'airline' => $airline,
+            'bookingDate' => $bookingDate,
+            'qrCodeBase64' => $qrCodeBase64
+        ];
+
+        // Render HTML
+        ob_start();
+        include __DIR__ . '/../../../backend/services/ticket_template.php';
+        $html = ob_get_clean();
+
+        // Generate PDF
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'Helvetica');
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        $pdfContent = $dompdf->output();
+
+        // Delete existing airline_ticket for this booking
+        $existing = $conn->prepare("SELECT documentId, filePath FROM booking_documents WHERE bookingId = ? AND documentType = 'airline_ticket'");
+        $existing->bind_param('s', $bookingId);
+        $existing->execute();
+        $existingResult = $existing->get_result();
+        while ($old = $existingResult->fetch_assoc()) {
+            $oldPath = __DIR__ . '/../../../' . ltrim($old['filePath'], '/');
+            if (file_exists($oldPath)) @unlink($oldPath);
+            $delStmt = $conn->prepare("DELETE FROM booking_documents WHERE documentId = ?");
+            $delStmt->bind_param('i', $old['documentId']);
+            $delStmt->execute();
+            $delStmt->close();
+        }
+        $existing->close();
+
+        // Save PDF
+        $fileName = $bookingId . '_airline_ticket_' . time() . '.pdf';
+        $destPath = $uploadDir . $fileName;
+        if (file_put_contents($destPath, $pdfContent) === false) continue;
+
+        $filePath = '/uploads/travel_documents/' . $fileName;
+        $fileSize = strlen($pdfContent);
+        $mimeType = 'application/pdf';
+        $paxCount = count($passengers);
+        $originalName = 'Ticket_' . $bookingId . '_' . $paxCount . 'pax.pdf';
+        $documentType = 'airline_ticket';
+
+        $stmt = $conn->prepare("INSERT INTO booking_documents (bookingId, documentType, filePath, originalName, fileSize, mimeType, uploadedBy) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('ssssisi', $bookingId, $documentType, $filePath, $originalName, $fileSize, $mimeType, $uploadedBy);
+        $stmt->execute();
+        $stmt->close();
+
+        $generatedCount++;
+    }
+
+    // Cleanup temp file
+    @unlink($tmpPath);
+
+    send_json_response([
+        'success' => true,
+        'message' => "Generated airline tickets for {$generatedCount} booking(s)",
+        'generatedCount' => $generatedCount
+    ]);
 }
