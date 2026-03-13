@@ -517,9 +517,9 @@ function formatDuration($startTime, $endTime, $lang = null) {
     <script type="text/javascript" src="//code.jquery.com/jquery-migrate-1.2.1.min.js" defer></script>
     <script type="text/javascript" src="../js/slick/slick.min.js" defer></script>
     <script src="../js/slider.js" defer></script>
-    <script src="../js/product-detail.js?v=20250204_contactagent4" defer></script>
-    <link rel="stylesheet" href="/css/i18n-boot.css">
-    <script src="/js/i18n-boot.js"></script>
+    <script src="../js/product-detail.js" defer></script>
+    <link rel="stylesheet" href="../css/i18n-boot.css">
+    <script src="../js/i18n-boot.js"></script>
     <script src="../js/i18n.js" defer></script>
     <script>
         // Tab sticky shadow effect

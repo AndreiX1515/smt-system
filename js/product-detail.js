@@ -2025,6 +2025,6 @@ function goToContactAgent() {
         departure_date: selectedDateStr
     });
 
-    window.location.href = `/user/contact-agent.php?${params.toString()}`;
+    window.location.href = `/smt-system/user/contact-agent.php?${params.toString()}`;
 }
 window.goToContactAgent = goToContactAgent;
