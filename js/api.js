@@ -22,7 +22,7 @@ class SmartTravelAPI {
         this.baseURL = (typeof window !== 'undefined' && window.__API_BASE_URL__)
             ? String(window.__API_BASE_URL__).replace(/\/+$/, '')
             : isLocalhost
-                ? `${origin}/smt-escape/backend/api`  // Local: XAMPP with /smt-escape/ subdirectory
+                ? `${origin}/smt-system/backend/api`  // Local: XAMPP with /smt-system/ subdirectory
                 : `${origin}/backend/api`;             // Production: root directory
         this.endpoints = {
             auth: `${this.baseURL}/login.php`,
