@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="../css/main.css">
     <script src="../js/api.js" defer></script>
     <script src="../js/auth-guard.js" defer></script>
-    <link rel="stylesheet" href="/css/i18n-boot.css">
-    <script src="/js/i18n-boot.js"></script>
+    <link rel="stylesheet" href="../css/i18n-boot.css">
+    <script src="../js/i18n-boot.js"></script>
     <script src="../js/i18n.js" defer></script>
     <style>
         #map {

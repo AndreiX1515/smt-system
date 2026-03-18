@@ -2,7 +2,7 @@
 // 데이터베이스 연결 설정
 $servername = "localhost";
 $username = "root";
-$password = "password1";
+$password = "";
 $dbname = "smarttravel";
 $port = 3306; // MySQL 기본 포트
 
