@@ -1,0 +1,187 @@
+<!-- ═══════════════════════════════════════════════════════
+     agent-id-find.html
+     Fragment loaded into native <dialog> by modal.js.
+     No <html>/<head>/<body> — just the inner content.
+     Depends on: components-modal.css + root tokens
+     ═══════════════════════════════════════════════════════ -->
+
+<div class="dialog-container">
+
+  <!-- Close -->
+  <button type="button" class="dialog-close" id="closeDialog" aria-label="Close">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <line x1="1" y1="1" x2="13" y2="13"/>
+      <line x1="13" y1="1" x2="1"  y2="13"/>
+    </svg>
+  </button>
+
+  <!-- Header -->
+  <div class="dialog-header">
+    <h1 data-lan-eng="Find ID">Find ID</h1>
+  </div>
+
+  <p class="dialog-subtitle">
+    Enter your registered name and email to retrieve your account.
+  </p>
+
+  <div class="dialog-divider"></div>
+
+  <!-- Body -->
+  <div class="dialog-content">
+
+    <!-- Error (shown dynamically) -->
+    <div id="findIdError" class="error-message" style="display:none;"></div>
+
+    <!-- Name -->
+    <div class="field">
+      <div class="input-box">
+        <div class="field-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="8" cy="5.5" r="2.5"/>
+            <path d="M2 13.5c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+          </svg>
+        </div>
+        <!--
+          placeholder="x" — invisible but required for
+          the CSS :not(:placeholder-shown) floating-label selector
+        -->
+        <input type="text" id="managerName" placeholder="x"
+               autocomplete="name" required />
+        <span class="label-name" data-lan-eng="Name">
+          Name <span class="req">*</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="field">
+      <div class="input-box">
+        <div class="field-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/>
+            <path d="M1.5 5.5l6.5 4 6.5-4"/>
+          </svg>
+        </div>
+        <input type="email" id="managerEmail" placeholder="x"
+               autocomplete="email" required />
+        <span class="label-name" data-lan-eng="Email">
+          Email <span class="req">*</span>
+        </span>
+      </div>
+    </div>
+
+  </div><!-- /.dialog-content -->
+
+  <!-- Footer -->
+  <div class="dialog-controls">
+    <button type="button" class="jw-button typeB" id="findIdBtn"
+            data-lan-eng="Find ID" onclick="findUnifiedId()">
+      Find ID
+    </button>
+
+    <div class="dialog-footer-links">
+      <a href="#">Sign in</a>
+      <span class="sep">·</span>
+      <a href="#">Reset password</a>
+      <span class="sep">·</span>
+      <a href="#">Help</a>
+    </div>
+  </div>
+
+</div><!-- /.dialog-container -->
+
+
+<script>
+  /* ─────────────────────────────────────────────────────
+     Find ID — agent → guide fallback
+  ───────────────────────────────────────────────────── */
+  async function findUnifiedId() {
+    const name    = document.getElementById('managerName').value.trim();
+    const email   = document.getElementById('managerEmail').value.trim();
+
+    /* Validation */
+    if (!name || !email) {
+      showFindError('Please enter your name and email correctly.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showFindError('Please enter a valid email address.');
+      return;
+    }
+
+    hideFindError();
+    setFindLoading(true);
+
+    try {
+      const base = window.location.pathname.includes('/member/')
+        ? '../backend/api/'
+        : './backend/api/';
+
+      const tryPost = async (url, fd) => {
+        const res  = await fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' });
+        const json = await res.json().catch(() => ({}));
+        return { ok: res.ok, json };
+      };
+
+      /* 1. Agent endpoint */
+      const fd1 = new FormData();
+      fd1.append('managerName',  name);
+      fd1.append('managerEmail', email);
+      const r1 = await tryPost(base + 'find-agent-id.php', fd1);
+      if (r1.ok && r1.json?.success) { openFindResult(r1.json.email); return; }
+
+      /* 2. Guide endpoint (different param names) */
+      const fd2 = new FormData();
+      fd2.append('guideName',  name);
+      fd2.append('guideEmail', email);
+      const r2 = await tryPost(base + 'find-guide-id.php', fd2);
+      if (r2.ok && r2.json?.success) { openFindResult(r2.json.email); return; }
+
+      showFindError(r2.json?.message || r1.json?.message || 'Member information cannot be found.');
+
+    } catch (err) {
+      console.error('[findUnifiedId]', err);
+      showFindError('An error occurred. Please try again.');
+    } finally {
+      setFindLoading(false);
+    }
+  }
+
+  /* ── Open result modal ─────────────────────────────── */
+  function openFindResult(email) {
+    const m = modal('../member/agent-id-find-result.html', '480px');
+    document.addEventListener('modal:loaded', function handler(e) {
+      if (e.detail?.action?.includes('agent-id-find-result')) {
+        const el = document.querySelector('#foundEmail');
+        if (el) el.value = email || '';
+        document.removeEventListener('modal:loaded', handler);
+      }
+    });
+  }
+
+  /* ── UI helpers ────────────────────────────────────── */
+  function showFindError(msg) {
+    const el = document.getElementById('findIdError');
+    el.textContent   = msg;
+    el.style.display = 'flex';
+  }
+
+  function hideFindError() {
+    const el = document.getElementById('findIdError');
+    el.style.display = 'none';
+    el.textContent   = '';
+  }
+
+  function setFindLoading(on) {
+    const btn = document.getElementById('findIdBtn');
+    btn.disabled = on;
+    btn.classList.toggle('is-loading', on);
+    /* Update label text node only — preserves the ::before spinner */
+    const textNode = Array.from(btn.childNodes)
+      .find(n => n.nodeType === Node.TEXT_NODE);
+    if (textNode) textNode.textContent = on ? ' Searching…' : ' Find ID';
+  }
+</script>

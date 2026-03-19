@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+	<style>
+		/* Tabs */
+		.sp-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 24px; }
+		.sp-tab-btn { padding: 12px 24px; font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s; }
+		.sp-tab-btn:hover { color: #3b82f6; }
+		.sp-tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 700; }
+
+		/* Summary bar */
+		.sp-summary { display: flex; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+		.sp-summary-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 180px; }
+		.sp-summary-item .label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+		.sp-summary-item .value { font-size: 20px; font-weight: 700; color: #1e293b; }
+
+		/* Package card */
+		.sp-card { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: #fff; }
+		.sp-card-header { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; gap: 12px; transition: background .15s; }
+		.sp-card-header:hover { background: #f8fafc; }
+		.sp-card-toggle { width: 20px; height: 20px; transition: transform .2s; flex-shrink: 0; color: #94a3b8; }
+		.sp-card.open .sp-card-toggle { transform: rotate(90deg); }
+		.sp-card-name { flex: 1; font-size: 14px; font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.sp-card-stats { display: flex; gap: 24px; flex-shrink: 0; align-items: center; }
+		.sp-card-stat { text-align: right; }
+		.sp-card-stat .stat-label { font-size: 11px; color: #94a3b8; }
+		.sp-card-stat .stat-value { font-size: 14px; font-weight: 600; color: #334155; }
+		.sp-card-stat .stat-value.highlight { color: #2563eb; }
+
+		/* Progress bar */
+		.sp-progress { width: 120px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+		.sp-progress-bar { height: 100%; border-radius: 3px; transition: width .3s; }
+		.sp-progress-bar.low { background: #22c55e; }
+		.sp-progress-bar.mid { background: #f59e0b; }
+		.sp-progress-bar.high { background: #ef4444; }
+
+		/* Date detail table */
+		.sp-card-body { display: none; border-top: 1px solid #e2e8f0; background: #f8fafc; padding: 12px 16px; }
+		.sp-card.open .sp-card-body { display: block; }
+		.sp-date-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+		.sp-date-table th { text-align: center; padding: 8px 10px; color: #64748b; font-weight: 600; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; font-size: 12px; }
+		.sp-date-table td { text-align: center; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+		.sp-date-table tr:last-child td { border-bottom: none; }
+		.sp-date-table .date-col { text-align: left; font-weight: 500; }
+
+		/* Empty state */
+		.sp-empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 14px; }
+
+		/* Loading */
+		.sp-loading { text-align: center; padding: 60px 20px; color: #94a3b8; }
+
+		/* ===== Mobile Responsive ===== */
+		@media (max-width: 768px) {
+			/* Sidebar overlay */
+			.layout-nav {
+				position: fixed; left: -280px; top: 70px; bottom: 0;
+				width: 260px; z-index: 200; background: #fff;
+				transition: left 0.3s ease;
+				box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+				padding: 20px 12px; overflow-y: auto;
+			}
+			.layout-nav.open { left: 0; }
+			.nav-overlay {
+				display: none; position: fixed; inset: 0; top: 70px;
+				background: rgba(0,0,0,0.4); z-index: 199;
+			}
+			.nav-overlay.show { display: block; }
+			.hamburger-btn {
+				display: flex; align-items: center; justify-content: center;
+				width: 40px; height: 40px; background: none; border: none;
+				cursor: pointer; font-size: 24px;
+			}
+			.layout-content { padding: 16px; }
+			.page-title { font-size: 20px !important; }
+			.card-panel { padding: 16px; border-radius: 16px; }
+
+			/* Tabs scroll */
+			.sp-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+			.sp-tab-btn { white-space: nowrap; padding: 10px 16px; font-size: 13px; }
+
+			/* Summary 2-col */
+			.sp-summary { gap: 8px; }
+			.sp-summary-item { min-width: calc(50% - 4px); flex: none; padding: 10px 14px; }
+			.sp-summary-item .value { font-size: 16px; }
+
+			/* Card header mobile: name full width + stats below */
+			.sp-card-header { flex-wrap: wrap; padding: 12px; gap: 8px; }
+			.sp-card-name { min-width: 100%; order: 1; white-space: normal; }
+			.sp-card-stats { order: 2; width: 100%; justify-content: space-between; gap: 12px; }
+			.sp-card-stat .stat-label { display: none; }
+			.sp-progress { width: 60px; }
+
+			/* Inner date table -> card */
+			.sp-date-table thead { display: none; }
+			.sp-date-table tr {
+				display: block; border: 1px solid #e2e8f0; border-radius: 8px;
+				padding: 10px; margin-bottom: 6px; background: #fff;
+			}
+			.sp-date-table td {
+				display: flex; justify-content: space-between; align-items: center;
+				padding: 4px 0; border: none; text-align: right;
+			}
+			.sp-date-table td::before {
+				content: attr(data-label);
+				font-weight: 600; color: #64748b; font-size: 12px;
+				margin-right: 8px; text-align: left;
+			}
+		}
+		@media (min-width: 769px) {
+			.hamburger-btn { display: none; }
+			.nav-overlay { display: none !important; }
+		}
+		@media (max-width: 480px) {
+			.sp-summary-item { min-width: 100%; }
+		}
+	</style>
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+			<h1 class="page-title" data-lan-eng="Sales by Product">Sales by Product</h1>
+
+			<div class="card-panel jw-mgt32">
+
+				<!-- Tabs -->
+				<div class="sp-tabs">
+					<button class="sp-tab-btn active" data-tab="all" onclick="switchTab('all')">All Bookings</button>
+					<button class="sp-tab-btn" data-tab="confirmed" onclick="switchTab('confirmed')">Confirmed Only</button>
+					<button class="sp-tab-btn" data-tab="land" onclick="switchTab('land')">Land Only</button>
+				</div>
+
+				<!-- Summary -->
+				<div class="sp-summary" id="summaryArea"></div>
+
+				<!-- Package list -->
+				<div id="packageList">
+					<div class="sp-loading">Loading...</div>
+				</div>
+
+			</div>
+
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let allData = null;
+		let currentTab = 'all';
+
+		function initMobileMenu() {
+			const header = document.querySelector('.layout-header');
+			if (!header) return;
+			const brand = header.querySelector('.brand');
+			if (!brand) return;
+			const btn = document.createElement('button');
+			btn.className = 'hamburger-btn';
+			btn.innerHTML = '☰';
+			btn.setAttribute('aria-label', 'Menu');
+			brand.parentElement.insertBefore(btn, brand);
+			const overlay = document.createElement('div');
+			overlay.className = 'nav-overlay';
+			document.body.appendChild(overlay);
+			btn.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.toggle('open');
+				overlay.classList.toggle('show');
+			});
+			overlay.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.remove('open');
+				overlay.classList.remove('show');
+			});
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
+				const sessionData = await sessionResponse.json();
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) { window.location.href = '../index.html'; return; }
+				initMobileMenu();
+				await loadData();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+			}
+		});
+
+		async function loadData() {
+			try {
+				const response = await fetch('../backend/api/super-api.php?action=getProductSalesOverview', { credentials: 'same-origin' });
+				if (response.status === 401) { alert('Session expired.'); window.location.href = '../index.html'; return; }
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				const result = await response.json();
+				if (result.success && result.data) {
+					allData = result.data;
+					render();
+				}
+			} catch (error) {
+				console.error('Error loading data:', error);
+				document.getElementById('packageList').innerHTML = '<div class="sp-empty">Failed to load data.</div>';
+			}
+		}
+
+		function switchTab(tab) {
+			currentTab = tab;
+			document.querySelectorAll('.sp-tab-btn').forEach(btn => {
+				btn.classList.toggle('active', btn.dataset.tab === tab);
+			});
+			render();
+		}
+
+		function render() {
+			if (!allData) return;
+			const { packages, grandTotals } = allData;
+
+			// Filter packages based on tab
+			let filtered;
+			if (currentTab === 'land') {
+				filtered = packages.filter(p => p.isLandOnly);
+			} else {
+				filtered = packages.filter(p => !p.isLandOnly);
+			}
+
+			// Sort by sold seats descending
+			const seatKey = currentTab === 'confirmed' ? 'confirmedSeats' : 'allSeats';
+			filtered.sort((a, b) => b[seatKey] - a[seatKey]);
+
+			renderSummary(filtered, grandTotals);
+			renderList(filtered);
+		}
+
+		function renderSummary(filtered, gt) {
+			const area = document.getElementById('summaryArea');
+			let totalCap = 0, totalSold = 0, totalAmt = 0;
+
+			filtered.forEach(p => {
+				totalCap += p.totalCapacity;
+				if (currentTab === 'confirmed') {
+					totalSold += p.confirmedSeats;
+					totalAmt += p.confirmedAmount;
+				} else {
+					totalSold += p.allSeats;
+					totalAmt += p.allAmount;
+				}
+			});
+
+			const occupancy = totalCap > 0 ? ((totalSold / totalCap) * 100).toFixed(1) : '0.0';
+
+			area.innerHTML = `
+				<div class="sp-summary-item">
+					<div class="label">Total Packages</div>
+					<div class="value">${filtered.length}</div>
+				</div>
+				<div class="sp-summary-item">
+					<div class="label">Total Inventory</div>
+					<div class="value">${totalCap.toLocaleString()}</div>
+				</div>
+				<div class="sp-summary-item">
+					<div class="label">Sold Seats</div>
+					<div class="value">${totalSold.toLocaleString()} <span style="font-size:13px;color:#64748b;font-weight:400">(${occupancy}%)</span></div>
+				</div>
+				<div class="sp-summary-item">
+					<div class="label">Total Sales Amount</div>
+					<div class="value">${formatCurrency(totalAmt)}</div>
+				</div>
+			`;
+		}
+
+		function renderList(filtered) {
+			const container = document.getElementById('packageList');
+
+			if (filtered.length === 0) {
+				container.innerHTML = '<div class="sp-empty">No packages found.</div>';
+				return;
+			}
+
+			container.innerHTML = filtered.map((pkg, idx) => {
+				const sold = currentTab === 'confirmed' ? pkg.confirmedSeats : pkg.allSeats;
+				const amt = currentTab === 'confirmed' ? pkg.confirmedAmount : pkg.allAmount;
+				const cap = pkg.totalCapacity;
+				const pct = cap > 0 ? ((sold / cap) * 100).toFixed(1) : '0.0';
+				const pctNum = parseFloat(pct);
+				const barClass = pctNum >= 80 ? 'high' : pctNum >= 50 ? 'mid' : 'low';
+
+				const dateRows = (pkg.dates || []).map(d => {
+					const ds = currentTab === 'confirmed' ? d.confirmedSeats : d.allSeats;
+					const da = currentTab === 'confirmed' ? d.confirmedAmount : d.allAmount;
+					const dp = d.capacity > 0 ? ((ds / d.capacity) * 100).toFixed(1) : '0.0';
+					return `<tr>
+						<td class="date-col" data-label="Date">${d.date}</td>
+						<td data-label="Capacity">${d.capacity.toLocaleString()}</td>
+						<td data-label="Sold">${ds.toLocaleString()}</td>
+						<td data-label="Occupancy">${dp}%</td>
+						<td data-label="Amount">${formatCurrency(da)}</td>
+					</tr>`;
+				}).join('');
+
+				return `
+				<div class="sp-card" id="card-${idx}">
+					<div class="sp-card-header" onclick="toggleCard(${idx})">
+						<svg class="sp-card-toggle" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+						<div class="sp-card-name" title="${escapeHtml(pkg.packageName)}">${escapeHtml(pkg.packageName)}</div>
+						<div class="sp-card-stats">
+							<div class="sp-card-stat">
+								<div class="stat-label">Sold / Total</div>
+								<div class="stat-value">${sold.toLocaleString()} / ${cap.toLocaleString()}</div>
+							</div>
+							<div class="sp-card-stat">
+								<div class="sp-progress"><div class="sp-progress-bar ${barClass}" style="width:${Math.min(pctNum, 100)}%"></div></div>
+								<div style="font-size:11px;color:#64748b;text-align:right;margin-top:2px">${pct}%</div>
+							</div>
+							<div class="sp-card-stat">
+								<div class="stat-label">Sales Amount</div>
+								<div class="stat-value highlight">${formatCurrency(amt)}</div>
+							</div>
+						</div>
+					</div>
+					<div class="sp-card-body">
+						<table class="sp-date-table">
+							<thead>
+								<tr>
+									<th class="date-col">Date</th>
+									<th>Capacity</th>
+									<th>Sold</th>
+									<th>Occupancy</th>
+									<th>Amount</th>
+								</tr>
+							</thead>
+							<tbody>${dateRows || '<tr><td colspan="5" style="color:#94a3b8">No date data</td></tr>'}</tbody>
+						</table>
+					</div>
+				</div>`;
+			}).join('');
+		}
+
+		function toggleCard(idx) {
+			document.getElementById('card-' + idx).classList.toggle('open');
+		}
+
+		function formatCurrency(val) {
+			return '₱' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text || '';
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>

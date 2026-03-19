@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+
+	
+	<link rel="stylesheet" href="../../public/css/a_components.css">
+	<link rel="stylesheet" href="../../public/css/a_variables.css">
+	<link rel="stylesheet" href="../../public/css/a_components.css">
+	<link rel="stylesheet" href="../../public/css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+			<time class="page-date" id="currentDate" datetime=""></time>
+
+			<h1 class="page-title" data-lan-eng="Operating Status">Operating Status</h1>
+			
+						
+			<div class="overview-card-grid jw-mgt32">
+				<!--   -->
+				<article class="card">
+					<div>
+						<h2 class="card-title" data-lan-eng="Reservation Status">Reservation Status</h2>
+						<a href="b2b-booking-list.html" class="card-link">See All →</a>
+					</div>
+					<div>
+						<ul class="status-list">
+							<li class="status-item">
+								<i class="dot" style="background:#8b5cf6;" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Pending">Pending</span>
+								<strong class="count" id="pendingCount">0</strong>
+							</li>
+							<li class="status-item">
+								<i class="dot dot-blue" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Waiting for Down Payment">Waiting for Down Payment</span>
+								<strong class="count" id="waitingDownCount">0</strong>
+							</li>
+							<li class="status-item">
+								<i class="dot dot-orange" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Waiting for Second Payment">Waiting for Second Payment</span>
+								<strong class="count" id="waitingSecondCount">0</strong>
+							</li>
+							<li class="status-item">
+								<i class="dot dot-purple" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Waiting for Balance">Waiting for Balance</span>
+								<strong class="count" id="waitingBalanceCount">0</strong>
+							</li>
+							<li class="status-item">
+								<i class="dot dot-red" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Payment Rejected">Payment Rejected</span>
+								<strong class="count" id="rejectedCount">0</strong>
+							</li>
+						</ul>
+					</div>
+				</article>
+
+				<!--   -->
+				<article class="card">
+					<div>
+						<h2 class="card-title" data-lan-eng="Inquiry Status">Inquiry Status</h2>
+						<a href="user-inquiry-list.html" class="card-link">See All →</a>
+					</div>
+					<div>
+						<ul class="status-list">
+							<li class="status-item">
+								<i class="dot dot-blue" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Unanswered">Unanswered</span>
+								<strong class="count" id="unansweredCount"><span>0</span></strong>
+							</li>
+							<li class="status-item">
+								<i class="dot dot-green" aria-hidden="true"></i>
+								<span class="label" data-lan-eng="Processing">Processing</span>
+								<strong class="count" id="processingCount"><span>0</span></strong>
+							</li>
+						</ul>
+					</div>
+				</article>
+			</div>
+
+			<div class="card-panel jw-mgt68">
+				<h2 class="card-title" data-lan-eng="Today's Travel Itinerary">Today's Travel Itinerary</h2>
+				<p class="card-subtitle"><strong><span id="todayBookingsCount">0</span></strong></p>
+
+				<div class="tableA-scroll">
+					<div class="jw-tableA typeB">
+						<table>
+							<colgroup>
+								<col style="width:60px;"><!-- No -->
+								<col><!--  -->
+								<col style="width:220px;"><!--   -->
+								<col style="width:120px;"><!--   -->
+								<col style="width:100px;"><!--   -->
+								<col style="width:140px;"><!--   -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Product Name">Product Name</th>
+									<th data-lan-eng="Travel period">Travel period</th>
+									<th data-lan-eng="Customer Type">Customer Type</th>
+									<th data-lan-eng="Number of people">Number of people</th>
+									<th data-lan-eng="Assignment Guide">Assignment Guide</th>
+								</tr>
+							</thead>
+							<tbody id="todayBookingsTableBody">
+								<tr>
+									<td colspan="6" class="is-center" style="padding: 40px;">  ...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				
+			</div>
+
+			<div class="card-panel jw-mgt68 sales-range">
+				<h2 class="card-title" data-lan-eng="Sales Statistics">Sales Statistics</h2>
+				
+				<h3 class="card-subtitle2 jw-mgt44" data-lan-eng="Select period">Select period</h3>
+				<div class="jw-cols jw-gap10 jw-mgt16">
+					<label class="jw-radio typeA">
+						<input type="radio" name="salesPeriod" value="daily" checked>
+						<p class="text" data-lan-eng="Daily">Daily</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="salesPeriod" value="weekly">
+						<p class="text" data-lan-eng="Weekly">Weekly</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="salesPeriod" value="monthly">
+						<p class="text" data-lan-eng="Monthly">Monthly</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="salesPeriod" value="yearly">
+						<p class="text" data-lan-eng="Yearly">Yearly</p>
+					</label>
+				</div>
+				
+				<div class="input-box jw-mgt16">
+					<input id="salesDateRange" name="salesDateRange" readonly>
+				</div>
+				
+				<div class="info-text jw-mgt44" data-lan-eng="Total sales amount (₱)">Total sales amount (₱)</div>
+				<div class="info-text2" id="totalSalesAmount">0</div>
+				
+				
+				<div class="chart-wrap jw-mgt30">
+					<div id="myChart" class="chart"></div>
+				</div>
+
+			</div>
+
+			<div class="card-panel jw-mgt68 product-sales-range">
+				<h2 class="card-title" data-lan-eng="Sales Status by Product">Sales Status by Product</h2>
+				<h3 class="card-subtitle2 jw-mgt44" data-lan-eng="Select period">Select period</h3>
+				
+				<div class="jw-cols jw-gap10 jw-mgt16">
+					<label class="jw-radio typeA">
+						<input type="radio" name="productSalesPeriod" value="daily" checked>
+						<p class="text" data-lan-eng="Daily">Daily</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="productSalesPeriod" value="weekly">
+						<p class="text" data-lan-eng="Weekly">Weekly</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="productSalesPeriod" value="monthly">
+						<p class="text" data-lan-eng="Monthly">Monthly</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="productSalesPeriod" value="yearly">
+						<p class="text" data-lan-eng="Yearly">Yearly</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="productSalesPeriod" value="all">
+						<p class="text" data-lan-eng="All">All</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="productSalesPeriod" value="custom" id="productSalesPeriodCustom">
+						<p class="text" data-lan-eng="Select Period">Select Period</p>
+					</label>
+				</div>
+				<div class="input-box jw-mgt16 jw-w400" id="productSalesDateRangeWrap">
+					<input id="productSalesDateRange" name="productSalesDateRange" readonly>
+				</div>
+				<div class="jw-cols jw-gap10 jw-mgt16" id="productSalesCustomDateWrap" style="display: none;">
+					<div class="input-box jw-w200">
+						<input type="date" id="productSalesStartDate" name="productSalesStartDate" value="">
+					</div>
+					<span class="jw-mgt8">~</span>
+					<div class="input-box jw-w200">
+						<input type="date" id="productSalesEndDate" name="productSalesEndDate" value="">
+					</div>
+					<button type="button" class="jw-button typeB" id="productSalesApplyBtn" data-lan-eng="Apply">Apply</button>
+				</div>
+				<div class="info-text jw-mgt44" data-lan-eng="Total number of sales">Total number of sales</div>
+				<div class="info-text2" id="totalProductSalesCount">0</div>
+
+				
+				<div class="sales-info jw-mgt32">
+					<div class="sales-chart">
+						<div style="padding: 40px; text-align: center; color: #999;">  ...</div>
+					</div>
+					<div class="sales-product">
+						<table class="jw-tableA typeB">
+							<colgroup>
+								<col style="width:60px;"> <!-- No -->
+								<col> <!--  -->
+								<col style="width:120px;"> <!--  -->
+								<col style="width:120px;"> <!--  -->
+								<col style="width:120px;"> <!--  -->
+								<col style="width:160px;"> <!--  -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Product Name">Product Name</th>
+									<th data-lan-eng="Views">Views</th>
+									<th data-lan-eng="Number of reservations">Number of reservations</th>
+									<th data-lan-eng="Reservation rate">Reservation rate</th>
+									<th data-lan-eng="Sales amount">Sales amount</th>
+								</tr>
+							</thead>
+							<tbody id="productSalesTableBody">
+								<tr>
+									<td colspan="6" class="is-center" style="padding: 40px;">  ...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_overviewfix1"></script>
+
+	<style>
+		/*  x  */
+		#myChart .xlabels{
+			display:grid;
+			grid-template-columns:repeat(auto-fit,minmax(0,1fr));
+			gap:0;
+			margin-left:40px; /* ylabels  ( CSS ) */
+			margin-top:8px;
+			color:#9aa0a6;
+			font-size:12px;
+			line-height:1.2;
+		}
+		#myChart .xlabels span{
+			text-align:center;
+			white-space:nowrap;
+			overflow:hidden;
+			text-overflow:ellipsis;
+		}
+	</style>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.php',
+			navUrl: '../inc/nav_super.php'
+		});
+
+
+		//    
+		function calculateDateRange(period) {
+			const today = new Date();
+			const year = today.getFullYear();
+			const month = today.getMonth();
+			const date = today.getDate();
+			let startDate, endDate;
+			
+			switch(period) {
+				case 'daily':
+					startDate = new Date(year, month, date);
+					endDate = new Date(year, month, date);
+					break;
+				case 'weekly':
+					// Monday-Sunday
+					// getDay(): 0(Sun)~6(Sat) -> Monday  
+					const diffToMonday = (today.getDay() + 6) % 7;
+					startDate = new Date(year, month, date - diffToMonday);
+					endDate = new Date(year, month, date - diffToMonday + 6);
+					break;
+				case 'monthly':
+					startDate = new Date(year, month, 1);
+					endDate = new Date(year, month + 1, 0);
+					break;
+				case 'yearly':
+					startDate = new Date(year, 0, 1);
+					endDate = new Date(year, 11, 31);
+					break;
+				case 'all':
+					startDate = null;
+					endDate = null;
+					break;
+				default:
+					startDate = new Date(year, month, date);
+					endDate = new Date(year, month, date);
+			}
+			
+			if (startDate && endDate) {
+				const formatDate = (d) => {
+					const y = d.getFullYear();
+					const m = String(d.getMonth() + 1).padStart(2, '0');
+					const day = String(d.getDate()).padStart(2, '0');
+					return `${y}-${m}-${day}`;
+				};
+				return `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+			}
+			return ' ';
+		}
+
+
+		//     
+		document.addEventListener('DOMContentLoaded', async () => {
+			//     "  ()"   :
+			// -   <dialog> backdrop        
+			const clearStaleUiBlockers = () => {
+				try {
+					// 1) dialog(backdrop) 
+					document.querySelectorAll('dialog[open]').forEach(d => {
+						try { if (typeof d.close === 'function') d.close(); } catch (_) {}
+						try { d.remove(); } catch (_) {}
+					});
+					// 2) .modal(overlay) (  )
+					document.querySelectorAll('.modal').forEach(m => {
+						try {
+							const ds = window.getComputedStyle(m).display;
+							if (ds && ds !== 'none') m.style.display = 'none';
+						} catch (_) {}
+					});
+					// 3) pointer-events/overflow   
+					try { document.body.style.pointerEvents = ''; } catch (_) {}
+					try { document.body.style.overflow = ''; } catch (_) {}
+					try { document.documentElement.style.pointerEvents = ''; } catch (_) {}
+				} catch (_) {}
+			};
+			clearStaleUiBlockers();
+
+			//  
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				if (!sessionData.authenticated) {
+					//     
+					window.location.href = '../index.html';
+					return;
+				}
+
+				//      (     )
+				clearStaleUiBlockers();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+
+			//   
+			const currentDateEl = document.getElementById('currentDate');
+			if (currentDateEl) {
+				const today = new Date();
+				const options = { year: 'numeric', month: 'long', day: 'numeric' };
+				const dateStr = today.toLocaleDateString('en-US', options);
+				currentDateEl.textContent = dateStr;
+				currentDateEl.setAttribute('datetime', today.toISOString().split('T')[0]);
+			}
+
+			//   
+			const salesDateRangeInput = document.getElementById('salesDateRange');
+			const productSalesDateRangeInput = document.getElementById('productSalesDateRange');
+			if (salesDateRangeInput) {
+				salesDateRangeInput.value = calculateDateRange('daily');
+			}
+			if (productSalesDateRangeInput) {
+				productSalesDateRangeInput.value = calculateDateRange('daily');
+			}
+			
+			//   
+			loadSalesData('daily');
+			loadProductSalesData('daily');
+
+			//     
+			const salesPeriodRadios = document.querySelectorAll('input[name="salesPeriod"]');
+			salesPeriodRadios.forEach(radio => {
+				radio.addEventListener('change', () => {
+					if (salesDateRangeInput) {
+						salesDateRangeInput.value = calculateDateRange(radio.value);
+					}
+					loadSalesData(radio.value);
+				});
+			});
+
+			//      
+			const productSalesPeriodRadios = document.querySelectorAll('input[name="productSalesPeriod"]');
+			const productSalesCustomDateWrap = document.getElementById('productSalesCustomDateWrap');
+			const productSalesDateRangeWrap = document.getElementById('productSalesDateRangeWrap');
+			
+			productSalesPeriodRadios.forEach(radio => {
+				radio.addEventListener('change', () => {
+					if (radio.value === 'custom') {
+						//   
+						if (productSalesCustomDateWrap) {
+							productSalesCustomDateWrap.style.display = 'flex';
+						}
+						if (productSalesDateRangeWrap) {
+							productSalesDateRangeWrap.style.display = 'none';
+						}
+					} else {
+						//    
+						if (productSalesCustomDateWrap) {
+							productSalesCustomDateWrap.style.display = 'none';
+						}
+						if (productSalesDateRangeWrap) {
+							productSalesDateRangeWrap.style.display = 'block';
+						}
+						if (productSalesDateRangeInput) {
+							productSalesDateRangeInput.value = calculateDateRange(radio.value);
+						}
+						loadProductSalesData(radio.value);
+					}
+				});
+			});
+			
+			//     
+			const productSalesApplyBtn = document.getElementById('productSalesApplyBtn');
+			const productSalesStartDateInput = document.getElementById('productSalesStartDate');
+			const productSalesEndDateInput = document.getElementById('productSalesEndDate');
+			
+			if (productSalesApplyBtn && productSalesStartDateInput && productSalesEndDateInput) {
+				productSalesApplyBtn.addEventListener('click', () => {
+					const startDate = productSalesStartDateInput.value;
+					const endDate = productSalesEndDateInput.value;
+					if (startDate && endDate) {
+						if (productSalesDateRangeInput) {
+							productSalesDateRangeInput.value = `${startDate} - ${endDate}`;
+						}
+						loadProductSalesData('custom', startDate, endDate);
+					} else {
+						alert('   .');
+					}
+				});
+			}
+
+			//   
+			await loadOverviewData();
+			//   
+			async function loadOverviewData() {
+				try {
+					const response = await fetch('../backend/api/overview.php', {
+						credentials: 'same-origin'
+					});
+					
+					if (!response.ok) {
+						throw new Error('HTTP ' + response.status);
+					}
+					
+					const result = await response.json();
+					console.log('Overview data:', result);
+
+					if (result.success === false) {
+						console.error('Failed to load overview data:', result.message);
+						return;
+					}
+
+					const data = result.data || result;
+
+					// 예약 현황 - 새로운 상태값 적용
+					if (data.bookingStatus) {
+						const pendingCount = document.getElementById('pendingCount');
+						const waitingDownCount = document.getElementById('waitingDownCount');
+						const waitingSecondCount = document.getElementById('waitingSecondCount');
+						const waitingBalanceCount = document.getElementById('waitingBalanceCount');
+						const rejectedCount = document.getElementById('rejectedCount');
+
+						if (pendingCount) pendingCount.textContent = data.bookingStatus.pending || 0;
+						if (waitingDownCount) waitingDownCount.textContent = data.bookingStatus.waitingDown || 0;
+						if (waitingSecondCount) waitingSecondCount.textContent = data.bookingStatus.waitingSecond || 0;
+						if (waitingBalanceCount) waitingBalanceCount.textContent = data.bookingStatus.waitingBalance || 0;
+						if (rejectedCount) rejectedCount.textContent = data.bookingStatus.rejected || 0;
+					}
+
+					//   
+					if (data.inquiryStatus) {
+						const unansweredCount = document.querySelector('#unansweredCount span');
+						const processingCount = document.querySelector('#processingCount span');
+						if (unansweredCount) unansweredCount.textContent = data.inquiryStatus.unanswered || 0;
+						if (processingCount) processingCount.textContent = data.inquiryStatus.processing || 0;
+					}
+
+					//    
+					if (data.todayBookings) {
+						const countEl = document.getElementById('todayBookingsCount');
+						if (countEl) countEl.textContent = data.todayBookingsCount || 0;
+
+						const tbody = document.getElementById('todayBookingsTableBody');
+						if (tbody) {
+							if (data.todayBookings.length === 0) {
+								tbody.innerHTML = '<tr><td colspan="6" class="is-center" style="padding: 40px;">   .</td></tr>';
+							} else {
+								tbody.innerHTML = data.todayBookings.map((booking, index) => {
+									const startDate = booking.startDate ? booking.startDate.split(' ')[0] : '';
+									const endDate = booking.endDate ? booking.endDate.split(' ')[0] : '';
+									const travelPeriod = startDate && endDate ? `${startDate} - ${endDate}` : (startDate || '');
+									const customerType = booking.customerType || '';
+									const detailPage = customerType === 'B2C' ? 'b2c-booking-detail.html' : 'b2b-booking-detail.html';
+									const bookingId = booking.bookingId || '';
+									return `
+										<tr>
+											<td class="is-center">${index + 1}</td>
+											<!-- (HTML 태그 수정) 디코딩 적용 --><td class="ellipsis" onclick="window.location.href='${detailPage}?id=${bookingId}'" style="cursor: pointer;">${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</td>
+											<td class="is-center">${travelPeriod}</td>
+											<td class="is-center">${customerType}</td>
+											<td class="is-center">${booking.numberOfTravelers || 0}</td>
+											<td class="is-center">${escapeHtml(booking.guideName || '-')}</td>
+										</tr>
+									`;
+								}).join('');
+							}
+						}
+					}
+
+					//         (   )
+
+					//    
+					if (data.productSales && data.productSales.length > 0) {
+						//  7  
+						const topProducts = data.productSales.slice(0, 7);
+						
+						//    ( 7)
+						const maxCount = Math.max(...topProducts.map(p => p.bookingCount || 0), 1);
+						
+						//     ( 7)
+						const salesChart = document.querySelector('.sales-chart');
+						if (salesChart) {
+							if (topProducts.length === 0) {
+								salesChart.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">  .</div>';
+							} else {
+								salesChart.innerHTML = topProducts.map((product) => {
+									const percentage = maxCount > 0 ? Math.round((product.bookingCount / maxCount) * 100) : 0;
+									return `
+										<div class="sales-item">
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<p class="sales-title">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</p>
+											<div class="bar"><span class="bar__fill" style="width:${percentage}%"></span></div>
+											<div class="value">${product.bookingCount || 0}</div>
+										</div>
+									`;
+								}).join('');
+							}
+						}
+						
+						//     ( )
+						const salesTable = document.getElementById('productSalesTableBody');
+						if (salesTable) {
+							if (data.productSales.length === 0) {
+								salesTable.innerHTML = '<tr><td colspan="6" class="is-center" style="padding: 40px;">  .</td></tr>';
+							} else {
+								salesTable.innerHTML = data.productSales.map((product, index) => {
+									const totalAmount = product.totalAmount || 0;
+									const formattedAmount = totalAmount.toLocaleString('ko-KR');
+									const viewCount = product.viewCount || 0;
+									const bookingCount = product.bookingCount || 0;
+									const reservationRate = viewCount > 0 ? ((bookingCount / viewCount) * 100).toFixed(1) : '-';
+									return `
+										<tr>
+											<td class="is-center">${index + 1}</td>
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<td>${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</td>
+											<td class="is-center">${viewCount > 0 ? viewCount.toLocaleString() : '-'}</td>
+											<td class="is-center">${bookingCount}</td>
+											<td class="is-center">${reservationRate !== '-' ? reservationRate + '%' : '-'}</td>
+											<td class="is-center">₱${formattedAmount}</td>
+										</tr>
+									`;
+								}).join('');
+							}
+						}
+						
+						//    
+						const totalSalesCount = data.productSales.reduce((sum, p) => sum + (p.bookingCount || 0), 0);
+						const totalCountEl = document.getElementById('totalProductSalesCount');
+						if (totalCountEl) {
+							totalCountEl.textContent = totalSalesCount.toLocaleString();
+						}
+					}
+
+				} catch (error) {
+					console.error('Error loading overview data:', error);
+				}
+			}
+
+			// HTML
+			function escapeHtml(text) {
+				const div = document.createElement('div');
+				div.textContent = text;
+				return div.innerHTML;
+			}
+
+			// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+			function decodeHtmlEntities(str) {
+				if (!str) return str;
+				const txt = document.createElement('textarea');
+				txt.innerHTML = str;
+				return txt.value;
+			}
+
+			//
+			async function loadSalesData(period, startDate = null, endDate = null) {
+				try {
+					let url = '../backend/api/overview.php?period=' + encodeURIComponent(period);
+					if (startDate && endDate) {
+						url += '&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
+					}
+					
+					const response = await fetch(url, {
+						credentials: 'same-origin'
+					});
+					
+					if (!response.ok) {
+						throw new Error('HTTP ' + response.status);
+					}
+					
+					const result = await response.json();
+					
+					if (result.success === false) {
+						console.error('Failed to load sales data:', result.message);
+						return;
+					}
+					
+					const data = result.data || result;
+					
+					//   
+					if (data.sales) {
+						const salesAmountEl = document.getElementById('totalSalesAmount');
+						if (salesAmountEl) {
+							const amount = data.sales.amount || 0;
+							salesAmountEl.textContent = amount.toLocaleString();
+						}
+						//   API    
+						if (salesDateRangeInput && data.sales.range && data.sales.range.startDate && data.sales.range.endDate) {
+							salesDateRangeInput.value = `${data.sales.range.startDate} ~ ${data.sales.range.endDate}`;
+						}
+					}
+					
+					//    ( /)
+					if (data.chart && Array.isArray(data.chart.labels) && Array.isArray(data.chart.values)) {
+						const labels = data.chart.labels;
+						const values = data.chart.values;
+						const maxValue = Math.max(...values, 1);
+						const fmt = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+						renderBarChart('#myChart', values, {
+							max: maxValue,
+							highlights: [],
+							xLabels: labels,
+							formatTip: (index, value) => {
+								const label = labels[index] ?? String(index);
+								const amount = `₱${fmt(Math.round(value))}`;
+								return `<div class="tip-title">${label}</div><div class="tip-value">${amount}</div>`;
+							}
+						});
+					} else if (data.chartData && data.chartData.length > 0) {
+						//  fallback
+						renderBarChart('#myChart', data.chartData, { max: Math.max(...data.chartData, 1) });
+					}
+				} catch (error) {
+					console.error('Error loading sales data:', error);
+				}
+			}
+			
+			//      
+			async function loadProductSalesData(period, startDate = null, endDate = null) {
+				try {
+					let url = '../backend/api/overview.php?productPeriod=' + encodeURIComponent(period);
+					if (startDate && endDate) {
+						url += '&productStartDate=' + encodeURIComponent(startDate) + '&productEndDate=' + encodeURIComponent(endDate);
+					}
+					
+					const response = await fetch(url, {
+						credentials: 'same-origin'
+					});
+					
+					if (!response.ok) {
+						throw new Error('HTTP ' + response.status);
+					}
+					
+					const result = await response.json();
+					
+					if (result.success === false) {
+						console.error('Failed to load product sales data:', result.message);
+						return;
+					}
+					
+					const data = result.data || result;
+
+					// (period=all)   ' '     
+					if (productSalesDateRangeInput && period === 'all' && data.productSalesRange && data.productSalesRange.startDate && data.productSalesRange.endDate) {
+						productSalesDateRangeInput.value = `${data.productSalesRange.startDate} ~ ${data.productSalesRange.endDate}`;
+					}
+					
+					//    
+					if (data.productSales && data.productSales.length > 0) {
+						//  7  
+						const topProducts = data.productSales.slice(0, 7);
+						
+						//    ( 7)
+						const maxCount = Math.max(...topProducts.map(p => p.bookingCount || 0), 1);
+						
+						//     ( 7)
+						const salesChart = document.querySelector('.sales-chart');
+						if (salesChart) {
+							if (topProducts.length === 0) {
+								salesChart.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">  .</div>';
+							} else {
+								salesChart.innerHTML = topProducts.map((product) => {
+									const percentage = maxCount > 0 ? Math.round((product.bookingCount / maxCount) * 100) : 0;
+									return `
+										<div class="sales-item">
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<p class="sales-title">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</p>
+											<div class="bar"><span class="bar__fill" style="width:${percentage}%"></span></div>
+											<div class="value">${product.bookingCount || 0}</div>
+										</div>
+									`;
+								}).join('');
+							}
+						}
+						
+						//     ( )
+						const salesTable = document.getElementById('productSalesTableBody');
+						if (salesTable) {
+							if (data.productSales.length === 0) {
+								salesTable.innerHTML = '<tr><td colspan="6" class="is-center" style="padding: 40px;">  .</td></tr>';
+							} else {
+								salesTable.innerHTML = data.productSales.map((product, index) => {
+									const totalAmount = product.totalAmount || 0;
+									const formattedAmount = totalAmount.toLocaleString('ko-KR');
+									const viewCount = product.viewCount || 0;
+									const bookingCount = product.bookingCount || 0;
+									const reservationRate = viewCount > 0 ? ((bookingCount / viewCount) * 100).toFixed(2) : '-';
+									return `
+										<tr>
+											<td class="is-center">${index + 1}</td>
+											<!-- (HTML 태그 수정) 디코딩 적용 -->
+											<td>${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</td>
+											<td class="is-center">${viewCount > 0 ? viewCount.toLocaleString() : '-'}</td>
+											<td class="is-center">${bookingCount}</td>
+											<td class="is-center">${reservationRate !== '-' ? reservationRate + '%' : '-'}</td>
+											<td class="is-center">₱${formattedAmount}</td>
+										</tr>
+									`;
+								}).join('');
+							}
+						}
+						
+						//    
+						const totalSalesCount = data.productSales.reduce((sum, p) => sum + (p.bookingCount || 0), 0);
+						const totalCountEl = document.getElementById('totalProductSalesCount');
+						if (totalCountEl) {
+							totalCountEl.textContent = totalSalesCount.toLocaleString();
+						}
+					} else {
+						//   
+						const salesChart = document.querySelector('.sales-chart');
+						if (salesChart) {
+							salesChart.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">  .</div>';
+						}
+						const salesTable = document.getElementById('productSalesTableBody');
+						if (salesTable) {
+							salesTable.innerHTML = '<tr><td colspan="6" class="is-center" style="padding: 40px;">  .</td></tr>';
+						}
+						const totalCountEl = document.getElementById('totalProductSalesCount');
+						if (totalCountEl) {
+							totalCountEl.textContent = '0';
+						}
+					}
+				} catch (error) {
+					console.error('Error loading product sales data:', error);
+				}
+			}
+		});
+		
+
+		//  chart A
+		function renderBarChart(container, data, opts = {}) {
+			const el = (typeof container === 'string') ? document.querySelector(container) : container;
+			if (!el) return;
+			el.innerHTML = '';
+			el.style.position = 'relative';
+
+			const max = (opts.max ?? Math.max(...data)) || 1;
+			const highlights = new Set(opts.highlights || []);
+			const formatTip = typeof opts.formatTip === 'function' ? opts.formatTip : null;
+			const xLabels = Array.isArray(opts.xLabels) ? opts.xLabels : null;
+
+			const ylabels = document.createElement('div'); ylabels.className = 'ylabels';
+			['200', '100', '50', '10', '5', '0'].forEach(t => { const s = document.createElement('span'); s.textContent = t; ylabels.appendChild(s); });
+
+			const bars = document.createElement('div'); bars.className = 'bars';
+			data.forEach((v, idx) => {
+				const b = document.createElement('div');
+				b.className = 'bar' + (highlights.has(idx) ? ' highlights' : '');
+				b.style.height = Math.max(0, Math.min(100, (v / max) * 100)) + '%';
+				b.dataset.x = idx;
+				b.dataset.v = v;
+				//    (HTML )
+				b.dataset.tip = formatTip ? formatTip(idx, v) : `${idx} · ${v}`;
+				bars.appendChild(b);
+			});
+
+			const tip = document.createElement('div'); tip.className = 'tooltip'; el.appendChild(tip);
+
+			bars.addEventListener('mouseover', (e) => {
+				const bar = e.target.closest('.bar'); if (!bar) return;
+				tip.innerHTML = bar.dataset.tip;
+				tip.classList.add('show');
+				placeTip(el, bar, tip);
+			});
+			bars.addEventListener('mousemove', (e) => {
+				const bar = e.target.closest('.bar'); if (!bar) return;
+				placeTip(el, bar, tip);
+			});
+			bars.addEventListener('mouseout', (e) => {
+				if (!e.relatedTarget || !bars.contains(e.relatedTarget)) tip.classList.remove('show');
+			});
+			bars.addEventListener('click', (e) => {
+				const bar = e.target.closest('.bar'); if (!bar) return;
+				bar.classList.toggle('on');
+			});
+
+			el.appendChild(ylabels); el.appendChild(bars);
+
+			// x  
+			if (xLabels && xLabels.length === data.length) {
+				const x = document.createElement('div');
+				x.className = 'xlabels';
+				xLabels.forEach((t, i) => {
+					const s = document.createElement('span');
+					//     (24 0,6,12,18,23 /  1,8,15,22,)
+					let show = true;
+					if (xLabels.length >= 24) show = (i % 6 === 0) || (i === xLabels.length - 1);
+					if (xLabels.length >= 28 && xLabels.length <= 31) show = (i % 7 === 0) || (i === xLabels.length - 1);
+					if (!show) s.textContent = '';
+					else s.textContent = t;
+					x.appendChild(s);
+				});
+				el.appendChild(x);
+			}
+		}
+		
+		//  chart A
+		function placeTip(container, bar, tip) {
+			const cr = container.getBoundingClientRect();
+			const br = bar.getBoundingClientRect();
+			const x = br.left + br.width / 2 - cr.left;
+			const y = br.top - cr.top - 10;
+			tip.style.left = x + 'px';
+			tip.style.top = y + 'px';
+		}
+		
+	</script>
+
+</body>
+
+</html>

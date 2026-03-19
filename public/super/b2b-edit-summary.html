@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" id="html-lang">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN - Edit Summary</title>
+
+	<!-- Common styles -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+	<style>
+		.layout-main {
+			padding-bottom: 80px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			gap: 12px;
+			z-index: 100;
+		}
+		.step-indicator {
+			display: inline-block;
+			padding: 4px 12px;
+			background: #10B981;
+			color: #fff;
+			border-radius: 16px;
+			font-size: 13px;
+			font-weight: 500;
+		}
+		.change-summary-card {
+			background: #F7FAFF;
+			border: 1px solid #0050C8;
+			border-radius: 12px;
+			padding: 20px;
+			margin-bottom: 16px;
+		}
+		.change-row {
+			display: flex;
+			gap: 24px;
+			margin-bottom: 16px;
+		}
+		.change-row:last-child {
+			margin-bottom: 0;
+		}
+		.change-col {
+			flex: 1;
+			padding: 16px;
+			border-radius: 8px;
+			background: #fff;
+		}
+		.change-col.before {
+			border: 1px solid #E5E7EB;
+		}
+		.change-col.after {
+			border: 2px solid #0050C8;
+			background: #EFF6FF;
+		}
+		.change-col-title {
+			font-size: 12px;
+			font-weight: 600;
+			color: #6B7280;
+			text-transform: uppercase;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+		.change-col.after .change-col-title {
+			color: #0050C8;
+		}
+		.change-item {
+			display: flex;
+			justify-content: space-between;
+			font-size: 14px;
+			padding: 4px 0;
+		}
+		.change-item-label {
+			color: #6B7280;
+		}
+		.change-item-value {
+			font-weight: 500;
+			color: #111827;
+		}
+		.change-diff {
+			background: #FEF3C7;
+			padding: 2px 8px;
+			border-radius: 4px;
+			font-size: 12px;
+			color: #92400E;
+			margin-left: 8px;
+		}
+		.summary-card {
+			background: #F7FAFF;
+			border: 1px solid #0050C8;
+			border-radius: 12px;
+			padding: 20px;
+		}
+		.breakdown-item {
+			display: flex;
+			justify-content: space-between;
+			padding: 6px 0;
+			font-size: 14px;
+		}
+		.breakdown-item-label {
+			color: #6B7280;
+		}
+		.breakdown-item-value {
+			font-weight: 500;
+			color: #111827;
+		}
+		.breakdown-total {
+			display: flex;
+			justify-content: space-between;
+			padding: 12px 16px;
+			background: #EFF6FF;
+			border: 1px solid #0050C8;
+			border-radius: 8px;
+			margin-top: 12px;
+		}
+		.breakdown-total-label {
+			font-weight: 600;
+			color: #0050C8;
+		}
+		.breakdown-total-value {
+			font-weight: 700;
+			color: #0050C8;
+			font-size: 18px;
+		}
+		.traveler-list {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+		.traveler-item {
+			padding: 10px 12px;
+			background: #F9FAFB;
+			border-radius: 6px;
+			font-size: 13px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+		.traveler-item.added {
+			background: #ECFDF5;
+			border: 1px solid #10B981;
+		}
+		.traveler-item.removed {
+			background: #FEF2F2;
+			border: 1px solid #EF4444;
+			text-decoration: line-through;
+			color: #9CA3AF;
+		}
+		.room-list {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+		.room-item {
+			display: flex;
+			justify-content: space-between;
+			padding: 8px 12px;
+			background: #F9FAFB;
+			border-radius: 6px;
+			font-size: 13px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header slot -->
+	<header class="layout-header"></header>
+
+	<!-- Main area -->
+	<main class="layout-main">
+		<!-- nav slot -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="#" onclick="goBack(); return false;" class="jw-button" aria-label="Return to detail">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to detail">Return to detail</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<span class="step-indicator">Step 3 of 3</span>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Edit Summary">Edit Summary</h1>
+
+			<!-- Status Banner -->
+			<div class="card-panel jw-mgt16" style="background: #EFF6FF; border: 1px solid #0050C8;">
+				<div style="display: flex; align-items: center; gap: 12px;">
+					<span style="font-size: 24px; color: #0050C8;">&#9432;</span>
+					<div>
+						<div style="font-weight: 600; color: #0050C8;" data-lan-eng="Review Changes">Review Changes</div>
+						<div style="color: #374151; font-size: 13px; margin-top: 2px;" data-lan-eng="Please review the changes below. Click 'Submit for Approval' to save these changes.">Please review the changes below. Click 'Submit for Approval' to save these changes.</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Change Summary -->
+			<h2 class="section-title jw-mgt32" data-lan-eng="Change Summary">Change Summary</h2>
+			<div class="change-summary-card jw-mgt16">
+				<div class="change-row">
+					<!-- Before -->
+					<div class="change-col before">
+						<div class="change-col-title">
+							<span>BEFORE</span>
+						</div>
+						<div class="change-item">
+							<span class="change-item-label">Travelers</span>
+							<span class="change-item-value" id="before-travelers">-</span>
+						</div>
+						<div class="traveler-list jw-mgt8" id="before-traveler-list"></div>
+						<div class="change-item jw-mgt12">
+							<span class="change-item-label">Room Options</span>
+							<span class="change-item-value" id="before-rooms">-</span>
+						</div>
+						<div class="room-list jw-mgt8" id="before-room-list"></div>
+					</div>
+					<!-- After -->
+					<div class="change-col after">
+						<div class="change-col-title">
+							<span>AFTER</span>
+							<span class="change-diff">Changed</span>
+						</div>
+						<div class="change-item">
+							<span class="change-item-label">Travelers</span>
+							<span class="change-item-value" id="after-travelers">-</span>
+						</div>
+						<div class="traveler-list jw-mgt8" id="after-traveler-list"></div>
+						<div class="change-item jw-mgt12">
+							<span class="change-item-label">Room Options</span>
+							<span class="change-item-value" id="after-rooms">-</span>
+						</div>
+						<div class="room-list jw-mgt8" id="after-room-list"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Amount Breakdown -->
+			<h2 class="section-title jw-mgt32" data-lan-eng="Amount Breakdown">Amount Breakdown</h2>
+			<div class="summary-card jw-mgt16">
+				<div id="breakdown-list">
+					<!-- Items will be populated by JS -->
+				</div>
+				<div class="breakdown-total">
+					<span class="breakdown-total-label" data-lan-eng="Total Amount">Total Amount</span>
+					<span class="breakdown-total-value" id="breakdown-total">PHP 0</span>
+				</div>
+			</div>
+
+		</section>
+	</main>
+
+	<!-- Bottom Action Bar -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeD" onclick="goBack()" data-lan-eng="Back to Detail">Back to Detail</button>
+		<button type="button" class="jw-button typeB" onclick="submitForApproval()" data-lan-eng="Submit for Approval">Submit for Approval</button>
+	</div>
+
+	<!-- Scripts -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="../js/b2b-edit-summary.js?v=20260209"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+	</script>
+</body>
+
+</html>

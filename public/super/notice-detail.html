@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- calendar (publishing original) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+	<!-- editor (publishing original) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들어올 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="notice.html" class="jw-button" aria-label="목록으로 돌아가기">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">목록으로 돌아가기</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeA" id="deleteBtn" onclick="handleDelete()" data-lan-eng="Delete"><img src="../image/trash.svg" alt=""> <span>Delete</span></button>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Notice Details">공지 상세</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Notice Registration Information">Notice Registration Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Registration date/time">등록일시</label>
+						<input type="text" class="form-control" id="registrationDateTime" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Exposure period">노출 기간</label>
+						<div class="field-row">
+							<input id="exposurePeriod" type="text" class="jw-w form-control" placeholder="Exposure period" data-lan-eng-placeholder="Exposure period" readonly>
+							<button type="button" class="btn-icon calendar" aria-label=" " data-target="#exposurePeriod"></button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="English Announcements">영어 공지사항</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Title">제목</label>
+						<input type="text" class="form-control" id="noticeTitleEn" value="" placeholder="Please enter a title">
+					</div>
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Content">내용</label>
+						<div class="editor-box-wrap">
+							<div class="jw-editor" data-lang="en">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+											<option value="" selected>Font</option>
+											<option value="12px">12px</option>
+											<option value="14px">14px</option>
+											<option value="16px">16px</option>
+											<option value="18px">18px</option>
+											<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+								<div class="jweditor" id="noticeContentEnEditor" data-placeholder="내용을 입력해주세요"></div>
+							</div>
+						</div>
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Image">이미지</label>
+						<div class="upload-box">
+							<input id="noticeImageEn" type="file" accept="image/*">
+							<label for="noticeImageEn" class="thumb" id="noticeImageEnThumb" aria-label="preview"></label>
+							<div class="upload-meta">
+								<div class="file-title" data-lan-eng="Image">이미지</div>
+								<div class="file-info" id="noticeImageEnInfo">File not found</div>
+								<button type="button" class="jw-mgt8 btn-icon" aria-label="delete" id="noticeImageEnDeleteBtn"><img src="../image/button-close2.svg" alt=""></button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Tagalog Announcements">Tagalog Announcements</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Title">제목</label>
+						<input type="text" class="form-control" id="noticeTitleTl" value="" placeholder="Please enter a title">
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Content">내용</label>
+						<div class="editor-box-wrap">
+							<div class="jw-editor" data-lang="tl">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+											<option value="" selected>Font</option>
+											<option value="12px">12px</option>
+											<option value="14px">14px</option>
+											<option value="16px">16px</option>
+											<option value="18px">18px</option>
+											<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+								<div class="jweditor" id="noticeContentTlEditor" data-placeholder="내용을 입력해주세요"></div>
+							</div>
+						</div>
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Image">이미지</label>
+						<div class="upload-box">
+							<input id="noticeImageTl" type="file" accept="image/*">
+							<label for="noticeImageTl" class="thumb" id="noticeImageTlThumb" aria-label="preview"></label>
+							<div class="upload-meta">
+								<div class="file-title" data-lan-eng="Image">이미지</div>
+								<div class="file-info" id="noticeImageTlInfo">File not found</div>
+								<button type="button" class="jw-mgt8 btn-icon" aria-label="delete" id="noticeImageTlDeleteBtn"><img src="../image/button-close2.svg" alt=""></button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" onclick="handleSave()" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<!-- 기본 스크립트 -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_noticedetailfix2"></script>
+	<script src="../js/datepicker.js?v=20251226_noticedetailfix2"></script>
+	<script src="../js/multi-editor.js?v=20251226_noticedetailfix2"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let noticeId = null;
+		let __notice = null;
+		let __deleteImageEn = false;
+		let __deleteImageTl = false;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				const urlParams = new URLSearchParams(window.location.search);
+				noticeId = urlParams.get('id') || urlParams.get('noticeId');
+				
+				if (noticeId) {
+					// 에디터 보장: multi-editor 초기화 누락 방지
+					try { if (typeof window.board === 'function') window.board(); } catch (_) {}
+					bindImageInputs();
+					await loadNoticeDetail();
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadNoticeDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getNoticeDetail&id=${noticeId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { notice } = result.data;
+					__notice = notice;
+					
+					// 등록일시
+					const reg = notice.publishedAt || notice.updatedAt || '';
+					const regEl = document.getElementById('registrationDateTime');
+					if (regEl) regEl.value = reg ? String(reg).replace('T', ' ').slice(0, 19) : '';
+
+					// 노출기간
+					const s = notice.startDate ? String(notice.startDate).slice(0, 10) : "";
+					const e = notice.endDate ? String(notice.endDate).slice(0, 10) : "";
+					const periodEl = document.getElementById("exposurePeriod");
+					if (periodEl && s && e) {
+						periodEl.value = `${s} ~ ${e}`;
+						periodEl.setAttribute('data-start', s);
+						periodEl.setAttribute('data-end', e);
+					}
+
+					// 다국어 content(JSON) 지원
+					let ko = '';
+					let en = '';
+					let tl = '';
+					const raw = (notice.content || '').toString();
+					try {
+						const obj = JSON.parse(raw);
+						if (obj && typeof obj === 'object') {
+							ko = (obj.ko || '').toString();
+							en = (obj.en || '').toString();
+							tl = (obj.tl || '').toString();
+						} else {
+							ko = raw;
+						}
+					} catch (_) {
+						ko = raw;
+					}
+					// 상세 화면은 영어/따갈로그 섹션을 편집 대상으로 사용
+					const titleObj = parseJsonSafe(notice.title || '');
+					document.getElementById('noticeTitleEn').value = String(titleObj.en || titleObj.ko || '').trim();
+					document.getElementById('noticeTitleTl').value = String(titleObj.tl || titleObj.en || titleObj.ko || '').trim();
+					setEditorHtml('noticeContentEnEditor', en || ko);
+					setEditorHtml('noticeContentTlEditor', tl || en || ko);
+
+					// 이미지 표시(저장된 파일 확인)
+					const imgObj = parseJsonSafe(notice.imageUrl || '');
+					renderNoticeImage('en', imgObj.en || imgObj.ko || '');
+					renderNoticeImage('tl', imgObj.tl || imgObj.en || imgObj.ko || '');
+				}
+			} catch (error) {
+				console.error('Error loading notice detail:', error);
+			}
+		}
+
+		function parseJsonSafe(v) {
+			const s = String(v ?? '').trim();
+			if (!s) return {};
+			if (s.startsWith('{') && s.endsWith('}')) {
+				try { const o = JSON.parse(s); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; }
+			}
+			// legacy single value
+			return { ko: s, en: s, tl: s };
+		}
+
+		function setEditorHtml(editorId, html) {
+			const area = document.getElementById(editorId);
+			if (!area) return;
+			const q = area.__quill;
+			let raw = String(html ?? '');
+			// 저장된 값이 <div class="ql-editor"...> wrapper를 포함하는 케이스 정리
+			try {
+				const tmp = document.createElement('div');
+				tmp.innerHTML = raw;
+				const ql = tmp.querySelector('.ql-editor');
+				if (ql) raw = String(ql.innerHTML || '');
+			} catch (_) {}
+			if (q && q.clipboard && typeof q.clipboard.dangerouslyPasteHTML === 'function') {
+				q.setText('');
+				q.clipboard.dangerouslyPasteHTML(raw);
+				return;
+			}
+			area.innerHTML = raw;
+		}
+
+		function getEditorHtml(editorId) {
+			const area = document.getElementById(editorId);
+			if (!area) return '';
+			const q = area.__quill;
+			if (q && q.root) return String(q.root.innerHTML || '');
+			// fallback: wrapper 제거
+			try {
+				const tmp = document.createElement('div');
+				tmp.innerHTML = String(area.innerHTML || '');
+				const ql = tmp.querySelector('.ql-editor');
+				if (ql) return String(ql.innerHTML || '');
+			} catch (_) {}
+			return String(area.innerHTML || '');
+		}
+
+		function normalizeUploadsPath(p) {
+			let s = String(p || '').trim();
+			if (!s) return '';
+			s = s.replace(/\\/g, '/');
+			if (s.startsWith('uploads/')) s = '/' + s;
+			return s;
+		}
+
+		function renderNoticeImage(lang, path) {
+			const p = normalizeUploadsPath(path);
+			const thumb = document.getElementById(lang === 'en' ? 'noticeImageEnThumb' : 'noticeImageTlThumb');
+			const info = document.getElementById(lang === 'en' ? 'noticeImageEnInfo' : 'noticeImageTlInfo');
+			const delBtn = document.getElementById(lang === 'en' ? 'noticeImageEnDeleteBtn' : 'noticeImageTlDeleteBtn');
+			if (!thumb || !info || !delBtn) return;
+			if (!p) {
+				thumb.style.backgroundImage = 'none';
+				info.textContent = 'File not found';
+				delBtn.disabled = true;
+				return;
+			}
+			const bg = p.startsWith('/uploads/') ? `/backend/api/download.php?file=${encodeURIComponent(p)}&inline=1` : p;
+			thumb.style.backgroundImage = `url('${bg}')`;
+			thumb.style.backgroundSize = 'cover';
+			thumb.style.backgroundPosition = 'center';
+			info.textContent = p.split('/').pop() || p;
+			delBtn.disabled = false;
+		}
+
+		function bindImageInputs() {
+			const enInput = document.getElementById('noticeImageEn');
+			const tlInput = document.getElementById('noticeImageTl');
+			const enDel = document.getElementById('noticeImageEnDeleteBtn');
+			const tlDel = document.getElementById('noticeImageTlDeleteBtn');
+
+			if (enInput) enInput.addEventListener('change', () => {
+				__deleteImageEn = false;
+				const f = enInput.files?.[0];
+				if (!f) return;
+				const url = URL.createObjectURL(f);
+				const thumb = document.getElementById('noticeImageEnThumb');
+				const info = document.getElementById('noticeImageEnInfo');
+				if (thumb) {
+					thumb.style.backgroundImage = `url('${url}')`;
+					thumb.style.backgroundSize = 'cover';
+					thumb.style.backgroundPosition = 'center';
+				}
+				if (info) info.textContent = f.name;
+				if (enDel) enDel.disabled = false;
+				setTimeout(() => URL.revokeObjectURL(url), 2000);
+			});
+			if (tlInput) tlInput.addEventListener('change', () => {
+				__deleteImageTl = false;
+				const f = tlInput.files?.[0];
+				if (!f) return;
+				const url = URL.createObjectURL(f);
+				const thumb = document.getElementById('noticeImageTlThumb');
+				const info = document.getElementById('noticeImageTlInfo');
+				if (thumb) {
+					thumb.style.backgroundImage = `url('${url}')`;
+					thumb.style.backgroundSize = 'cover';
+					thumb.style.backgroundPosition = 'center';
+				}
+				if (info) info.textContent = f.name;
+				if (tlDel) tlDel.disabled = false;
+				setTimeout(() => URL.revokeObjectURL(url), 2000);
+			});
+
+			if (enDel) enDel.addEventListener('click', (e) => {
+				e.preventDefault();
+				__deleteImageEn = true;
+				try { if (enInput) enInput.value = ''; } catch (_) {}
+				renderNoticeImage('en', '');
+			});
+			if (tlDel) tlDel.addEventListener('click', (e) => {
+				e.preventDefault();
+				__deleteImageTl = true;
+				try { if (tlInput) tlInput.value = ''; } catch (_) {}
+				renderNoticeImage('tl', '');
+			});
+		}
+
+		async function handleSave() {
+			try {
+				// 저장 직전에도 에디터 초기화 재시도
+				try { if (typeof window.board === 'function') window.board(); } catch (_) {}
+
+				const titleEn = String(document.getElementById('noticeTitleEn')?.value || '').trim();
+				const titleTl = String(document.getElementById('noticeTitleTl')?.value || '').trim();
+				const en = getEditorHtml('noticeContentEnEditor').trim();
+				const tl = getEditorHtml('noticeContentTlEditor').trim();
+				
+				if (!titleEn) {
+					alert('Please enter an English title.');
+					return;
+				}
+				
+				if (!en) {
+					alert('Please enter English content.');
+					return;
+				}
+
+				const titleJson = JSON.stringify({ ko: titleEn, en: titleEn, tl: (titleTl || titleEn) }, null, 0);
+				const contentJson = JSON.stringify({ ko: en, en: en, tl: (tl || en) }, null, 0);
+
+				const periodEl = document.getElementById("exposurePeriod");
+				const startDate = periodEl?.getAttribute('data-start') || "";
+				const endDate = periodEl?.getAttribute('data-end') || "";
+
+				const fd = new FormData();
+				fd.append('action', 'updateNotice');
+				fd.append('noticeId', String(noticeId));
+				fd.append('title', titleJson);
+				fd.append('content', contentJson);
+				fd.append('startDate', startDate);
+				fd.append('endDate', endDate);
+				if (__deleteImageEn) fd.append('deleteImageEn', '1');
+				if (__deleteImageTl) fd.append('deleteImageTl', '1');
+				const imgEn = document.getElementById('noticeImageEn')?.files?.[0] || null;
+				const imgTl = document.getElementById('noticeImageTl')?.files?.[0] || null;
+				if (imgEn) fd.append('noticeImageEn', imgEn);
+				if (imgTl) fd.append('noticeImageTl', imgTl);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: fd,
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				const result = await response.json().catch(() => ({}));
+				if (!response.ok) throw new Error(result.message || ('HTTP ' + response.status));
+
+				if (result.success) {
+					alert('Saved.');
+					window.location.reload();
+				} else {
+					alert('저장에 실패했습니다: ' + (result.message || '알 수 없는 오류'));
+				}
+			} catch (error) {
+				console.error('Error saving notice:', error);
+				alert('저장 중 오류가 발생했습니다: ' + (error?.message || ''));
+			}
+		}
+
+		async function handleDelete() {
+			try {
+				if (!noticeId) return;
+				if (!confirm('해당 공지사항을 삭제할까요?')) return;
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'deleteNotice', noticeId }),
+					credentials: 'same-origin'
+				});
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				const result = await response.json().catch(() => ({}));
+				if (!response.ok || result.success === false) {
+					alert(result.message || '삭제에 실패했습니다.');
+					return;
+				}
+				alert('삭제되었습니다.');
+				window.location.href = 'notice.html';
+			} catch (e) {
+				console.error(e);
+				alert('삭제 중 오류가 발생했습니다.');
+			}
+		}
+	</script>
+</body>
+
+</html>
+

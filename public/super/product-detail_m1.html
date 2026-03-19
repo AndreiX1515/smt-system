@@ -1,0 +1,64 @@
+<div class="dialog-container">
+	
+	<div class="dialog-content">
+		
+		
+		<div class="product-detail_m1">
+			<h1>Search templates</h1>
+			<div id="searchTemplate" class="wrap jw-mgt50 jw-cols jw-gap10">
+				<input type="text" class="form-control" id="templateSearchInput" value="" placeholder=" ">
+				<button type="button" class="jw-mgr10" id="templateSearchBtn" aria-label="">
+					<img src="../image/search.svg" alt="">
+				</button>
+			</div>
+			
+			<h2 class="jw-mgt50">Template List</h2>
+			<div id="templateList" class="jw-mgt8">
+				<div class="wrap jw-mgt8"><input type="text" class="form-control" value="" placeholder="Loading..." disabled></div>
+			</div>
+			<style>
+				/* SMT: template list should be scrollable when there are many items */
+				#searchTemplate {
+					border: 2px solid #d4d4d4;
+    				border-radius: 12px;
+					padding: 12px 12px;
+				}
+				#templateSearchInput {
+					width: 100%;
+					font-size: 16px;
+				}
+				.template-item {
+					border: 2px solid #d4d4d4;
+    				border-radius: 12px;
+					padding: 12px 12px;
+					font-size: 16px;
+				}
+				.template-item.is-selected {
+					border: 2px solid #0050C8;
+					box-shadow: 0 0 0 3px rgba(0, 80, 200, 0.12);
+				}
+				#templateList {
+					max-height: 140px;
+					overflow-y: auto;
+					padding-right: 6px; /* prevent scrollbar overlay on content */
+				}
+				#templateList::-webkit-scrollbar { width: 8px; }
+				#templateList::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+				#templateList::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+				#templateList::-webkit-scrollbar-track { background: transparent; }
+
+				/* .product-detail_m1 .template-item.is-selected input.form-control {
+					border: 2px solid #0050C8;
+					box-shadow: 0 0 0 3px rgba(0, 80, 200, 0.12);
+				} */
+			</style>
+			
+		</div>
+	
+	
+	</div>
+	
+	<div class="dialog-controls jw-mgt20">
+		<button type="button" class="jw-button typeB" id="templateLoadBtn" data-lan-eng="Load" disabled>Load</button>
+	</div>
+</div>

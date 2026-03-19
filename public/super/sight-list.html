@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Sight Management">Sight Management</h1>
+
+			<div class="card-panel jw-mgt32">
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+						<select class="select" name="status" id="statusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="All Status">All Status</option>
+							<option value="active" data-lan-eng="Active">Active</option>
+							<option value="inactive" data-lan-eng="Inactive">Inactive</option>
+						</select>
+
+						<div class="search-field">
+							<input type="text" class="search-input" id="searchInput" placeholder="Search sight name or address" data-lan-eng-placeholder="Search sight name or address">
+							<button type="submit" class="jw-button search-btn" aria-label="Search">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60">
+						<col>
+						<col class="col-300">
+						<col class="col-120">
+						<col class="col-180">
+						<col class="col-100">
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th data-lan-eng="Sight Name">Sight Name</th>
+							<th data-lan-eng="Address">Address</th>
+							<th data-lan-eng="Status">Status</th>
+							<th data-lan-eng="Registration Date">Registration Date</th>
+							<th data-lan-eng="Actions">Actions</th>
+						</tr>
+					</thead>
+					<tbody id="sightsTableBody">
+						<tr>
+							<td colspan="6" class="is-center">Loading...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<div class="jw-pagebox" role="navigation" aria-label="Pagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label="First page">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="Previous page">
+							<img src="../image/prev.svg" alt="">
+						</button>
+						<div class="page" role="list" id="pageButtons"></div>
+						<button type="button" class="next" aria-label="Next page">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label="Last page">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="controller">
+				<a href="sight-registration.html" class="jw-button typeA" data-lan-eng="Register Sight"><img src="../image/buttonA.svg" alt="">Register Sight</a>
+			</div>
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		let totalPages = 1;
+		const limit = 20;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				await loadSights();
+			} catch (e) {
+				console.error('Failed to load sights:', e);
+			}
+		});
+
+		function applyFilters() {
+			currentPage = 1;
+			loadSights();
+		}
+
+		async function loadSights(page = currentPage) {
+			currentPage = page;
+			const tbody = document.getElementById('sightsTableBody');
+			tbody.innerHTML = '<tr><td colspan="6" class="is-center">Loading...</td></tr>';
+
+			try {
+				const search = document.getElementById('searchInput')?.value?.trim() || '';
+				const status = document.getElementById('statusFilter')?.value || '';
+
+				const params = new URLSearchParams({
+					action: 'getSights',
+					page: String(page),
+					limit: String(limit)
+				});
+				if (search) params.set('search', search);
+				if (status) params.set('status', status);
+
+				const response = await fetch('../backend/api/super-api.php?' + params.toString());
+				const data = await response.json();
+
+				if (!data.success) {
+					throw new Error(data.message || 'Failed to load sights');
+				}
+
+				const sights = data.data?.sights || data.sights || [];
+				const pagination = data.data?.pagination || data.pagination || {};
+				totalPages = pagination.totalPages || 1;
+
+				document.getElementById('totalCount').textContent = pagination.totalCount || 0;
+
+				if (sights.length === 0) {
+					tbody.innerHTML = '<tr><td colspan="6" class="is-center" data-lan-eng="No sights found">No sights found</td></tr>';
+					renderPagination();
+					return;
+				}
+
+				const startNo = (page - 1) * limit;
+				tbody.innerHTML = sights.map((sight, idx) => {
+					const statusClass = sight.status === 'active' ? 'chip typeA' : 'chip typeB';
+					const statusText = sight.status === 'active' ? 'Active' : 'Inactive';
+					const createdAt = sight.createdAt ? sight.createdAt.split(' ')[0] : '-';
+
+					return `
+						<tr onclick="location.href='sight-registration.html?id=${sight.sightId}'" style="cursor:pointer;">
+							<td class="is-center">${startNo + idx + 1}</td>
+							<td>${escapeHtml(sight.sightName)}</td>
+							<td>${escapeHtml(sight.sightAddress || '-')}</td>
+							<td class="is-center"><span class="${statusClass}">${statusText}</span></td>
+							<td class="is-center">${createdAt}</td>
+							<td class="is-center">
+								<button type="button" class="btn-icon" onclick="event.stopPropagation(); deleteSight(${sight.sightId})" aria-label="Delete">
+									<img src="../image/trash.svg" alt="Delete">
+								</button>
+							</td>
+						</tr>
+					`;
+				}).join('');
+
+				renderPagination();
+
+			} catch (e) {
+				console.error('loadSights error:', e);
+				tbody.innerHTML = `<tr><td colspan="6" class="is-center" style="color:red;">${e.message}</td></tr>`;
+			}
+		}
+
+		function renderPagination() {
+			const pageContainer = document.getElementById('pageButtons');
+			const firstBtn = document.querySelector('.jw-pagebox .first');
+			const lastBtn = document.querySelector('.jw-pagebox .last');
+			const prevBtn = document.querySelector('.jw-pagebox .prev');
+			const nextBtn = document.querySelector('.jw-pagebox .next');
+
+			pageContainer.innerHTML = '';
+
+			const maxVisible = 5;
+			let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+			let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+			if (endPage - startPage + 1 < maxVisible) {
+				startPage = Math.max(1, endPage - maxVisible + 1);
+			}
+
+			for (let p = startPage; p <= endPage; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === currentPage ? ' show' : '');
+				btn.textContent = p;
+				btn.setAttribute('role', 'listitem');
+				if (p === currentPage) btn.setAttribute('aria-current', 'page');
+				btn.addEventListener('click', () => loadSights(p));
+				pageContainer.appendChild(btn);
+			}
+
+			const prevTarget = Math.max(1, currentPage - 1);
+			const nextTarget = Math.min(totalPages, currentPage + 1);
+
+			if (firstBtn) firstBtn.onclick = () => loadSights(1);
+			if (lastBtn) lastBtn.onclick = () => loadSights(totalPages);
+			if (prevBtn) prevBtn.onclick = () => loadSights(prevTarget);
+			if (nextBtn) nextBtn.onclick = () => loadSights(nextTarget);
+		}
+
+		async function deleteSight(sightId) {
+			if (!confirm('Are you sure you want to delete this sight?')) return;
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'deleteSight');
+				formData.append('sightId', sightId);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData
+				});
+				const data = await response.json();
+
+				if (data.success) {
+					alert('Sight deleted successfully');
+					loadSights();
+				} else {
+					alert(data.message || 'Failed to delete sight');
+				}
+			} catch (e) {
+				console.error('deleteSight error:', e);
+				alert('Error deleting sight');
+			}
+		}
+
+		function escapeHtml(str) {
+			if (!str) return '';
+			return String(str)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#039;');
+		}
+	</script>
+
+</body>
+</html>

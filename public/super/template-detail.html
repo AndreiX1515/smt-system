@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- editor -->
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content layout-content-aside" data-essentialWrap="y">
+			<div class="page-toolbar">
+				<a href="template-list.html" class="jw-button jw-button-back" aria-label=" ">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeA" data-lan-eng="delete" onclick="modal('template-detail-modal3.html', '600px', '252px')">delete</button>
+					<button type="button" class="jw-button typeB" data-lan-eng="save" onclick="template_detail_save(this)">save</button>
+				</div>
+			</div>
+			
+			<div class="content-main">
+				<h1 class="page-title" data-lan-eng="Template Details">Template Details</h1>
+				<h2 class="section-title jw-mgt32" data-lan-eng="Template Information">Template Information</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item">
+							<label class="label-name" data-lan-eng="Registration date/time">Registration date/time</label>
+							<input type="text" class="form-control" value="2025-01-01 12:12" disabled>
+						</div>
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Template name">Template name</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" value="Cherry Blossom Theme 5 Nights 6 Days Tour" data-essential="y" placeholder=" ">
+						</div>
+
+					</div>
+				</div>
+				<h2 class="section-title jw-mgt32" data-lan-eng="Product Information">Product Information</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Product Name">Product Name</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" data-essential="y" value="Seoul Cherry Blossom Highlights 6-Day, 5-Night Package – Includes Full Itinerary Guide and Meals, with Visits to Nami Island, Seokchon Lake, and Yunjung-ro">
+						</div>
+						<div class="grid-item ">
+							<label class="label-name" ><span data-lan-eng="Sales Target">Sales Target</span> <span class="req">*</span></label>
+							<select class="select" data-essential="y">
+								<option selected>B2B</option>
+								<option>B2C</option>
+							</select>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Category">Category</span> <span class="req">*</span></label>
+							<select class="select" data-essential="y" data-category="1" onchange="template_detail_sdaf_cate()">
+								<option value="" selected>Seasonal</option>
+								<option value="">Regional</option>
+								<option value="">Theme</option>
+							</select>
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Category">Category</span> <span class="req">*</span></label>
+							<select class="select" data-essential="y" data-category="2">
+								<option selected>Spring</option>
+								<option>Summer</option>
+								<option>Autumn</option>
+								<option>Winter</option>
+							</select>
+						</div>
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Product Description">Product Description</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder=" "></div>
+							</div>
+							</div>
+						</div>
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Thumbnail image">Thumbnail image</span> <span class="req">*</span></label>
+							<div class="upload-grid">
+								<div class="upload-grid">
+									<div class="upload-item is-filled">
+										<img class="preview" src="https://picsum.photos/600/600" alt="">
+										<button type="button" class="jw-button btn-close" aria-label="remove">
+											<div class="ic-close" style="width:15px; height:15px; --line:1px; --color:#969696"></div>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Product image">Product image</label>
+							<div class="upload-grid">
+								<div class="upload-item is-filled">
+									<img class="preview" src="https://picsum.photos/600/600" alt="">
+									<button type="button" class="jw-button btn-close" aria-label="remove">
+										<div class="ic-close" style="width:15px; height:15px; --line:1px; --color:#969696"></div>
+									</button>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+							</div>
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Detailed introduction image">Detailed introduction image</span> <span class="req">*</span></label>
+							<div class="upload-grid">
+								<div class="upload-item is-filled">
+									<img class="preview" src="https://picsum.photos/600/600" alt="">
+									<button type="button" class="btn-close" aria-label="remove">×</button>
+								</div>
+							</div>
+
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Schedule">Schedule</h2>
+				<div class="card-panel jw-mgt16">
+					<h3 class="grid-wrap-title" data-lan-eng="Meeting Information">Meeting Information</h3>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Meeting time">Meeting time</span> <span class="req">*</span></label>
+							<div class="meeting-wrap">
+								<select class="select" data-essential="y">
+									<option>00</option>
+									<option>01</option>
+									<option>02</option>
+									<option>03</option>
+									<option>04</option>
+									<option>05</option>
+									<option>06</option>
+									<option>07</option>
+									<option>08</option>
+									<option selected>09</option>
+									<option>10</option>
+									<option>11</option>
+									<option>12</option>
+									<option>13</option>
+									<option>14</option>
+									<option>15</option>
+									<option>16</option>
+									<option>17</option>
+									<option>18</option>
+									<option>19</option>
+									<option>20</option>
+									<option>21</option>
+									<option>22</option>
+									<option>23</option>
+								</select>
+								<select class="select" data-essential="y">
+									<option selected>00</option>
+									<option>05</option>
+									<option>10</option>
+									<option>15</option>
+									<option>20</option>
+									<option>25</option>
+									<option>30</option>
+									<option>35</option>
+									<option>40</option>
+									<option>45</option>
+									<option>50</option>
+									<option>55</option>
+								</select>
+							</div>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Meeting place name">Meeting place name</span> <span class="req">*</span></label>
+							<div class="jw-center jw-gap20">
+								<input type="text" class="form-control jw-wf" data-essential="y" value="Incheon International Airport Terminal 2" disabled>
+								<button type="button" class="jw-button typeA ">Address Search</button>
+							</div>
+						</div>
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Meeting place address">Meeting place address</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" data-essential="y" value="Incheon Metropolitan City, Jung-gu, 446 Terminal 2 Road" disabled>
+						</div>
+					</div>
+				</div>
+
+				<div class="card-panel jw-mgt16" id="nday" >
+					<h3 class="grid-wrap-title">
+						<!-- <select class="select">
+							<option>1Day</option>
+						</select> -->
+						<button type="button" class="jw-w jw-cols jw-between" onclick="ndasdtoggle(this)">1Day <img src="../image/arrow42.svg" alt=""></button>
+					</h3>
+					<i class="line"></i>
+					<div class="grid-wrap jw-mgt12">
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Schedule Summary">Schedule Summary</label>
+							<input type="text" class="form-control" placeholder="Arrival at Incheon">
+						</div>
+					</div>
+					<div class="sub-panel jw-mgt20">
+						<h3 class="grid-wrap-title" data-lan-eng="Tourist Information">Tourist Information</h3>
+						<button type="button" class="jw-button typeA jw-mgt12" data-lan-eng="＋ Add Tourist Attraction" onclick="template_detail_dfghs(this)">＋ Add Tourist Attraction</button>
+
+						<div class="grid-wrap grid-highlight jw-mgt12 dfghs">
+							<div class="grid-item">
+								<label class="label-name"><span data-lan-eng="Schedule start time">Schedule start time</span> <span class="req">*</span></label>
+								<div class="meeting-wrap">
+									<select class="select" data-essential="y">
+										<option>00</option>
+										<option selected>09</option>
+										<option>10</option>
+										<option>11</option>
+										<option>12</option>
+										<option>13</option>
+										<option>14</option>
+										<option>15</option>
+										<option>16</option>
+										<option>17</option>
+										<option>18</option>
+										<option>19</option>
+										<option>20</option>
+										<option>21</option>
+										<option>22</option>
+										<option>23</option>
+									</select>
+									<select class="select" data-essential="y">
+										<option selected>00</option>
+										<option>10</option>
+										<option>20</option>
+										<option>30</option>
+										<option>40</option>
+										<option>50</option>
+									</select>
+								</div>
+							</div>
+							<div class="grid-item">
+								<label class="label-name"><span data-lan-eng="Schedule end time">Schedule end time</span> <span class="req">*</span></label>
+								<div class="meeting-wrap">
+									<select class="select">
+										<option>00</option>
+										<option>09</option>
+										<option selected>10</option>
+										<option>11</option>
+										<option>12</option>
+										<option>13</option>
+										<option>14</option>
+										<option>15</option>
+										<option>16</option>
+										<option>17</option>
+										<option>18</option>
+										<option>19</option>
+										<option>20</option>
+										<option>21</option>
+										<option>22</option>
+										<option>23</option>
+									</select>
+									<select class="select">
+										<option selected>00</option>
+										<option>10</option>
+										<option>20</option>
+										<option>30</option>
+										<option>40</option>
+										<option>50</option>
+									</select>
+								</div>
+							</div>
+							<div class="grid-item"></div>
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Name">Sight Name</span> <span class="req">*</span></label>
+								<div class="jw-center jw-gap20">
+									<input type="text" class="form-control jw-wf" data-essential="y" value="Nami Island" disabled>
+									<button type="button" class="jw-button typeA " data-lan-eng="Address Search">Address Search</button>
+								</div>
+							</div>
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Address">Sight Address</span> <span class="req">*</span></label>
+								<input type="text" class="form-control" data-essential="y" value="Gangwon Chuncheon-si Namsan-myeon Nami Island Road 1" disabled>
+							</div>
+							<!-- multi-editor.js -->
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Information">Sight Information</span> <span class="req">*</span></label>
+								<div class="editor-box-wrap">
+								<div class="jw-editor">
+									<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										<option value="" selected>Font</option>
+										<option value="12px">12px</option>
+										<option value="14px">14px</option>
+										<option value="16px">16px</option>
+										<option value="18px">18px</option>
+										<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+									</div>
+							
+									<div class="jweditor" data-placeholder=" "></div>
+								</div>
+								</div>
+							</div>
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Image">Sight Image</span> <span class="req">*</span></label>
+								<div class="upload-grid">
+									<div class="upload-item jw-center">
+										<label class="inputFile">
+											<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+											<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image Upload">Image upload</span></button>
+										</label>
+									</div>
+								</div>
+							</div>
+							<div class="grid-item col-span-3">
+								<div class="grid-item-controoler">
+									<button type="button" class="jw-button typeA" onclick="template_detail_hsdfghsh(this)"><img src="../image/trash.svg" alt=""><span data-lan-eng="Delete tourist attraction">Delete tourist attraction</span></button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="sub-panel jw-mgt20">
+						<h4 class="grid-wrap-title" data-lan-eng="Accommodation Information">Accommodation Information</h4>
+
+						<div class="grid-wrap grid-highlight jw-mgt12">
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Accommodation name">Accommodation name</span> <span class="req">*</span></label>
+								<div class="jw-center jw-gap20">
+									<input type="text" class="form-control jw-wf" data-essential="y" value="Airsky Hotel Incheon" disabled>
+									<button type="button" class="jw-button typeA " data-lan-eng="Address Search">Address Search</button>
+								</div>
+
+							</div>
+
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Accommodation address">Accommodation address</span> <span class="req">*</span></label>
+								<input type="text" class="form-control" data-essential="y" value="Incheon Jung-gu Eunhasu-ro 29beon-gil 31 Airsky Hotel" disabled>
+							</div>
+							<!-- multi-editor.js -->
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Accommodation Description">Accommodation Description</span> <span class="req">*</span></label>
+								<div class="editor-box-wrap">
+								<div class="jw-editor">
+									<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										<option value="" selected>Font</option>
+										<option value="12px">12px</option>
+										<option value="14px">14px</option>
+										<option value="16px">16px</option>
+										<option value="18px">18px</option>
+										<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+									</div>
+							
+									<div class="jweditor" data-placeholder=" "></div>
+								</div>
+								</div>
+							</div>
+
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Accommodation image">Accommodation image</span> <span class="req">*</span></label>
+								<div class="upload-grid">
+									<div class="upload-item jw-center">
+										<label class="inputFile">
+											<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+											<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image Upload">Image upload</span></button>
+										</label>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="sub-panel jw-mgt20">
+						<h4 class="grid-wrap-title" data-lan-eng="Transportation Information">Transportation Information</h4>
+						<div class="grid-wrap grid-highlight jw-mgt12">
+							<!-- multi-editor.js -->
+							<div class="grid-item col-span-3">
+								<label class="label-name" data-lan-eng="Description">Description</label>
+								<div class="editor-box-wrap">
+								<div class="jw-editor">
+									<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										<option value="" selected>Font</option>
+										<option value="12px">12px</option>
+										<option value="14px">14px</option>
+										<option value="16px">16px</option>
+										<option value="18px">18px</option>
+										<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+									</div>
+							
+									<div class="jweditor" data-placeholder=" "></div>
+								</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="sub-panel jw-mgt20">
+						<h4 class="grid-wrap-title" data-lan-eng="Meal Information">Meal Information</h4>
+						<div class="grid-wrap grid-highlight jw-mgt12">
+							<div class="grid-item">
+								<label class="label-name" data-lan-eng="Breakfast">Breakfast</label>
+								<input type="text" class="form-control" value="Hotel breakfast">
+							</div>
+							<div class="grid-item">
+								<label class="label-name" data-lan-eng="Lunch">Lunch</label>
+								<input type="text" class="form-control" value="BBQ Chicken">
+							</div>
+							<div class="grid-item">
+								<label class="label-name" data-lan-eng="Dinner">Dinner</label>
+								<input type="text" class="form-control" value="Korean food">
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Fee information">Fee information</h2>
+				<div class="card-panel jw-mgt16">
+					<h3 class="grid-wrap-title" data-lan-eng="Number of people fee">Number of people fee</h3>
+					<i class="line"></i>
+					<button type="button" class="jw-button typeA" onclick="template_detail_sfg1(this)" data-lan-eng="＋ Add">＋ Add</button>
+					<div class="tableA-scroll jw-mgt12">
+						<table class="jw-tableA booking-detail">
+							<colgroup>
+								<col class="col-80"> <!-- No -->
+								<col> <!--  -->
+								<col class="col-300"> <!--   -->
+								<col class="col-100"> <!--  -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th class="is-center">No</th>
+									<th data-lan-eng="Option name">Option name</th>
+									<th data-lan-eng="Number of people fee (₱)">Number of people fee (₱)</th>
+									<th data-lan-eng="Delete">Delete</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="is-center">1</td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="Adult" placeholder=""></div></td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="34,000" inputmode="numeric" placeholder="0"></div></td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="template_detail_sfg1d(this)"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">2</td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="Child"></div></td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="23,800" inputmode="numeric"></div></td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="template_detail_sfg1d(this)"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">3</td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="Child"></div></td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="0" inputmode="numeric"></div></td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="template_detail_sfg1d(this)"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="card-panel jw-mgt16">
+					<h3 class="grid-wrap-title" data-lan-eng="Room rate for single occupancy">Room rate for single occupancy</h3>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Single room usage fee (₱)">Single room usage fee (₱)</span> <span class="req">*</span></label>
+							<input type="text" class="form-control jw-w348" value="10,000" inputmode="numeric" placeholder="Enter numbers">
+							<p class="form-desc is-warning" data-lan-eng="* When booking for 2 or more people, you will be charged for the number of single rooms selected. For 1 person booking, it is applied for free.">* When booking for 2 or more people, you will be charged for the number of single rooms selected. For 1 person booking, it is applied for free.</p>
+						</div>
+					</div>
+				</div>
+				<h2 class="section-title jw-mgt32" data-section-name="poham" data-lan-eng="Included/Not Included Items">Included/Not Included Items</h2>
+				<div class="card-panel jw-mgt16" data-section-name="poham">
+					<h3 class="grid-wrap-title" data-lan-eng="Included items">Included items</h3>
+					<i class="line"></i>
+					<button type="button" class="jw-button typeA" data-lan-eng="＋ Add" onclick="template_detail_sfg3(this)">＋ Add</button>
+					<div class="tableA-scroll jw-mgt20">
+						<table class="jw-tableA booking-detail">
+							<colgroup>
+								<col class="col-80"> <!-- No -->
+								<col> <!--   -->
+								<col class="col-100"> <!--  -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Included items">Included items</th>
+									<th data-lan-eng="Delete">Delete</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="is-center">1</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="All accommodation (based on 2 people per room)">
+										</div>
+									</td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">2</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="Accompanied by a dedicated vehicle and professional guide">
+										</div>
+									</td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">3</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="All meals and entrance fees specified in the schedule are included">
+										</div>
+									</td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="card-panel jw-mgt16" data-section-name="poham">
+					<h3 class="grid-wrap-title" data-lan-eng="Excluded items">Excluded items</h3>
+					<i class="line"></i>
+					<button type="button" class="jw-button typeA" data-lan-eng="＋ Add" onclick="template_detail_sfg3(this)">＋ Add</button>
+
+					<div class="tableA-scroll jw-mgt20">
+						<table class="jw-tableA booking-detail">
+							<colgroup>
+								<col class="col-80"> <!-- No -->
+								<col> <!--   -->
+								<col class="col-100"> <!--  -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th data-lan-eng="">No</th>
+									<th data-lan-eng="Excluded items">Excluded items</th>
+									<th data-lan-eng="Delete">Delete</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="is-center">1</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="Personal travel insurance and personal expenses">
+										</div>
+									</td>
+									<td class="is-center jw-center"><button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">2</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="Meals and transportation costs during free time">
+										</div>
+									</td>
+									<td class="is-center jw-center"><button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">3</td>
+									<td class="is-center">	
+										<div class="cell">
+											<input type="text" class="form-control" value="Manner tips and optional tourism costs">
+										</iv>
+									</td>
+									<td class="is-center jw-center"><button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Usage Guide">Usage Guide</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap jw-mgt0">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Notice">Notice</span> <span class="req">*</span></label>
+							<div class="cell">
+								<div class="field-row jw-center">
+									<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span data-lan-eng="File">File</span> [pdf, 328KB]</div>
+									<div class="jw-center jw-gap10">
+										<button type="button" class="jw-button typeF"><img src="../image/buttun-download.svg" alt=""></button>
+										<button type="button" class="jw-button typeF"><img src="../image/button-close2.svg" alt=""></button>
+									</div>
+								</div>
+							</div>
+
+						</div>
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Description">Description</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder=" "></div>
+							</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Cancellation/Refund Policy">Cancellation/Refund Policy</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap jw-mgt0">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Full refund available standard date">Full refund available standard date</span> <span class="req">*</span></label>
+							<input type="text" class="form-control jw-w348" value="15" inputmode="numeric" placeholder="Enter numbers">
+							<p class="form-desc is-warning" data-lan-eng="Cancel up to 1 day before for a full refund">Cancel up to 1 day before for a full refund</p>
+						</div>
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Description">Description</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder=" ">• Before 15 days of departure: 100% tour fare refund(No cancellation charge)<br>
+									• Before 8-14 days of departure: 50% tour fare refund(50% cancellation charge)<br>
+									• Before 4-7 days of departure: 30% tour fare refund(70% cancellation charge)<br>
+									• Before 1-3 days of departure: 0% tour fare refund(100% cancellation charge)</div>
+							</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<h2 class="section-title jw-mgt32" data-lan-eng="Visa Application Guide">Visa Application Guide</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap jw-mgt0">
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Description">Description</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder=" ">This is an explanation</div>
+							</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<aside class="content-aside" aria-label=" " style="top:0px">
+				<h3 class="aside-title" data-lan-eng="Components">Components</h3>
+				<div class="card-panel jw-mgt16">
+						<div class="grid-item">
+
+							<div class="aside-list">
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Template Information">Template Information</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+								<hr>
+
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Product Information">Product Information</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+								<hr>
+
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Schedule">Schedule</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+								<div class="aside-sub">
+									<div class="aside-row">
+										<div class="aside-row__subtitle" data-lan-eng="Meeting Information">Meeting Information</div>
+										<span class="aside-row__req" data-lan-eng="Required">Required</span>
+									</div>
+									
+									<div class="aside-row-list">
+										<div class="aside-row">
+											<div class="aside-row__subtitle" data-lan-eng="1st day">1st day</div>
+											<span class="aside-row__req" data-lan-eng="Required">Required</span>
+										</div>
+										<div class="aside-row">
+											<div class="aside-row__subtitle" data-lan-eng="Day 2">Day 2</div>
+											<button type="button" class="jw-button aside-add-section" onclick="template_detail_sdaf_delete(this)"><img src="../image/minus.svg" alt=""></button>
+										</div>
+									</div>
+									<div class="aside-row">
+										<button type="button" class="jw-button aside-button-typeA" onclick="template_detail_sdaf(this)"><img src="../image/plus.svg" alt=""> <span data-lan-eng="Add day">Add day</span></button>
+									</div>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Fee information">Fee information</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Included/Not Included Items">Included/Not Included Items</div>
+									<button type="button" class="jw-button aside-add-section" data-target-section="poham" onclick="togglePlusMinus(this)"><img src="../image/minus.svg" alt=""></button>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Usage Guide">Usage Guide</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Cancellation/Refund Policy">Cancellation/Refund Policy</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Visa Application Guide">Visa Application Guide</div>
+									<span class="aside-row__req" data-lan-eng="Required">Required</span>
+								</div>
+
+							</div>
+
+						</div>
+						<!-- ()     -->
+				</div>
+			</aside>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_tplfix7"></script>
+	<script src="../js/multi-editor.js"></script>
+
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		// ===== :  (id) +   =====
+		(function () {
+			const API = '../backend/api/super-api.php';
+			let __categories = [];
+
+			function qs(name) {
+				return new URLSearchParams(window.location.search).get(name);
+			}
+
+			function safeText(v) {
+				return (v == null) ? '' : String(v);
+			}
+
+			async function initCategoriesFromDb() {
+				const mainSel = document.querySelector('select[data-category="1"]');
+				const subSel = document.querySelector('select[data-category="2"]');
+				if (!mainSel || !subSel) return;
+
+				const unwrapJwSelect = (sel) => {
+					try {
+						const wrap = sel.closest('.jw-select');
+						if (!wrap) return;
+						const parent = wrap.parentElement;
+						if (!parent) return;
+						parent.insertBefore(sel, wrap);
+						wrap.remove();
+						sel.classList.remove('jw-sr-only');
+						if (!sel.classList.contains('select')) sel.classList.add('select');
+					} catch (_) { }
+				};
+				const rebuild = (sel) => {
+					unwrapJwSelect(sel);
+					if (typeof jw_select === 'function') {
+						try { jw_select(); } catch (_) { }
+					}
+				};
+
+				const setMainOptions = (list) => {
+					mainSel.innerHTML = '';
+					const ph = document.createElement('option');
+					ph.value = '';
+					ph.selected = true;
+					ph.textContent = 'Select main category';
+					mainSel.appendChild(ph);
+					list.forEach((c) => {
+						const opt = document.createElement('option');
+						opt.value = c.code || c.name || '';
+						opt.textContent = c.name || c.code || '';
+						mainSel.appendChild(opt);
+					});
+				};
+				const setSubOptions = (subs) => {
+					subSel.innerHTML = '';
+					const ph = document.createElement('option');
+					ph.value = '';
+					ph.selected = true;
+					ph.textContent = 'Please select a main category first';
+					subSel.appendChild(ph);
+					(subs || []).forEach((s) => {
+						const opt = document.createElement('option');
+						opt.value = s.code || s.name || '';
+						opt.textContent = s.name || s.code || '';
+						subSel.appendChild(opt);
+					});
+				};
+
+				const res = await fetch(`${API}?action=getCategories`, { credentials: 'same-origin' });
+				if (res.status === 401) throw new Error(' .');
+				const json = await res.json().catch(() => ({}));
+				if (!res.ok || json.success === false) throw new Error(json.message || `  . (HTTP ${res.status})`);
+
+				const cats = json?.data?.categories || json?.categories || [];
+				__categories = Array.isArray(cats) ? cats : [];
+				setMainOptions(__categories);
+				setSubOptions([]);
+				subSel.disabled = true;
+
+				rebuild(mainSel);
+				rebuild(subSel);
+
+				const populateSubByMain = (mainKey) => {
+					const mainObj = __categories.find(c => (c.code && c.code === mainKey) || c.name === mainKey);
+					const subs = mainObj?.subCategories || [];
+					setSubOptions(subs);
+					subSel.disabled = !(mainKey && subs.length);
+					rebuild(subSel);
+					try { if (typeof window.template_detail_sdaf_cate === 'function') window.template_detail_sdaf_cate(); } catch (_) { }
+				};
+
+				mainSel.addEventListener('change', () => populateSubByMain(mainSel.value));
+
+				//    (//  )
+				window.__tplDetailSetCategories = (mainKey, subKey) => {
+					const v = (mainKey == null) ? '' : String(mainKey);
+					// value ,  text 
+					let ok = false;
+					try {
+						const byVal = Array.from(mainSel.options).find(o => String(o.value || '') === v);
+						if (byVal) { mainSel.value = byVal.value; ok = true; }
+						if (!ok) {
+							const byTxt = Array.from(mainSel.options).find(o => String(o.textContent || '').trim().toLowerCase() === v.trim().toLowerCase());
+							if (byTxt) { mainSel.value = byTxt.value; ok = true; }
+						}
+					} catch (_) { }
+					if (!ok && v) mainSel.value = v;
+					populateSubByMain(mainSel.value);
+					if (subKey != null) {
+						setTimeout(() => {
+							subSel.disabled = false;
+							subSel.value = String(subKey);
+							syncJwSelectDisplay(subSel);
+						}, 0);
+					}
+				};
+			}
+
+			function resetPublishingDefaults() {
+				//   ( value/disabled// )  
+				try {
+					const isScheduleAddressLockedInput = (el) => {
+						try {
+							if (!el) return false;
+							const gi = el.closest('.grid-item');
+							if (!gi) return false;
+							// Only guard schedule-related address/name fields
+							const span = gi.querySelector('.label-name [data-lan-eng]');
+							const eng = (span?.getAttribute('data-lan-eng') || gi.querySelector('.label-name')?.getAttribute?.('data-lan-eng') || '').trim();
+							if ([
+								'Meeting place name',
+								'Meeting place address',
+								'Sight Name',
+								'Sight Address',
+								'Accommodation name',
+								'Accommodation address',
+							].includes(eng)) return true;
+							// Fallback: presence of Address Search button in the same grid-wrap indicates locked inputs
+							if (gi.querySelector('button') && /Address Search/i.test(gi.textContent || '')) return true;
+						} catch (_) { }
+						return false;
+					};
+					// inputs: createdAt() disabled ,    enable
+					Array.from(document.querySelectorAll('input')).forEach((el) => {
+						const type = (el.getAttribute('type') || 'text').toLowerCase();
+						if (type === 'file') return;
+						// /   disabled input   (  )
+						const isCreatedAt = (el.id === 'createdAt') || ((el.closest('.grid-item')?.querySelector('.label-name')?.textContent || '').includes(''));
+						const locked = isScheduleAddressLockedInput(el);
+						if (!isCreatedAt && !locked) {
+							el.disabled = false;
+							el.readOnly = false;
+						}
+						if (locked) {
+							el.disabled = true;
+							el.readOnly = true;
+						}
+						el.value = '';
+					});
+
+					// selects:    + subcategory  disabled 
+					Array.from(document.querySelectorAll('select')).forEach((sel) => {
+						sel.disabled = false;
+						sel.selectedIndex = 0;
+						try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) { }
+						syncJwSelectDisplay(sel);
+					});
+
+					//    (Quill  /  )
+					Array.from(document.querySelectorAll('.jw-editor .jweditor')).forEach((area) => {
+						try {
+							if (typeof window.Quill !== 'undefined' && typeof window.Quill.find === 'function') {
+								const q = window.Quill.find(area);
+								if (q && typeof q.setText === 'function') {
+									q.setText('');
+									return;
+								}
+							}
+						} catch (_) { }
+						area.innerHTML = '';
+					});
+
+					//    +  input  
+					Array.from(document.querySelectorAll('.upload-item')).forEach((item) => {
+						item.classList.remove('is-filled');
+						item.querySelectorAll('img.preview').forEach((img) => img.remove());
+						item.querySelectorAll('.btn-close, .jw-button.btn-close').forEach((b) => b.remove());
+
+						const hasFileInput = !!item.querySelector('input[type="file"]');
+						if (!hasFileInput) {
+							const label = document.createElement('label');
+							label.className = 'inputFile';
+							label.innerHTML = `
+								<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+								<button type="button" class="btn-upload">
+									<img src="../image/upload3.svg" alt="">
+									<span data-lan-eng="Image upload">Image upload</span>
+								</button>
+							`;
+							//        
+							item.insertAdjacentElement('afterbegin', label);
+						}
+					});
+				} catch (_) { }
+			}
+
+			function syncJwSelectDisplay(selectEl) {
+				try {
+					const wrap = selectEl.closest('.jw-select');
+					if (!wrap) return;
+					const box = wrap.querySelector('.jw-selected');
+					if (!box) return;
+					const opt = selectEl.selectedOptions?.[0] || selectEl.options?.[selectEl.selectedIndex] || null;
+					if (!opt) return;
+					const label = opt.textContent || '';
+					const icon = opt?.dataset?.icon;
+					box.innerHTML = icon ? `<i class="${icon}"></i> ${label}` : label;
+				} catch (_) { }
+			}
+
+			function setSelectValue(selectEl, valueOrText) {
+				if (!selectEl) return;
+				const v = safeText(valueOrText).trim();
+				if (!v) return;
+				// value 
+				const byVal = Array.from(selectEl.options).find(o => (o.value || '') === v);
+				if (byVal) {
+					selectEl.value = byVal.value;
+					selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+					syncJwSelectDisplay(selectEl);
+					return;
+				}
+				// text 
+				const byText = Array.from(selectEl.options).find(o => (o.textContent || '').trim() === v);
+				if (byText) {
+					selectEl.value = byText.value;
+					selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+					syncJwSelectDisplay(selectEl);
+				}
+			}
+
+			function setQuillHtml(editorArea, html) {
+				if (!editorArea) return;
+				const h = safeText(html).trim();
+				// Quill   
+				try {
+					if (typeof window.Quill !== 'undefined' && typeof window.Quill.find === 'function') {
+						const q = window.Quill.find(editorArea);
+						if (q && q.clipboard && typeof q.clipboard.dangerouslyPasteHTML === 'function') {
+							q.setSelection(0, 0);
+							q.clipboard.dangerouslyPasteHTML(h || '');
+							return;
+						}
+					}
+				} catch (_) { }
+				// fallback: quill DOM(.ql-editor)   
+				try {
+					const ql = editorArea.querySelector('.ql-editor');
+					if (ql) { ql.innerHTML = h; return; }
+				} catch (_) { }
+				editorArea.innerHTML = h;
+			}
+
+			function bindTemplateToForm(t) {
+				// createdAt /   
+				try {
+					const createdAtInput =
+						document.getElementById('createdAt') ||
+						document.querySelector('.card-panel input.form-control[disabled]') ||
+						Array.from(document.querySelectorAll('.card-panel .grid-item input.form-control')).find(i => i.disabled);
+					if (createdAtInput) createdAtInput.value = t?.createdAt || '';
+				} catch (_) { }
+
+				const data = t?.data || {};
+
+				// 1)   (version=1)  
+				if (data && typeof data === 'object' && Number(data.version || 0) >= 1) {
+					//  (/ ) 
+					try {
+						const setSectionVisible = (sectionName, visible) => {
+							const targets = Array.from(document.querySelectorAll(`[data-section-name="${sectionName}"]`));
+							targets.forEach((el) => {
+								if (visible) el.classList.remove('hidden');
+								else el.classList.add('hidden');
+							});
+							//    /(on=/plus, off=/minus) 
+							const btn = document.querySelector(`.aside-add-section[data-target-section="${sectionName}"]`);
+							const img = btn?.querySelector('img') || null;
+							if (btn) {
+								if (visible) btn.classList.remove('on');
+								else btn.classList.add('on');
+							}
+							if (img) {
+								img.src = visible ? '../image/minus.svg' : '../image/plus.svg';
+								img.alt = visible ? 'minus' : 'plus';
+							}
+						};
+
+						// default: visible(true). saved false  
+						const pohamVisible = (data?.components?.poham !== false);
+						setSectionVisible('poham', pohamVisible);
+					} catch (_) { }
+
+					const ensureUploadPreview = (uploadItem, src) => {
+						if (!uploadItem) return;
+						const s = safeText(src).trim();
+						uploadItem.classList.toggle('is-filled', !!s);
+
+						// upload-item  file input(label.inputFile) ,       .
+						try {
+							const lab = uploadItem.querySelector('label.inputFile');
+							const btn = lab?.querySelector('.btn-upload') || null;
+							if (lab) lab.style.display = s ? 'none' : '';
+							if (btn) btn.style.display = s ? 'none' : '';
+						} catch (_) { }
+
+						let img = uploadItem.querySelector('img.preview');
+						if (s) {
+							if (!img) {
+								img = document.createElement('img');
+								img.className = 'preview';
+								img.alt = '';
+								// img  append close     ,   .
+								uploadItem.insertAdjacentElement('afterbegin', img);
+							}
+							img.src = s;
+
+							//    ( resetPublishingDefaults   )
+							if (!uploadItem.querySelector('.btn-close')) {
+								const closeBtn = document.createElement('button');
+								closeBtn.type = 'button';
+								closeBtn.className = 'jw-button btn-close';
+								closeBtn.setAttribute('aria-label', 'remove');
+								closeBtn.innerHTML = '<div class="ic-close" style="width:15px; height:15px; --line:1px; --color:#969696"></div>';
+								uploadItem.appendChild(closeBtn);
+							}
+							// file input(z-index:3)    
+							try {
+								const b = uploadItem.querySelector('.btn-close');
+								if (b) b.style.zIndex = '5';
+							} catch (_) { }
+						} else {
+							if (img) img.remove();
+							//   close  
+							uploadItem.querySelectorAll('.btn-close, .jw-button.btn-close').forEach((b) => b.remove());
+						}
+					};
+
+					const setSelectDirect = (sel, v) => {
+						if (!sel) return;
+						sel.disabled = false;
+						setSelectValue(sel, v);
+						syncJwSelectDisplay(sel);
+					};
+
+					// (ko/eng/tl)     data-lan-eng  
+					const findGridByLanEng = (eng) => {
+						const e = safeText(eng).trim();
+						if (!e) return null;
+						// 1) label-name  data-lan-eng  
+						const direct = Array.from(document.querySelectorAll('.label-name[data-lan-eng]'))
+							.find(l => safeText(l.getAttribute('data-lan-eng')) === e);
+						if (direct) return direct.closest('.grid-item') || null;
+						// 2) label-name  span[data-lan-eng] 
+						const inner = Array.from(document.querySelectorAll('.label-name [data-lan-eng]'))
+							.find(s => safeText(s.getAttribute('data-lan-eng')) === e);
+						return inner?.closest('.grid-item') || null;
+					};
+					const findGridByLabelContains = (...needles) => {
+						for (const needle of needles) {
+							const n = safeText(needle);
+							if (!n) continue;
+							// data-lan-eng exact match
+							const byEng = findGridByLanEng(n);
+							if (byEng) return byEng;
+							// rendered text match
+							const label = Array.from(document.querySelectorAll('.label-name'))
+								.find(l => (l.textContent || '').replace('*', '').includes(n));
+							if (label) return label.closest('.grid-item') || null;
+						}
+						return null;
+					};
+					const inputFromGrid = (grid) => grid ? (grid.querySelector('input.form-control') || grid.querySelector('input')) : null;
+					const setInputByLabel = (label, value) => {
+						const g = findGridByLabelContains(label);
+						const i = inputFromGrid(g);
+						if (!i) return;
+						i.disabled = false;
+						i.readOnly = false;
+						i.value = safeText(value || '');
+					};
+					const setEditorByLabel = (label, html) => {
+						const g = findGridByLabelContains(label);
+						const area = g?.querySelector('.jweditor') || null;
+						setQuillHtml(area, html || '');
+					};
+
+					// ///
+					// templateName/productName   label text  data-lan-eng 
+					const tplName = data.template?.templateName || t.templateName || '';
+					const prodName = data.product?.productName || '';
+					{
+						const g = findGridByLabelContains('', 'Template name');
+						const i = inputFromGrid(g);
+						if (i) { i.disabled = false; i.readOnly = false; i.value = safeText(tplName); }
+					}
+					{
+						const g = findGridByLabelContains('', 'Product Name');
+						const i = inputFromGrid(g);
+						if (i) { i.disabled = false; i.readOnly = false; i.value = safeText(prodName); }
+						// ( )      raw.inputs 
+						if (i && !safeText(i.value) && Array.isArray(data?.raw?.fields?.inputs)) {
+							const r = data.raw.fields.inputs.find(x => (x.placeholder || '').toLowerCase() === 'product name');
+							if (r && r.value != null) i.value = safeText(r.value);
+						}
+					}
+					setSelectValue(Array.from(document.querySelectorAll('select')).find(s => {
+						const label = s.closest('.grid-item')?.querySelector('.label-name')?.textContent || '';
+						return / /i.test(label) || /sales target/i.test(label);
+					}), t.targetMarket || data.product?.targetMarket || '');
+					//  DB (code)  
+					const mc = data.product?.mainCategory || t.mainCategory || '';
+					const sc = data.product?.subCategory || t.subCategory || '';
+					if (typeof window.__tplDetailSetCategories === 'function' && mc) {
+						window.__tplDetailSetCategories(mc, sc);
+					} else {
+						setSelectValue(document.querySelector('select[data-category="1"]'), mc);
+						setTimeout(() => {
+							const subSel = document.querySelector('select[data-category="2"]');
+							if (subSel) subSel.disabled = false;
+							setSelectValue(subSel, sc);
+						}, 0);
+					}
+
+					//  
+					// language-safe
+					{
+						const g = findGridByLabelContains(' ', 'Product Description');
+						const area = g?.querySelector('.jweditor') || null;
+						const html = data.product?.descriptionHtml || '';
+						setQuillHtml(area, html);
+						// ( )      raw.editors 
+						try {
+							if (area && !safeText(area.textContent).trim() && Array.isArray(data?.raw?.editors)) {
+								const rec = data.raw.editors.find(x => /Product Description| /i.test(String(x.label || '')));
+								if (rec?.html != null) setQuillHtml(area, rec.html);
+							}
+						} catch (_) { }
+					}
+
+					//  (preview src )
+					try {
+						const imgs = data.product?.images || {};
+						const normalizeSrc = (src) => {
+							const s = String(src || '').trim();
+							if (!s) return '';
+							// blob URL   URL     →   " "  .
+							if (/^blob:/i.test(s)) return '';
+							//  URL / data URL 
+							if (/^(https?:)?\/\//i.test(s) || /^data:/i.test(s)) return s;
+							// ../uploads/...  uploads/...  /uploads/... 
+							if (s.startsWith('../uploads/')) return '/' + s.replace(/^\.\.\//, '');
+							if (s.startsWith('./uploads/')) return '/' + s.replace(/^\.\//, '');
+							if (s.startsWith('uploads/')) return '/' + s;
+							// /   uploads   
+							if (s.includes('/uploads/') && !s.startsWith('/')) return '/' + s.replace(/^[.\/]+/, '');
+							return s;
+						};
+						const setPreview = (gridLabel, src) => {
+							const g = findGridByLabelContains(gridLabel);
+							const it = g?.querySelector('.upload-item') || null;
+							if (!it) return;
+							const ns = normalizeSrc(src);
+							it.classList.toggle('is-filled', !!ns);
+							// upload-item  file input(label.inputFile) ,       .
+							try {
+								const lab = it.querySelector('label.inputFile');
+								const btn = lab?.querySelector('.btn-upload') || null;
+								if (lab) lab.style.display = ns ? 'none' : '';
+								if (btn) btn.style.display = ns ? 'none' : '';
+							} catch (_) { }
+							let img = it.querySelector('img.preview');
+							if (ns) {
+								if (!img) {
+									img = document.createElement('img');
+									img.className = 'preview';
+									img.alt = '';
+									// img   close       .
+									it.insertAdjacentElement('afterbegin', img);
+								}
+								img.src = ns;
+
+								//    
+								if (!it.querySelector('.btn-close')) {
+									const closeBtn = document.createElement('button');
+									closeBtn.type = 'button';
+									closeBtn.className = 'jw-button btn-close';
+									closeBtn.setAttribute('aria-label', 'remove');
+									closeBtn.innerHTML = '<div class="ic-close" style="width:15px; height:15px; --line:1px; --color:#969696"></div>';
+									it.appendChild(closeBtn);
+								}
+								try {
+									const b = it.querySelector('.btn-close');
+									if (b) b.style.zIndex = '5';
+								} catch (_) { }
+							} else {
+								if (img) img.remove();
+								it.querySelectorAll('.btn-close, .jw-button.btn-close').forEach((b) => b.remove());
+							}
+						};
+						setPreview(' ', imgs.thumbnail || '');
+						setPreview('Thumbnail image', imgs.thumbnail || '');
+						setPreview('  ', imgs.detailImage || '');
+						setPreview('Detailed introduction image', imgs.detailImage || '');
+						//   
+						let productGrid =
+							findGridByLabelContains(' ', 'Product image') ||
+							Array.from(document.querySelectorAll('.grid-item')).find(g => (g.querySelector('.label-name')?.textContent || '').trim() === ' ');
+						const items = productGrid?.querySelectorAll('.upload-item') || [];
+						(Array.isArray(imgs.productImages) ? imgs.productImages : []).forEach((src, idx) => {
+							const it = items[idx];
+							if (!it) return;
+							const ns = normalizeSrc(src);
+							if (!ns) return;
+							//     (  / UI /  ) 
+							ensureUploadPreview(it, ns);
+						});
+					} catch (_) { }
+
+					//  
+					try {
+						const meetingPanel = Array.from(document.querySelectorAll('.card-panel'))
+							.find(p => {
+								const h3 = p.querySelector('h3.grid-wrap-title');
+								const t = (h3?.textContent || '').trim();
+								const eng = h3?.getAttribute?.('data-lan-eng') || '';
+								return t === ' ' || eng === 'Meeting Information' || /meeting/i.test(t);
+							});
+						if (meetingPanel && data.schedule?.meeting) {
+							const sels = meetingPanel.querySelectorAll('select');
+							if (sels[0]) setSelectDirect(sels[0], safeText(data.schedule.meeting.hour || ''));
+							if (sels[1]) setSelectDirect(sels[1], safeText(data.schedule.meeting.minute || ''));
+							const nameGrid = Array.from(meetingPanel.querySelectorAll('.grid-item'))
+								.find(g => / |Meeting place name/i.test(g.querySelector('.label-name')?.textContent || ''));
+							const addrGrid = Array.from(meetingPanel.querySelectorAll('.grid-item'))
+								.find(g => /  |Meeting place address/i.test(g.querySelector('.label-name')?.textContent || ''));
+							// SMT: address-search populated fields must remain read-only (no manual typing)
+							const nI = inputFromGrid(nameGrid);
+							if (nI) { nI.value = safeText(data.schedule.meeting.placeName || ''); nI.disabled = true; nI.readOnly = true; }
+							const aI = inputFromGrid(addrGrid);
+							if (aI) { aI.value = safeText(data.schedule.meeting.placeAddress || ''); aI.disabled = true; aI.readOnly = true; }
+						}
+					} catch (_) { }
+
+					// //()
+					try {
+						const ensureRows = (panel, need, addFnName) => {
+							if (!panel) return;
+							const tbody = panel.querySelector('tbody');
+							if (!tbody) return;
+							const current = tbody.querySelectorAll('tr').length;
+							const want = Math.max(current, Number(need || 0));
+							if (want <= current) return;
+							const addBtn = panel.querySelector('button[onclick*="' + addFnName + '"]') || null;
+							for (let i = current; i < want; i++) {
+								try {
+									if (addFnName === 'template_detail_sfg1' && typeof window.template_detail_sfg1 === 'function') window.template_detail_sfg1(addBtn);
+									if (addFnName === 'template_detail_sfg3' && typeof window.template_detail_sfg3 === 'function') window.template_detail_sfg3(addBtn);
+								} catch (_) { break; }
+							}
+						};
+
+						const setRows = (korTitle, engTitle, rows, cols, addFnName) => {
+							const panel = Array.from(document.querySelectorAll('.card-panel')).find(p => {
+								const h3 = p.querySelector('h3.grid-wrap-title');
+								const t = (h3?.textContent || '').trim();
+								const eng = h3?.getAttribute?.('data-lan-eng') || '';
+								return t === korTitle || t === engTitle || eng === engTitle;
+							});
+							const tbody = panel?.querySelector('tbody');
+							if (!tbody) return;
+							//       
+							if (addFnName) {
+								const need = Array.isArray(rows) ? rows.length : 0;
+								ensureRows(panel, need, addFnName);
+							}
+							tbody.querySelectorAll('tr').forEach((tr, idx) => {
+								const r = rows?.[idx];
+								const inputs = tr.querySelectorAll('input.form-control');
+								if (cols === 2) {
+									if (inputs[0]) inputs[0].value = r ? safeText(r.optionName || '') : '';
+									if (inputs[1]) inputs[1].value = r ? safeText(r.price || '') : '';
+								} else {
+									if (inputs[0]) inputs[0].value = r ? safeText(r || '') : '';
+								}
+							});
+						};
+						// perPerson: template_detail_sfg1  
+						setRows(' ', 'Number of people fee', data.pricing?.perPerson || [], 2, 'template_detail_sfg1');
+						// included/excluded: template_detail_sfg3  
+						setRows(' ', 'Included items', data.included || [], 1, 'template_detail_sfg3');
+						setRows(' ', 'Excluded items', data.excluded || [], 1, 'template_detail_sfg3');
+					} catch (_) { }
+
+					//  Day 
+					try {
+						const days = Array.isArray(data.schedule?.days) ? data.schedule.days : [];
+						if (days.length) {
+							// aside Day  days.length  (1 , 2  +/-)
+							try {
+								const list = document.querySelector('.aside-row-list');
+								if (list) {
+									//  row    
+									list.innerHTML = '';
+									for (let i = 1; i <= days.length; i++) {
+										const row = document.createElement('div');
+										row.className = 'aside-row';
+										if (i === 1) {
+											row.innerHTML = `
+												<div class="aside-row__subtitle" data-lan-eng="1st day">1st day</div>
+												<span class="aside-row__req" data-lan-eng="Required">Required</span>
+											`;
+										} else {
+											row.innerHTML = `
+												<div class="aside-row__subtitle" data-lan-eng="Day ${i}">Day ${i}</div>
+												<button type="button" class="jw-button aside-add-section" onclick="template_detail_sdaf_delete(this)"><img src="../image/minus.svg" alt=""></button>
+											`;
+										}
+										list.appendChild(row);
+									}
+									const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+									try { if (typeof language_apply === 'function') language_apply(lang); } catch (_) { }
+								}
+							} catch (_) { }
+
+							const base = document.getElementById('nday');
+							const ensurePanels = () => Array.from(document.querySelectorAll('.card-panel[id^="nday"]'));
+							while (ensurePanels().length < days.length && base) {
+								const clone = base.cloneNode(true);
+								const n = ensurePanels().length + 1;
+								clone.id = `nday_${n}`;
+								const headBtn = clone.querySelector('h3.grid-wrap-title button');
+								if (headBtn) {
+									const img = headBtn.querySelector('img');
+									headBtn.innerHTML = `${n}Day ` + (img ? img.outerHTML : '');
+								}
+								base.parentElement?.insertBefore(clone, ensurePanels()[ensurePanels().length - 1].nextSibling);
+							}
+
+							const panels = ensurePanels();
+							days.forEach((d, idx) => {
+								const p = panels[idx];
+								if (!p) return;
+								// summary (placeholder      -> label )
+								try {
+									const sumGrid =
+										Array.from(p.querySelectorAll('.grid-item'))
+											.find(g => safeText(g.querySelector('.label-name')?.getAttribute?.('data-lan-eng') || '') === 'Schedule Summary') ||
+										Array.from(p.querySelectorAll('.label-name[data-lan-eng]'))
+											.find(l => safeText(l.getAttribute('data-lan-eng') || '') === 'Schedule Summary')?.closest('.grid-item') ||
+										null;
+									const sum = sumGrid?.querySelector('input.form-control') || p.querySelector('input.form-control');
+									// Backward-compatible fallbacks (older template data might have used different keys)
+									const v =
+										safeText(d.summary || '') ||
+										safeText(d.scheduleSummary || '') ||
+										safeText(d.daySummary || '') ||
+										safeText(d.description || '') ||
+										safeText(d.dayDescription || '');
+									if (sum) sum.value = v;
+								} catch (_) { }
+
+								//    
+								const firstBlock = p.querySelector('.dfghs');
+								const want = Array.isArray(d.attractions) ? d.attractions.length : 0;
+								const getBlocks = () => Array.from(p.querySelectorAll('.dfghs'));
+								while (getBlocks().length < Math.max(1, want) && firstBlock) {
+									const copy = firstBlock.cloneNode(true);
+									firstBlock.parentElement?.appendChild(copy);
+								}
+								getBlocks().forEach((b, bi) => {
+									const a = (d.attractions || [])[bi] || {};
+									const sels = Array.from(b.querySelectorAll('.meeting-wrap select'));
+									if (sels[0]) setSelectDirect(sels[0], safeText(a.startHour || ''));
+									if (sels[1]) setSelectDirect(sels[1], safeText(a.startMinute || ''));
+									if (sels[2]) setSelectDirect(sels[2], safeText(a.endHour || ''));
+									if (sels[3]) setSelectDirect(sels[3], safeText(a.endMinute || ''));
+
+									const nameLabel = Array.from(b.querySelectorAll('.label-name')).find(l => /Sight Name|/i.test(l.textContent || ''));
+									const addrLabel = Array.from(b.querySelectorAll('.label-name')).find(l => /Sight Address| /i.test(l.textContent || ''));
+									const infoLabel = Array.from(b.querySelectorAll('.label-name')).find(l => /Sight Information| /i.test(l.textContent || ''));
+									const nameInput = nameLabel?.closest('.grid-item')?.querySelector('input.form-control');
+									const addrInput = addrLabel?.closest('.grid-item')?.querySelector('input.form-control');
+									// SMT: address-search populated fields must remain read-only (no manual typing)
+									if (nameInput) { nameInput.value = safeText(a.name || ''); nameInput.disabled = true; nameInput.readOnly = true; }
+									if (addrInput) { addrInput.value = safeText(a.address || ''); addrInput.disabled = true; addrInput.readOnly = true; }
+									const infoArea = infoLabel?.closest('.grid-item')?.querySelector('.jweditor');
+									setQuillHtml(infoArea, a.infoHtml || '');
+
+									// sight image( preview )
+									const sightUploadItem = b.querySelector('.upload-grid .upload-item') || null;
+									if (a.image) ensureUploadPreview(sightUploadItem, a.image);
+								});
+
+								// //
+								const accom = d.accommodation || {};
+								const accomPanel = Array.from(p.querySelectorAll('.sub-panel'))
+									.find(sp => {
+										const h4 = sp.querySelector('h4.grid-wrap-title');
+										const t = (h4?.textContent || '');
+										const eng = h4?.getAttribute?.('data-lan-eng') || '';
+										return t.includes('') || eng === 'Accommodation Information' || /accommodation/i.test(t);
+									});
+								if (accomPanel) {
+									const n1 =
+										Array.from(accomPanel.querySelectorAll('.label-name [data-lan-eng]')).find(s => (s.getAttribute('data-lan-eng') || '') === 'Accommodation name')?.closest('.grid-item')?.querySelector('input.form-control') ||
+										Array.from(accomPanel.querySelectorAll('.label-name')).find(l => /|Accommodation name/i.test(l.textContent || ''))?.closest('.grid-item')?.querySelector('input.form-control');
+									const n2 =
+										Array.from(accomPanel.querySelectorAll('.label-name [data-lan-eng]')).find(s => (s.getAttribute('data-lan-eng') || '') === 'Accommodation address')?.closest('.grid-item')?.querySelector('input.form-control') ||
+										Array.from(accomPanel.querySelectorAll('.label-name')).find(l => / |Accommodation address/i.test(l.textContent || ''))?.closest('.grid-item')?.querySelector('input.form-control');
+									// SMT: address-search populated fields must remain read-only (no manual typing)
+									if (n1) { n1.value = safeText(accom.name || ''); n1.disabled = true; n1.readOnly = true; }
+									if (n2) { n2.value = safeText(accom.address || ''); n2.disabled = true; n2.readOnly = true; }
+									const descArea =
+										Array.from(accomPanel.querySelectorAll('.label-name [data-lan-eng]')).find(s => (s.getAttribute('data-lan-eng') || '') === 'Accommodation Description')?.closest('.grid-item')?.querySelector('.jweditor') ||
+										Array.from(accomPanel.querySelectorAll('.label-name')).find(l => / |Accommodation Description/i.test(l.textContent || ''))?.closest('.grid-item')?.querySelector('.jweditor');
+									setQuillHtml(descArea, accom.descriptionHtml || '');
+									const imgGrid =
+										Array.from(accomPanel.querySelectorAll('.label-name [data-lan-eng]')).find(s => (s.getAttribute('data-lan-eng') || '') === 'Accommodation image')?.closest('.grid-item') ||
+										null;
+									// accommodation image( preview )
+									const accUploadItem = (imgGrid || accomPanel).querySelector('.upload-grid .upload-item') || null;
+									if (accom.image) ensureUploadPreview(accUploadItem, accom.image);
+								}
+
+								const trans = d.transportation || {};
+								const transPanel = Array.from(p.querySelectorAll('.sub-panel'))
+									.find(sp => {
+										const h4 = sp.querySelector('h4.grid-wrap-title');
+										const t = (h4?.textContent || '');
+										const eng = h4?.getAttribute?.('data-lan-eng') || '';
+										return t.includes('') || eng === 'Transportation Information' || /transportation/i.test(t);
+									});
+								if (transPanel) {
+									const descArea =
+										Array.from(transPanel.querySelectorAll('.label-name [data-lan-eng]')).find(s => (s.getAttribute('data-lan-eng') || '') === 'Description')?.closest('.grid-item')?.querySelector('.jweditor') ||
+										Array.from(transPanel.querySelectorAll('.label-name')).find(l => /|Description/i.test(l.textContent || ''))?.closest('.grid-item')?.querySelector('.jweditor');
+									setQuillHtml(descArea, trans.descriptionHtml || '');
+								}
+
+								const meals = d.meals || {};
+								const mealPanel = Array.from(p.querySelectorAll('.sub-panel'))
+									.find(sp => {
+										const h4 = sp.querySelector('h4.grid-wrap-title');
+										const t = (h4?.textContent || '');
+										const eng = h4?.getAttribute?.('data-lan-eng') || '';
+										return t.includes('') || eng === 'Meal Information' || /meal/i.test(t);
+									});
+								if (mealPanel) {
+									const setMeal = (eng, kor, v) => {
+										const grid = Array.from(mealPanel.querySelectorAll('.grid-item'))
+											.find(g => safeText(g.querySelector('.label-name')?.getAttribute?.('data-lan-eng') || '') === eng || (g.querySelector('.label-name')?.textContent || '').includes(kor));
+										const ip = grid?.querySelector('input.form-control') || null;
+										if (ip) ip.value = safeText(v || '');
+									};
+									setMeal('Breakfast', '', meals.breakfast);
+									setMeal('Lunch', '', meals.lunch);
+									setMeal('Dinner', '', meals.dinner);
+								}
+							});
+						}
+					} catch (_) { }
+
+					// // ( + )
+					try {
+						const findSectionPanel = (korTitle, engTitle) => {
+							const h2 = Array.from(document.querySelectorAll('h2.section-title')).find(h => {
+								const t = (h.textContent || '').trim();
+								const eng = (h.getAttribute('data-lan-eng') || '').trim();
+								return t === korTitle || t === engTitle || eng === engTitle;
+							});
+							return h2?.nextElementSibling || null;
+						};
+
+						const findDescriptionEditorInPanel = (panel) => {
+							if (!panel) return null;
+							// label span[data-lan-eng="Description"] 
+							const byEngSpan = Array.from(panel.querySelectorAll('.label-name [data-lan-eng]'))
+								.find(s => (s.getAttribute('data-lan-eng') || '').trim() === 'Description');
+							if (byEngSpan) {
+								const area = byEngSpan.closest('.grid-item')?.querySelector('.jweditor') || null;
+								if (area) return area;
+							}
+							// label-name  data-lan-eng="Description" 
+							const byEngLabel = panel.querySelector('.label-name[data-lan-eng="Description"]');
+							if (byEngLabel) {
+								const area = byEngLabel.closest('.grid-item')?.querySelector('.jweditor') || null;
+								if (area) return area;
+							}
+							//  fallback
+							const label = Array.from(panel.querySelectorAll('.label-name'))
+								.find(l => /description/i.test(l.textContent || ''));
+							return label?.closest('.grid-item')?.querySelector('.jweditor') || null;
+						};
+
+						// (Usage Guide)
+						{
+							const panel = findSectionPanel('', 'Usage Guide');
+							const area = findDescriptionEditorInPanel(panel);
+							setQuillHtml(area, data.usageGuide?.descriptionHtml || '');
+						}
+						// / (Cancellation/Refund Policy)
+						{
+							const panel = findSectionPanel('/ ', 'Cancellation/Refund Policy');
+							// Full refund available standard date (refundDays) input
+							try {
+								const refundGrid =
+									Array.from(panel?.querySelectorAll('.label-name [data-lan-eng]') || [])
+										.find(s => (s.getAttribute('data-lan-eng') || '').trim() === 'Full refund available standard date')
+										?.closest('.grid-item') ||
+									Array.from(panel?.querySelectorAll('.grid-item') || [])
+										.find(g => /Full refund available standard date/i.test(g.querySelector('.label-name')?.textContent || '')) ||
+									null;
+								const refundInput = refundGrid ? (refundGrid.querySelector('input.form-control') || refundGrid.querySelector('input')) : null;
+								if (refundInput) refundInput.value = safeText(data.cancellationPolicy?.refundDays || '');
+							} catch (_) { }
+
+							const area = findDescriptionEditorInPanel(panel);
+							setQuillHtml(area, data.cancellationPolicy?.descriptionHtml || '');
+						}
+						//   (Visa Application Guide)
+						{
+							const panel = findSectionPanel('  ', 'Visa Application Guide');
+							const area = findDescriptionEditorInPanel(panel);
+							setQuillHtml(area, data.visaGuide?.descriptionHtml || '');
+						}
+
+						//   
+						try {
+							const singlePanel = Array.from(document.querySelectorAll('.card-panel'))
+								.find(p => (p.querySelector('h3.grid-wrap-title')?.getAttribute?.('data-lan-eng') || '').trim() === 'Room rate for single occupancy'
+									|| (p.querySelector('h3.grid-wrap-title')?.textContent || '').trim() === '  ');
+							const ip = singlePanel?.querySelector('input.form-control');
+							if (ip) ip.value = safeText(data.pricing?.singleRoomFee || '');
+						} catch (_) { }
+
+						// =====  ( ):      raw.editors  =====
+						// : 36 transportation.descriptionHtml   raw.editors  .
+						// - raw.editors DOM  , "   "   raw.html .
+						try {
+							const savedEditors = Array.isArray(data?.raw?.editors) ? data.raw.editors : [];
+							if (savedEditors.length) {
+								const editorAreas = Array.from(document.querySelectorAll('.jw-editor .jweditor'));
+								const safeHtmlNow = (node) => {
+									if (!node) return '';
+									try {
+										const ql = node.querySelector?.('.ql-editor');
+										if (ql) return String(ql.innerHTML || '').trim();
+									} catch (_) { }
+									return String(node.innerHTML || '').trim();
+								};
+								const maxE = Math.min(savedEditors.length, editorAreas.length);
+								for (let i = 0; i < maxE; i++) {
+									const area = editorAreas[i];
+									const cur = safeHtmlNow(area);
+									if (cur) continue;
+									const rawHtml = savedEditors[i]?.html || '';
+									if (!String(rawHtml || '').trim()) continue;
+									setQuillHtml(area, rawHtml);
+								}
+							}
+						} catch (_) { }
+
+						//   /
+						if (data.usageGuide?.file?.filePath) {
+							window.__usageGuideFileUploaded = data.usageGuide.file;
+							try { if (typeof initUsageGuideUpload === 'function') initUsageGuideUpload(); } catch (_) { }
+						}
+					} catch (_) { }
+
+					return;
+				}
+
+				// 2) /:     
+				try {
+					const isCreatedAt = (el) => {
+						if (!el) return false;
+						if (el.id === 'createdAt') return true;
+						const label = el.closest('.grid-item')?.querySelector('.label-name')?.textContent || '';
+						return label.includes('');
+					};
+
+					const savedInputs = Array.isArray(data?.raw?.fields?.inputs) ? data.raw.fields.inputs : [];
+					const inputEls = Array.from(document.querySelectorAll('input.form-control'))
+						.filter((el) => (el.getAttribute('type') || 'text').toLowerCase() !== 'file')
+						.filter((el) => !isCreatedAt(el));
+					const maxI = Math.min(savedInputs.length, inputEls.length);
+					for (let i = 0; i < maxI; i++) {
+						const el = inputEls[i];
+						el.value = safeText(savedInputs[i]?.value || '');
+						// SMT: keep schedule address/name fields read-only even when restoring snapshot
+						try {
+							const gi = el.closest('.grid-item');
+							const span = gi?.querySelector?.('.label-name [data-lan-eng]');
+							const eng = (span?.getAttribute?.('data-lan-eng') || gi?.querySelector?.('.label-name')?.getAttribute?.('data-lan-eng') || '').trim();
+							const locked = [
+								'Meeting place name',
+								'Meeting place address',
+								'Sight Name',
+								'Sight Address',
+								'Accommodation name',
+								'Accommodation address',
+							].includes(eng);
+							if (locked) { el.disabled = true; el.readOnly = true; }
+							else { el.disabled = false; el.readOnly = false; }
+						} catch (_) { el.disabled = false; el.readOnly = false; }
+					}
+
+					const savedSelects = Array.isArray(data?.raw?.fields?.selects) ? data.raw.fields.selects : [];
+					const selectEls = Array.from(document.querySelectorAll('select'));
+					const maxS = Math.min(savedSelects.length, selectEls.length);
+					for (let i = 0; i < maxS; i++) {
+						const sel = selectEls[i];
+						sel.disabled = false;
+						const v = safeText(savedSelects[i]?.value || '');
+						if (v !== '') sel.value = v;
+						syncJwSelectDisplay(sel);
+					}
+
+					const savedEditors = Array.isArray(data?.raw?.editors) ? data.raw.editors : [];
+					const editorAreas = Array.from(document.querySelectorAll('.jw-editor .jweditor'));
+					const maxE = Math.min(savedEditors.length, editorAreas.length);
+					for (let i = 0; i < maxE; i++) {
+						setQuillHtml(editorAreas[i], savedEditors[i]?.html || '');
+					}
+
+					const savedUploads = Array.isArray(data?.raw?.uploads) ? data.raw.uploads : [];
+					const uploadItems = Array.from(document.querySelectorAll('.upload-item'));
+					const maxU = Math.min(savedUploads.length, uploadItems.length);
+					for (let i = 0; i < maxU; i++) {
+						const it = uploadItems[i];
+						const src = safeText(savedUploads[i]?.src || '').trim();
+						it.classList.toggle('is-filled', !!src);
+						let img = it.querySelector('img.preview');
+						if (src) {
+							if (!img) {
+								img = document.createElement('img');
+								img.className = 'preview';
+								img.alt = '';
+								it.appendChild(img);
+							}
+							img.src = src;
+						} else {
+							if (img) img.remove();
+						}
+					}
+				} catch (e) {
+					console.warn('snapshot bind failed:', e);
+				}
+
+				// (   input[disabled])
+				try {
+					const createdAtInput = document.querySelector('.card-panel input.form-control[disabled]') ||
+						Array.from(document.querySelectorAll('.card-panel .grid-item input.form-control')).find(i => i.disabled);
+					if (createdAtInput) createdAtInput.value = t.createdAt || '';
+				} catch (_) { }
+
+				// ( data-essential input)
+				const templateNameInput = document.querySelector('input.form-control[data-essential="y"]');
+				if (templateNameInput) templateNameInput.value = t.templateName || data.templateName || '';
+
+				// (   input[data-essential])
+				const productPanel = Array.from(document.querySelectorAll('h2.section-title'))
+					.find(h => (h.textContent || '').trim() === ' ')
+					?.nextElementSibling;
+				const productNameInput = productPanel?.querySelector('input.form-control[data-essential="y"]');
+				if (productNameInput) productNameInput.value = data.productName || productNameInput.value || '';
+
+				// 
+				const targetSel = Array.from(document.querySelectorAll('select')).find(s => {
+					const label = s.closest('.grid-item')?.querySelector('.label-name');
+					const t = (label?.textContent || '');
+					return / /i.test(t) || /sales target/i.test(t);
+				});
+				setSelectValue(targetSel, t.targetMarket || data.targetMarket || '');
+
+				// 
+				const mainSel = document.querySelector('select[data-category="1"]');
+				const subSel = document.querySelector('select[data-category="2"]');
+				setSelectValue(mainSel, t.mainCategory || data.mainCategory || '');
+				// main  sub disabled     
+				setTimeout(() => {
+					if (subSel) subSel.removeAttribute('disabled');
+					setSelectValue(subSel, t.subCategory || data.subCategory || '');
+					//  onchange       
+					try { if (typeof window.template_detail_sdaf_cate === 'function') window.template_detail_sdaf_cate(); } catch (_) { }
+				}, 0);
+
+				//  (  )
+				const editors = Array.from(document.querySelectorAll('.jw-editor .jweditor'));
+				if (editors[0]) setQuillHtml(editors[0], data.productDescriptionHtml || data.productDescription || data.editors?.[0]?.html || '');
+
+				//  (thumbnail / productImages / detailImage)
+				try {
+					const imgs = data.images || {};
+					const sets = [
+						{ key: 'thumbnail', srcs: imgs.thumbnail ? [imgs.thumbnail] : [] },
+						{ key: 'productImages', srcs: Array.isArray(imgs.productImages) ? imgs.productImages : [] },
+						{ key: 'detailImage', srcs: imgs.detailImage ? [imgs.detailImage] : [] },
+					];
+
+					//  upload-item  (  )
+					// (1), ( 5), (1)
+					const thumbItem = document.querySelectorAll('.upload-item')[0];
+					if (thumbItem && sets[0].srcs[0]) {
+						const img = thumbItem.querySelector('img.preview');
+						if (img) img.src = sets[0].srcs[0];
+						thumbItem.classList.add('is-filled');
+					}
+
+					//   :   upload-item  1     
+					const productItems = Array.from(document.querySelectorAll('.grid-item .upload-grid'))[2]?.querySelectorAll('.upload-item') || [];
+					sets[1].srcs.forEach((src, i) => {
+						const it = productItems[i];
+						if (!it) return;
+						let img = it.querySelector('img.preview');
+						if (!img) {
+							img = document.createElement('img');
+							img.className = 'preview';
+							img.alt = '';
+							it.appendChild(img);
+						}
+						img.src = src;
+						it.classList.add('is-filled');
+					});
+
+					//   ( )
+					const detailItem = Array.from(document.querySelectorAll('.upload-item')).find((it) => {
+						const label = it.closest('.grid-item')?.querySelector('.label-name');
+						return /  /i.test(label?.textContent || '');
+					});
+					if (detailItem && sets[2].srcs[0]) {
+						let img = detailItem.querySelector('img.preview');
+						if (!img) {
+							img = document.createElement('img');
+							img.className = 'preview';
+							img.alt = '';
+							detailItem.appendChild(img);
+						}
+						img.src = sets[2].srcs[0];
+						detailItem.classList.add('is-filled');
+					}
+				} catch (_) { }
+			}
+
+			// /:    
+			window.__tplDetailLast = null;
+
+			async function loadTemplateDetail(id) {
+				const res = await fetch(`${API}?action=getTemplateDetail&id=${encodeURIComponent(id)}`, { credentials: 'same-origin' });
+				if (res.status === 401) {
+					alert(' .');
+					window.location.href = '../index.html';
+					return null;
+				}
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json().catch(() => ({}));
+				if (!json.success) throw new Error(json.message || '  .');
+				return json.data?.template || null;
+			}
+
+			document.addEventListener('DOMContentLoaded', async () => {
+				try {
+					resetPublishingDefaults();
+
+					//  
+					const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
+					const sessionData = await sessionResponse.json();
+					const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+					if (!isAdmin) {
+						window.location.href = '../index.html';
+						return;
+					}
+
+					//  (Quill)
+					if (typeof window.board === 'function') {
+						try { window.board(); } catch (_) { }
+					}
+
+					//  DB ( code    )
+					try { await initCategoriesFromDb(); } catch (e) { console.error(e); }
+
+					const id = qs('id') || qs('templateId');
+					if (!id) return;
+					window.__templateId = id;
+
+					const t = await loadTemplateDetail(id);
+					if (t) {
+						window.__tplDetailLast = t;
+						// 1 
+						try { bindTemplateToForm(t); } catch (e) { console.error(e); }
+						// init()  jw_select/board     , 2  
+						setTimeout(() => {
+							try {
+								if (window.__tplDetailLast) bindTemplateToForm(window.__tplDetailLast);
+							} catch (e) { console.error(e); }
+						}, 600);
+					}
+				} catch (e) {
+					console.error(e);
+					alert(e?.message || '     .');
+				}
+			});
+		})();
+	</script>
+</body>
+
+</html>

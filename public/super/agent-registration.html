@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- calendar (daterangepicker) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="agent-list.html" class="jw-button" aria-label=" ">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeB" data-lan-eng="Save">Save</button>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Agent Registration">Agent Registration</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Basic Information">Basic Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- 1 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Agency Name">Agency Name</label>
+						<input type="text" class="form-control" id="companyName" placeholder="" data-lan-eng-placeholder="Agency Name">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Area">Area</label>
+						<input type="text" class="form-control" id="region" placeholder="" data-lan-eng-placeholder="Area">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Manager">Manager</label>
+						<input type="text" class="form-control" id="managerName" placeholder="" data-lan-eng-placeholder="Manager">
+					</div>
+
+					<!-- 2 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Manager Email">Manager Email</label>
+						<input type="email" class="form-control" id="emailAddress" placeholder="" data-lan-eng-placeholder="Manager Email">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contact information">Contact information</label>
+						<div class="field-row">
+							<select class="select w-auto" id="countryCode">
+								<option value="+63" selected>+63</option>
+								<option value="+82">+82</option>
+								<option value="+81">+81</option>
+								<option value="+1">+1</option>
+							</select>
+							<input type="text" class="form-control" id="contactNo" placeholder=" " data-lan-eng-placeholder="Enter numbers">
+						</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">ID</label>
+						<input type="text" class="form-control" id="username" name="agent_username" value="" placeholder="ID" autocomplete="new-password" readonly>
+					</div>
+
+					<!-- 3 -->
+					<div class="grid-item">
+						<label class="label-name">PW</label>
+						<div class="input-box">
+							<input type="password" id="password" value="" placeholder="8~12, // " data-lan-eng-placeholder="8~12 characters with letters, numbers and symbols">
+							<button type="button" class="jw-button typeD" id="autoPwBtn" data-lan-eng="Auto Input"><img src="../image/replay.svg" alt=""> </button>
+						</div>
+					</div>
+					<div class="grid-item"></div>
+					<div class="grid-item"></div>
+
+					<!-- 4 :   -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Note">Note</label>
+						<div class="editor-box-wrap">
+							<textarea name="memo" id="memo" rows="10" placeholder=" " data-lan-eng-placeholder="Please enter the content"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Contract Information">Contract Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!--   -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contract period">Contract period</label>
+						<div class="field-row">
+							<input type="text" class="form-control" id="contract-period" placeholder="YYYY-MM-DD ~ YYYY-MM-DD" value="" readonly>
+							<button type="button" class="btn-icon calendar" aria-label=" " data-target="#contract-period"></button>
+						</div>
+					</div>
+
+					<!--  (%) -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Deposit ratio (%)">Deposit ratio (%)</label>
+						<input type="number" class="form-control" id="depositRatio" value="" min="0" max="100" step="1" placeholder="0">
+					</div>
+				</div>
+			</div>
+
+
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="../js/datepicker.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				//    (:   )
+				try { await loadCountryCodeOptions(); } catch (_) {}
+				
+				//    
+				const saveButton = document.querySelector('.page-toolbar-actions .jw-button.typeB');
+				if (saveButton) {
+					saveButton.addEventListener('click', handleSave);
+				}
+				
+				// URL ID  ( )
+				const urlParams = new URLSearchParams(window.location.search);
+				const agentId = urlParams.get('id') || urlParams.get('agentId');
+				if (agentId) {
+					await loadAgentDetail(agentId);
+				} else {
+					// (create) : ID   placeholder  
+					const idEl = document.getElementById('username');
+					if (idEl) {
+						// autofill :  readonly  ,     
+						idEl.value = '';
+						idEl.setAttribute('readonly', 'readonly');
+						const clear = () => { idEl.value = ''; };
+						clear();
+						requestAnimationFrame(clear);
+						setTimeout(clear, 50);
+						setTimeout(clear, 200);
+						setTimeout(() => { idEl.removeAttribute('readonly'); clear(); }, 350);
+					}
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodeOptions() {
+			const sel = document.getElementById('countryCode');
+			if (!sel) return;
+			try {
+				const current = (sel.value || '').trim() || '+63';
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json().catch(() => ({}));
+				if (!json?.success || !Array.isArray(json.countries)) return;
+				sel.innerHTML = '';
+				json.countries.forEach((c) => {
+					const code = String(c?.code || '').trim();
+					const name = String(c?.name || '').trim();
+					if (!code) return;
+					const opt = document.createElement('option');
+					opt.value = code;
+					opt.textContent = name ? `${name} (${code})` : code;
+					sel.appendChild(opt);
+				});
+				sel.value = current;
+			} catch (_) {
+				// ignore - keep fallback options
+			} finally {
+				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			}
+		}
+
+		async function loadAgentDetail(agentId) {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getAgentDetail&id=${agentId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.agent) {
+					const agent = result.data.agent;
+					console.log('Loaded agent for edit:', agent);
+					
+					//    (placeholder  : id )
+					const $ = (id) => document.getElementById(id);
+					if ($('companyName')) $('companyName').value = agent.companyName || '';
+					//  agent-detail branchName ,   region branchName 
+					if ($('region')) $('region').value = agent.branchName || '';
+					if ($('managerName')) $('managerName').value = agent.managerName || '';
+					if ($('emailAddress')) $('emailAddress').value = agent.emailAddress || '';
+					if ($('username')) $('username').value = agent.username || agent.agentId || '';
+					if ($('countryCode') && agent.countryCode) $('countryCode').value = agent.countryCode;
+					if ($('contactNo')) {
+						const raw = String(agent.contactNo || '').trim();
+						const m = raw.match(/^(\+\d+)\s*(.*)$/);
+						if (m) {
+							if ($('countryCode')) $('countryCode').value = m[1];
+							$('contactNo').value = (m[2] || '').trim();
+						} else {
+							$('contactNo').value = raw.replace(/^\+\d+\s*/, '').trim();
+						}
+					}
+
+					// /  
+					if ($('memo')) $('memo').value = agent.memo || '';
+					if ($('depositRatio') && agent.depositRatio !== undefined && agent.depositRatio !== null) {
+						$('depositRatio').value = agent.depositRatio;
+					}
+					if ($('contract-period')) {
+						const s = agent.contractStartDate ? String(agent.contractStartDate).slice(0, 10) : '';
+						const e = agent.contractEndDate ? String(agent.contractEndDate).slice(0, 10) : '';
+						$('contract-period').value = (s && e) ? `${s} ~ ${e}` : '';
+					}
+				}
+			} catch (error) {
+				console.error('Error loading agent detail:', error);
+			}
+		}
+
+		function generatePassword(minLen = 8, maxLen = 12) {
+			const len = Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
+			const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+			const numbers = '0123456789';
+			const symbols = '!@#$%^&*';
+			const pick = (s) => s[Math.floor(Math.random() * s.length)];
+			const chars = [pick(letters), pick(numbers), pick(symbols)];
+			const all = letters + numbers + symbols;
+			while (chars.length < len) chars.push(pick(all));
+			for (let i = chars.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[chars[i], chars[j]] = [chars[j], chars[i]];
+			}
+			return chars.join('');
+		}
+
+		async function copyToClipboard(text) {
+			const v = (text || '').toString();
+			if (!v) return false;
+			try {
+				if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(v);
+					return true;
+				}
+			} catch (_) {}
+			// fallback
+			try {
+				const ta = document.createElement('textarea');
+				ta.value = v;
+				ta.style.position = 'fixed';
+				ta.style.left = '-9999px';
+				document.body.appendChild(ta);
+				ta.select();
+				const ok = document.execCommand('copy');
+				ta.remove();
+				return ok;
+			} catch (_) {
+				return false;
+			}
+		}
+
+		//    +  
+		document.getElementById('autoPwBtn')?.addEventListener('click', (e) => {
+			e.preventDefault();
+			const pwInput = document.getElementById('password');
+			if (!pwInput) return;
+			pwInput.value = generatePassword();
+			copyToClipboard(pwInput.value).then((ok) => {
+				alert(ok ? '   .' : ' .');
+			});
+		});
+
+		async function handleSave() {
+			try {
+				//   
+				const branchNameInput = document.getElementById('companyName');
+				const managerNameInput = document.getElementById('managerName');
+				const emailInput = document.getElementById('emailAddress');
+				const countryCodeSel = document.getElementById('countryCode');
+				const contactInput = document.getElementById('contactNo');
+				const idInput = document.getElementById('username');
+				const pwInput = document.getElementById('password');
+				const regionInput = document.getElementById('region');
+				const contractPeriodInput = document.getElementById('contract-period');
+				const depositRatioInput = document.getElementById('depositRatio');
+				const memoInput = document.getElementById('memo');
+				
+				const branchName = branchNameInput?.value.trim();
+				const region = regionInput?.value?.trim() || '';
+				const managerName = managerNameInput?.value.trim();
+				const email = emailInput?.value.trim();
+				const contact = contactInput?.value.trim();
+				const username = idInput?.value.trim(); // ID  username
+				const countryCode = (countryCodeSel?.value || '').trim();
+				const fullContact = (countryCode ? `${countryCode} ${contact}` : contact).trim();
+				const contractPeriod = contractPeriodInput?.value?.trim() || '';
+				const depositRatio = depositRatioInput?.value?.trim() || '';
+				const memo = memoInput?.value?.trim() || '';
+				
+				// :  
+				console.log('Form values:', {
+					branchName,
+					managerName,
+					email,
+					contact,
+					username,
+					idInput: idInput,
+					idInputValue: idInput?.value
+				});
+				
+				if (!branchName || !managerName || !email || !contact) {
+					alert('   . (, , , )');
+					return;
+				}
+				
+				// URL ID  (  )
+				const urlParams = new URLSearchParams(window.location.search);
+				const agentId = urlParams.get('id') || urlParams.get('agentId');
+				
+				//    
+				const nameParts = managerName.trim().split(/\s+/);
+				const fName = nameParts[0] || managerName;
+				const lName = nameParts.slice(1).join(' ') || '';
+				
+				const formData = new FormData();
+				//  (YYYY-MM-DD ~ YYYY-MM-DD) => contractStartDate/contractEndDate
+				if (contractPeriod) {
+					const m = contractPeriod.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
+					if (!m) {
+						alert('    . (YYYY-MM-DD ~ YYYY-MM-DD)');
+						return;
+					}
+					formData.append('contractStartDate', m[1]);
+					formData.append('contractEndDate', m[2]);
+				} else {
+					//  NULL  ( '' -> NULL )
+					formData.append('contractStartDate', '');
+					formData.append('contractEndDate', '');
+				}
+
+				if (depositRatio !== '') {
+					const v = Number(depositRatio);
+					if (!Number.isFinite(v) || v < 0 || v > 100) {
+						alert('  0~100   .');
+						return;
+					}
+					formData.append('depositRatio', String(Math.round(v)));
+				} else {
+					formData.append('depositRatio', '');
+				}
+
+				if (memo) formData.append('memo', memo);
+				// NOTE: region DB    ,   (    )
+				if (region) formData.append('region', region);
+
+				if (agentId) {
+					formData.append('action', 'updateAgent');
+					formData.append('agentId', agentId);
+					formData.append('fName', fName);
+					formData.append('lName', lName);
+					formData.append('contactNo', fullContact);
+					formData.append('emailAddress', email);
+					if (branchName) formData.append('companyName', branchName);
+				} else {
+					formData.append('action', 'createAgent');
+					formData.append('fName', fName);
+					formData.append('lName', lName);
+					formData.append('emailAddress', email);
+					// PW   (    )
+					const pw = (pwInput?.value || '').trim();
+					if (!pw) {
+						alert(' . (     .)');
+						return;
+					}
+					formData.append('password', pw);
+					formData.append('contactNo', fullContact);
+					formData.append('companyName', branchName); //   
+					
+					// username  
+					if (username) {
+						formData.append('username', username);
+					}
+				}
+				
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+				
+				//   
+				if (!response.ok) {
+					//      
+					let errorText = '';
+					try {
+						errorText = await response.text();
+					} catch (e) {
+						console.error('Failed to read error response:', e);
+						errorText = '';
+					}
+					
+					console.error('Server error response:', {
+						status: response.status,
+						statusText: response.statusText,
+						body: errorText,
+						headers: Object.fromEntries(response.headers.entries())
+					});
+					
+					// JSON  
+					let errorMessage = `  . (HTTP ${response.status})`;
+					if (errorText && errorText.trim()) {
+						try {
+							const errorJson = JSON.parse(errorText);
+							errorMessage = errorJson.message || errorMessage;
+						} catch (e) {
+							// JSON     
+							const preview = errorText.length > 200 ? errorText.substring(0, 200) + '...' : errorText;
+							errorMessage = `  (${response.status}): ${preview}`;
+						}
+					} else {
+						errorMessage = `  . (HTTP ${response.status})`;
+					}
+					
+					alert(' : ' + errorMessage);
+					return;
+				}
+				
+				//    
+				const responseText = await response.text();
+				if (!responseText || responseText.trim() === '') {
+					alert('  .     .');
+					return;
+				}
+				
+				// JSON 
+				let result;
+				try {
+					result = JSON.parse(responseText);
+				} catch (e) {
+					console.error('JSON parse error:', e, 'Response text:', responseText);
+					alert('    .');
+					return;
+				}
+				
+				if (result.success) {
+					alert(agentId ? '  .' : ' .');
+					// :    
+					window.location.href = 'agent-list.html';
+				} else {
+					alert(' : ' + (result.message || '   '));
+				}
+			} catch (error) {
+				console.error('Error saving agent:', error);
+				alert('   : ' + (error.message || '   '));
+			}
+		}
+	</script>
+</body>
+
+</html>

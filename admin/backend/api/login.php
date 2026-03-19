@@ -34,6 +34,8 @@ function saveLoginHistory($conn, $accountId, $email, $accountType, $status, $fai
     }
 }
 
+
+
 // POST 요청만 허용
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

@@ -1,0 +1,444 @@
+/* ══════════════════════════════════════════════════════
+   sidebar.css
+   Styles for .layout-nav and all its child components.
+   Depends on root design tokens.
+   Load after layout.css.
+   ══════════════════════════════════════════════════════ */
+
+/* ── Sidebar background + border ──────────────────── */
+
+.layout-nav {
+  background: var(--panel, #ffffff);
+  border-right: 1px solid var(--border-subtle, #e8e5df);
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Nav list ──────────────────────────────────────── */
+
+.nav-list {
+  list-style: none;
+  padding: 0 6px;
+  margin: 0;
+}
+
+.nav-item { position: relative; }
+.nav-item + .nav-item { margin-top: 1px; }
+
+/* ── Section divider ───────────────────────────────── */
+
+.nav-divider {
+  height: 1px;
+  background: var(--border-subtle, #e8e5df);
+  margin: 5px 8px;
+  opacity: 0.7;
+}
+
+/* ── Nav button (parent row) ────────────────────────── */
+
+.nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  height: 36px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--label, #3a3835);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition:
+    background 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    color     150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-btn:hover {
+  background: var(--accent-glow, rgba(200, 65, 10, 0.09));
+  color: var(--accent, #c8410a);
+}
+
+.nav-btn:focus-visible {
+  outline: 2px solid var(--accent, #c8410a);
+  outline-offset: -2px;
+}
+
+/* Direct-link nav-btn active (e.g. Inquiries) */
+a.nav-btn.is-active {
+  background: var(--accent-glow, rgba(200, 65, 10, 0.09));
+  color: var(--accent, #c8410a);
+  font-weight: 600;
+}
+
+/* Parent button when a child is active */
+.nav-item.has-active > button.nav-btn {
+  color: var(--accent, #c8410a);
+}
+
+/* ── Nav icon ───────────────────────────────────────── */
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  color: inherit;
+  opacity: 0.5;
+  transition: opacity 150ms;
+}
+
+.nav-btn:hover .nav-icon,
+.nav-item.is-open   > .nav-btn .nav-icon,
+.nav-item.has-active > .nav-btn .nav-icon,
+a.nav-btn.is-active .nav-icon { opacity: 1; }
+
+.nav-icon svg { width: 100%; height: 100%; fill: currentColor; }
+
+/* Stroke-based icons (Product Management, Shopping) */
+.nav-icon svg path.stroke {
+  fill: none;
+  stroke: currentColor;
+}
+
+/* ── Label ─────────────────────────────────────────── */
+
+.nav-btn-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 150ms;
+}
+
+/* ── Chevron — pure CSS, no images ─────────────────── */
+
+.nav-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  position: relative;
+  opacity: 0.3;
+  transition: opacity 150ms;
+}
+
+.nav-chevron::before,
+.nav-chevron::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-chevron::before { left: 0;  transform: translateY(-50%) rotate(45deg); }
+.nav-chevron::after  { right: 0; transform: translateY(-50%) rotate(-45deg); }
+
+/* Open state */
+.nav-item.is-open > .nav-btn .nav-chevron           { opacity: 0.7; }
+.nav-item.is-open > .nav-btn .nav-chevron::before   { transform: translateY(-50%) rotate(-45deg); }
+.nav-item.is-open > .nav-btn .nav-chevron::after    { transform: translateY(-50%) rotate(45deg); }
+
+/* ── Unread badge ───────────────────────────────────── */
+
+.nav-unread-badge {
+  margin-left: auto;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--accent, #c8410a);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+
+/* ══════════════════════════════════════════════════════
+   SUB-MENU ACCORDION
+   Technique: CSS grid-template-rows 0fr → 1fr
+   Smoothest zero-JS height animation available.
+
+   REQUIRED HTML STRUCTURE — three layers, no exceptions:
+
+     <div class="nav-sub-wrap">     ← grid container
+       <div class="nav-sub">        ← overflow: hidden
+         <div class="nav-sub-inner"> ← padding wrapper
+           <a class="side-link">...</a>
+         </div>
+       </div>
+     </div>
+
+   .nav-sub-wrap MUST be a direct child of .nav-item.
+   The > combinator in the selector below will not
+   match if any extra element sits between them.
+   ══════════════════════════════════════════════════════ */
+
+.nav-sub-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 230ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Toggle is-open on .nav-item to open */
+.nav-item.is-open > .nav-sub-wrap {
+  grid-template-rows: 1fr;
+}
+
+/* Must have overflow:hidden — this is what clips the content */
+.nav-sub {
+  overflow: hidden;
+}
+
+/* Inner padding wrapper — items won't clip during animation */
+.nav-sub-inner {
+  padding: 2px 0 4px;
+}
+
+/* ── Sub-menu links ─────────────────────────────────── */
+
+.side-link {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 9px 0 34px; /* 34px = icon(17) + gap(8) + dot-indent(9) */
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted, #9a9690);
+  text-decoration: none;
+  border-radius: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  transition:
+    color      140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dot indicator */
+.side-link::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background: var(--border-subtle, #e8e5df);
+  transition:
+    background 140ms,
+    transform  140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Hover */
+.side-link:hover {
+  color: var(--label, #3a3835);
+  background: var(--accent-glow, rgba(200, 65, 10, 0.07));
+}
+
+.side-link:hover::before {
+  background: var(--muted, #9a9690);
+  transform: translateY(-50%) scale(1.4);
+}
+
+/* Active */
+.side-link.is-active {
+  color: var(--accent, #c8410a);
+  font-weight: 600;
+  background: var(--accent-glow, rgba(200, 65, 10, 0.09));
+}
+
+.side-link.is-active::before {
+  background: var(--accent, #c8410a);
+  transform: translateY(-50%) scale(1.5);
+}
+
+.side-link:focus-visible {
+  outline: 2px solid var(--accent, #c8410a);
+  outline-offset: -2px;
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+
+[data-theme="dark"] .layout-nav {
+  border-right-color: var(--border-subtle, #2c2b28);
+}
+
+/* ══════════════════════════════════════════════════════
+   LEGACY CSS CONFLICT OVERRIDES
+   a_components.css / a_contents.css / a_variables.css
+   may have rules targeting these same class names.
+   All accordion rules are re-declared under #layoutNav
+   for higher specificity — no !important needed on most,
+   but added where old files use it themselves.
+   ══════════════════════════════════════════════════════ */
+
+/* Nav list */
+#layoutNav .nav-list {
+  list-style: none !important;
+  padding: 0 6px !important;
+  margin: 0 !important;
+}
+
+#layoutNav .nav-item {
+  position: relative !important;
+}
+
+/* Nav button */
+#layoutNav .nav-btn {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 9px !important;
+  height: 36px !important;
+  border: none !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  color: var(--label, #3a3835) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+#layoutNav .nav-btn:hover {
+  background: var(--accent-glow, rgba(200, 65, 10, 0.09)) !important;
+  color: var(--accent, #c8410a) !important;
+}
+
+#layoutNav a.nav-btn.is-active {
+  background: var(--accent-glow, rgba(200, 65, 10, 0.09)) !important;
+  color: var(--accent, #c8410a) !important;
+  font-weight: 600 !important;
+}
+
+#layoutNav .nav-item.has-active > button.nav-btn {
+  color: var(--accent, #c8410a) !important;
+}
+
+/* ── Accordion — the critical block ────────────────── */
+
+#layoutNav .nav-sub-wrap {
+  display: grid !important;
+  grid-template-rows: 0fr !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transition: grid-template-rows 230ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+#layoutNav .nav-item.is-open > .nav-sub-wrap {
+  grid-template-rows: 1fr !important;
+}
+
+#layoutNav .nav-sub {
+  display: block !important;
+  overflow: hidden !important;
+  max-height: none !important;
+  height: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+#layoutNav .nav-sub-inner {
+  display: block !important;
+  padding: 2px 0 4px !important;
+  visibility: visible !important;
+}
+
+/* Sub-links */
+#layoutNav .side-link {
+  display: flex !important;
+  align-items: center !important;
+  height: 32px !important;
+  padding: 0 9px 0 34px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--muted, #9a9690) !important;
+  text-decoration: none !important;
+  border-radius: 7px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#layoutNav .side-link:hover {
+  color: var(--label, #3a3835) !important;
+  background: var(--accent-glow, rgba(200, 65, 10, 0.07)) !important;
+}
+
+#layoutNav .side-link.is-active {
+  color: var(--accent, #c8410a) !important;
+  font-weight: 600 !important;
+  background: var(--accent-glow, rgba(200, 65, 10, 0.09)) !important;
+}
+
+/* Chevron */
+#layoutNav .nav-chevron {
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+  width: 13px !important;
+  height: 13px !important;
+  opacity: 0.3 !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+#layoutNav .nav-item.is-open > .nav-btn .nav-chevron {
+  opacity: 0.7 !important;
+}
+
+#layoutNav .nav-item.is-open > .nav-btn .nav-chevron::before {
+  transform: translateY(-50%) rotate(-45deg) !important;
+}
+
+#layoutNav .nav-item.is-open > .nav-btn .nav-chevron::after {
+  transform: translateY(-50%) rotate(45deg) !important;
+}
+
+/* Icon */
+#layoutNav .nav-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  width: 17px !important;
+  height: 17px !important;
+  opacity: 0.5 !important;
+}
+
+#layoutNav .nav-btn:hover .nav-icon,
+#layoutNav .nav-item.is-open > .nav-btn .nav-icon,
+#layoutNav .nav-item.has-active > .nav-btn .nav-icon,
+#layoutNav a.nav-btn.is-active .nav-icon {
+  opacity: 1 !important;
+}

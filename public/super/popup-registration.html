@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공볃 스타춋5 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231b">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- daterangepicker -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+
+<body>
+
+	<!-- header 들웰월 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들웴월 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="popup-management.html" class="jw-button" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeB" id="saveBtn" onclick="handleSave()" data-lan-eng="Save">Save</button>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Register Popup">Register Popup</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Popup information">Popup information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- Popup Image -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Popup image (recommended size 640x640)">Popup image (recommended size 640x640)</label>
+						<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+							<div id="imagePreview" style="width:500px; height:500px; background:#F3F3F3; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;">
+								<img id="popupImagePreviewImg" alt="Preview" style="max-width:100%; max-height:100%; object-fit:contain; display:none;">
+								<label class="inputFile" id="uploadLabel" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
+									<input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(this)">
+									<button type="button" class="btn-upload" style="background:#fff; border:1px solid #D4D4D4; border-radius:12px; padding:10px 24px; display:flex; gap:4px; align-items:center; white-space:nowrap;">
+										<img src="../image/upload3.svg" alt="" style="width:24px; height:24px;">
+										<span data-lan-eng="Image upload">Image upload</span>
+									</button>
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<!-- Row 1: Title, Exposure period, URL -->
+					<div class="grid-item col-span-1">
+						<label class="label-name" data-lan-eng="Title">Title</label>
+						<input type="text" class="form-control" id="popupTitle" placeholder="Title">
+					</div>
+					<div class="grid-item col-span-1">
+						<label class="label-name" data-lan-eng="Exposure period">Exposure period</label>
+						<div class="field-row">
+							<input type="text" class="form-control" id="exposurePeriod" placeholder="Select period" readonly style="cursor:pointer;">
+							<button type="button" class="btn-icon calendar" id="exposurePeriodBtn" aria-label="Open calendar">
+								<img src="../image/calendar.svg" alt="">
+							</button>
+						</div>
+						<input type="hidden" id="startDate">
+						<input type="hidden" id="endDate">
+					</div>
+					<div class="grid-item col-span-1">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control" id="link" placeholder="URL">
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251231b"></script>
+	<script src="../js/popup-registration.js?v=20251231b"></script>
+</body>
+</html>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+	
+	<!-- calendar (publishing original) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+	<!-- editor (publishing original) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+
+	<style>
+		.notice-upload-wrap input[type="file"] { display: none; }
+		.notice-upload-btn {
+			display: inline-flex; align-items: center; gap: 4px;
+			padding: 10px 24px;
+			background: #fff; border: 1px solid #D4D4D4; border-radius: 12px;
+			font-size: 14px; font-weight: 700; color: #121212;
+			cursor: pointer;
+		}
+		.notice-upload-btn:hover { border-color: #999; }
+		.notice-upload-btn img { width: 24px; height: 24px; }
+		.notice-image-preview {
+			display: none; margin-top: 12px;
+		}
+		.notice-image-preview.show { display: flex; align-items: flex-start; gap: 12px; }
+		.notice-image-thumb {
+			width: 110px; height: 110px;
+			background: #F3F3F3; border-radius: 4px;
+			overflow: hidden; flex-shrink: 0;
+		}
+		.notice-image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+		.notice-image-meta { display: flex; flex-direction: column; gap: 4px; }
+		.notice-image-meta .file-name { font-size: 14px; font-weight: 500; color: #121212; word-break: break-all; }
+		.notice-image-meta .file-info { font-size: 14px; font-weight: 400; color: #121212; }
+		.notice-image-meta .btn-download { margin-top: 4px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+		.notice-image-meta .btn-download img { width: 20px; height: 20px; }
+	</style>
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들어올 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="notice.html" class="jw-button" aria-label="목록으로 돌아가기">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">목록으로 돌아가기</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeB" id="saveBtn" onclick="handleSave()" data-lan-eng="Save">Save</button>
+				</div>
+			</div>
+			<h1 class="page-title" data-lan-eng="Notice Registration">공지사항 등록</h1>
+			
+			<h2 class="section-title jw-mgt32" data-lan-eng="Notice Registration Information">공지등록 정보</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Exposure period">노출 기간</label>
+						<div class="field-row">
+							<input id="exposurePeriod" type="text" class="jw-w form-control" placeholder="Exposure period" data-lan-eng-placeholder="Exposure period" readonly>
+							<button type="button" class="btn-icon calendar" aria-label=" " data-target="#exposurePeriod"></button>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<h2 class="section-title jw-mgt32" data-lan-eng="English Announcements">영어 공지사항</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Title">제목</label>
+						<input type="text" class="form-control" id="noticeTitleEn" value="" placeholder="Please enter a title">
+					</div>
+					
+					<!-- multi-editor.js -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Content">내용</label>
+						<div class="editor-box-wrap">
+						  <div class="jw-editor" data-lang="en">
+							<div class="toolbar">
+							  <div class="group">
+								<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+								<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+								<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+							  </div>
+							  <div class="group">
+								<select class="ql-size">
+								  <option value="" selected>Font</option>
+								  <option value="12px">12px</option>
+								  <option value="14px">14px</option>
+								  <option value="16px">16px</option>
+								  <option value="18px">18px</option>
+								  <option value="24px">24px</option>
+								</select>
+							  </div>
+							  <div class="group">
+								<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+							  </div>
+							  <div class="group">
+								<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+							  </div>
+							</div>
+							<div class="jweditor" data-placeholder="내용을 입력해주세요"></div>
+						  </div>
+						</div>
+					</div>
+					
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Image">이미지</label>
+						<div class="notice-upload-wrap">
+							<input id="noticeImageEn" type="file" accept="image/*" onchange="onImageSelected('en', this);">
+							<label for="noticeImageEn" class="notice-upload-btn" id="noticeImageEnBtn">
+								<img src="../image/upload.svg" alt="">
+								<span data-lan-eng="Image upload">Image upload</span>
+							</label>
+							<div class="notice-image-preview" id="noticeImageEnPreview">
+								<div class="notice-image-thumb">
+									<img id="noticeImageEnThumbImg" src="" alt="">
+								</div>
+								<div class="notice-image-meta">
+									<div class="file-name" id="noticeImageEnName">-</div>
+									<div class="file-info" id="noticeImageEnInfo">-</div>
+									<button type="button" class="btn-download" onclick="deleteImage('en');" title="Delete">
+										<img src="../image/button-close.svg" alt="Delete">
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Tagalog Announcements">따갈로그어 공지사항</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Title">제목</label>
+						<input type="text" class="form-control" id="noticeTitleTl" value="" placeholder="Please enter a title">
+					</div>
+					
+					<!-- multi-editor.js -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Content">내용</label>
+						<div class="editor-box-wrap">
+						  <div class="jw-editor" data-lang="tl">
+							<div class="toolbar">
+							  <div class="group">
+								<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+								<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+								<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+							  </div>
+							  <div class="group">
+								<select class="ql-size">
+								  <option value="" selected>Font</option>
+								  <option value="12px">12px</option>
+								  <option value="14px">14px</option>
+								  <option value="16px">16px</option>
+								  <option value="18px">18px</option>
+								  <option value="24px">24px</option>
+								</select>
+							  </div>
+							  <div class="group">
+								<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+							  </div>
+							  <div class="group">
+								<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+								<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+							  </div>
+							</div>
+							<div class="jweditor" data-placeholder="내용을 입력해주세요"></div>
+						  </div>
+						</div>
+					</div>
+					
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Image">이미지</label>
+						<div class="notice-upload-wrap">
+							<input id="noticeImageTl" type="file" accept="image/*" onchange="onImageSelected('tl', this);">
+							<label for="noticeImageTl" class="notice-upload-btn" id="noticeImageTlBtn">
+								<img src="../image/upload.svg" alt="">
+								<span data-lan-eng="Image upload">Image upload</span>
+							</label>
+							<div class="notice-image-preview" id="noticeImageTlPreview">
+								<div class="notice-image-thumb">
+									<img id="noticeImageTlThumbImg" src="" alt="">
+								</div>
+								<div class="notice-image-meta">
+									<div class="file-name" id="noticeImageTlName">-</div>
+									<div class="file-info" id="noticeImageTlInfo">-</div>
+									<button type="button" class="btn-download" onclick="deleteImage('tl');" title="Delete">
+										<img src="../image/button-close.svg" alt="Delete">
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_noticeRegFix1"></script>
+	<script src="../js/datepicker.js?v=20251226_noticeRegFix1"></script>
+	<script src="../js/multi-editor.js?v=20251226_noticeRegFix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
+				const sessionData = await sessionResponse.json();
+
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				// registration 페이지에 id가 붙어 들어오는 케이스는 상세 페이지로 이동
+				const urlParams = new URLSearchParams(window.location.search);
+				const noticeId = urlParams.get('id') || urlParams.get('noticeId');
+				if (noticeId) {
+					window.location.href = `notice-detail.html?id=${encodeURIComponent(noticeId)}`;
+					return;
+				}
+
+				// 에디터 보장: CDN 로딩 타이밍/캐시 이슈로 multi-editor 자동 초기화가 누락되는 케이스 방지
+				try { if (typeof window.board === 'function') window.board(); } catch (_) {}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+	function parsePeriodRange() {
+		const periodEl = document.getElementById("exposurePeriod");
+		const startDate = periodEl?.getAttribute('data-start') || "";
+		const endDate = periodEl?.getAttribute('data-end') || "";
+		return { startDate, endDate };
+	}
+
+		function editorHtmlByLang(lang) {
+			const root = document.querySelector(`.jw-editor[data-lang="${lang}"] .jweditor`);
+			if (!root) return '';
+			try {
+				const q = root.__quill;
+				if (q && q.root) return String(q.root.innerHTML || '');
+			} catch (_) {}
+			// Quill이 안 붙은 상태로 저장되면 <div class="ql-editor"...> wrapper까지 들어가 DB length 폭증 + 사용자페이지 렌더링 깨짐.
+			// wrapper가 있으면 내부만 추출해서 저장한다.
+			try {
+				const tmp = document.createElement('div');
+				tmp.innerHTML = String(root.innerHTML || '');
+				const ql = tmp.querySelector('.ql-editor');
+				if (ql) return String(ql.innerHTML || '');
+			} catch (_) {}
+			return String(root.innerHTML || '');
+		}
+
+		function formatFileSize(bytes) {
+			if (bytes < 1024) return bytes + 'B';
+			if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + 'KB';
+			return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+		}
+
+		function getFileExtension(filename) {
+			const ext = filename.split('.').pop();
+			return ext ? ext.toUpperCase() : '';
+		}
+
+		function onImageSelected(lang, input) {
+			const file = input.files?.[0];
+			if (!file) return;
+
+			const btn = document.getElementById(lang === 'en' ? 'noticeImageEnBtn' : 'noticeImageTlBtn');
+			const preview = document.getElementById(lang === 'en' ? 'noticeImageEnPreview' : 'noticeImageTlPreview');
+			const thumbImg = document.getElementById(lang === 'en' ? 'noticeImageEnThumbImg' : 'noticeImageTlThumbImg');
+			const nameEl = document.getElementById(lang === 'en' ? 'noticeImageEnName' : 'noticeImageTlName');
+			const infoEl = document.getElementById(lang === 'en' ? 'noticeImageEnInfo' : 'noticeImageTlInfo');
+
+			// 썸네일 미리보기
+			const url = URL.createObjectURL(file);
+			if (thumbImg) thumbImg.src = url;
+
+			// 파일 정보 표시
+			const ext = getFileExtension(file.name).toLowerCase();
+			const size = formatFileSize(file.size);
+			const nameWithoutExt = file.name.lastIndexOf('.') > 0 ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
+			if (nameEl) nameEl.textContent = nameWithoutExt;
+			if (infoEl) infoEl.textContent = `[${ext}, ${size}]`;
+
+			// UI 상태 변경
+			if (btn) btn.style.display = 'none';
+			if (preview) preview.classList.add('show');
+
+			setTimeout(() => URL.revokeObjectURL(url), 60000);
+		}
+
+		function deleteImage(lang) {
+			const input = document.getElementById(lang === 'en' ? 'noticeImageEn' : 'noticeImageTl');
+			const btn = document.getElementById(lang === 'en' ? 'noticeImageEnBtn' : 'noticeImageTlBtn');
+			const preview = document.getElementById(lang === 'en' ? 'noticeImageEnPreview' : 'noticeImageTlPreview');
+			const thumbImg = document.getElementById(lang === 'en' ? 'noticeImageEnThumbImg' : 'noticeImageTlThumbImg');
+
+			try { if (input) input.value = ''; } catch (_) {}
+			if (thumbImg) thumbImg.src = '';
+			if (btn) btn.style.display = '';
+			if (preview) preview.classList.remove('show');
+		}
+
+		async function handleSave() {
+			try {
+				// 저장 직전에도 에디터 초기화 재시도
+				try { if (typeof window.board === 'function') window.board(); } catch (_) {}
+
+				const titleEn = String(document.getElementById('noticeTitleEn')?.value || '').trim();
+				const titleTl = String(document.getElementById('noticeTitleTl')?.value || '').trim();
+				const contentEn = editorHtmlByLang('en').trim();
+				const contentTl = editorHtmlByLang('tl').trim();
+
+				if (!titleEn) { alert('Please enter an English title.'); return; }
+				if (!contentEn) { alert('Please enter English content.'); return; }
+
+				const { startDate, endDate } = parsePeriodRange();
+
+				// 저장 규칙: 사용자 페이지 호환을 위해 title/content는 JSON으로 저장
+				const title = JSON.stringify({ ko: titleEn, en: titleEn, tl: (titleTl || titleEn) }, null, 0);
+				const content = JSON.stringify({ ko: contentEn, en: contentEn, tl: (contentTl || contentEn) }, null, 0);
+
+				const fd = new FormData();
+				fd.append('action', 'createNotice');
+				fd.append('title', title);
+				fd.append('content', content);
+				fd.append('startDate', startDate);
+				fd.append('endDate', endDate);
+				fd.append('status', 'active');
+
+				const imgEn = document.getElementById('noticeImageEn')?.files?.[0];
+				const imgTl = document.getElementById('noticeImageTl')?.files?.[0];
+				if (imgEn) fd.append('noticeImageEn', imgEn);
+				if (imgTl) fd.append('noticeImageTl', imgTl);
+
+				const res = await fetch('../backend/api/super-api.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+				const rawText = await res.text();
+				let json = {};
+				try { json = JSON.parse(rawText); } catch (_) { json = {}; }
+
+				if (res.status === 401) {
+					alert('Admin login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!res.ok || !json?.success) {
+					console.error('createNotice failed', { status: res.status, rawText, json });
+					alert(('Failed to create notice. (HTTP ' + res.status + ') ' + (json?.message || '')).trim());
+					return;
+				}
+
+				alert('Notice created.');
+				window.location.href = 'notice.html';
+			} catch (e) {
+				console.error('handleSave error:', e);
+				alert('An error occurred while creating.');
+			}
+		}
+	</script>
+</body>
+
+</html>
+

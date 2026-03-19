@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- Common styles -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- Header slot -->
+	<header class="layout-header"></header>
+
+	<!-- Main content -->
+	<main class="layout-main">
+		<!-- Nav slot -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Member Inquiry List">Member Inquiry List</h1>
+
+			<div class="card-panel jw-mgt32">
+
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items"> items</span>
+					</div>
+					<form class="search-form" action="" method="get" id="filterForm">
+						<select class="select" name="replyStatus" id="replyStatusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="Response Status">Response Status</option>
+							<option value="unanswered" data-lan-eng="Unanswered">Unanswered</option>
+							<option value="answered" data-lan-eng="Answer completed">Answer completed</option>
+						</select>
+						<select class="select" name="processingStatus" id="processingStatusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="Processing Status">Processing Status</option>
+							<option value="pending" data-lan-eng="Received">Received</option>
+							<option value="processing" data-lan-eng="Processing">Processing</option>
+							<option value="completed" data-lan-eng="Processing complete">Processing complete</option>
+						</select>
+						<select class="select" name="sortOrder" id="sortOrderFilter" onchange="applyFilters()">
+							<option value="latest" data-lan-eng="Latest">Latest</option>
+							<option value="oldest" data-lan-eng="Oldest">Oldest</option>
+						</select>
+					</form>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!-- Inquiry type -->
+						<col> <!-- Inquiry title -->
+						<col> <!-- Date created -->
+						<col> <!-- Response status -->
+						<col> <!-- Processing status -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no">No</th>
+							<th data-lan-eng="Inquiry type">Inquiry type</th>
+							<th data-lan-eng="Inquiry Title">Inquiry Title</th>
+							<th data-lan-eng="Date created">Date created</th>
+							<th data-lan-eng="Response status">Response status</th>
+							<th data-lan-eng="Processing status">Processing status</th>
+						</tr>
+					</thead>
+					<tbody id="inquiriesTableBody">
+						<tr>
+							<td colspan="6" class="is-center">Loading...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				
+				<div class="jw-pagebox" role="navigation" aria-label="Pagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label="First page" aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="Previous page" aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list">
+							<button type="button" class="p" role="listitem">1</button>
+							<button type="button" class="p" role="listitem">2</button>
+							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
+							<button type="button" class="p" role="listitem">4</button>
+							<button type="button" class="p" role="listitem">5</button>
+						</div>
+
+						<button type="button" class="next" aria-label="Next page" aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label="Last page" aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+			
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadBtn" onclick="handleDownload()" data-lan-eng="Download">Download</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 10;
+		let currentFilters = { replyStatus: '', processingStatus: '', sortOrder: 'latest' };
+		
+		function mapInquiryTypeLabel(raw) {
+			const v = String(raw || '').toLowerCase().trim();
+			if (v === 'general') return 'General Inquiry';
+			if (v === 'product') return 'Product Inquiry';
+			if (v === 'booking') return 'Booking Inquiry';
+			if (v === 'reservation') return 'Reservation Inquiry';
+			if (v === 'visa') return 'Visa Inquiry';
+			if (v === 'payment') return 'Payment Inquiry';
+			if (v === 'technical') return 'Technical Inquiry';
+			if (v === 'complaint') return 'Complaint';
+			if (v === 'cancel' || v === 'cancellation') return 'Cancellation Inquiry';
+			if (v === 'suggestion') return 'Suggestion';
+			if (v === 'other') return 'Other';
+			return raw ? String(raw) : 'Other';
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadInquiries();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.replyStatus = document.getElementById('replyStatusFilter').value;
+			currentFilters.processingStatus = document.getElementById('processingStatusFilter').value;
+			currentFilters.sortOrder = document.getElementById('sortOrderFilter').value;
+			currentPage = 1;
+			loadInquiries();
+		}
+
+		async function loadInquiries(page = currentPage) {
+			try {
+				const tbody = document.getElementById('inquiriesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="6" class="is-center">Loading...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getUserInquiries',
+					page: page,
+					limit: limit,
+					sortOrder: currentFilters.sortOrder
+				});
+				
+				if (currentFilters.replyStatus) params.append('replyStatus', currentFilters.replyStatus);
+				if (currentFilters.processingStatus) params.append('processingStatus', currentFilters.processingStatus);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { inquiries, pagination } = result.data;
+					
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					if (tbody) {
+						if (inquiries.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="6" class="is-center">No inquiries.</td></tr>';
+						} else {
+							tbody.innerHTML = inquiries.map((inquiry) => {
+								const createdAt = inquiry.createdAt ? inquiry.createdAt.split(' ')[0] : '';
+								return `
+									<tr onclick="window.location.href='user-inquiry-detail.html?id=${escapeHtml(inquiry.inquiryId)}'" style="cursor: pointer;">
+										<td class="is-center">${inquiry.rowNum || ''}</td>
+										<td class="is-center">${escapeHtml(mapInquiryTypeLabel(inquiry.inquiryType || ''))}</td>
+										<td class="is-center">${escapeHtml(inquiry.inquiryTitle || '')}</td>
+										<td class="is-center">${escapeHtml(createdAt)}</td>
+										<td class="is-center">${escapeHtml(inquiry.replyStatus || 'Unanswered')}</td>
+										<td class="is-center">${escapeHtml(inquiry.processingStatus || 'Received')}</td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					if (pagination) {
+						updatePagination(pagination);
+						currentPage = pagination.currentPage;
+					}
+				}
+			} catch (error) {
+				console.error('Error loading inquiries:', error);
+				const tbody = document.getElementById('inquiriesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load.</td></tr>';
+				}
+			}
+		}
+		
+		function updatePagination(pagination) {
+			const { currentPage, totalPages } = pagination;
+			const pageContainer = document.querySelector('.jw-pagebox .page');
+			
+			if (pageContainer) {
+				pageContainer.innerHTML = '';
+				const groupSize = 5;
+				const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+				const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+				
+				for (let i = groupStart; i <= groupEnd; i++) {
+					const button = document.createElement('button');
+					button.type = 'button';
+					button.className = 'p' + (i === currentPage ? ' show' : '');
+					button.setAttribute('role', 'listitem');
+					if (i === currentPage) button.setAttribute('aria-current', 'page');
+					button.textContent = i;
+					button.onclick = () => loadInquiries(i);
+					pageContainer.appendChild(button);
+				}
+			}
+			
+			const firstBtn = document.querySelector('.jw-pagebox .first');
+			const prevBtn = document.querySelector('.jw-pagebox .prev');
+			const nextBtn = document.querySelector('.jw-pagebox .next');
+			const lastBtn = document.querySelector('.jw-pagebox .last');
+			
+			if (firstBtn) {
+				firstBtn.disabled = currentPage === 1;
+				firstBtn.setAttribute('aria-disabled', currentPage === 1);
+				firstBtn.onclick = currentPage === 1 ? null : () => loadInquiries(1);
+			}
+			// prev/next moves by page group
+			const groupSize = 5;
+			const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (prevBtn) {
+				prevBtn.disabled = currentPage === 1;
+				prevBtn.setAttribute('aria-disabled', currentPage === 1);
+				prevBtn.onclick = currentPage === 1 ? null : () => loadInquiries(prevTarget);
+			}
+			if (nextBtn) {
+				nextBtn.disabled = currentPage >= totalPages;
+				nextBtn.setAttribute('aria-disabled', currentPage >= totalPages);
+				nextBtn.onclick = currentPage >= totalPages ? null : () => loadInquiries(nextTarget);
+			}
+			if (lastBtn) {
+				lastBtn.disabled = currentPage >= totalPages;
+				lastBtn.setAttribute('aria-disabled', currentPage >= totalPages);
+				lastBtn.onclick = currentPage >= totalPages ? null : () => loadInquiries(totalPages);
+			}
+		}
+		
+		async function handleDownload() {
+			try {
+				const params = new URLSearchParams({
+					action: 'downloadUserInquiries',
+					replyStatus: currentFilters.replyStatus,
+					processingStatus: currentFilters.processingStatus,
+					sortOrder: currentFilters.sortOrder
+				});
+				
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			} catch (error) {
+				console.error('Error downloading CSV:', error);
+				alert('Download failed.');
+			}
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,105 @@
+<nav class="side-nav">
+    <div class="side-header">
+        <a href="../index.html" class="logo">
+            <img src="../image/logo.png" alt="Smart Travel" style="height: 32px;">
+        </a>
+    </div>
+
+    <div class="side-menu">
+        <div class="menu-title">Shop 관리</div>
+
+        <a href="product-list.html" class="menu-item" data-page="product">
+            <span class="icon">📦</span>
+            <span class="text">상품 관리</span>
+        </a>
+
+        <a href="order-list.html" class="menu-item" data-page="order">
+            <span class="icon">📋</span>
+            <span class="text">주문 관리</span>
+        </a>
+
+        <a href="category-list.html" class="menu-item" data-page="category">
+            <span class="icon">📁</span>
+            <span class="text">카테고리 관리</span>
+        </a>
+
+        <div class="menu-divider"></div>
+
+        <a href="/shop/index.html" class="menu-item" target="_blank">
+            <span class="icon">🛍️</span>
+            <span class="text">쇼핑몰 보기</span>
+        </a>
+
+        <a href="../super/overview.html" class="menu-item">
+            <span class="icon">⬅️</span>
+            <span class="text">관리자 메인</span>
+        </a>
+    </div>
+</nav>
+
+<style>
+.side-nav {
+    width: 240px;
+    background: #1a1a2e;
+    min-height: 100vh;
+    color: #fff;
+}
+.side-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.side-header .logo img {
+    filter: brightness(0) invert(1);
+}
+.side-menu {
+    padding: 16px 0;
+}
+.menu-title {
+    padding: 12px 20px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 1px;
+}
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.menu-item:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+.menu-item.active {
+    background: #0065F8;
+    color: #fff;
+}
+.menu-item .icon {
+    font-size: 18px;
+}
+.menu-item .text {
+    font-size: 14px;
+}
+.menu-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.1);
+    margin: 16px 20px;
+}
+</style>
+
+<script>
+// 현재 페이지 하이라이트
+document.addEventListener('DOMContentLoaded', function() {
+    const path = window.location.pathname;
+    document.querySelectorAll('.menu-item').forEach(item => {
+        const page = item.dataset.page;
+        if (page && path.includes(page)) {
+            item.classList.add('active');
+        }
+    });
+});
+</script>

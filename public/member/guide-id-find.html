@@ -1,0 +1,98 @@
+<div class="dialog-container">
+	<button type="button" class="dialog-close" id="closeDialog" onclick="modal_close()"><i class="ic-close"></i></button>
+	
+	<h1 data-lan-eng="Find ID">아이디 찾기</h1>
+	
+	<div class="dialog-content jw-mgt50">
+	
+		<div class="field">
+			<label class="label-name" data-lan-eng="Name">이름 <span class="req">*</span></label>
+			<div class="input-box">
+				<input type="text" id="guideName" value="" placeholder="Please Enter" required>
+			</div>
+		</div>
+		
+		<div class="field jw-mgt32">
+			<label class="label-name" data-lan-eng="Email">이메일 <span class="req">*</span></label>
+			<div class="input-box">
+				<input type="email" id="guideEmail" value="" placeholder="Please Enter" required>
+			</div>
+		</div>
+		
+		<div id="findGuideIdError" class="error-message" style="display:none; color:#ef4444; font-size:14px; margin-top:16px;"></div>
+
+	</div>
+	
+	<div class="dialog-controls jw-mgt50">
+		<button type="button" class="jw-button typeB" id="findGuideIdBtn" data-lan-eng="Find ID" onclick="findGuideId()">아이디 찾기</button>
+	</div>
+</div>
+
+<script>
+	// 아이디 찾기
+	async function findGuideId() {
+		const guideName = document.getElementById('guideName').value.trim();
+		const guideEmail = document.getElementById('guideEmail').value.trim();
+		const errorDiv = document.getElementById('findGuideIdError');
+		const findBtn = document.getElementById('findGuideIdBtn');
+		
+		// 입력 검증
+		if (!guideName || !guideEmail) {
+			errorDiv.textContent = 'Please enter your name and email correctly.';
+			errorDiv.style.display = 'block';
+			return;
+		}
+		
+		// 이메일 형식 검증
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(guideEmail)) {
+			errorDiv.textContent = 'Please enter your name and email correctly.';
+			errorDiv.style.display = 'block';
+			return;
+		}
+		
+		errorDiv.style.display = 'none';
+		findBtn.disabled = true;
+		findBtn.textContent = 'Searching...';
+		
+		try {
+			const formData = new FormData();
+			formData.append('guideName', guideName);
+			formData.append('guideEmail', guideEmail);
+			
+			const response = await fetch('../backend/api/find-guide-id.php', {
+				method: 'POST',
+				body: formData,
+				credentials: 'same-origin'
+			});
+			
+			const data = await response.json();
+			
+			if (data.success) {
+				// 결과 모달 표시
+				const resultModal = modal('../member/guide-id-find-result.html', '580px', '358px');
+				// 모달이 로드된 후 이메일 설정
+				document.addEventListener('modal:loaded', function setEmail(e) {
+					if (e.detail && e.detail.action && e.detail.action.includes('guide-id-find-result')) {
+						const emailInput = document.querySelector('#foundEmail');
+						if (emailInput) {
+							emailInput.value = data.email;
+						}
+						document.removeEventListener('modal:loaded', setEmail);
+					}
+				}, { once: false });
+			} else {
+				errorDiv.textContent = data.message || 'Member information cannot be found.';
+				errorDiv.style.display = 'block';
+				findBtn.disabled = false;
+				findBtn.textContent = '아이디 찾기';
+			}
+		} catch (error) {
+			console.error('Find ID error:', error);
+			errorDiv.textContent = 'An error occurred while finding your ID.';
+			errorDiv.style.display = 'block';
+			findBtn.disabled = false;
+			findBtn.textContent = '아이디 찾기';
+		}
+	}
+</script>

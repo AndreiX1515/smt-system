@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!--   ( ) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="B2C Reservation List">B2C Reservation List</h1>
+
+			<div class="card-panel jw-mgt32">
+			
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span>
+						<span class="result-count__num" id="totalCount">0</span>
+						<span data-lan-eng="items">items</span>
+					</div>
+					<!-- SMT   -->
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+						<div class="field-row">
+						<input id="travelStartDate" type="text" class="jw-w form-control" placeholder="Travel start date" data-lan-eng-placeholder="Travel start date" readonly>
+						<button type="button" class="btn-icon calendar" aria-label="Open calendar" data-target="#travelStartDate">
+							<img src="../image/calendar.svg" alt="">
+						</button>
+					</div>
+
+						<select class="select" name="status" id="statusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="All Status">All Status</option>
+							<option value="payment_suspended" data-lan-eng="Payment Suspended">Payment Suspended</option>
+							<option value="payment_completed" data-lan-eng="Payment Completed">Payment Completed</option>
+							<option value="payment_canceled" data-lan-eng="Payment Canceled">Payment Canceled</option>
+							<option value="refund_completed" data-lan-eng="Refund Completed">Refund Completed</option>
+							<option value="trip_completed" data-lan-eng="Trip Completed">Trip Completed</option>
+						</select>
+
+
+						<div class="search-field">
+					<select class="select" name="searchType" id="searchType" onchange="applyFilters()">
+						<option value="" data-lan-eng="All">All</option>
+						<option value="product_name" data-lan-eng="Product Name">Product Name</option>
+						<option value="reservation_name" data-lan-eng="Reservation Name">Reservation Name</option>
+					</select>
+							<input type="text" class="search-input" id="searchInput" placeholder="Search">
+							<button type="submit" class="jw-button search-btn" aria-label="Search">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+					<!-- SMT   -->
+				</div>
+				
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!-- Product name (auto) -->
+						<col> <!-- Travel start date -->
+						<col> <!-- Reserver name -->
+						<col> <!-- PAX -->
+						<col> <!-- Assigned guide -->
+						<col> <!-- Status -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th data-lan-eng="Product Name">Product Name</th>
+							<th data-lan-eng="Travel start date">Travel start date</th>
+							<th data-lan-eng="Reserver's name">Reserver's name</th>
+							<th data-lan-eng="Number of people for reservation">Number of people for reservation</th>
+							<th data-lan-eng="Assignment Guide">Assignment Guide</th>
+							<th data-lan-eng="Status">Status</th>
+						</tr>
+					</thead>
+					<tbody id="bookingsTableBody">
+						<tr>
+							<td colspan="7" class="is-center" data-lan-eng="Loading data...">Loading data...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<div class="jw-pagebox" role="navigation" aria-label="">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list">
+							<button type="button" class="p" role="listitem">1</button>
+							<button type="button" class="p" role="listitem">2</button>
+							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
+							<button type="button" class="p" role="listitem">4</button>
+							<button type="button" class="p" role="listitem">5</button>
+						</div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+			
+			<div class="controller">
+				<button type="button" class="jw-button typeA" data-lan-eng="Download">Download</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_b2cbookingsearch1"></script>
+	<script src="../js/datepicker.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 10;
+		let currentFilters = { search: '', searchType: '', travelStartDate: '', status: '' };
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				// Prevent native form submission (Enter key) from reloading the page.
+				document.getElementById('filterForm')?.addEventListener('submit', (e) => {
+					e.preventDefault();
+					applyFilters();
+				});
+
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super  admin  
+				if (!sessionData.authenticated || !['admin_ph', 'admin_kr'].includes(sessionData.userType)) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadBookings();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			currentFilters.searchType = document.getElementById('searchType')?.value || '';
+			currentFilters.travelStartDate = document.getElementById('travelStartDate').value;
+			currentFilters.status = document.getElementById('statusFilter').value;
+			currentPage = 1;
+			loadBookings();
+		}
+
+		async function loadBookings(page = currentPage) {
+			try {
+				const tbody = document.getElementById('bookingsTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center" data-lan-eng="Loading data...">Loading data...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getB2CBookings',
+					page: page,
+					limit: limit
+				});
+				
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.searchType) params.append('searchType', currentFilters.searchType);
+				if (currentFilters.travelStartDate) params.append('travelStartDate', currentFilters.travelStartDate);
+				if (currentFilters.status) params.append('status', currentFilters.status);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					alert('Login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { bookings, pagination } = result.data;
+					
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					if (tbody) {
+						if (bookings.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="7" class="is-center" data-lan-eng="No bookings">No bookings</td></tr>';
+						} else {
+							tbody.innerHTML = bookings.map((booking) => {
+								const ui = getB2CStatusUi(booking);
+								const guideName = booking.guideName ? escapeHtml(booking.guideName) : '<span data-lan-eng="Unassigned">Unassigned</span>';
+								return `
+									<tr onclick="window.location.href='b2c-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor: pointer;">
+										<td class="no is-center">${booking.rowNum || ''}</td>
+										<!-- (HTML 태그 수정) 디코딩 적용 -->
+										<td class="is-center">${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</td>
+										<td class="is-center">${escapeHtml(booking.travelStartDate || '')}</td>
+										<td class="is-center">${escapeHtml(booking.reserverName || '')}</td>
+										<td class="is-center">${booking.numberOfPeople || 0}</td>
+										<td class="is-center">${guideName}</td>
+										<td class="is-center"><span class="badge ${ui.badgeClass}" data-lan-eng="${escapeHtml(ui.eng)}">${escapeHtml(ui.eng)}</span></td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					updatePagination(pagination);
+					currentPage = pagination.currentPage;
+
+					//    
+					try {
+						const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+						if (typeof language_apply === 'function') language_apply(lang);
+					} catch (_) {}
+				}
+			} catch (error) {
+				console.error('Error loading bookings:', error);
+				const tbody = document.getElementById('bookingsTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center" data-lan-eng="An error occurred while loading data.">An error occurred while loading data.</td></tr>';
+				}
+			}
+		}
+
+		function renderPagination(pagination, onPageChange) {
+			const box = document.querySelector('.jw-pagebox');
+			if (!box) return;
+			const pageWrap = box.querySelector('.page');
+			if (!pageWrap) return;
+
+			const totalPages = Math.max(1, Number(pagination.totalPages || 1));
+			const current = Math.max(1, Number(pagination.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => onPageChange(p));
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = box.querySelector('.first');
+			const prevBtn = box.querySelector('.prev');
+			const nextBtn = box.querySelector('.next');
+			const lastBtn = box.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => onPageChange(1);
+			if (lastBtn) lastBtn.onclick = () => onPageChange(totalPages);
+			if (prevBtn) prevBtn.onclick = () => onPageChange(prevTarget);
+			if (nextBtn) nextBtn.onclick = () => onPageChange(nextTarget);
+		}
+
+		function updatePagination(pagination) {
+			if (!pagination) return;
+			renderPagination(pagination, (p) => loadBookings(p));
+		}
+
+		function getB2CStatusUi(booking) {
+			const ps = String(booking.paymentStatus || '').toLowerCase();
+			const bs = String(booking.bookingStatus || '').toLowerCase();
+			// Priority: Trip Completed > Refund Completed > Payment Canceled > Payment Completed > Payment Suspended
+			if (bs === 'completed') return { eng: 'Trip Completed', badgeClass: 'badge-gray' };
+			if (ps === 'refunded') return { eng: 'Refund Completed', badgeClass: 'badge-gray' };
+			if (ps === 'failed' || bs === 'cancelled') return { eng: 'Payment Canceled', badgeClass: 'badge-red' };
+			if (ps === 'paid' || bs === 'confirmed') return { eng: 'Payment Completed', badgeClass: 'badge-gray' };
+			return { eng: 'Payment Suspended', badgeClass: 'badge-orange' };
+		}
+
+		// CSV export
+		async function exportB2CBookingsCsv() {
+			const params = new URLSearchParams({ action: 'exportB2CBookingsCsv' });
+			if (currentFilters.search) params.append('search', currentFilters.search);
+			if (currentFilters.searchType) params.append('searchType', currentFilters.searchType);
+			if (currentFilters.travelStartDate) params.append('travelStartDate', currentFilters.travelStartDate);
+			if (currentFilters.status) params.append('status', currentFilters.status);
+			window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+		}
+
+		document.querySelector('.controller .jw-button.typeA')?.addEventListener('click', (e) => {
+			e.preventDefault();
+			exportB2CBookingsCsv();
+		});
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+	</script>
+</body>
+
+</html>

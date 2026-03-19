@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+
+			<h1 class="page-title" data-lan-eng="Banner Management">Banner Management</h1>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 1">Banner 1</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner1Preview">
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 1); essentialCheck(this);">
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+						</div>
+					</div>
+					
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner1Url" value="http://" >
+					</div>
+
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(1)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(1)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 2">Banner 2</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner2Preview">
+						
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 2); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+							
+						</div>
+					</div>
+					
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner2Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(2)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(2)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 3">Banner 3</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner3Preview">
+						
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 3); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+							
+						</div>
+					</div>
+					
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner3Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(3)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(3)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 4">Banner 4</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner4Preview">
+						
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 4); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+							
+						</div>
+					</div>
+					
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner4Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(4)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(4)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 5">Banner 5</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner5Preview">
+						
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 5); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+							
+						</div>
+					</div>
+					
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner5Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(5)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(5)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 6">Banner 6</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner6Preview">
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 6); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+						</div>
+					</div>
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner6Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(6)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(6)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 7">Banner 7</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner7Preview">
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 7); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+						</div>
+					</div>
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner7Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(7)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(7)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 8">Banner 8</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner8Preview">
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 8); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+						</div>
+					</div>
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner8Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(8)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(8)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 9">Banner 9</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner9Preview">
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 9); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+						</div>
+					</div>
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner9Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(9)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(9)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Banner 10">Banner 10</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="banner-grid-wrap" data-essentialWrap="y">
+					<div class="banner-item">
+						<p class="label-name" data-lan-eng="Banner Image (Recommended Size 640x320)">Banner Image (Recommended Size 640x320)</p>
+						<div class="banner-image-wrap jw-mgt8 jw-center image-preview" id="banner10Preview">
+							<label class="inputFile">
+								<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, 10); essentialCheck(this);" >
+								<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+							</label>
+						</div>
+					</div>
+					<div class="banner-item">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control jw-w500" id="banner10Url" data-essential="y" value="" placeholder="URL" onkeyup="essentialCheck(this);">
+					</div>
+					<div class="jw-mgt32 span-2 jw-cols jw-gap10 jw-flex-r">
+						<button type="button" class="jw-button typeA" onclick="handleDeleteBanner(10)"><img src="../image/trash.svg" alt=""> <span data-lan-eng="Delete">Delete</span></button>
+						<button type="button" class="jw-button typeB" onclick="handleSaveBanner(10)" data-essentialTarget="y"><span data-lan-eng="Save">Save</span></button>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_banner10fix4"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super  admin  
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadBanners();
+				setupBannerHandlers();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadBanners() {
+			try {
+				const response = await fetch('../backend/api/super-api.php?action=getBanners', {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { banners } = result.data;
+
+					const ensureUploadUi = (previewEl, i) => {
+						if (!previewEl) return null;
+						// If loadBanners previously replaced innerHTML, rebuild upload UI.
+						let file = previewEl.querySelector('input[type=\"file\"]');
+						if (!file) {
+							previewEl.innerHTML = `
+								<label class=\"inputFile\">
+									<input name=\"\" type=\"file\" data-essential=\"y\" onchange=\"handleImageUpload(this, ${i}); essentialCheck(this);\">
+									<button type=\"button\" class=\"btn-upload\"><img src=\"../image/upload3.svg\" alt=\"\"> Image upload</span></button>
+								</label>
+							`;
+							file = previewEl.querySelector('input[type=\"file\"]');
+						}
+						return previewEl;
+					};
+					
+					for (let i = 1; i <= 10; i++) {
+						const banner = banners.find(b => b.bannerOrder == i || b.bannerId == i);
+					if (banner) {
+						const preview = document.getElementById(`banner${i}Preview`) || document.querySelector(`.banner-grid-wrap:nth-of-type(${i}) .banner-image-wrap`);
+						if (preview) {
+							ensureUploadUi(preview, i);
+							if (banner.imageUrl) {
+								let img = preview.querySelector('img.preview');
+								if (!img) {
+									img = document.createElement('img');
+									img.className = 'preview';
+									img.alt = '';
+									preview.prepend(img);
+								}
+								img.src = escapeHtml(banner.imageUrl);
+							} else {
+								preview.querySelectorAll('img.preview').forEach(n => n.remove());
+							}
+						}
+						const urlInput = document.getElementById(`banner${i}Url`) || document.querySelector(`.banner-grid-wrap:nth-of-type(${i}) input[type="text"]`);
+						if (urlInput && banner.url) {
+							urlInput.value = banner.url;
+						}
+					}
+					}
+					//  ( /,   ) 
+					bindEssentialChecks();
+				}
+			} catch (error) {
+				console.error('Error loading banners:', error);
+			}
+		}
+
+		function setupBannerHandlers() {
+			//  1  HTML onclick  
+			for (let i = 2; i <= 10; i++) {
+				const saveBtn = document.querySelector(`#banner${i}Preview`)?.closest('.banner-grid-wrap')?.querySelector('.jw-button.typeB');
+				if (saveBtn && !saveBtn.onclick) {
+					saveBtn.onclick = () => handleSaveBanner(i);
+				}
+			}
+		}
+
+		function handleImageUpload(input, bannerIndex) {
+			const file = input.files[0];
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = function(e) {
+					const preview = document.getElementById(`banner${bannerIndex}Preview`) || input.closest('.banner-grid-wrap').querySelector('.banner-image-wrap');
+					if (preview) {
+						// Keep upload UI and only update/insert the preview image.
+						let img = preview.querySelector('img.preview');
+						if (!img) {
+							img = document.createElement('img');
+							img.className = 'preview';
+							img.alt = '';
+							preview.prepend(img);
+						}
+						img.src = e.target.result;
+					}
+					essentialCheck(preview);
+				};
+				reader.readAsDataURL(file);
+			}
+		}
+
+		// :
+		// -   " "  
+		// -   " "  
+		// -    
+		function essentialCheck(ctxEl) {
+			const wrap = ctxEl?.closest?.('.banner-grid-wrap') || ctxEl?.closest?.('.banner-grid-wrap') || document.querySelector('.banner-grid-wrap');
+			if (!wrap) return;
+			const preview = wrap.querySelector('.banner-image-wrap');
+			const urlInput = wrap.querySelector('input[type="text"]');
+			const saveBtn = wrap.querySelector('[data-essentialTarget="y"]');
+			const delBtn = wrap.querySelector('.jw-button.typeA');
+
+			const hasImg = !!preview?.querySelector('img.preview');
+			const hasUrl = !!(urlInput && urlInput.value && urlInput.value.trim() && urlInput.value.trim() !== 'http://');
+
+			//  :  
+			if (saveBtn) saveBtn.disabled = false;
+
+			//  :    
+			if (delBtn) {
+				delBtn.disabled = !hasImg;
+				delBtn.setAttribute('aria-disabled', String(!hasImg));
+			}
+
+			//  (UX)   
+			void hasUrl;
+		}
+
+		function bindEssentialChecks() {
+			document.querySelectorAll('.banner-grid-wrap').forEach(wrap => {
+				const url = wrap.querySelector('input[type="text"]');
+				const inputFile = wrap.querySelector('input[type="file"]');
+				url?.addEventListener('input', () => essentialCheck(wrap));
+				inputFile?.addEventListener('change', () => essentialCheck(wrap));
+				essentialCheck(wrap);
+			});
+		}
+
+		async function handleSaveBanner(bannerIndex) {
+			try {
+				const preview = document.getElementById(`banner${bannerIndex}Preview`) || document.querySelector(`.banner-grid-wrap:nth-of-type(${bannerIndex}) .banner-image-wrap`);
+				const urlInput = document.getElementById(`banner${bannerIndex}Url`) || document.querySelector(`.banner-grid-wrap:nth-of-type(${bannerIndex}) input[type="text"]`);
+				const previewImg = preview?.querySelector('.preview');
+				
+				let imageUrl = '';
+				if (previewImg && previewImg.src) {
+					imageUrl = previewImg.src;
+				}
+
+				const formData = {
+					action: 'updateBanner',
+					bannerId: bannerIndex,
+					imageUrl: imageUrl,
+					url: urlInput.value.trim(),
+					bannerOrder: bannerIndex
+				};
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(formData),
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					alert('Admin login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+				const rawText = await response.text();
+				let result = {};
+				try { result = JSON.parse(rawText); } catch (_) { result = {}; }
+
+				if (!response.ok) {
+					console.error('banner save failed', { bannerIndex, status: response.status, rawText, result });
+					alert(('Failed to save banner. (HTTP ' + response.status + ') ' + (result?.message || '')).trim());
+					return;
+				}
+
+				if (result && result.success) {
+					alert('Banner saved.');
+					//    UI (loadBanners/essential ) 
+					// "  "      .
+					try { await loadBanners(); } catch (e) { console.error('loadBanners after save failed', e); }
+					try { bindEssentialChecks(); } catch (e) { console.error('bindEssentialChecks after save failed', e); }
+					return;
+				}
+
+				console.error('banner save returned success=false', { bannerIndex, rawText, result });
+				alert(('Failed to save banner. ' + (result?.message || '')).trim());
+			} catch (error) {
+				console.error('Error saving banner:', error);
+				alert('An error occurred while saving.');
+			}
+		}
+
+		async function handleDeleteBanner(bannerIndex) {
+			try {
+				if (!confirm('Delete the uploaded banner image?')) return;
+				const preview = document.getElementById(`banner${bannerIndex}Preview`) || document.querySelector(`.banner-grid-wrap:nth-of-type(${bannerIndex}) .banner-image-wrap`);
+				const urlInput = document.getElementById(`banner${bannerIndex}Url`) || document.querySelector(`.banner-grid-wrap:nth-of-type(${bannerIndex}) input[type="text"]`);
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'updateBanner',
+						bannerId: bannerIndex,
+						bannerOrder: bannerIndex,
+						imageUrl: '',
+						url: ''
+					}),
+					credentials: 'same-origin'
+				});
+
+				const rawText = await response.text();
+				let result = {};
+				try { result = JSON.parse(rawText); } catch (_) { result = {}; }
+
+				if (!response.ok || !result?.success) {
+					console.error('banner delete failed', { bannerIndex, status: response.status, rawText, result });
+					alert(('Failed to delete banner image. (HTTP ' + response.status + ') ' + (result?.message || '')).trim());
+					return;
+				}
+
+				if (preview) {
+					preview.innerHTML = `
+						<label class="inputFile">
+							<input name="" type="file" data-essential="y" onchange="handleImageUpload(this, ${bannerIndex}); essentialCheck(this);">
+							<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+						</label>
+					`;
+				}
+				if (urlInput) urlInput.value = '';
+
+				try { await loadBanners(); } catch (e) { console.error('loadBanners after delete failed', e); }
+				try { bindEssentialChecks(); } catch (e) { console.error('bindEssentialChecks after delete failed', e); }
+				alert('Banner image deleted.');
+			} catch (e) {
+				console.error('handleDeleteBanner error:', e);
+				alert('An error occurred while deleting.');
+			}
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		//   / 
+		document.addEventListener('DOMContentLoaded', () => {
+			setTimeout(() => bindEssentialChecks(), 0);
+		});
+	</script>
+</body>
+
+</html>

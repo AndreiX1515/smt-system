@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- Quill editor -->
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content layout-content-aside">
+			<div class="page-toolbar">
+				<a href="announcements-list.html" class="jw-button jw-button-back" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeC" id="deleteBtn" onclick="deleteAnnouncement()">
+						<span data-lan-eng="Delete">Delete</span>
+					</button>
+				</div>
+			</div>
+
+			<div class="content-main">
+				<h1 class="page-title" data-lan-eng="Announcement Detail">Announcement Detail</h1>
+
+				<!-- Status Banner -->
+				<div class="status-banner jw-mgt16" id="statusBanner">
+					<span class="status-text" id="statusText">Draft</span>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Target Product">Target Product</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-2">
+							<label class="label-name"><span data-lan-eng="Product">Product</span></label>
+							<div class="form-value" id="productName">-</div>
+						</div>
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Target Type">Target Type</span></label>
+							<div class="form-value" id="targetType">-</div>
+						</div>
+						<div class="grid-item" id="targetDateDisplay" style="display:none;">
+							<label class="label-name"><span data-lan-eng="Travel Date">Travel Date</span></label>
+							<div class="form-value" id="targetDate">-</div>
+						</div>
+					</div>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item col-span-3">
+							<div class="info-box" style="background:#f5f5f5; padding:16px; border-radius:8px;">
+								<span data-lan-eng="Target Customers">Target Customers:</span>
+								<strong id="targetCount">0</strong>
+								<span id="targetCountLabel" data-lan-eng="customers">customers</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Announcement Content">Announcement Content</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Title">Title</span></label>
+							<input type="text" class="form-control" id="announcementTitle" readonly>
+						</div>
+
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Content">Content</span></label>
+							<div class="editor-box-wrap">
+								<div class="jw-editor" id="contentEditorRoot">
+									<div class="toolbar" style="display:none;">
+										<div class="group">
+											<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+											<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+											<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+										</div>
+										<div class="group">
+											<select class="ql-size">
+												<option value="" selected>Font</option>
+												<option value="12px">12px</option>
+												<option value="14px">14px</option>
+												<option value="16px">16px</option>
+												<option value="18px">18px</option>
+												<option value="24px">24px</option>
+											</select>
+										</div>
+										<div class="group">
+											<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+										</div>
+										<div class="group">
+											<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+										</div>
+									</div>
+									<div class="jweditor" style="min-height: 250px;"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Published Info (shown only when published) -->
+				<div id="publishedInfoSection" style="display:none;">
+					<h2 class="section-title jw-mgt32" data-lan-eng="Publication Info">Publication Info</h2>
+					<div class="card-panel jw-mgt16">
+						<div class="grid-wrap">
+							<div class="grid-item">
+								<label class="label-name"><span data-lan-eng="Published At">Published At</span></label>
+								<div class="form-value" id="publishedAt">-</div>
+							</div>
+							<div class="grid-item">
+								<label class="label-name"><span data-lan-eng="Created At">Created At</span></label>
+								<div class="form-value" id="createdAt">-</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+			<aside class="content-aside">
+				<div class="aside-section" id="actionsSection">
+					<h3 class="aside-title" data-lan-eng="Actions">Actions</h3>
+					<div class="aside-content" id="actionButtons">
+						<!-- Buttons will be dynamically populated -->
+					</div>
+				</div>
+
+				<div class="aside-section jw-mgt24">
+					<h3 class="aside-title" data-lan-eng="Info">Info</h3>
+					<div class="aside-content">
+						<div class="info-list" style="font-size:13px;">
+							<div class="info-item">
+								<span class="info-label" data-lan-eng="Status:">Status:</span>
+								<span class="info-value" id="infoStatus">-</span>
+							</div>
+							<div class="info-item jw-mgt8">
+								<span class="info-label" data-lan-eng="Product:">Product:</span>
+								<span class="info-value" id="infoProduct">-</span>
+							</div>
+							<div class="info-item jw-mgt8">
+								<span class="info-label" data-lan-eng="Recipients:">Recipients:</span>
+								<span class="info-value" id="infoRecipients">0</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</aside>
+
+		</section>
+
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="../js/multi-editor.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let announcement = null;
+		let announcementId = null;
+
+		function getEditorContent() {
+			const editor = document.querySelector('#contentEditorRoot .jweditor .ql-editor');
+			return editor ? editor.innerHTML : '';
+		}
+
+		function setEditorContent(html) {
+			const editor = document.querySelector('#contentEditorRoot .jweditor .ql-editor');
+			if (editor) editor.innerHTML = html;
+		}
+
+		function setEditorReadOnly(readonly) {
+			const editor = document.querySelector('#contentEditorRoot .jweditor .ql-editor');
+			const toolbar = document.querySelector('#contentEditorRoot .toolbar');
+			if (editor) {
+				editor.contentEditable = readonly ? 'false' : 'true';
+			}
+			if (toolbar) {
+				toolbar.style.display = readonly ? 'none' : 'flex';
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			// Get ID from URL
+			const urlParams = new URLSearchParams(window.location.search);
+			announcementId = urlParams.get('id');
+
+			if (!announcementId) {
+				alert('Invalid announcement ID');
+				window.location.href = 'announcements-list.html';
+				return;
+			}
+
+			// Session check
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				// Set editor to read-only initially
+				setEditorReadOnly(true);
+
+				// Load announcement
+				await loadAnnouncement();
+
+			} catch (error) {
+				console.error('Initialization error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadAnnouncement() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getProductAnnouncementDetail&id=${announcementId}`, {
+					credentials: 'same-origin'
+				});
+				const result = await response.json();
+
+				if (!result.success) {
+					alert(result.message || 'Failed to load announcement');
+					window.location.href = 'announcements-list.html';
+					return;
+				}
+
+				if (!result.data?.announcement) {
+					alert('Announcement not found');
+					window.location.href = 'announcements-list.html';
+					return;
+				}
+
+				announcement = result.data.announcement;
+				const targetCount = result.data.targetCount || 0;
+
+				// Populate fields
+				document.getElementById('productName').textContent = announcement.packageName || '-';
+				document.getElementById('targetType').textContent = getTargetTypeLabel(announcement.targetType);
+				document.getElementById('announcementTitle').value = announcement.title || '';
+				document.getElementById('targetCount').textContent = targetCount;
+
+				// Set content
+				if (announcement.content) {
+					setEditorContent(announcement.content);
+				}
+
+				// Target date
+				if (announcement.targetType === 'specific_date' && announcement.targetDate) {
+					document.getElementById('targetDateDisplay').style.display = 'block';
+					document.getElementById('targetDate').textContent = announcement.targetDate;
+				}
+
+				// Status
+				updateStatusDisplay(announcement.status);
+
+				// Info sidebar
+				document.getElementById('infoStatus').textContent = getStatusLabel(announcement.status);
+				document.getElementById('infoProduct').textContent = announcement.packageName || '-';
+				document.getElementById('infoRecipients').textContent = targetCount;
+
+				// Published info
+				if (announcement.status === 'published') {
+					document.getElementById('publishedInfoSection').style.display = 'block';
+					document.getElementById('publishedAt').textContent = formatDateTime(announcement.publishedAt);
+				}
+				document.getElementById('createdAt').textContent = formatDateTime(announcement.createdAt);
+
+				// Action buttons
+				updateActionButtons(announcement.status);
+
+			} catch (error) {
+				console.error('Failed to load announcement:', error);
+				alert('Failed to load announcement');
+			}
+		}
+
+		function updateStatusDisplay(status) {
+			const banner = document.getElementById('statusBanner');
+			const text = document.getElementById('statusText');
+
+			banner.className = 'status-banner jw-mgt16';
+			text.textContent = getStatusLabel(status);
+
+			if (status === 'draft') {
+				banner.classList.add('status-draft');
+			} else if (status === 'published') {
+				banner.classList.add('status-published');
+			}
+		}
+
+		function updateActionButtons(status) {
+			const container = document.getElementById('actionButtons');
+
+			if (status === 'draft') {
+				container.innerHTML = `
+					<button type="button" class="jw-button typeA full" onclick="enableEdit()">
+						<span data-lan-eng="Edit">Edit</span>
+					</button>
+					<button type="button" class="jw-button typeB full jw-mgt8" onclick="publishAnnouncement()">
+						<img src="../image/buttonB.svg" alt="">
+						<span data-lan-eng="Publish Now">Publish Now</span>
+					</button>
+				`;
+			} else if (status === 'published') {
+				container.innerHTML = `
+					<div class="published-notice" style="padding: 12px; background: #e8f5e9; border-radius: 8px; text-align: center; color: #2e7d32;">
+						<span data-lan-eng="This announcement has been published">This announcement has been published</span>
+					</div>
+				`;
+			}
+		}
+
+		function enableEdit() {
+			// Enable editing
+			document.getElementById('announcementTitle').removeAttribute('readonly');
+
+			// Enable editor
+			setEditorReadOnly(false);
+
+			// Update action buttons
+			const container = document.getElementById('actionButtons');
+			container.innerHTML = `
+				<button type="button" class="jw-button typeA full" onclick="saveChanges()">
+					<span data-lan-eng="Save Changes">Save Changes</span>
+				</button>
+				<button type="button" class="jw-button full jw-mgt8" onclick="cancelEdit()">
+					<span data-lan-eng="Cancel">Cancel</span>
+				</button>
+			`;
+		}
+
+		function cancelEdit() {
+			// Reload the page to reset
+			location.reload();
+		}
+
+		async function saveChanges() {
+			const title = document.getElementById('announcementTitle').value.trim();
+			const content = getEditorContent();
+
+			if (!title) {
+				alert('Please enter a title.');
+				return;
+			}
+			if (!content || content === '<p><br></p>') {
+				alert('Please enter content.');
+				return;
+			}
+
+			try {
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'updateProductAnnouncement',
+						announcementId: parseInt(announcementId),
+						title: title,
+						content: content
+					})
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('Changes saved successfully.');
+					location.reload();
+				} else {
+					alert('Failed to save: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Save error:', error);
+				alert('Failed to save changes.');
+			}
+		}
+
+		async function publishAnnouncement() {
+			if (!confirm('Are you sure you want to publish this announcement? This action cannot be undone.')) {
+				return;
+			}
+
+			try {
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'publishProductAnnouncement',
+						announcementId: parseInt(announcementId)
+					})
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert(`Announcement published successfully to ${result.data.targetCount} customers!`);
+					location.reload();
+				} else {
+					alert('Failed to publish: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Publish error:', error);
+				alert('Failed to publish announcement.');
+			}
+		}
+
+		async function deleteAnnouncement() {
+			if (!confirm('Are you sure you want to delete this announcement?')) {
+				return;
+			}
+
+			try {
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'deleteProductAnnouncement',
+						announcementId: parseInt(announcementId)
+					})
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert('Announcement deleted.');
+					window.location.href = 'announcements-list.html';
+				} else {
+					alert('Failed to delete: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Delete error:', error);
+				alert('Failed to delete announcement.');
+			}
+		}
+
+		function getTargetTypeLabel(type) {
+			switch(type) {
+				case 'all_purchasers': return 'All Purchasers';
+				case 'specific_date': return 'Specific Travel Date';
+				case 'specific_booking': return 'Specific Booking';
+				default: return type || '-';
+			}
+		}
+
+		function getStatusLabel(status) {
+			switch(status) {
+				case 'draft': return 'Draft';
+				case 'published': return 'Published';
+				case 'deleted': return 'Deleted';
+				default: return status || '-';
+			}
+		}
+
+		function formatDateTime(dateStr) {
+			if (!dateStr) return '-';
+			try {
+				const date = new Date(dateStr);
+				return date.toLocaleString('en-US', {
+					year: 'numeric',
+					month: 'short',
+					day: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit'
+				});
+			} catch (e) {
+				return dateStr;
+			}
+		}
+	</script>
+
+	<style>
+		.status-banner {
+			padding: 12px 20px;
+			border-radius: 8px;
+			text-align: center;
+			font-weight: 600;
+		}
+		.status-banner.status-draft {
+			background-color: #fff3e0;
+			color: #e65100;
+		}
+		.status-banner.status-published {
+			background-color: #e8f5e9;
+			color: #2e7d32;
+		}
+		.form-value {
+			padding: 10px 0;
+			font-size: 14px;
+			color: #333;
+		}
+		.info-item {
+			display: flex;
+			justify-content: space-between;
+		}
+		.info-label {
+			color: #666;
+		}
+		.info-value {
+			font-weight: 500;
+		}
+		.editor-box-wrap {
+			border: 1px solid #ddd;
+			border-radius: 4px;
+		}
+	</style>
+</body>
+
+</html>

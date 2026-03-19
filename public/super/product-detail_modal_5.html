@@ -1,0 +1,40 @@
+<div class="dialog-container jw-rows jw-flex-c">
+
+
+	<div class="dialog-content">
+		<p class="msg-text" data-lan-eng="Are you sure you want to delete this product?">이 상품을 삭제하시겠습니까?</p>
+	</div>
+
+	<div class="dialog-controls jw-mgt50">
+		<button type="button" class="jw-button typeA" id="closeDialog" data-lan-eng="Cancel">취소</button>
+		<button type="button" class="jw-button typeB2" id="confirmDelete" data-lan-eng="Delete">삭제</button>
+	</div>
+</div>
+
+<script>
+	(function() {
+		const confirmDeleteBtn = document.getElementById('confirmDelete');
+		const closeDialogBtn = document.getElementById('closeDialog');
+
+		if (confirmDeleteBtn) {
+			confirmDeleteBtn.addEventListener('click', () => {
+				// handleDelete 함수 호출
+				if (typeof handleDelete === 'function') {
+					handleDelete();
+				}
+				// 모달 닫기
+				if (typeof modal_close === 'function') {
+					modal_close();
+				}
+			});
+		}
+
+		if (closeDialogBtn) {
+			closeDialogBtn.addEventListener('click', () => {
+				if (typeof modal_close === 'function') {
+					modal_close();
+				}
+			});
+		}
+	})();
+</script>

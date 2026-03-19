@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+<body>
+	<header class="layout-header"></header>
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Inquiries">Inquiries</h1>
+
+			<div class="card-panel jw-mgt32">
+				<!-- Search Area -->
+				<div class="search-form jw-mgb16" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:16px; background:#F9FAFB; border-radius:10px;">
+					<input type="text" class="form-control" id="searchKeyword" placeholder="Agent name or Subject" style="flex:1; min-width:180px; height:40px; font-size:13px;">
+					<input type="date" class="form-control" id="dateFrom" style="width:150px; height:40px; font-size:13px;">
+					<span style="color:#999; font-size:13px;">~</span>
+					<input type="date" class="form-control" id="dateTo" style="width:150px; height:40px; font-size:13px;">
+					<select class="select" id="statusFilter">
+						<option value="" data-lan-eng="All Status">All Status</option>
+						<option value="open" data-lan-eng="Open">Open</option>
+						<option value="in_progress" data-lan-eng="In Progress">In Progress</option>
+						<option value="resolved" data-lan-eng="Resolved">Resolved</option>
+						<option value="closed" data-lan-eng="Closed">Closed</option>
+					</select>
+					<button type="button" class="jw-button typeB" id="searchBtn" style="height:40px; min-width:80px;" data-lan-eng="Search">Search</button>
+					<button type="button" class="jw-button typeF" id="resetBtn" style="height:40px; min-width:60px;" data-lan-eng="Reset">Reset</button>
+				</div>
+
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" id="filterForm">
+						<select class="select" id="sortFilter" onchange="applyFilters()">
+							<option value="latest" data-lan-eng="Latest">Latest</option>
+							<option value="oldest" data-lan-eng="Oldest">Oldest</option>
+						</select>
+					</form>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col style="width:50px;">
+						<col style="width:200px;">
+						<col>
+						<col style="width:260px;">
+						<col style="width:120px;">
+						<col style="width:110px;">
+						<col style="width:90px;">
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th class="is-center" data-lan-eng="Agent Name">Agent Name</th>
+							<th class="is-center" data-lan-eng="Subject">Subject</th>
+							<th class="is-center" data-lan-eng="Last Message">Last Message</th>
+							<th class="is-center" data-lan-eng="Date">Date</th>
+							<th class="is-center" data-lan-eng="Status">Status</th>
+							<th class="is-center" data-lan-eng="Unread">Unread</th>
+						</tr>
+					</thead>
+					<tbody id="threadsTableBody">
+						<tr><td colspan="7" class="is-center">Loading...</td></tr>
+					</tbody>
+				</table>
+
+				<div class="jw-pagebox" role="navigation">
+					<div class="contents">
+						<button type="button" class="first"><img src="../image/first.svg" alt=""></button>
+						<button type="button" class="prev"><img src="../image/prev.svg" alt=""></button>
+						<div class="page" role="list"></div>
+						<button type="button" class="next"><img src="../image/next.svg" alt=""></button>
+						<button type="button" class="last"><img src="../image/last.svg" alt=""></button>
+					</div>
+				</div>
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeB" id="newMessageBtn" data-lan-eng="New Message">New Message</button>
+			</div>
+
+		</section>
+	</main>
+
+	<!-- New Message Modal -->
+	<div id="newMessageModal" class="new-message-modal-overlay" style="display:none;">
+		<div class="new-message-modal">
+			<div class="new-message-modal-header">
+				<span data-lan-eng="New Message">New Message</span>
+				<button type="button" class="jw-button typeF" id="closeModalBtn">Close</button>
+			</div>
+			<div class="new-message-modal-body">
+				<div>
+					<label class="label-name" data-lan-eng="Select Agent">Select Agent</label>
+					<div class="agent-search-wrap" id="agentSearchWrap">
+						<input type="text" class="form-control" id="agentSearchInput" placeholder="Search agent name..." autocomplete="off">
+						<input type="hidden" id="modalAgentSelect" value="">
+						<div class="agent-search-dropdown" id="agentDropdown"></div>
+					</div>
+				</div>
+				<div>
+					<label class="label-name" data-lan-eng="Category">Category</label>
+					<select class="select" id="modalCategory" style="width:100%;">
+						<option value="general">General</option>
+						<option value="product">Product</option>
+						<option value="booking">Booking</option>
+						<option value="payment">Payment</option>
+						<option value="cancellation">Cancellation</option>
+						<option value="other">Other</option>
+					</select>
+				</div>
+				<div>
+					<label class="label-name" data-lan-eng="Subject">Subject</label>
+					<input type="text" class="form-control" id="modalSubject" placeholder="Enter subject">
+				</div>
+				<div>
+					<label class="label-name" data-lan-eng="Message">Message</label>
+					<div id="modalEditor" style="height:150px;"></div>
+				</div>
+				<div>
+					<label class="label-name" data-lan-eng="Attachments">Attachments</label>
+					<input type="file" id="modalFiles" multiple accept=".jpg,.jpeg,.png,.gif,.pdf" style="font-size:13px;">
+					<div style="font-size:11px; color:#999; margin-top:4px;">Max 5 files, 10MB each (jpg, png, gif, pdf)</div>
+				</div>
+			</div>
+			<div class="new-message-modal-footer">
+				<button type="button" class="jw-button typeF" id="cancelModalBtn" data-lan-eng="Cancel">Cancel</button>
+				<button type="button" class="jw-button typeB" id="sendModalBtn" data-lan-eng="Send">Send</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+	<script>
+		init({ headerUrl: '../inc/header.html', navUrl: '../inc/nav_super.html' });
+
+		let currentPage = 1;
+		const limit = 10;
+		let currentFilters = { status: '', sortOrder: 'latest', search: '', dateFrom: '', dateTo: '' };
+		let modalEditor = null;
+
+		function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+		function escapeAttr(t) { return String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+		const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+
+		function renderTable(threads) {
+			const tbody = document.getElementById('threadsTableBody');
+			if (!threads || !threads.length) {
+				tbody.innerHTML = '<tr><td colspan="7" class="is-center">No messages found.</td></tr>';
+				return;
+			}
+			tbody.innerHTML = threads.map(t => {
+				const date = (t.lastMessageAt || t.createdAt || '').split(' ')[0];
+				const unread = t.unreadCount > 0 ? `<span class="unread-badge">${t.unreadCount}</span>` : '';
+				return `<tr onclick="location.href='agent-message-detail.html?id=${t.threadId}'" style="cursor:pointer;">
+					<td class="no is-center">${t.rowNum || ''}</td>
+					<td class="is-center" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.agentName || '')}</td>
+					<td class="is-center" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.subject || '')}</td>
+					<td class="is-center" style="color:#666; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.lastMessage || '')}</td>
+					<td class="is-center">${escapeHtml(date)}</td>
+					<td class="is-center"><span class="msg-status-badge ${t.status}">${statusLabels[t.status] || t.status}</span></td>
+					<td class="is-center">${unread}</td>
+				</tr>`;
+			}).join('');
+		}
+
+		function applyFilters() {
+			currentFilters.status = document.getElementById('statusFilter').value;
+			currentFilters.sortOrder = document.getElementById('sortFilter').value;
+			currentFilters.search = document.getElementById('searchKeyword').value.trim();
+			currentFilters.dateFrom = document.getElementById('dateFrom').value;
+			currentFilters.dateTo = document.getElementById('dateTo').value;
+			currentPage = 1;
+			loadThreads();
+		}
+
+		function resetFilters() {
+			document.getElementById('searchKeyword').value = '';
+			document.getElementById('dateFrom').value = '';
+			document.getElementById('dateTo').value = '';
+			// Reset status select (custom jw-select)
+			const statusSel = document.getElementById('statusFilter');
+			statusSel.value = '';
+			const statusWrap = statusSel.closest('.jw-select');
+			if (statusWrap) {
+				const box = statusWrap.querySelector('.jw-selected');
+				if (box) box.textContent = statusSel.options[0].textContent;
+			}
+			currentFilters = { status: '', sortOrder: currentFilters.sortOrder, search: '', dateFrom: '', dateTo: '' };
+			currentPage = 1;
+			loadThreads();
+		}
+
+		async function loadThreads(page) {
+			if (page) currentPage = page;
+			try {
+				const params = new URLSearchParams({
+					action: 'getMessageThreads',
+					page: currentPage,
+					limit: limit,
+					sortOrder: currentFilters.sortOrder
+				});
+				if (currentFilters.status) params.append('status', currentFilters.status);
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.dateFrom) params.append('dateFrom', currentFilters.dateFrom);
+				if (currentFilters.dateTo) params.append('dateTo', currentFilters.dateTo);
+
+				const res = await fetch(`../backend/api/super-api.php?${params}`, { credentials: 'same-origin' });
+				if (res.status === 401) { location.href = '../index.html'; return; }
+				const json = await res.json();
+				if (json.success && json.data) {
+					document.getElementById('totalCount').textContent = json.data.pagination.totalCount || 0;
+					renderTable(json.data.threads);
+					updatePagination(json.data.pagination);
+				}
+			} catch (e) {
+				console.error(e);
+				document.getElementById('threadsTableBody').innerHTML = '<tr><td colspan="7" class="is-center">Failed to load.</td></tr>';
+			}
+		}
+
+		function updatePagination(p) {
+			const box = document.querySelector('.jw-pagebox');
+			if (!box) return;
+			const wrap = box.querySelector('.page');
+			const total = Math.max(1, p.totalPages);
+			const cur = Math.max(1, p.currentPage);
+			const gs = 5;
+			const start = Math.floor((cur - 1) / gs) * gs + 1;
+			const end = Math.min(total, start + gs - 1);
+			wrap.innerHTML = '';
+			for (let i = start; i <= end; i++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (i === cur ? ' show' : '');
+				btn.textContent = i;
+				btn.onclick = () => loadThreads(i);
+				wrap.appendChild(btn);
+			}
+			const prev = Math.max(1, start - gs);
+			const next = Math.min(total, start + gs);
+			box.querySelector('.first').onclick = () => loadThreads(1);
+			box.querySelector('.last').onclick = () => loadThreads(total);
+			box.querySelector('.prev').onclick = () => loadThreads(prev);
+			box.querySelector('.next').onclick = () => loadThreads(next);
+		}
+
+		// Modal
+		function openModal() {
+			document.getElementById('newMessageModal').style.display = 'flex';
+			if (!modalEditor) {
+				modalEditor = new Quill('#modalEditor', {
+					theme: 'snow',
+					modules: { toolbar: [['bold','italic','underline'],['link'],[{list:'ordered'},{list:'bullet'}]] }
+				});
+			}
+			modalEditor.setText('');
+			document.getElementById('modalSubject').value = '';
+			document.getElementById('modalFiles').value = '';
+			document.getElementById('agentSearchInput').value = '';
+			document.getElementById('modalAgentSelect').value = '';
+			document.getElementById('agentDropdown').style.display = 'none';
+		}
+		function closeModal() { document.getElementById('newMessageModal').style.display = 'none'; }
+
+		let agentSearchTimer = null;
+
+		async function loadAgentList(keyword) {
+			const dropdown = document.getElementById('agentDropdown');
+			try {
+				const params = new URLSearchParams({ action: 'getAgentListForMessage' });
+				if (keyword) params.append('keyword', keyword);
+				const res = await fetch(`../backend/api/super-api.php?${params}`, { credentials: 'same-origin' });
+				const json = await res.json();
+				if (json.success && json.data && json.data.agents) {
+					const agents = json.data.agents;
+					if (!agents.length) {
+						dropdown.innerHTML = '<div class="agent-search-empty">No agents found</div>';
+					} else {
+						dropdown.innerHTML = agents.map(a => {
+							const label = escapeHtml(a.branchName || a.managerName || '');
+							const sub = a.managerName && a.branchName ? escapeHtml(a.managerName) : '';
+							return `<div class="agent-search-item" data-id="${a.accountId}" data-name="${escapeAttr(a.branchName || a.managerName || '')}">
+								<span class="agent-search-item-name">${label}</span>
+								${sub ? '<span class="agent-search-item-sub">' + sub + '</span>' : ''}
+							</div>`;
+						}).join('');
+					}
+					dropdown.style.display = 'block';
+				}
+			} catch (e) { console.error(e); }
+		}
+
+		function initAgentSearch() {
+			const input = document.getElementById('agentSearchInput');
+			const dropdown = document.getElementById('agentDropdown');
+			const hidden = document.getElementById('modalAgentSelect');
+
+			input.addEventListener('input', () => {
+				hidden.value = '';
+				clearTimeout(agentSearchTimer);
+				const kw = input.value.trim();
+				if (kw.length < 1) { dropdown.style.display = 'none'; return; }
+				agentSearchTimer = setTimeout(() => loadAgentList(kw), 300);
+			});
+
+			input.addEventListener('focus', () => {
+				if (input.value.trim().length >= 1) {
+					loadAgentList(input.value.trim());
+				}
+			});
+
+			dropdown.addEventListener('click', e => {
+				const item = e.target.closest('.agent-search-item');
+				if (!item) return;
+				hidden.value = item.dataset.id;
+				input.value = item.dataset.name;
+				dropdown.style.display = 'none';
+			});
+
+			document.addEventListener('click', e => {
+				if (!e.target.closest('#agentSearchWrap')) dropdown.style.display = 'none';
+			});
+		}
+
+		async function handleSendNewMessage() {
+			const agentAccountId = document.getElementById('modalAgentSelect').value;
+			const subject = document.getElementById('modalSubject').value.trim();
+			const content = modalEditor ? modalEditor.root.innerHTML : '';
+			const category = document.getElementById('modalCategory').value;
+
+			if (!agentAccountId) return alert('Please select an agent.');
+			if (!subject) return alert('Please enter a subject.');
+			if (!content || content === '<p><br></p>') return alert('Please enter a message.');
+
+			const formData = new FormData();
+			formData.append('action', 'createMessageThread');
+			formData.append('agentAccountId', agentAccountId);
+			formData.append('subject', subject);
+			formData.append('content', content);
+			formData.append('category', category);
+
+			const files = document.getElementById('modalFiles').files;
+			for (let i = 0; i < Math.min(files.length, 5); i++) {
+				formData.append('files[]', files[i]);
+			}
+
+			const btn = document.getElementById('sendModalBtn');
+			btn.disabled = true;
+			btn.textContent = 'Sending...';
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+				const json = await res.json();
+				if (json.success) {
+					closeModal();
+					location.href = 'agent-message-detail.html?id=' + json.data.threadId;
+				} else {
+					alert(json.message || 'Failed to send');
+				}
+			} catch (e) {
+				alert('Error: ' + e.message);
+			} finally {
+				btn.disabled = false;
+				btn.textContent = 'Send';
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sRes = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
+				const sData = await sRes.json();
+				if (!sData || !sData.authenticated || (!['admin_ph','admin_kr'].includes(sData.userType) && sData.userType !== 'super')) {
+					location.href = '../index.html'; return;
+				}
+				await loadThreads();
+			} catch (e) { console.error(e); location.href = '../index.html'; }
+
+			document.getElementById('searchBtn').addEventListener('click', applyFilters);
+			document.getElementById('resetBtn').addEventListener('click', resetFilters);
+			document.getElementById('searchKeyword').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyFilters(); } });
+			document.getElementById('newMessageBtn').addEventListener('click', openModal);
+			document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+			document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+			document.getElementById('sendModalBtn').addEventListener('click', handleSendNewMessage);
+			document.getElementById('newMessageModal').addEventListener('click', e => { e.stopPropagation(); });
+			initAgentSearch();
+		});
+	</script>
+</body>
+</html>

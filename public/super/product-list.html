@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Product List">Product List</h1>
+			<div class="card-panel jw-mgt32">
+			
+
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<!-- SMT   -->
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+
+						<select class="select" name="status" id="statusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="Overall Status">Overall Status</option>
+							<option value="on_sale" data-lan-eng="On Sale">On Sale</option>
+							<option value="sale_ended" data-lan-eng="Sale Ended">Sale Ended</option>
+							<option value="temporary_save" data-lan-eng="Temporary Save">Temporary Save</option>
+						</select>
+
+						<div class="search-field">
+							<input type="text" class="search-input" id="searchInput" placeholder=" " data-lan-eng="Search Product Name">
+							<button type="submit" class="jw-button search-btn" aria-label="">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+					<!-- SMT   -->
+				</div>
+
+				
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!--  (thumb + title, auto) -->
+						<col class="col-150"> <!--   -->
+						<col class="col-150"> <!--   -->
+						<col class="col-200"> <!--   -->
+						<col class="col-150"> <!--  -->
+						<col class="col-150"> <!--  -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th data-lan-eng="Product Name">Product Name</th>
+							<th data-lan-eng="Sales Target">Sales Target</th>
+							<th data-lan-eng="Remaining quantity">Remaining quantity</th>
+							<th data-lan-eng="Sales period">Sales period</th>
+							<th data-lan-eng="Status">Status</th>
+							<th data-lan-eng="Registration date/time">Registration date/time</th>
+						</tr>
+					</thead>
+					<tbody id="productsTableBody">
+						<tr>
+							<td colspan="7" class="is-center">  ...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<div class="jw-pagebox" role="navigation" aria-label="">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list">
+							<button type="button" class="p" role="listitem">1</button>
+							<button type="button" class="p" role="listitem">2</button>
+							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
+							<button type="button" class="p" role="listitem">4</button>
+							<button type="button" class="p" role="listitem">5</button>
+						</div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+			
+			<div class="controller">
+				<button type="button" class="jw-button typeB" onclick="temp_link('product-registration.html?mode=create')"><img src="../image/buttonB.svg" alt="">Add Product</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 10;
+		let currentFilters = { search: '', status: '' };
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			// Prevent full page refresh when pressing Enter in search input (dev_tasks #132)
+			try {
+				const form = document.getElementById('filterForm');
+				form?.addEventListener('submit', (e) => { e.preventDefault(); applyFilters(); });
+				const inp = document.getElementById('searchInput');
+				inp?.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter') { e.preventDefault(); applyFilters(); }
+				});
+			} catch (_) {}
+			//  
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super  admin  
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadProducts();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			currentFilters.status = document.getElementById('statusFilter').value;
+			currentPage = 1;
+			loadProducts();
+		}
+
+		async function loadProducts(page = currentPage) {
+			try {
+				const tbody = document.getElementById('productsTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">  ...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getProducts',
+					page: page,
+					limit: limit
+				});
+				
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.status) params.append('status', currentFilters.status);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					alert(' .');
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { products, pagination } = result.data;
+					
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					if (tbody) {
+						if (products.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="7" class="is-center"> .</td></tr>';
+						} else {
+							tbody.innerHTML = products.map((product) => {
+								const createdAt = product.createdAt ? product.createdAt.split(' ')[0] + ' ' + product.createdAt.split(' ')[1] : '';
+								const statusLabel = product.status === 'active' ? 'On Sale' : (product.status === 'inactive' ? 'Sale Ended' : 'Temporary Save');
+								return `
+									<tr style="cursor:pointer;" onclick="window.location.href='product-detail.html?id=${escapeHtml(product.packageId)}'">
+										<td class="no is-center">${product.rowNum || ''}</td>
+										<td>
+											<div class="cell-thumb">
+												<div class="thumb" aria-hidden="true" style="${product.thumbnailUrl ? `background-image:url('${escapeHtml(product.thumbnailUrl)}'); background-size:cover; background-repeat:no-repeat; background-position:center;` : ''}"></div>
+												<!-- (HTML 태그 수정) 디코딩 적용 -->
+												<span class="title">${escapeHtml(decodeHtmlEntities(product.packageName) || '')}</span>
+											</div>
+										</td>
+										<td class="is-center">${escapeHtml(product.targetMarket || 'B2B')}</td>
+										<td class="is-center">${product.remainingQuantity || 0}</td>
+										<td class="is-center">${escapeHtml(product.salesPeriod || '')}</td>
+										<td class="is-center">${statusLabel}</td>
+										<td class="is-center">${escapeHtml(createdAt)}</td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					updatePagination(pagination);
+					currentPage = pagination.currentPage;
+				}
+			} catch (error) {
+				console.error('Error loading products:', error);
+				const tbody = document.getElementById('productsTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">    .</td></tr>';
+				}
+			}
+		}
+
+		function updatePagination(pagination) {
+			const box = document.querySelector('.jw-pagebox');
+			if (!box) return;
+			const pageWrap = box.querySelector('.page');
+			if (!pageWrap) return;
+
+			const totalPages = Math.max(1, Number(pagination.totalPages || 1));
+			const current = Math.max(1, Number(pagination.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => loadProducts(p));
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = box.querySelector('.first');
+			const prevBtn = box.querySelector('.prev');
+			const nextBtn = box.querySelector('.next');
+			const lastBtn = box.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => loadProducts(1);
+			if (lastBtn) lastBtn.onclick = () => loadProducts(totalPages);
+			if (prevBtn) prevBtn.onclick = () => loadProducts(prevTarget);
+			if (nextBtn) nextBtn.onclick = () => loadProducts(nextTarget);
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+	</script>
+</body>
+
+</html>

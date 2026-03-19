@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+	<style>
+		#phoneDomesticCode + .jw-select .jw-selected,
+		#phoneInternationalCode + .jw-select .jw-selected,
+		.field-row .jw-select .jw-selected {
+			padding-right: 35px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Company Information">Company Information</h1>
+			
+			<h2 class="section-title jw-mgt32" data-lan-eng="Information">Information</h2>
+			<div class="card-panel jw-mgt16">
+			
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Address">Address</label>
+						<input type="text" class="form-control" id="companyAddress" value="">
+					</div>
+					
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Representative email">Representative email</label>
+						<input type="email" class="form-control" id="companyEmail" value="">
+					</div>
+					
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Inquiry phone number (domestic)">Inquiry phone number (domestic)</label>
+						<div class="field-row">
+							<select class="select" id="phoneDomesticCode" style="min-width: 180px; padding-right: 30px;">
+								<option value="" disabled selected>Loading...</option>
+							</select>
+							<input type="text" class="form-control" id="phoneDomesticNumber" value="">
+						</div>
+					</div>
+					
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Inquiry phone number (overseas)">Inquiry phone number (overseas)</label>
+						<div class="field-row">
+							<select class="select" id="phoneInternationalCode" style="min-width: 180px; padding-right: 30px;">
+								<option value="" disabled selected>Loading...</option>
+							</select>
+							<input type="text" class="form-control" id="phoneInternationalNumber" value="">
+						</div>
+					</div>
+
+				</div>
+				
+			</div>
+
+
+
+			<div class="controller">
+				<button type="button" class="jw-button typeB" data-lan-eng="Save changes">Save changes</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_companyinfofix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadCountryCodes();
+				await loadCompanyInfo();
+				
+				const saveBtn = document.querySelector('.jw-button.typeB');
+				if (saveBtn) {
+					saveBtn.addEventListener('click', handleSave);
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodes() {
+			const domSel = document.getElementById('phoneDomesticCode');
+			const intlSel = document.getElementById('phoneInternationalCode');
+			if (!domSel || !intlSel) return;
+
+			// preserve current selection if any
+			const prevDom = domSel.value || '+63';
+			const prevIntl = intlSel.value || '+82';
+
+			try {
+				// admin    (/admin/backend/api    )
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json().catch(() => ({}));
+				const list = Array.isArray(json?.countries) ? json.countries : [];
+				const countries = list
+					.map((c) => ({ code: String(c?.code || '').trim(), name: String(c?.name || '').trim() }))
+					.filter((c) => c.code && c.code.startsWith('+'));
+
+				const fill = (sel, preferred) => {
+					sel.innerHTML = '';
+					countries.forEach((c) => {
+						const opt = document.createElement('option');
+						opt.value = c.code;
+						// "+82 South Korea"  
+						opt.textContent = c.name ? `${c.code} ${c.name}` : c.code;
+						opt.setAttribute('data-lan-eng', opt.textContent);
+						sel.appendChild(opt);
+					});
+					// fallback: preferred    
+					const hasPreferred = Array.from(sel.options).some(o => o.value === preferred);
+					sel.value = hasPreferred ? preferred : (sel.options?.[0]?.value || '');
+				};
+
+				fill(domSel, prevDom);
+				fill(intlSel, prevIntl);
+
+				if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect();
+			} catch (e) {
+				console.error('Failed to load country codes:', e);
+				// fallback:   
+				domSel.innerHTML = `<option value="+63">+63</option><option value="+82">+82</option><option value="+81">+81</option><option value="+1">+1</option>`;
+				intlSel.innerHTML = `<option value="+82">+82</option><option value="+63">+63</option><option value="+81">+81</option><option value="+1">+1</option>`;
+				domSel.value = prevDom || '+63';
+				intlSel.value = prevIntl || '+82';
+				if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect();
+			}
+		}
+
+		async function loadCompanyInfo() {
+			try {
+				const response = await fetch('../backend/api/super-api.php?action=getCompanyInfo', {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.companyInfo) {
+					const info = result.data.companyInfo;
+					
+					const addressInput = document.getElementById('companyAddress');
+					if (addressInput) addressInput.value = info.address || '';
+					
+					const emailInput = document.getElementById('companyEmail');
+					if (emailInput) emailInput.value = info.email || '';
+					
+					const setPhone = (full, codeSel, numInput, fallbackCode) => {
+						if (!full) { numInput.value = ''; return; }
+						const parts = String(full).trim().split(/\s+/);
+						let code = (parts[0]?.startsWith('+')) ? parts[0] : (fallbackCode || '');
+						const hasCode = Array.from(codeSel?.options || []).some(o => o.value === code);
+						if (!hasCode) {
+							//      fallback
+							code = fallbackCode || (codeSel?.options?.[0]?.value || '');
+						}
+						if (code) codeSel.value = code;
+						numInput.value = parts.slice(1).join(' ') || '';
+					};
+					setPhone(info.phoneDomestic || '', document.getElementById('phoneDomesticCode'), document.getElementById('phoneDomesticNumber'), '+63');
+					setPhone(info.phoneInternational || '', document.getElementById('phoneInternationalCode'), document.getElementById('phoneInternationalNumber'), '+82');
+					if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect();
+				}
+			} catch (error) {
+				console.error('Error loading company info:', error);
+			}
+		}
+
+		async function handleSave() {
+			try {
+				const addressInput = document.getElementById('companyAddress');
+				const emailInput = document.getElementById('companyEmail');
+				const phoneDomestic = (document.getElementById('phoneDomesticCode')?.value || '+63') + ' ' + (document.getElementById('phoneDomesticNumber')?.value || '').trim();
+				const phoneInternational = (document.getElementById('phoneInternationalCode')?.value || '+82') + ' ' + (document.getElementById('phoneInternationalNumber')?.value || '').trim();
+
+				const formData = {
+					action: 'updateCompanyInfo',
+					address: addressInput?.value?.trim() || '',
+					email: emailInput?.value?.trim() || '',
+					phoneDomestic,
+					phoneInternational
+				};
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(formData),
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert(' .');
+				} else {
+					alert(' : ' + (result.message || '   '));
+				}
+			} catch (error) {
+				console.error('Error saving company info:', error);
+				alert('   : ' + (error?.message || ''));
+			}
+		}
+	</script>
+</body>
+
+</html>

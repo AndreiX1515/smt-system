@@ -1,0 +1,491 @@
+/**
+ * CS Admin - Inquiry Detail Page
+ * - Match tools/inquiry-detail.html layout
+ * - Prevent Korean strings from appearing (UI + alerts)
+ */
+
+let inquiryId = null;
+let currentInquiryData = null;
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = String(text ?? "");
+  return div.innerHTML;
+}
+
+function htmlToPlainText(html) {
+  const div = document.createElement("div");
+  div.innerHTML = String(html ?? "");
+  return (div.textContent || div.innerText || "").trim();
+}
+
+function formatCustomerNumberFromInquiry(inquiry) {
+  // Super  :  ID CLI + 6 0
+  const raw =
+    (inquiry && (inquiry.customerNumber || inquiry.clientCode || inquiry.clientId || inquiry.accountId)) ?? "";
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/^cli\d+$/i.test(s)) return s.toUpperCase();
+  if (/^\d+$/.test(s)) return `CLI${s.padStart(6, "0")}`;
+  return s;
+}
+
+function formatFileSize(bytes) {
+  const b = Number(bytes || 0);
+  if (!b) return "";
+  if (b < 1024) return `${b}B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)}KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function normalizeInquiryTypeValue(raw) {
+  const v = String(raw ?? "").toLowerCase().trim();
+  if (!v) return "other";
+  // already UI values
+  if (v === "product") return "product";
+  if (v === "reservation") return "reservation";
+  if (v === "payment") return "payment";
+  if (v === "cancel" || v === "cancellation") return "cancel";
+  if (v === "other") return "other";
+  // DB category values
+  if (v === "general") return "product";
+  if (v === "booking") return "reservation";
+  if (v === "payment") return "payment";
+  if (v === "complaint") return "cancel";
+  if (v === "suggestion") return "other";
+  if (v === "visa" || v === "technical") return "other";
+  return "other";
+}
+
+async function ensureSessionOrRedirect() {
+  try {
+    const res = await fetch("../backend/api/check-session.php", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!data || !data.authenticated) {
+      window.location.href = "../index.html";
+      return false;
+    }
+    return true;
+  } catch {
+    window.location.href = "../index.html";
+    return false;
+  }
+}
+
+function renderAttachments(container, attachments) {
+  if (!container) return;
+
+  const listAll = Array.isArray(attachments) ? attachments : [];
+  const hasImage = listAll.some((a) => String(a?.fileType || "").toLowerCase().startsWith("image/"));
+  // 이미지가 아닌 파일만 표시 (이미지는 별도 섹션에 표시)
+  const list = hasImage
+    ? listAll.filter((a) => !String(a?.fileType || "").toLowerCase().startsWith("image/"))
+    : listAll;
+
+  // 확장자별로 그룹화하지 않고 모든 파일 표시
+  if (list.length === 0) {
+    if (listAll.length > 0 && hasImage) {
+      container.innerHTML = "";
+      return;
+    }
+    container.innerHTML = `<div class="cell"><div style="padding:10px;font-size:13px;color:#9ca3af;">No attachments.</div></div>`;
+    return;
+  }
+
+  container.innerHTML = list
+    .map((file, idx) => {
+      const fileName = file.originalName || file.fileName || "File";
+      const fileSize = file.fileSize ? formatFileSize(file.fileSize) : "";
+      return `
+        <div class="cell">
+          <div class="field-row jw-center">
+            <div class="jw-center jw-gap10">
+              <img src="../image/file.svg" alt="">
+              <span>${escapeHtml(fileName)}${fileSize ? ` [${escapeHtml(fileSize)}]` : ""}</span>
+            </div>
+            <div class="jw-center jw-gap10">
+              <i></i>
+              <button type="button" class="jw-button typeF" data-attachment-index="${idx}">
+                <img src="../image/buttun-download.svg" alt="">
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  container.querySelectorAll("button[data-attachment-index]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const index = Number(btn.getAttribute("data-attachment-index"));
+      const file = list[index];
+      const filePath = file?.filePath || file?.path || "";
+      if (!filePath) return;
+      const url = `../backend/api/cs-api.php?action=downloadAttachment&filePath=${encodeURIComponent(filePath)}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = ""; // Content-Disposition 
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  });
+}
+
+function renderFirstImageAttachment(attachments) {
+  const box = document.getElementById("imageAttachmentBox");
+  if (!box) return;
+
+  const list = Array.isArray(attachments) ? attachments : [];
+  const img = list.find((a) => String(a.fileType || "").toLowerCase().startsWith("image/")) || null;
+  if (!img) {
+    box.style.display = "none";
+    return false;
+  }
+
+  const filePath = img.filePath || img.path || "";
+  const fileName = img.originalName || img.fileName || "Image";
+  const fileSize = img.fileSize ? formatFileSize(img.fileSize) : "";
+
+  box.style.display = "block";
+  const thumb = box.querySelector(".thumb");
+  const nameEl = document.getElementById("imageAttachmentName");
+  const infoEl = document.getElementById("imageAttachmentInfo");
+  const downloadBtn = document.getElementById("imageAttachmentDownloadBtn");
+
+  if (nameEl) nameEl.textContent = fileName;
+  if (infoEl) infoEl.textContent = fileSize;
+  if (thumb && filePath) {
+    const url = filePath.startsWith("http") ? filePath : `${window.location.origin}/${filePath.replace(/^\/+/, "")}`;
+    thumb.style.backgroundImage = `url("${url}")`;
+    thumb.style.backgroundSize = "cover";
+    thumb.style.backgroundPosition = "center";
+  }
+  if (downloadBtn) {
+    downloadBtn.onclick = () => {
+      if (!filePath) return;
+      const url = `../backend/api/cs-api.php?action=downloadAttachment&filePath=${encodeURIComponent(filePath)}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+  }
+  return true;
+}
+
+async function loadInquiryDetail() {
+  const res = await fetch(`../backend/api/cs-api.php?action=getInquiryDetail&id=${encodeURIComponent(inquiryId)}`, {
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const result = await res.json();
+  if (!result?.success || !result?.data?.inquiry) throw new Error(result?.message || "Failed to load inquiry.");
+
+  currentInquiryData = result.data;
+  const inquiry = result.data.inquiry;
+  const replies = Array.isArray(result.data.replies) ? result.data.replies : [];
+
+  const customerName = `${inquiry.fName || ""} ${inquiry.lName || ""}`.trim();
+  const contactNo = inquiry.contactNo || "";
+  const email = inquiry.emailAddress || "";
+  const customerNo = formatCustomerNumberFromInquiry(inquiry);
+  const agentName = inquiry.agentName || inquiry.branchName || "";
+
+  const createdAt = inquiry.createdAt ? String(inquiry.createdAt).replace(" ", " ").substring(0, 16) : "";
+  
+  // 서버에서 이미 normalize_ui_inquiry_type으로 변환된 값을 사용
+  // 서버에서 inquiryType이 설정되어 있으면 사용, 없으면 category를 변환
+  let inquiryType = inquiry.inquiryType;
+  if (!inquiryType && inquiry.category) {
+    inquiryType = normalizeInquiryTypeValue(inquiry.category);
+  }
+  if (!inquiryType) {
+    inquiryType = "other"; // 기본값
+  }
+  
+  // 디버깅: 실제 DB 값 확인
+  console.log("Inquiry type debug:", {
+    inquiryType: inquiry.inquiryType,
+    category: inquiry.category,
+    rawCategory: inquiry.rawCategory,
+    finalType: inquiryType,
+    allInquiryFields: Object.keys(inquiry)
+  });
+  
+  // inquiryType이 'product'로만 나오는 경우 원본 값 확인
+  if (inquiryType === "product" && inquiry.rawCategory && inquiry.rawCategory !== "general" && inquiry.rawCategory !== "product") {
+    console.warn("Warning: inquiryType is 'product' but rawCategory is:", inquiry.rawCategory);
+  }
+  
+  const title = inquiry.subject || inquiry.inquiryTitle || "";
+  const contentHtml = inquiry.content || inquiry.inquiryContent || "";
+  const contentText = htmlToPlainText(contentHtml);
+
+  const customerNameEl = document.getElementById("customerName");
+  if (customerNameEl) customerNameEl.value = customerName;
+  const contactEl = document.getElementById("contactNo");
+  if (contactEl) contactEl.value = contactNo;
+  const emailEl = document.getElementById("emailAddress");
+  if (emailEl) emailEl.value = email;
+  const customerNumberEl = document.getElementById("customerNumber");
+  if (customerNumberEl) customerNumberEl.value = customerNo;
+  const agentEl = document.getElementById("agentName");
+  if (agentEl) agentEl.value = agentName;
+
+  const createdAtEl = document.getElementById("createdAt");
+  if (createdAtEl) createdAtEl.value = createdAt;
+  const inquiryTypeEl = document.getElementById("inquiryType");
+  if (inquiryTypeEl) {
+    inquiryTypeEl.value = inquiryType;
+    // jw_select()로 초기화된 경우 UI 업데이트
+    const jwSelectWrap = inquiryTypeEl.closest(".jw-select");
+    if (jwSelectWrap) {
+      const box = jwSelectWrap.querySelector(".jw-selected");
+      if (box) {
+        const opt = inquiryTypeEl.selectedOptions[0] || inquiryTypeEl.options[0];
+        if (opt) {
+          const label = opt.textContent || opt.innerText;
+          const icon = opt?.dataset?.icon;
+          box.innerHTML = icon ? `<i class="${icon}"></i> ${label}` : label;
+        }
+      }
+    }
+  }
+  const titleEl = document.getElementById("inquiryTitle");
+  if (titleEl) titleEl.value = title;
+  const contentEl = document.getElementById("inquiryContent");
+  if (contentEl) contentEl.value = contentText;
+
+  //    UI,    UI   
+  renderFirstImageAttachment(inquiry.attachments || []);
+  renderAttachments(document.getElementById("inquiryAttachments"), inquiry.attachments || []);
+
+  // 처리 상태 설정
+  const processingStatusEl = document.getElementById("processingStatusSelect");
+  if (processingStatusEl) {
+    // DB status 값을 UI 값으로 변환
+    const dbStatus = String(inquiry.status || "open").toLowerCase().trim();
+    let uiStatus = "pending"; // 기본값: Received
+    
+    if (dbStatus === "in_progress" || dbStatus === "processing") {
+      uiStatus = "processing";
+    } else if (dbStatus === "resolved" || dbStatus === "closed" || dbStatus === "completed") {
+      uiStatus = "completed";
+    } else if (dbStatus === "open" || dbStatus === "pending") {
+      uiStatus = "pending";
+    }
+    
+    // select 요소의 value 설정
+    processingStatusEl.value = uiStatus;
+    
+    // jw_select()로 초기화된 경우를 대비해 UI 업데이트
+    // jw-select 래퍼가 있으면 수동으로 업데이트
+    const jwSelectWrap = processingStatusEl.closest(".jw-select");
+    if (jwSelectWrap) {
+      const box = jwSelectWrap.querySelector(".jw-selected");
+      if (box) {
+        const opt = processingStatusEl.selectedOptions[0] || processingStatusEl.options[0];
+        if (opt) {
+          const label = opt.textContent || opt.innerText;
+          const icon = opt?.dataset?.icon;
+          box.innerHTML = icon ? `<i class="${icon}"></i> ${label}` : label;
+        }
+      }
+    }
+    
+    // change 이벤트 트리거
+    processingStatusEl.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  // Reply status: if replies exist -> show latest reply timestamp and hide editor
+  const replyDateEl = document.getElementById("replyDate");
+  const sendBtn = document.getElementById("sendReplyBtn");
+  const replyDateWrap = replyDateEl ? replyDateEl.closest(".grid-item") : null;
+  const replyEditorWrap = document.getElementById("replyEditorWrap");
+  const replyContentWrap = document.getElementById("replyContentWrap");
+  const replyContentReadonly = document.getElementById("replyContentReadonly");
+  const replyBtnWrap = document.getElementById("replyBtnWrap");
+
+  if (replies.length > 0) {
+    const latest = replies[replies.length - 1];
+    if (replyDateEl) replyDateEl.value = latest.createdAt ? String(latest.createdAt).replace(" ", " ").substring(0, 16) : "";
+    if (replyDateWrap) replyDateWrap.classList.remove("hidden");
+
+    // Hide editor and button, show readonly content
+    if (replyEditorWrap) replyEditorWrap.style.display = "none";
+    if (replyBtnWrap) replyBtnWrap.style.display = "none";
+    if (replyContentWrap) replyContentWrap.style.display = "";
+
+    // Display reply content in readonly area
+    const html = latest.content || latest.replyContent || "";
+    if (replyContentReadonly) {
+      replyContentReadonly.innerHTML = html;
+    }
+  } else {
+    if (replyDateEl) replyDateEl.value = "";
+    if (replyDateWrap) replyDateWrap.classList.add("hidden");
+
+    // Show editor and button, hide readonly content
+    if (replyEditorWrap) replyEditorWrap.style.display = "";
+    if (replyBtnWrap) replyBtnWrap.style.display = "";
+    if (replyContentWrap) replyContentWrap.style.display = "none";
+
+    // ensure editor is writable for unanswered inquiries
+    const replyEditorArea = document.getElementById("replyEditor");
+    if (replyEditorArea) {
+      const q = replyEditorArea.__quill || (window.Quill && typeof window.Quill.find === "function" ? window.Quill.find(replyEditorArea) : null);
+      if (q) {
+        q.enable(true);
+      }
+    }
+  }
+}
+
+async function submitReply() {
+  const replyEditorArea = document.getElementById("replyEditor");
+  const q = replyEditorArea?.__quill || (window.Quill && typeof window.Quill.find === "function" ? window.Quill.find(replyEditorArea) : null);
+  const html = q && q.root ? (q.root.innerHTML || "").trim() : (replyEditorArea?.innerHTML || "").trim();
+  if (!html || html === "<p><br></p>") {
+    alert("Please enter reply content.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("action", "createReply");
+  formData.append("inquiryId", inquiryId);
+  formData.append("content", html);
+
+  const res = await fetch("../backend/api/cs-api.php", {
+    method: "POST",
+    credentials: "same-origin",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const result = await res.json();
+  if (!result?.success) throw new Error(result?.message || "Failed to send reply.");
+  alert("Reply sent.");
+  await loadInquiryDetail();
+}
+
+async function saveProcessingStatus() {
+  const statusSelect = document.getElementById("processingStatusSelect");
+  if (!statusSelect) {
+    alert("Status select element not found.");
+    return;
+  }
+  
+  if (!inquiryId) {
+    alert("Inquiry ID is missing.");
+    return;
+  }
+  
+  const status = statusSelect.value;
+  if (!status) {
+    alert("Please select a status.");
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("action", "updateInquiryStatus");
+    formData.append("inquiryId", String(inquiryId));
+    formData.append("status", status);
+
+    const res = await fetch("../backend/api/cs-api.php", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData,
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Status update failed:", res.status, errorText);
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+    
+    const result = await res.json();
+    if (!result?.success) {
+      console.error("Status update failed:", result);
+      throw new Error(result?.message || "Failed to save status.");
+    }
+    
+    alert("Status saved successfully.");
+    // 저장 후 데이터 다시 로드하여 UI 업데이트
+    await loadInquiryDetail();
+  } catch (e) {
+    console.error("Failed to save status:", e);
+    alert("Failed to save status: " + (e.message || "Unknown error"));
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await ensureSessionOrRedirect();
+  if (!ok) return;
+
+  const params = new URLSearchParams(window.location.search);
+  inquiryId = params.get("id") || params.get("inquiryId");
+  if (!inquiryId) {
+    alert("Missing inquiry id.");
+    window.location.href = "inquiry-list.html";
+    return;
+  }
+
+  // init multi-editor
+  try {
+    if (typeof window.board === "function") window.board();
+  } catch (_) {}
+
+  const sendBtn = document.getElementById("sendReplyBtn");
+  sendBtn?.addEventListener("click", () => {
+    submitReply().catch((e) => {
+      console.error("Failed to send reply:", e);
+      alert("Failed to send reply.");
+    });
+  });
+
+  const saveStatusBtn = document.getElementById("saveStatusBtn");
+  saveStatusBtn?.addEventListener("click", () => {
+    saveProcessingStatus().catch((e) => {
+      console.error("Failed to save status:", e);
+      alert("Failed to save status.");
+    });
+  });
+
+  try {
+    await loadInquiryDetail();
+    // jw_select()가 이미 실행된 경우 처리 상태 select UI 업데이트
+    if (typeof jw_select === "function") {
+      // 약간의 지연을 두고 실행하여 DOM이 완전히 렌더링된 후 실행
+      setTimeout(() => {
+        const processingStatusEl = document.getElementById("processingStatusSelect");
+        if (processingStatusEl) {
+          const jwSelectWrap = processingStatusEl.closest(".jw-select");
+          if (jwSelectWrap) {
+            const box = jwSelectWrap.querySelector(".jw-selected");
+            if (box) {
+              const opt = processingStatusEl.selectedOptions[0] || processingStatusEl.options[0];
+              if (opt) {
+                const label = opt.textContent || opt.innerText;
+                const icon = opt?.dataset?.icon;
+                box.innerHTML = icon ? `<i class="${icon}"></i> ${label}` : label;
+              }
+            }
+          }
+        }
+      }, 100);
+    }
+  } catch (e) {
+    console.error("Failed to load inquiry detail:", e);
+    const contentEl = document.getElementById("inquiryContent");
+    if (contentEl) contentEl.value = "Failed to load inquiry.";
+  }
+});
+

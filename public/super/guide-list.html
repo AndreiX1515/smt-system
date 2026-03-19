@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Guide List">Guide List</h1>
+
+			<div class="card-panel jw-mgt32">
+
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<!-- SMT   -->
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+						<select class="select" name="contractStatus" id="statusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="Overall Status">Overall Status</option>
+							<option value="under_contract" data-lan-eng="Under Contract">Under Contract</option>
+							<option value="contract_ended" data-lan-eng="Contract Ended">Contract Ended</option>
+						</select>
+
+						<div class="search-field">
+							<input type="text" class="search-input" id="searchInput" placeholder=" " data-lan-eng-placeholder="Search Guide Name">
+							<button type="submit" class="jw-button search-btn" aria-label="">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+					<!-- SMT   -->
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!-- Guide Name -->
+						<col> <!-- Email -->
+						<col class="col-160"> <!-- Contact -->
+						<col class="col-220"> <!-- Contract Period -->
+						<col class="col-160"> <!-- Activity Status -->
+						<col class="col-120"> <!-- Actions -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center" data-lan-eng="No">No</th>
+							<th data-lan-eng="Guide Name">Guide Name</th>
+							<th data-lan-eng="Email">Email</th>
+							<th data-lan-eng="Contact">Contact</th>
+							<th data-lan-eng="Contract Period">Contract Period</th>
+							<th class="is-center" data-lan-eng="Activity Status">Activity Status</th>
+							<th class="is-center" data-lan-eng="Actions">Actions</th>
+						</tr>
+					</thead>
+					<tbody id="guidesTableBody">
+						<tr>
+							<td colspan="7" class="is-center" data-lan-eng="Loading data...">Loading data...</td>
+						</tr>
+					</tbody>
+				</table>
+
+
+				
+				<div class="jw-pagebox" role="navigation" aria-label="" id="pagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list" id="pageButtons"></div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadCsvBtn" data-lan-eng="Download">Download</button>
+				<button type="button" class="jw-button typeB" onclick="temp_link('guide-registration.html')"><img src="../image/buttonB.svg" alt="">Add New Guide</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		// :  10
+		const limit = 10;
+		let currentFilters = { search: '', contractStatus: '' };
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadGuides();
+				setupDownload();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			currentFilters.contractStatus = document.getElementById('statusFilter').value;
+			currentPage = 1;
+			loadGuides();
+		}
+
+		async function loadGuides(page = currentPage) {
+			try {
+				const tbody = document.getElementById('guidesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="8" class="is-center">  ...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getGuides',
+					page: page,
+					limit: limit
+				});
+				
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.contractStatus) params.append('contractStatus', currentFilters.contractStatus);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { guides, pagination } = result.data;
+					
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					if (tbody) {
+						if (guides.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="7" class="is-center">Guide .</td></tr>';
+						} else {
+							tbody.innerHTML = guides.map((guide) => {
+								const start = guide.contractStartDate ? String(guide.contractStartDate).slice(0, 10) : '';
+								const end = guide.contractEndDate ? String(guide.contractEndDate).slice(0, 10) : '';
+								const period = (start && end) ? `${start} ~ ${end}` : '-';
+								const activity = (guide.activityStatus === 'contract_ended') ? 'Contract Ended' : 'Under Contract';
+								return `
+									<tr data-href="guide-detail.html?id=${escapeHtml(guide.guideCode || guide.guideId)}">
+										<td class="no is-center">${guide.rowNum || ''}</td>
+										<td class="is-center">${escapeHtml(guide.guideName || '')}</td>
+										<td class="is-center">${escapeHtml(guide.emailAddress || '')}</td>
+										<td class="is-center">${escapeHtml(guide.phoneNumber || '')}</td>
+										<td class="is-center">${escapeHtml(period)}</td>
+										<td class="is-center">${escapeHtml(activity)}</td>
+										<td class="is-center">
+											<button type="button" class="jw-button typeD" onclick="window.location.href='guide-detail.html?id=${escapeHtml(guide.guideCode || guide.guideId)}'"></button>
+										</td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					currentPage = pagination.currentPage;
+					renderPagination(pagination);
+					bindRowClick(tbody);
+				} else {
+					const tbody = document.getElementById('guidesTableBody');
+					if (tbody) {
+						tbody.innerHTML = `<tr><td colspan="7" class="is-center">${escapeHtml(result.message || '    .')}</td></tr>`;
+					}
+				}
+			} catch (error) {
+				console.error('Error loading guides:', error);
+				const tbody = document.getElementById('guidesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">    .</td></tr>';
+				}
+			}
+		}
+
+		function bindRowClick(tbody) {
+			if (!tbody || tbody._rowClickBound) return;
+			tbody.addEventListener('click', (e) => {
+				if (e.target.closest('button')) return;
+				const tr = e.target.closest('tr[data-href]');
+				if (!tr) return;
+				const href = tr.getAttribute('data-href');
+				if (href) window.location.href = href;
+			});
+			tbody._rowClickBound = true;
+		}
+
+		function renderPagination(pagination) {
+			const totalPages = Math.max(1, Number(pagination?.totalPages || 1));
+			const current = Math.max(1, Number(pagination?.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			const pageBox = document.getElementById('pagination');
+			const pageWrap = document.getElementById('pageButtons');
+			if (!pageBox || !pageWrap) return;
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => { currentPage = p; loadGuides(p); });
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = pageBox.querySelector('.first');
+			const prevBtn = pageBox.querySelector('.prev');
+			const nextBtn = pageBox.querySelector('.next');
+			const lastBtn = pageBox.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => { currentPage = 1; loadGuides(1); };
+			if (lastBtn) lastBtn.onclick = () => { currentPage = totalPages; loadGuides(totalPages); };
+			if (prevBtn) prevBtn.onclick = () => { currentPage = prevTarget; loadGuides(prevTarget); };
+			if (nextBtn) nextBtn.onclick = () => { currentPage = nextTarget; loadGuides(nextTarget); };
+		}
+
+		function setupDownload() {
+			const btn = document.getElementById('downloadCsvBtn');
+			if (!btn || btn._bound) return;
+			btn.addEventListener('click', () => {
+				const params = new URLSearchParams({ action: 'exportGuidesCsv' });
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.contractStatus) params.append('contractStatus', currentFilters.contractStatus);
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			});
+			btn._bound = true;
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>

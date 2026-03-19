@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>Login History - SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Login History">Login History</h1>
+
+			<div class="card-panel jw-mgt32">
+				<!-- 필터/검색 영역 -->
+				<div class="filter-section">
+					<form class="filter-form" id="filterForm" onsubmit="event.preventDefault(); applyFilters();">
+						<div class="filter-row">
+							<!-- 날짜 필터 -->
+							<div class="filter-group">
+								<label class="filter-label" data-lan-eng="Period">Period</label>
+								<div class="date-range">
+									<input type="date" id="startDate" class="filter-input date-input">
+									<span class="date-separator">~</span>
+									<input type="date" id="endDate" class="filter-input date-input">
+								</div>
+							</div>
+
+							<!-- 검색 -->
+							<div class="filter-group filter-group-search">
+								<label class="filter-label" data-lan-eng="Search">Search</label>
+								<div class="search-box">
+									<input type="text" class="filter-input search-input" id="searchInput" placeholder="Email or IP" data-lan-eng-placeholder="Email or IP">
+									<button type="submit" class="search-btn">
+										<img src="../image/search.svg" alt="Search">
+									</button>
+								</div>
+							</div>
+
+							<!-- 초기화 버튼 -->
+							<div class="filter-group">
+								<label class="filter-label">&nbsp;</label>
+								<button type="button" class="reset-btn" onclick="resetFilters()" data-lan-eng="Reset">Reset</button>
+							</div>
+						</div>
+
+						<!-- hidden fields for removed filters -->
+						<input type="hidden" id="accountTypeFilter" value="">
+						<input type="hidden" id="statusFilter" value="">
+					</form>
+				</div>
+
+				<!-- 결과 카운트 -->
+				<div class="result-bar">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span>
+						<strong id="totalCount">0</strong>
+						<span data-lan-eng="items">items</span>
+					</div>
+				</div>
+
+				<!-- 테이블 -->
+				<div class="tableA-scroll">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:60px;"> <!-- No -->
+							<col style="width:200px;"> <!-- Email -->
+							<col style="width:100px;"> <!-- Account Type -->
+							<col style="width:80px;"> <!-- Status -->
+							<col style="width:140px;"> <!-- Failure Reason -->
+							<col style="width:180px;"> <!-- IP Address -->
+							<col style="width:150px;"> <!-- Login Time -->
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="is-center">No</th>
+								<th class="is-center" data-lan-eng="Email">Email</th>
+								<th class="is-center" data-lan-eng="Account Type">Account Type</th>
+								<th class="is-center" data-lan-eng="Status">Status</th>
+								<th class="is-center" data-lan-eng="Failure Reason">Failure Reason</th>
+								<th class="is-center" data-lan-eng="IP Address">IP Address</th>
+								<th class="is-center" data-lan-eng="Login Time">Login Time</th>
+							</tr>
+						</thead>
+						<tbody id="historyTableBody">
+							<tr>
+								<td colspan="7" class="is-center" style="padding: 40px;">Loading...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<!-- 페이지네이션 -->
+				<div class="jw-pagebox" id="pagination" role="navigation">
+					<div class="contents">
+						<button type="button" class="first" aria-label="First page">
+							<img src="../image/double_left.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="Previous page">
+							<img src="../image/arrow4.svg" alt="">
+						</button>
+						<div class="page" id="pageButtons" role="list"></div>
+						<button type="button" class="next" aria-label="Next page">
+							<img src="../image/arrow4.svg" alt="" style="transform: rotate(180deg);">
+						</button>
+						<button type="button" class="last" aria-label="Last page">
+							<img src="../image/double_left.svg" alt="" style="transform: rotate(180deg);">
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- 액션 버튼 -->
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadCsvBtn" data-lan-eng="Download CSV">Download CSV</button>
+			</div>
+
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 15;
+		let currentFilters = {
+			search: '',
+			loginStatus: '',
+			accountType: '',
+			startDate: '',
+			endDate: ''
+		};
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				// 세션 확인
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				if (!sessionData.authenticated || !['admin_ph', 'admin_kr'].includes(sessionData.userType)) {
+					alert('Admin access required.');
+					window.location.href = '../index.html';
+					return;
+				}
+
+				// 날짜 필터 이벤트
+				document.getElementById('startDate').addEventListener('change', applyFilters);
+				document.getElementById('endDate').addEventListener('change', applyFilters);
+
+				// 데이터 로드
+				await loadData();
+
+				// CSV 다운로드 버튼
+				setupDownload();
+
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			currentFilters.loginStatus = document.getElementById('statusFilter').value;
+			currentFilters.accountType = document.getElementById('accountTypeFilter').value;
+			currentFilters.startDate = document.getElementById('startDate').value;
+			currentFilters.endDate = document.getElementById('endDate').value;
+			currentPage = 1;
+			loadData();
+		}
+
+		function resetFilters() {
+			document.getElementById('searchInput').value = '';
+			document.getElementById('statusFilter').value = '';
+			document.getElementById('accountTypeFilter').value = '';
+			document.getElementById('startDate').value = '';
+			document.getElementById('endDate').value = '';
+			currentFilters = {
+				search: '',
+				loginStatus: '',
+				accountType: '',
+				startDate: '',
+				endDate: ''
+			};
+			currentPage = 1;
+			loadData();
+		}
+
+		async function loadData(page = currentPage) {
+			try {
+				const tbody = document.getElementById('historyTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center" style="padding: 40px;">Loading...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getAdminLoginHistory',
+					page: page,
+					limit: limit
+				});
+
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.loginStatus) params.append('loginStatus', currentFilters.loginStatus);
+				if (currentFilters.accountType) params.append('accountType', currentFilters.accountType);
+				if (currentFilters.startDate) params.append('startDate', currentFilters.startDate);
+				if (currentFilters.endDate) params.append('endDate', currentFilters.endDate);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					alert('Login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { histories, pagination } = result.data;
+
+					// 총 개수 업데이트
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					// 테이블 렌더링
+					if (tbody) {
+						if (histories.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="7" class="is-center" style="padding: 40px;" data-lan-eng="No login history found.">No login history found.</td></tr>';
+						} else {
+							tbody.innerHTML = histories.map((item) => {
+								const statusClass = item.loginStatus === 'success' ? 'status-success' : 'status-failed';
+								const statusBadge = item.loginStatus === 'success'
+									? '<span class="badge badge-success">Success</span>'
+									: '<span class="badge badge-danger">Failed</span>';
+
+								return `
+									<tr>
+										<td class="is-center">${item.rowNum}</td>
+										<td>${escapeHtml(item.email || '-')}</td>
+										<td class="is-center">${escapeHtml(item.accountTypeLabel || '-')}</td>
+										<td class="is-center">${statusBadge}</td>
+										<td class="is-center">${escapeHtml(item.failureReason || '-')}</td>
+										<td class="is-center">${escapeHtml(item.ipAddress || '-')}</td>
+										<td class="is-center">${formatDateTime(item.createdAt)}</td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					currentPage = pagination.currentPage;
+					renderPagination(pagination);
+				} else {
+					if (tbody) {
+						tbody.innerHTML = `<tr><td colspan="7" class="is-center" style="padding: 40px;">${escapeHtml(result.message || 'Error loading data.')}</td></tr>`;
+					}
+				}
+			} catch (error) {
+				console.error('Error loading data:', error);
+				const tbody = document.getElementById('historyTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center" style="padding: 40px;">Error loading data.</td></tr>';
+				}
+			}
+		}
+
+		function renderPagination(pagination) {
+			const totalPages = Math.max(1, Number(pagination?.totalPages || 1));
+			const current = Math.max(1, Number(pagination?.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			const pageBox = document.getElementById('pagination');
+			const pageWrap = document.getElementById('pageButtons');
+			if (!pageBox || !pageWrap) return;
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => { currentPage = p; loadData(p); });
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = pageBox.querySelector('.first');
+			const prevBtn = pageBox.querySelector('.prev');
+			const nextBtn = pageBox.querySelector('.next');
+			const lastBtn = pageBox.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => { currentPage = 1; loadData(1); };
+			if (lastBtn) lastBtn.onclick = () => { currentPage = totalPages; loadData(totalPages); };
+			if (prevBtn) prevBtn.onclick = () => { currentPage = prevTarget; loadData(prevTarget); };
+			if (nextBtn) nextBtn.onclick = () => { currentPage = nextTarget; loadData(nextTarget); };
+		}
+
+		function setupDownload() {
+			const btn = document.getElementById('downloadCsvBtn');
+			if (!btn || btn._bound) return;
+
+			btn.addEventListener('click', () => {
+				const params = new URLSearchParams({ action: 'exportAdminLoginHistoryCsv' });
+
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.loginStatus) params.append('loginStatus', currentFilters.loginStatus);
+				if (currentFilters.accountType) params.append('accountType', currentFilters.accountType);
+				if (currentFilters.startDate) params.append('startDate', currentFilters.startDate);
+				if (currentFilters.endDate) params.append('endDate', currentFilters.endDate);
+
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			});
+			btn._bound = true;
+		}
+
+		function escapeHtml(text) {
+			if (!text) return '';
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		function formatDateTime(dateStr) {
+			if (!dateStr) return '-';
+			try {
+				const date = new Date(dateStr);
+				const year = date.getFullYear();
+				const month = String(date.getMonth() + 1).padStart(2, '0');
+				const day = String(date.getDate()).padStart(2, '0');
+				const hour = String(date.getHours()).padStart(2, '0');
+				const min = String(date.getMinutes()).padStart(2, '0');
+				return `${year}-${month}-${day} ${hour}:${min}`;
+			} catch (e) {
+				return dateStr;
+			}
+		}
+	</script>
+
+	<style>
+		/* 필터 섹션 */
+		.filter-section {
+			background: #f8fafc;
+			border-radius: 12px;
+			padding: 20px 24px;
+			margin-bottom: 16px;
+		}
+
+		.filter-form {
+			width: 100%;
+		}
+
+		.filter-row {
+			display: flex;
+			gap: 16px;
+			align-items: flex-start;
+		}
+
+		.filter-group {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.filter-group-search {
+			flex: 1;
+			min-width: 250px;
+		}
+
+
+		.filter-label {
+			font-size: 12px;
+			font-weight: 600;
+			color: #64748b;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+
+		.filter-input,
+		.filter-select {
+			height: 40px;
+			padding: 0 12px;
+			border: 1px solid #e2e8f0;
+			border-radius: 8px;
+			font-size: 14px;
+			color: #334155;
+			background: #fff;
+			transition: all 0.2s ease;
+		}
+
+		.filter-input:hover,
+		.filter-select:hover {
+			border-color: #cbd5e1;
+		}
+
+		.filter-input:focus,
+		.filter-select:focus {
+			outline: none;
+			border-color: #3b82f6;
+			box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+		}
+
+		.filter-select {
+			min-width: 130px;
+			cursor: pointer;
+			appearance: none;
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+			background-repeat: no-repeat;
+			background-position: right 12px center;
+			padding-right: 32px;
+		}
+
+		.date-range {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.date-input {
+			width: 140px;
+		}
+
+		.date-separator {
+			color: #94a3b8;
+			font-weight: 500;
+		}
+
+		.search-box {
+			display: flex;
+			position: relative;
+			width: 100%;
+		}
+
+		.search-box .search-input {
+			width: 100%;
+			padding-right: 44px;
+			border-radius: 8px;
+		}
+
+		.search-box .search-btn {
+			position: absolute;
+			right: 4px;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 32px;
+			height: 32px;
+			border: none;
+			background: #3b82f6;
+			border-radius: 6px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: background 0.2s ease;
+		}
+
+		.search-box .search-btn:hover {
+			background: #2563eb;
+		}
+
+		.search-box .search-btn img {
+			width: 16px;
+			height: 16px;
+			filter: brightness(0) invert(1);
+		}
+
+		.reset-btn {
+			height: 40px;
+			padding: 0 20px;
+			border: 1px solid #e2e8f0;
+			border-radius: 8px;
+			background: #fff;
+			color: #64748b;
+			font-size: 14px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.reset-btn:hover {
+			background: #f1f5f9;
+			border-color: #cbd5e1;
+			color: #475569;
+		}
+
+		/* 결과 바 */
+		.result-bar {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 12px 0;
+			margin-bottom: 8px;
+		}
+
+		.result-count {
+			font-size: 14px;
+			color: #64748b;
+		}
+
+		.result-count strong {
+			color: #3b82f6;
+			font-weight: 600;
+			margin: 0 4px;
+		}
+
+		/* 배지 */
+		.badge {
+			display: inline-block;
+			padding: 4px 10px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 500;
+		}
+		.badge-success {
+			background-color: #DEF7EC;
+			color: #03543F;
+		}
+		.badge-danger {
+			background-color: #FDE8E8;
+			color: #9B1C1C;
+		}
+
+		/* 반응형 */
+		@media (max-width: 1200px) {
+			.filter-row {
+				gap: 12px;
+			}
+			.filter-group-search {
+				min-width: 180px;
+			}
+		}
+
+		@media (max-width: 768px) {
+			.filter-section {
+				padding: 16px;
+			}
+			.filter-row {
+				flex-direction: column;
+				align-items: stretch;
+			}
+			.filter-group {
+				width: 100%;
+			}
+			.date-range {
+				width: 100%;
+			}
+			.date-input {
+				flex: 1;
+				width: auto;
+			}
+			.filter-select {
+				width: 100%;
+			}
+		}
+	</style>
+
+</body>
+
+</html>

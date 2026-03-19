@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Terms of Use">Terms of Use</h1>
+			
+			<div class="type-tab-wrap jw-mgt32">
+				<label class="jw-radio typeB">
+					<input type="radio" name="category1" checked>
+					<p class="text" data-lan-eng="Terms of Use">Terms of Use</p>
+				</label>
+				<label class="jw-radio typeB">
+					<input type="radio" name="category1" >
+					<p class="text" data-lan-eng="Collection and Use of Personal Information">Collection and Use of Personal Information</p>
+				</label>
+				<label class="jw-radio typeB">
+					<input type="radio" name="category1" >
+					<p class="text" data-lan-eng="Personal Information Provided to Third Parties">Personal Information Provided to Third Parties</p>
+				</label>
+				<label class="jw-radio typeB">
+					<input type="radio" name="category1" >
+					<p class="text" data-lan-eng="Marketing Consent">Marketing Consent</p>
+				</label>
+				<label class="jw-radio typeB">
+					<input type="radio" name="category1" >
+					<p class="text" data-lan-eng="Special Terms for Cancellation Fees">Special Terms for Cancellation Fees</p>
+				</label>
+				<label class="jw-radio typeB">
+					<input type="radio" name="category1" >
+					<p class="text" data-lan-eng="Collection and Use of Unique Identification Information">Collection and Use of Unique Identification Information</p>
+				</label>
+			</div>
+
+			<div class="card-panel jw-mgt16">
+			
+				<div class="jw-cols jw-gap10 jw-mgt16">
+					<label class="jw-radio typeA">
+						<input type="radio" name="category2" checked>
+						<p class="text" data-lan-eng="English">English</p>
+					</label>
+					<label class="jw-radio typeA">
+						<input type="radio" name="category2" >
+						<p class="text" data-lan-eng="Tagalog">Tagalog</p>
+					</label>
+				</div>
+
+
+				<textarea name="terms" rows="20" class="jw-mgt20" placeholder=""></textarea>
+				
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeB" data-lan-eng="Save changes">Save changes</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentCategory = 'terms';
+		let currentLanguage = 'en';
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super  admin  
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				setupEventListeners();
+				await loadTerms();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function setupEventListeners() {
+			const categoryRadios = document.querySelectorAll('input[name="category1"]');
+			categoryRadios.forEach(radio => {
+				radio.addEventListener('change', async (e) => {
+					const index = Array.from(categoryRadios).indexOf(e.target);
+					const categories = [
+						'terms',
+						'privacy_collection',
+						'privacy_sharing',
+						'marketing_consent',
+						'cancellation_fee_special',
+						'unique_identifier_collection'
+					];
+					currentCategory = categories[index];
+					await loadTerms();
+				});
+			});
+
+			const languageRadios = document.querySelectorAll('input[name="category2"]');
+			languageRadios.forEach(radio => {
+				radio.addEventListener('change', async (e) => {
+					const index = Array.from(languageRadios).indexOf(e.target);
+					const languages = ['en', 'tl'];
+					currentLanguage = languages[index];
+					await loadTerms();
+				});
+			});
+
+			const saveBtn = document.querySelector('.jw-button.typeB');
+			if (saveBtn) {
+				saveBtn.addEventListener('click', handleSave);
+			}
+		}
+
+		async function loadTerms() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getTerms&category=${currentCategory}&language=${currentLanguage}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const textarea = document.querySelector('textarea[name="terms"]');
+					if (textarea) {
+						textarea.value = result.data.content || '';
+					}
+				}
+			} catch (error) {
+				console.error('Error loading terms:', error);
+			}
+		}
+
+		async function handleSave() {
+			try {
+				const textarea = document.querySelector('textarea[name="terms"]');
+				const content = textarea.value.trim();
+
+				const formData = {
+					action: 'updateTerms',
+					category: currentCategory,
+					language: currentLanguage,
+					content: content
+				};
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(formData),
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					alert(' .');
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success) {
+					alert(' .');
+				} else {
+					alert(' : ' + (result.message || '   '));
+				}
+			} catch (error) {
+				console.error('Error saving terms:', error);
+				alert('   : ' + (error?.message || ''));
+			}
+		}
+	</script>
+</body>
+
+</html>

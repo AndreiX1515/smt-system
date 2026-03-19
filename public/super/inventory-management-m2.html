@@ -1,0 +1,206 @@
+<div style="padding:24px;">
+        <h3 style="margin:0 0 20px 0; font-size:18px; font-weight:600;" data-lan-eng="Bulk Registration">Bulk Registration</h3>
+
+        <!-- 날짜 범위 -->
+        <div style="margin-bottom:16px;">
+            <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Date Range">Date Range</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="date" id="bulkStartDate"
+                       style="flex:1; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                <span style="color:#999;">~</span>
+                <input type="date" id="bulkEndDate"
+                       style="flex:1; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+            </div>
+        </div>
+
+        <!-- 요일 선택 -->
+        <div style="margin-bottom:16px;">
+            <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Days of Week">Days of Week</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="0" checked> <span style="font-size:13px; color:#ef4444;">Sun</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="1" checked> <span style="font-size:13px;">Mon</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="2" checked> <span style="font-size:13px;">Tue</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="3" checked> <span style="font-size:13px;">Wed</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="4" checked> <span style="font-size:13px;">Thu</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="5" checked> <span style="font-size:13px;">Fri</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="dow-check" value="6" checked> <span style="font-size:13px; color:#3b82f6;">Sat</span>
+                </label>
+            </div>
+            <div style="margin-top:8px;">
+                <button type="button" id="selectAllDays" style="font-size:12px; color:#3b82f6; background:none; border:none; cursor:pointer; padding:0;">Select All</button>
+                <span style="color:#ddd; margin:0 4px;">|</span>
+                <button type="button" id="selectWeekdays" style="font-size:12px; color:#3b82f6; background:none; border:none; cursor:pointer; padding:0;">Weekdays Only</button>
+                <span style="color:#ddd; margin:0 4px;">|</span>
+                <button type="button" id="selectWeekends" style="font-size:12px; color:#3b82f6; background:none; border:none; cursor:pointer; padding:0;">Weekends Only</button>
+            </div>
+        </div>
+
+        <!-- 좌석 수 & Status -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div>
+                <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Available Seats">Available Seats</label>
+                <input type="number" id="bulkSeats" min="0" placeholder="0"
+                       style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Status">Status</label>
+                <select id="bulkStatus"
+                        style="display:block !important; width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5 !important; border-radius:6px; font-size:14px; box-sizing:border-box; background:#fff !important; cursor:pointer; appearance:auto !important;">
+                    <option value="open" data-lan-eng="Open">Open</option>
+                    <option value="closed" data-lan-eng="Closed">Closed</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 가격 -->
+        <div style="margin-bottom:24px;">
+            <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Price (₱)">Price (₱)</label>
+            <input type="number" id="bulkPrice" min="0" placeholder="0"
+                   style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        </div>
+
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button type="button" id="cancelBtn" class="jw-button typeA" data-lan-eng="Cancel">Cancel</button>
+            <button type="button" id="bulkSaveBtn" class="jw-button typeB" data-lan-eng="Apply">Apply</button>
+        </div>
+</div>
+
+<script>
+document.addEventListener('modal:loaded', (evt) => {
+    const { dialog, action, data } = evt.detail;
+
+    if (!action.includes('inventory-management-m2.html')) return;
+
+    const startDateInput = dialog.querySelector('#bulkStartDate');
+    const endDateInput = dialog.querySelector('#bulkEndDate');
+    const dowChecks = dialog.querySelectorAll('.dow-check');
+    const seatsInput = dialog.querySelector('#bulkSeats');
+    const statusSelect = dialog.querySelector('#bulkStatus');
+    const priceInput = dialog.querySelector('#bulkPrice');
+    const cancelBtn = dialog.querySelector('#cancelBtn');
+    const saveBtn = dialog.querySelector('#bulkSaveBtn');
+    const selectAllBtn = dialog.querySelector('#selectAllDays');
+    const selectWeekdaysBtn = dialog.querySelector('#selectWeekdays');
+    const selectWeekendsBtn = dialog.querySelector('#selectWeekends');
+
+    // 기본값 설정
+    if (data) {
+        seatsInput.value = data.defaultSeats || '';
+        priceInput.value = data.defaultPrice || '';
+    }
+
+    // 오늘 날짜를 시작일 기본값으로
+    const today = new Date().toISOString().split('T')[0];
+    startDateInput.value = today;
+
+    // 요일 선택 헬퍼
+    selectAllBtn.addEventListener('click', () => {
+        dowChecks.forEach(c => c.checked = true);
+    });
+    selectWeekdaysBtn.addEventListener('click', () => {
+        dowChecks.forEach(c => {
+            const v = parseInt(c.value);
+            c.checked = (v >= 1 && v <= 5);
+        });
+    });
+    selectWeekendsBtn.addEventListener('click', () => {
+        dowChecks.forEach(c => {
+            const v = parseInt(c.value);
+            c.checked = (v === 0 || v === 6);
+        });
+    });
+
+    // 취소
+    cancelBtn.addEventListener('click', () => {
+        modal_close();
+    });
+
+    // 저장
+    saveBtn.addEventListener('click', async () => {
+        const packageId = data?.packageId;
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const selectedDays = Array.from(dowChecks)
+            .filter(c => c.checked)
+            .map(c => parseInt(c.value));
+        const seats = parseInt(seatsInput.value) || 0;
+        const status = statusSelect.value || 'open';
+        const price = parseFloat(priceInput.value) || 0;
+
+        if (!packageId) {
+            alert('Invalid data');
+            return;
+        }
+        if (!startDate || !endDate) {
+            alert('Please select date range');
+            return;
+        }
+        if (startDate > endDate) {
+            alert('Start date must be before end date');
+            return;
+        }
+        if (selectedDays.length === 0) {
+            alert('Please select at least one day of week');
+            return;
+        }
+        if (seats <= 0) {
+            alert('Please enter available seats');
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Applying...';
+
+        try {
+            const fd = new FormData();
+            fd.append('action', 'bulkUpdateInventory');
+            fd.append('packageId', packageId);
+            fd.append('startDate', startDate);
+            fd.append('endDate', endDate);
+            fd.append('daysOfWeek', JSON.stringify(selectedDays));
+            fd.append('availableSeats', seats);
+            fd.append('status', status);
+            fd.append('price', price);
+
+            const response = await fetch('../backend/api/super-api.php', {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const msg = `Applied to ${result.data.total} dates (${result.data.inserted} new, ${result.data.updated} updated)`;
+                alert(msg);
+                if (typeof data.onSave === 'function') {
+                    data.onSave();
+                }
+                modal_close();
+            } else {
+                alert(result.message || 'Failed to apply');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Apply';
+            }
+        } catch (error) {
+            console.error('Bulk save error:', error);
+            alert('Failed to apply');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Apply';
+        }
+    });
+});
+</script>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공볃 스타춋5 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231b">
+	<link rel="stylesheet" href="../css/a_contents.css">
+	<!-- Daterangepicker -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+
+<body>
+
+	<!-- header 들웰월 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들웴월 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="popup-management.html" class="jw-button" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Popup details">Popup details</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Popup information">Popup information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- Popup Image -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Popup image (recommended size 640x640)">Popup image (recommended size 640x640)</label>
+						<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+							<div id="imagePreview" style="width:500px; height:500px; background:#F3F3F3; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+								<img id="popupImagePreviewImg" alt="Preview" style="max-width:100%; max-height:100%; object-fit:contain; display:none;">
+								<label class="inputFile" id="uploadLabel">
+									<input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(this)">
+									<button type="button" class="btn-upload">
+										<img src="../image/upload3.svg" alt="">
+										<span data-lan-eng="Image upload">Image upload</span>
+									</button>
+								</label>
+							</div>
+							<button type="button" class="jw-button" id="popupImageDeleteBtn" onclick="handleImageDelete()" style="display:none; gap:4px; padding:10px 24px; border:1px solid #D4D4D4; border-radius:12px; background:#fff; white-space:nowrap; width:fit-content;">
+								<img src="../image/trash.svg" alt="" style="width:24px; height:24px;">
+								<span data-lan-eng="Delete image">Delete image</span>
+							</button>
+						</div>
+					</div>
+
+					<!-- Row 1: Title, Exposure period, URL -->
+					<div class="grid-item col-span-1">
+						<label class="label-name" data-lan-eng="Title">Title</label>
+						<input type="text" class="form-control" id="popupTitle" placeholder="Popup Title">
+					</div>
+					<div class="grid-item col-span-1">
+						<label class="label-name" data-lan-eng="Exposure period">Exposure period</label>
+						<div class="form-control" id="exposurePeriodWrap" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+							<input type="text" id="exposurePeriod" placeholder="Select date range" readonly style="flex:1; border:none; outline:none; background:transparent; cursor:pointer;">
+							<img src="../image/calendar.svg" alt="" style="width:24px; height:24px; flex-shrink:0;">
+						</div>
+					</div>
+					<div class="grid-item col-span-1">
+						<label class="label-name" data-lan-eng="URL">URL</label>
+						<input type="text" class="form-control" id="link" placeholder="http://">
+					</div>
+
+					<!-- Row 2: Registration date/time, Status -->
+					<div class="grid-item col-span-1" id="registrationDateContainer">
+						<label class="label-name" data-lan-eng="Registration date/time">Registration date/time</label>
+						<input type="text" class="form-control" id="registrationDate" disabled style="background:#F3F3F3; color:#969696;">
+					</div>
+					<div class="grid-item col-span-1" id="statusContainer">
+						<label class="label-name" data-lan-eng="Status">Status</label>
+						<input type="text" class="form-control" id="popupStatus" disabled style="background:#F3F3F3; color:#969696;" value="Activate">
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" onclick="handleSave()" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251231b"></script>
+	<script src="../js/popup-detail.js?v=20251231b"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<div class="dialog-container">
+	<button type="button" class="dialog-close" id="closeDialog" onclick="modal_close()"><i class="ic-close"></i></button>
+
+	<h1 data-lan-eng="Template Search">Template Search</h1>
+
+	<div class="dialog-content jw-mgt24">
+		<div class="search-field">
+			<input type="text" class="search-input" placeholder=" " data-lan-eng-placeholder="Search template">
+			<button type="button" class="jw-button search-btn" aria-label="">
+				<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+			</button>
+		</div>
+
+		<div class="jw-mgt16">
+			<table class="jw-tableA">
+				<colgroup>
+					<col class="col-60">
+					<col>
+					<col class="col-120">
+				</colgroup>
+				<thead>
+					<tr>
+						<th class="is-center">No</th>
+						<th data-lan-eng="Template Name">Template Name</th>
+						<th class="is-center" data-lan-eng="Select">Select</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="is-center">1</td>
+						<td> </td>
+						<td class="is-center"><button type="button" class="jw-button typeB2" id="selectTemplate1"></button></td>
+					</tr>
+					<tr>
+						<td class="is-center">2</td>
+						<td>  </td>
+						<td class="is-center"><button type="button" class="jw-button typeB2" id="selectTemplate2"></button></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="dialog-controls jw-mgt24">
+		<button type="button" class="jw-button typeB2" data-lan-eng="Close" onclick="modal_close()">Close</button>
+	</div>
+</div>

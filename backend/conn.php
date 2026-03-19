@@ -2,12 +2,15 @@
 // 데이터베이스 연결 설정
 $servername = "localhost";
 $username = "root";
-$password = "password1";
+$password = "";
 $dbname = "smarttravel";
 $port = 3306; // MySQL 기본 포트
 
 // MySQLi 연결 생성 (포트 포함)
 $conn = new mysqli($servername, $username, $password, $dbname, $port);
+
+
+
 
 // 연결 확인
 if ($conn->connect_error) {
@@ -57,9 +60,9 @@ date_default_timezone_set('Asia/Manila');
 $conn->query("SET time_zone = '+08:00'");
 
 // 연결 성공 로그 (디버깅용 - 필요시 주석 처리)
-if (defined('DEBUG_MODE') && DEBUG_MODE) {
-    error_log("Database connection successful to $dbname");
-}
+// if (defined('DEBUG_MODE') && DEBUG_MODE) {
+//     error_log("Database connection successful to $dbname");
+// }
 
 // 에러 리포팅 설정
 // error_reporting(E_ALL); // 서버 설정 사용

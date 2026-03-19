@@ -1,0 +1,480 @@
+/* ══════════════════════════════════════════════════════
+   COMPONENTS — MODAL
+   Modern minimalist · Material-influenced
+   Works with native <dialog> + revised modal.js
+   ══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+/* ── Native <dialog> base ──────────────────────────── */
+
+dialog.jw-dialog {
+  /* Centering — explicit, bulletproof across all browsers */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 2px;
+  background: var(--panel, #ffffff);
+  color: var(--body, #111110);
+  font-family: 'Inter', sans-serif;
+
+  /* Width — caller sets --modal-width via JS */
+  width: min(var(--modal-width, 480px), calc(100vw - 32px));
+
+  /* Height — ALWAYS fit content, never stretch */
+  height: fit-content;
+  min-height: 0;
+  max-height: 90dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* Enter animation (plays when dialog--ready class is added) */
+  animation: none;
+}
+
+dialog.jw-dialog.dialog--ready {
+  animation: dialog-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+dialog.jw-dialog.dialog--closing {
+  animation: dialog-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes dialog-out {
+  from { opacity: 1; transform: translateY(0)   scale(1);    }
+  to   { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
+/* ── Backdrop ──────────────────────────────────────── */
+
+dialog.jw-dialog::backdrop {
+  background: rgba(10, 9, 8, 0.50);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: backdrop-in 220ms ease both;
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Loading state ─────────────────────────────────── */
+
+.dialog-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 48px 0;
+}
+
+.dialog-loading-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border-subtle, #d0cdc7);
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+.dialog-loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.dialog-loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
+  40%            { opacity: 1;   transform: scale(1);    }
+}
+
+/* ── Error state ───────────────────────────────────── */
+
+.dialog-error {
+  padding: 32px 28px;
+  font-size: 13px;
+  color: var(--error, #b91c1c);
+  text-align: center;
+}
+
+/* ── Accent top rule ───────────────────────────────── */
+
+.dialog-container {
+  position: relative;
+}
+
+.dialog-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent, #c8410a);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Close button ──────────────────────────────────── */
+
+.dialog-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted, #9a9690);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast, 180ms),
+    color     var(--dur-fast, 180ms);
+  z-index: 10;
+}
+
+.dialog-close:hover {
+  background: var(--accent-glow, rgba(200, 65, 10, 0.10));
+  color: var(--accent, #c8410a);
+}
+
+.dialog-close:focus-visible {
+  outline: 2px solid var(--accent, #c8410a);
+  outline-offset: 2px;
+}
+
+/* ── Header ────────────────────────────────────────── */
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  padding: 28px 0px 0;
+}
+
+.dialog-container h1,
+.dialog-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--body, #111110);
+  margin: 0;
+  padding: 28px 28px 0;
+}
+
+.dialog-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted, #9a9690);
+  line-height: 1.5;
+  margin: 6px 0 0;
+  padding: 0 28px;
+}
+
+/* ── Divider ───────────────────────────────────────── */
+
+.dialog-divider {
+  height: 1px;
+  background: var(--border-subtle, #d0cdc7);
+  opacity: 0.45;
+  margin: 20px 0 0;
+}
+
+/* ── Content ───────────────────────────────────────── */
+
+.dialog-content {
+  padding: 24px 28px 0;
+}
+
+/* ── Field — floating label ─────────────────────────── */
+
+.field {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.field.jw-mgt32,
+.field.jw-mgt50 { margin-top: 0; }
+
+.input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--input-border, rgba(26, 25, 23, 0.22));
+  border-radius: 2px;
+  background: var(--input-bg, #ffffff);
+  transition:
+    border-color var(--dur-fast, 180ms),
+    box-shadow   var(--dur-fast, 180ms);
+}
+
+.input-box:focus-within {
+  border-color: var(--input-focus, #c8410a);
+  box-shadow: 0 0 0 2px var(--accent-glow, rgba(200, 65, 10, 0.10));
+}
+
+.input-box .field-icon {
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 14px;
+  color: var(--muted, #9a9690);
+  flex-shrink: 0;
+  transition: color var(--dur-fast, 180ms);
+}
+
+.input-box:focus-within .field-icon {
+  color: var(--accent, #c8410a);
+}
+
+/* Inputs */
+.input-box input[type="text"],
+.input-box input[type="email"],
+.input-box input[type="password"] {
+  flex: 1;
+  height: 52px;
+  padding: 18px 14px 6px 14px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 14.5px;
+  font-weight: 400;
+  color: var(--input-text, #111110);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* With icon: clear left padding */
+.input-box .field-icon + input { padding-left: 0; }
+
+/* Placeholder hidden — floating label replaces it */
+.input-box input::placeholder { color: transparent; }
+
+/* Floating label */
+.label-name {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted, #9a9690);
+  pointer-events: none;
+  transform-origin: left top;
+  transition:
+    top       var(--dur-fast, 180ms),
+    transform var(--dur-fast, 180ms),
+    color     var(--dur-fast, 180ms);
+}
+
+.input-box .field-icon ~ .label-name { left: 42px; }
+
+.input-box input:focus ~ .label-name,
+.input-box input:not(:placeholder-shown) ~ .label-name {
+  top: 10px;
+  transform: translateY(0) scale(0.78);
+  letter-spacing: 0.01em;
+}
+
+.input-box:focus-within .label-name { color: var(--accent, #c8410a); }
+
+.label-name .req {
+  color: var(--accent, #c8410a);
+  margin-left: 2px;
+}
+
+/* ── Error message ─────────────────────────────────── */
+
+.error-message,
+#findIdError {
+  display: none;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  margin-bottom: 20px;
+  background: var(--error-bg, rgba(185, 28, 28, 0.05));
+  border: 1px solid var(--error-border, rgba(185, 28, 28, 0.18));
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--error, #b91c1c);
+}
+
+.error-message[style*="flex"],
+.error-message[style*="block"],
+#findIdError[style*="flex"],
+#findIdError[style*="block"] {
+  display: flex !important;
+}
+
+.error-message::before,
+#findIdError::before {
+  content: '';
+  flex-shrink: 0;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--error, #b91c1c);
+  margin-top: 5px;
+}
+
+/* ── Controls / footer ─────────────────────────────── */
+
+.dialog-controls {
+  padding: 20px 28px 28px;
+}
+
+.dialog-controls.jw-mgt50 { margin-top: 0; }
+
+/* ── Buttons ───────────────────────────────────────── */
+
+.jw-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition:
+    background  var(--dur-fast, 180ms),
+    box-shadow  var(--dur-fast, 180ms),
+    transform   80ms;
+}
+
+.jw-button:focus-visible {
+  outline: 2px solid var(--accent, #c8410a);
+  outline-offset: 3px;
+}
+
+/* Primary */
+.jw-button.typeB {
+  width: 100%;
+  background: var(--accent, #c8410a);
+  color: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(200, 65, 10, 0.25),
+    0 2px 8px rgba(200, 65, 10, 0.15);
+}
+
+.jw-button.typeB:hover:not(:disabled) {
+  background: var(--accent-hover, #a83408);
+  box-shadow:
+    0 2px 6px rgba(200, 65, 10, 0.30),
+    0 4px 16px rgba(200, 65, 10, 0.18);
+}
+
+.jw-button.typeB:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(200, 65, 10, 0.20);
+}
+
+.jw-button.typeB:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Loading spinner via .is-loading class */
+.jw-button.typeB.is-loading {
+  pointer-events: none;
+}
+
+.jw-button.typeB.is-loading::before {
+  content: '';
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+
+/* Secondary */
+.jw-button.typeA {
+  background: transparent;
+  color: var(--label, #3a3835);
+  border: 1px solid var(--border-subtle, #d0cdc7);
+}
+
+.jw-button.typeA:hover:not(:disabled) {
+  background: var(--accent-glow, rgba(200, 65, 10, 0.08));
+  border-color: var(--accent, #c8410a);
+  color: var(--accent, #c8410a);
+}
+
+/* ── Footer links ──────────────────────────────────── */
+
+.dialog-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted, #9a9690);
+}
+
+.dialog-footer-links a {
+  color: var(--muted, #9a9690);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--dur-fast, 180ms);
+}
+
+.dialog-footer-links a:hover { color: var(--accent, #c8410a); }
+.dialog-footer-links .sep    { color: var(--border-subtle, #d0cdc7); }
+
+/* ── Dark mode ─────────────────────────────────────── */
+
+[data-theme="dark"] dialog.jw-dialog {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] dialog.jw-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.60);
+}
+
+[data-theme="dark"] .jw-button.typeB {
+  box-shadow:
+    0 1px 3px rgba(224, 90, 30, 0.30),
+    0 2px 8px rgba(224, 90, 30, 0.18);
+}
+
+/* ── Responsive ────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .dialog-container h1,
+  .dialog-title,
+  .dialog-subtitle,
+  .dialog-content,
+  .dialog-controls,
+  .dialog-header {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* ── Utility shims ─────────────────────────────────── */
+
+.jw-mgt50 { margin-top: 0 !important; }
+.jw-mgt32 { margin-top: 0 !important; }

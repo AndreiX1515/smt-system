@@ -1,0 +1,336 @@
+<div class="dialog-container product-preview">
+
+
+
+
+
+
+
+	<div class="dialog-content">
+	<div class="jw-cols jw-between" data-lan-eng="">
+			<h1 data-lan-eng="Preview">Preview</h1>
+			<div class="jw-cols jw-gap10" style="margin-left:auto;">
+				<button type="button" class="jw-button typeA" id="closeDialog" data-lan-eng="Cancel">Cancel</button>
+				<button type="button" class="jw-button typeB" id="saveFromPreview" data-lan-eng="Save">Save</button>
+			</div>
+		</div>
+		
+		<h2 class="section-title jw-mgt32" data-lan-eng="Product Information">Product Information</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Product Name">Product Name</label>
+					<p id="previewProductName">-</p>
+				</div>
+			</div>
+			
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Sales Target">Sales Target</label>
+					<p id="previewTargetMarket">-</p>
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Main Category">Main Category</label>
+					<p id="previewMainCategory">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Subcategory">Subcategory</label>
+					<p id="previewSubCategory">-</p>
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Product Description">Product Description</label>
+					<div id="previewDescription">-</div>
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Thumbnail image">Thumbnail image</label>
+					<div class="thumbnail">
+						<img class="preview" id="previewThumbnail" src="" alt="">
+					</div>
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Product image">Product image</label>
+					<div class="jw-cols jw-gap8" id="previewProductImages"></div>
+				</div>
+			</div>
+			
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Detailed introduction image">Detailed introduction image</label>
+					<div class="thumbnail">
+						<img class="preview" id="previewDetailImage" src="" alt="">
+					</div>
+				</div>
+			</div>
+			
+		</div>
+		
+		<h2 class="section-title jw-mgt32" data-lan-eng="Flight Information">Flight Information</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<h3 class="grid-wrap-title" data-lan-eng="Departure flight">Departure flight</h3>
+			
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Flight number">Flight number</label>
+					<p id="previewDepFlightNo">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Departure time">Departure time</label>
+					<p id="previewDepDepartTime">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Arrival time">Arrival time</label>
+					<p id="previewDepArriveTime">-</p>
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Departure point">Departure point</label>
+					<p id="previewDepFrom">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Destination">Destination</label>
+					<p id="previewDepTo">-</p>
+				</div>
+			</div>
+			
+			<h3 class="grid-wrap-title" data-lan-eng="Return trip">Return trip</h3>
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Flight number">Flight number</label>
+					<p id="previewRetFlightNo">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Departure time">Departure time</label>
+					<p id="previewRetDepartTime">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Arrival time">Arrival time</label>
+					<p id="previewRetArriveTime">-</p>
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Departure point">Departure point</label>
+					<p id="previewRetFrom">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Destination">Destination</label>
+					<p id="previewRetTo">-</p>
+				</div>
+			</div>
+		</div>
+		
+
+		<!--   -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Sales Information">Sales Information</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<h3 class="grid-wrap-title" data-lan-eng="Basic Sales Information">Basic Sales Information</h3>
+			<hr>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Sales period">Sales period</label>
+					<p id="previewSalesPeriod">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Minimum departure headcount">Minimum number of participants required</label>
+					<p id="previewMinParticipants">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Maximum capacity">Maximum capacity</label>
+					<p id="previewMaxParticipants">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Basic Airfare (₱)">Basic Airfare (₱)</label>
+					<p id="previewBaseFlightFare">-</p>
+				</div>
+			</div>
+
+			<h3 class="grid-wrap-title jw-mgt24" data-lan-eng="Daily Sales Adjustment">Daily Sales Adjustment</h3>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+						<table class="jw-tableA">
+							<colgroup>
+								<col class="col-60">
+								<col>
+								<col>
+								<col>
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Flight departure date">Flight departure date</th>
+									<th data-lan-eng="Maximum capacity">Maximum capacity</th>
+									<th data-lan-eng="Airfare (₱)">Airfare (₱)</th>
+								</tr>
+							</thead>
+							<tbody id="previewSalesAdjustTbody"></tbody>
+						</table>
+				</div>
+			</div>
+		</div>
+
+		<!--  -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Schedule">Schedule</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<h3 class="grid-wrap-title" data-lan-eng="Meeting Information">Meeting Information</h3>
+			<hr>
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Meeting time">Meeting time</label>
+					<p id="previewMeetingTime">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Meeting place name">Meeting place name</label>
+					<p id="previewMeetingPlace">-</p>
+				</div>
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Meeting place address">Meeting place address</label>
+					<p id="previewMeetingAddress">-</p>
+				</div>
+			</div>
+			<div id="previewItineraryDays"></div>
+		</div>
+
+		<!--   -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Fee information">Fee information</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<h3 class="grid-wrap-title" data-lan-eng="Number of people fee">Number of people fee</h3>
+			<hr>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+						<table class="jw-tableA typeB">
+							<colgroup>
+								<col class="col-60">
+								<col>
+								<col>
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Option name">Option name</th>
+									<th data-lan-eng="Number of people fee (₱)">Number of people fee (₱)</th>
+								</tr>
+							</thead>
+							<tbody id="previewPricingTbody"></tbody>
+						</table>
+				</div>
+			</div>
+
+			<h3 class="grid-wrap-title" data-lan-eng="Room rate for single occupancy">Room rate for single occupancy</h3>
+			<hr>
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Single room usage fee (₱)">Single room usage fee (₱)</label>
+					<p id="previewSingleRoomFee">-</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- /  -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Included/Not Included Items">Included/Not Included Items</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<h3 class="grid-wrap-title" data-lan-eng="Included items">Included items</h3>
+			<hr>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+						<table class="jw-tableA typeB">
+							<colgroup>
+								<col class="col-60">
+								<col>
+								<col>
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Included items">Included items</th>
+								</tr>
+							</thead>
+							<tbody id="previewIncludedTbody"></tbody>
+						</table>
+				</div>
+			</div>
+
+			<h3 class="grid-wrap-title" data-lan-eng="Excluded items">Excluded items</h3>
+			<hr>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+						<table class="jw-tableA typeB">
+							<colgroup>
+								<col class="col-60">
+								<col>
+								<col>
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Excluded items">Excluded items</th>
+								</tr>
+							</thead>
+							<tbody id="previewExcludedTbody"></tbody>
+						</table>
+				</div>
+			</div>
+		</div>
+
+		<!--  -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Usage Guide">Usage Guide</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<div class="grid-wrap">
+				<div class="grid-item">
+					<label class="label-name" data-lan-eng="Notice">Notice</label>
+					<div class="cell">
+						<div class="field-row jw-center">
+							<div class="jw-center jw-gap10" id="previewUsageGuideFile"><img src="../image/file.svg" alt=""> No file</div>
+							<div class="jw-center jw-gap10">
+								<i></i>
+								<button type="button" class="jw-button typeF" id="previewUsageGuideDownload" disabled aria-label="download"><img src="../image/buttun-download.svg" alt=""></button>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Description">Description</label>
+					<div id="previewUsageGuideDescription">-</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- /  -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Cancellation/Refund Policy">Cancellation/Refund Policy</h2>
+		<div class="card-panel jw-mgt16">
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Description">Description</label>
+					<div id="previewCancellationRefund">-</div>
+				</div>
+			</div>
+		</div>
+
+		<!--    -->
+		<h2 class="section-title jw-mgt32" data-lan-eng="Visa Application Guide">Visa Application Guide</h2>
+		<div class="card-panel jw-mgt16 jw-rows jw-gap24">
+			<div class="grid-wrap">
+				<div class="grid-item col-span-3">
+					<label class="label-name" data-lan-eng="Description">Description</label>
+					<div id="previewVisaGuide">-</div>
+				</div>
+			</div>
+		</div>
+				
+		
+	</div>
+
+</div>
+
+<!-- NOTE:  /  modal (product-registration.html) . -->

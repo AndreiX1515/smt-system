@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="en" id="html-lang">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- xlsx-js-style for styled Excel export (drop-in SheetJS replacement) -->
+	<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+	<style>
+		.filter-bar {
+			display: flex;
+			gap: 12px;
+			align-items: flex-end;
+			flex-wrap: wrap;
+			margin-bottom: 20px;
+		}
+		.filter-bar .filter-group {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+		.filter-bar .filter-group label {
+			font-size: 12px;
+			font-weight: 500;
+			color: #6b7280;
+		}
+		.filter-bar .filter-group select,
+		.filter-bar .filter-group input {
+			height: 38px;
+			padding: 0 12px;
+			border: 1px solid #d1d5db;
+			border-radius: 6px;
+			font-size: 14px;
+			background: #fff;
+			min-width: 160px;
+		}
+		.filter-bar .filter-group select:focus,
+		.filter-bar .filter-group input:focus {
+			outline: none;
+			border-color: #2563eb;
+			box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+		}
+
+		.summary-card {
+			background: #f8fafc;
+			border: 1px solid #e2e8f0;
+			border-radius: 10px;
+			padding: 20px 24px;
+			margin-bottom: 20px;
+		}
+		.summary-card h3 {
+			font-size: 16px;
+			font-weight: 700;
+			color: #1e293b;
+			margin: 0 0 12px 0;
+		}
+		.summary-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 8px 24px;
+		}
+		.summary-item {
+			display: flex;
+			gap: 8px;
+			font-size: 13px;
+		}
+		.summary-item .s-label {
+			color: #64748b;
+			font-weight: 500;
+			white-space: nowrap;
+		}
+		.summary-item .s-value {
+			color: #1e293b;
+			font-weight: 600;
+		}
+
+		.action-bar {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 16px;
+		}
+		.action-bar .jw-button {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.agent-section {
+			margin-bottom: 24px;
+		}
+		.agent-header {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 10px 16px;
+			background: #1e40af;
+			color: #fff;
+			border-radius: 8px 8px 0 0;
+			font-size: 14px;
+			font-weight: 600;
+		}
+		.agent-header .pax-badge {
+			background: rgba(255,255,255,0.2);
+			padding: 2px 10px;
+			border-radius: 12px;
+			font-size: 12px;
+		}
+
+		.rooming-table-wrap {
+			overflow-x: auto;
+			border: 1px solid #e2e8f0;
+			border-top: none;
+			border-radius: 0 0 8px 8px;
+		}
+		.rooming-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 12px;
+			white-space: nowrap;
+		}
+		.rooming-table thead th {
+			background: #f1f5f9;
+			padding: 8px 6px;
+			text-align: center;
+			font-weight: 600;
+			color: #475569;
+			border-bottom: 2px solid #cbd5e1;
+			position: sticky;
+			top: 0;
+			z-index: 1;
+		}
+		.rooming-table tbody td {
+			padding: 6px;
+			border-bottom: 1px solid #e2e8f0;
+			text-align: center;
+			vertical-align: middle;
+		}
+		.rooming-table tbody tr:hover {
+			background: #f0f9ff;
+		}
+		.rooming-table tbody tr:nth-child(even) {
+			background: #fafbfc;
+		}
+		.rooming-table tbody tr:nth-child(even):hover {
+			background: #f0f9ff;
+		}
+
+		/* Editable inputs in table */
+		.rooming-table .edit-input {
+			width: 100%;
+			min-width: 50px;
+			padding: 4px 6px;
+			border: 1px solid #d1d5db;
+			border-radius: 4px;
+			font-size: 12px;
+			text-align: center;
+			box-sizing: border-box;
+			background: #fff;
+		}
+		.rooming-table .edit-input:focus {
+			border-color: #2563eb;
+			outline: none;
+			box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+		}
+		.rooming-table .edit-select {
+			display: inline-block;
+			appearance: auto;
+			-webkit-appearance: menulist;
+			padding: 4px 2px;
+			border: 1px solid #d1d5db;
+			border-radius: 4px;
+			font-size: 12px;
+			text-align: center;
+			background: #fff;
+			min-width: 70px;
+		}
+		.rooming-table .edit-select:focus {
+			border-color: #2563eb;
+			outline: none;
+		}
+		.rooming-table .edit-input.remarks-input {
+			min-width: 120px;
+			text-align: left;
+		}
+		.rooming-table .luggage-text {
+			font-size: 11px;
+			color: #475569;
+			max-width: 200px;
+			white-space: normal;
+			line-height: 1.3;
+		}
+		.rooming-table .tipping-select {
+			min-width: 120px;
+		}
+		.rooming-table .room-type-select {
+			min-width: 130px;
+		}
+		.capacity-full {
+			color: #dc2626;
+		}
+
+		/* Package cards */
+		.package-cards {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+			gap: 12px;
+			margin-bottom: 24px;
+		}
+		.package-card {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+			padding: 16px 20px;
+			background: #fff;
+			border: 1px solid #e2e8f0;
+			border-radius: 10px;
+			cursor: pointer;
+			transition: all 0.15s;
+		}
+		.package-card:hover {
+			border-color: #2563eb;
+			box-shadow: 0 2px 8px rgba(37,99,235,0.12);
+		}
+		.package-card.active {
+			border-color: #2563eb;
+			background: #eff6ff;
+			box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+		}
+		.package-card .pkg-icon {
+			width: 44px;
+			height: 44px;
+			border-radius: 10px;
+			background: #e0e7ff;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+		}
+		.package-card .pkg-icon svg {
+			width: 22px;
+			height: 22px;
+			stroke: #3730a3;
+			fill: none;
+			stroke-width: 1.5;
+		}
+		.package-card .pkg-info {
+			flex: 1;
+			min-width: 0;
+		}
+		.package-card .pkg-name {
+			font-size: 14px;
+			font-weight: 600;
+			color: #1e293b;
+			margin-bottom: 4px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.package-card .pkg-meta {
+			display: flex;
+			gap: 12px;
+			font-size: 12px;
+			color: #64748b;
+		}
+		.package-card .pkg-meta span {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+		}
+		.package-card .pkg-pax {
+			background: #dbeafe;
+			color: #1d4ed8;
+			font-weight: 600;
+			padding: 2px 10px;
+			border-radius: 12px;
+			font-size: 13px;
+			white-space: nowrap;
+		}
+		.no-packages-msg {
+			text-align: center;
+			padding: 30px 20px;
+			color: #94a3b8;
+			font-size: 14px;
+		}
+
+		/* Back button */
+		.back-bar {
+			margin-bottom: 16px;
+		}
+		.back-bar button {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 14px;
+			border: 1px solid #d1d5db;
+			border-radius: 6px;
+			background: #fff;
+			font-size: 13px;
+			color: #475569;
+			cursor: pointer;
+			transition: all 0.15s;
+		}
+		.back-bar button:hover {
+			background: #f1f5f9;
+			border-color: #94a3b8;
+		}
+
+		/* Empty state */
+		.empty-state {
+			text-align: center;
+			padding: 60px 20px;
+			color: #94a3b8;
+		}
+		.empty-state svg {
+			margin-bottom: 16px;
+		}
+		.empty-state p {
+			font-size: 15px;
+		}
+
+		/* Room summary in summary card */
+		.room-summary-pills {
+			display: inline-flex;
+			gap: 6px;
+			flex-wrap: wrap;
+		}
+		.room-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			background: #e0e7ff;
+			color: #3730a3;
+			padding: 2px 8px;
+			border-radius: 10px;
+			font-size: 12px;
+			font-weight: 600;
+		}
+
+		/* Loading spinner */
+		.loading-spinner {
+			display: flex;
+			justify-content: center;
+			padding: 40px;
+		}
+		.loading-spinner::after {
+			content: '';
+			width: 32px;
+			height: 32px;
+			border: 3px solid #e2e8f0;
+			border-top-color: #2563eb;
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
+		}
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+
+		/* Gender display */
+		.gender-m { color: #2563eb; font-weight: 600; }
+		.gender-f { color: #db2777; font-weight: 600; }
+
+		/* ===== Toast Notification ===== */
+		.toast-notification {
+			position: fixed;
+			top: 24px;
+			right: 24px;
+			z-index: 10001;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 16px 24px;
+			border-radius: 12px;
+			box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+			font-size: 14px;
+			font-weight: 600;
+			color: #fff;
+			transform: translateX(120%);
+			transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+			max-width: 420px;
+		}
+		.toast-notification.show { transform: translateX(0); }
+		.toast-notification.success { background: #16a34a; }
+		.toast-notification.error { background: #dc2626; }
+		.toast-notification svg { flex-shrink: 0; }
+
+		/* ===== Ticket Success Step ===== */
+		.ticket-success {
+			display: none;
+			text-align: center;
+			padding: 32px 16px;
+		}
+		.ticket-success.active { display: block; }
+		.ticket-success-icon {
+			width: 80px;
+			height: 80px;
+			border-radius: 50%;
+			background: #f0fdf4;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			margin-bottom: 20px;
+			animation: successPop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+		}
+		@keyframes successPop {
+			0% { transform: scale(0); opacity: 0; }
+			60% { transform: scale(1.15); }
+			100% { transform: scale(1); opacity: 1; }
+		}
+		.ticket-success h3 {
+			font-size: 20px;
+			font-weight: 700;
+			color: #16a34a;
+			margin: 0 0 8px 0;
+		}
+		.ticket-success p {
+			font-size: 14px;
+			color: #64748b;
+			margin: 0 0 24px 0;
+		}
+		.ticket-success .success-details {
+			display: inline-flex;
+			gap: 24px;
+			background: #f8fafc;
+			border: 1px solid #e2e8f0;
+			border-radius: 10px;
+			padding: 16px 32px;
+			margin-bottom: 24px;
+		}
+		.ticket-success .success-details .detail-item {
+			text-align: center;
+		}
+		.ticket-success .success-details .detail-num {
+			font-size: 28px;
+			font-weight: 700;
+			color: #16a34a;
+		}
+		.ticket-success .success-details .detail-label {
+			font-size: 12px;
+			color: #64748b;
+			margin-top: 2px;
+		}
+
+		@keyframes spin {
+			from { transform: rotate(0deg); }
+			to { transform: rotate(360deg); }
+		}
+
+		/* ===== Ticket Upload Modal ===== */
+		.ticket-modal-overlay {
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0,0,0,0.5);
+			z-index: 9999;
+			justify-content: center;
+			align-items: flex-start;
+			padding: 40px 20px;
+			overflow-y: auto;
+		}
+		.ticket-modal-overlay.active { display: flex; }
+		.ticket-modal {
+			background: #fff;
+			border-radius: 12px;
+			width: 100%;
+			max-width: 900px;
+			box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+			animation: modalSlideIn 0.2s ease-out;
+		}
+		@keyframes modalSlideIn {
+			from { opacity: 0; transform: translateY(-20px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+		.ticket-modal-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 20px 24px;
+			border-bottom: 1px solid #e2e8f0;
+		}
+		.ticket-modal-header h2 {
+			font-size: 18px;
+			font-weight: 700;
+			color: #1e293b;
+			margin: 0;
+		}
+		.ticket-modal-close {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 4px;
+			color: #94a3b8;
+			transition: color 0.15s;
+		}
+		.ticket-modal-close:hover { color: #1e293b; }
+		.ticket-modal-body { padding: 24px; }
+
+		/* Upload area */
+		.ticket-upload-area {
+			border: 2px dashed #cbd5e1;
+			border-radius: 10px;
+			padding: 32px;
+			text-align: center;
+			transition: border-color 0.2s, background 0.2s;
+			margin-bottom: 16px;
+		}
+		.ticket-upload-area.dragover {
+			border-color: #2563eb;
+			background: #eff6ff;
+		}
+		.ticket-upload-area svg { margin-bottom: 8px; }
+		.ticket-upload-area p { color: #64748b; font-size: 14px; margin: 4px 0; }
+		.ticket-upload-area .file-name {
+			font-weight: 600;
+			color: #1e293b;
+			margin-top: 8px;
+		}
+		.ticket-upload-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 10px 24px;
+			background: #2563eb;
+			color: #fff;
+			border: none;
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: background 0.15s;
+		}
+		.ticket-upload-btn:hover { background: #1d4ed8; }
+		.ticket-upload-btn:disabled {
+			background: #94a3b8;
+			cursor: not-allowed;
+		}
+
+		/* Progress */
+		.ticket-progress {
+			display: none;
+			margin: 16px 0;
+		}
+		.ticket-progress.active { display: block; }
+		.ticket-progress-bar {
+			height: 6px;
+			background: #e2e8f0;
+			border-radius: 3px;
+			overflow: hidden;
+		}
+		.ticket-progress-bar-fill {
+			height: 100%;
+			background: #2563eb;
+			border-radius: 3px;
+			width: 0%;
+			transition: width 0.3s;
+		}
+		.ticket-progress-bar-fill.indeterminate {
+			width: 30%;
+			animation: progressSlide 1.5s ease-in-out infinite;
+		}
+		@keyframes progressSlide {
+			0% { margin-left: 0%; }
+			50% { margin-left: 70%; }
+			100% { margin-left: 0%; }
+		}
+		.ticket-progress-text {
+			font-size: 13px;
+			color: #64748b;
+			margin-top: 6px;
+			text-align: center;
+		}
+
+		/* Match Results */
+		.ticket-results { display: none; }
+		.ticket-results.active { display: block; }
+		.ticket-results-summary {
+			display: flex;
+			gap: 16px;
+			margin-bottom: 16px;
+		}
+		.ticket-stat {
+			flex: 1;
+			padding: 12px 16px;
+			border-radius: 8px;
+			text-align: center;
+		}
+		.ticket-stat.matched { background: #f0fdf4; border: 1px solid #bbf7d0; }
+		.ticket-stat.unmatched { background: #fef2f2; border: 1px solid #fecaca; }
+		.ticket-stat.total { background: #eff6ff; border: 1px solid #bfdbfe; }
+		.ticket-stat .stat-num {
+			font-size: 24px;
+			font-weight: 700;
+		}
+		.ticket-stat.matched .stat-num { color: #16a34a; }
+		.ticket-stat.unmatched .stat-num { color: #dc2626; }
+		.ticket-stat.total .stat-num { color: #2563eb; }
+		.ticket-stat .stat-label {
+			font-size: 12px;
+			color: #64748b;
+			margin-top: 2px;
+		}
+
+		.ticket-match-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+			margin-bottom: 16px;
+		}
+		.ticket-match-table th {
+			background: #f8fafc;
+			padding: 10px 12px;
+			text-align: left;
+			font-weight: 600;
+			color: #475569;
+			border-bottom: 2px solid #e2e8f0;
+			font-size: 12px;
+			text-transform: uppercase;
+		}
+		.ticket-match-table td {
+			padding: 10px 12px;
+			border-bottom: 1px solid #f1f5f9;
+			color: #1e293b;
+		}
+		.ticket-match-table tr:hover td { background: #f8fafc; }
+		.match-status {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 2px 8px;
+			border-radius: 10px;
+			font-size: 11px;
+			font-weight: 600;
+		}
+		.match-status.exact { background: #dcfce7; color: #166534; }
+		.match-status.partial { background: #fef9c3; color: #854d0e; }
+		.match-status.no-match { background: #fee2e2; color: #991b1b; }
+
+		.ticket-unmatched-section {
+			background: #fef2f2;
+			border: 1px solid #fecaca;
+			border-radius: 8px;
+			padding: 16px;
+			margin-bottom: 16px;
+		}
+		.ticket-unmatched-section h4 {
+			color: #991b1b;
+			margin: 0 0 8px 0;
+			font-size: 14px;
+		}
+		.ticket-unmatched-section ul {
+			margin: 0;
+			padding-left: 20px;
+			color: #7f1d1d;
+			font-size: 13px;
+		}
+
+		.ticket-modal-footer {
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+			padding: 16px 24px;
+			border-top: 1px solid #e2e8f0;
+		}
+	</style>
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Rooming List">Rooming List</h1>
+
+			<!-- Filter Bar -->
+			<div class="filter-bar">
+				<div class="filter-group">
+					<label>Departure Date</label>
+					<input type="date" id="filterDate" />
+				</div>
+			</div>
+
+			<!-- Package Cards (shown after date selection) -->
+			<div id="packageCards" style="display:none;"></div>
+
+			<!-- Summary Card (hidden until loaded) -->
+			<div class="summary-card" id="summaryCard" style="display:none;">
+				<h3 id="summaryTitle">-</h3>
+				<div class="summary-grid">
+					<div class="summary-item">
+						<span class="s-label">Date:</span>
+						<span class="s-value" id="summaryDate">-</span>
+					</div>
+					<div class="summary-item">
+						<span class="s-label">PAX:</span>
+						<span class="s-value" id="summaryPax">-</span>
+					</div>
+					<div class="summary-item">
+						<span class="s-label">Hotel:</span>
+						<span class="s-value" id="summaryHotel">-</span>
+					</div>
+					<div class="summary-item">
+						<span class="s-label">Guide:</span>
+						<span class="s-value" id="summaryGuide">-</span>
+					</div>
+					<div class="summary-item">
+						<span class="s-label">Rooms:</span>
+						<span class="s-value" id="summaryRooms">-</span>
+					</div>
+					<div class="summary-item">
+						<span class="s-label">Departure Flight:</span>
+						<span class="s-value" id="summaryFlightDep">-</span>
+					</div>
+					<div class="summary-item">
+						<span class="s-label">Return Flight:</span>
+						<span class="s-value" id="summaryFlightRet">-</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Action Bar -->
+			<div class="action-bar" id="actionBar" style="display:none;">
+				<button type="button" class="jw-button typeA" id="btnSaveAll">Save All</button>
+				<button type="button" class="jw-button typeF" id="btnExportExcel">Export Excel</button>
+				<button type="button" class="jw-button typeB" id="btnUploadTicket" onclick="openTicketModal()">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+					Upload Airline Ticket
+				</button>
+			</div>
+
+			<!-- Rooming List Container -->
+			<div id="roomingContainer">
+				<div class="empty-state">
+					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+						<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+					</svg>
+					<p>Select a departure date to view available packages.</p>
+				</div>
+			</div>
+
+		</section>
+	</main>
+
+	<!-- Ticket Upload Modal -->
+	<div class="ticket-modal-overlay" id="ticketModalOverlay">
+		<div class="ticket-modal">
+			<div class="ticket-modal-header">
+				<h2>Upload Bulk Airline Ticket</h2>
+				<button class="ticket-modal-close" onclick="closeTicketModal()">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="ticket-modal-body">
+				<!-- Step 1: Upload -->
+				<div id="ticketStepUpload">
+					<div class="ticket-upload-area" id="ticketDropZone">
+						<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+							<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+						</svg>
+						<p>Drag & drop airline ticket PDF here, or</p>
+						<input type="file" id="ticketFileInput" accept=".pdf" style="display:none" />
+						<button type="button" class="ticket-upload-btn" onclick="document.getElementById('ticketFileInput').click()">
+							Choose PDF File
+						</button>
+						<div class="file-name" id="ticketFileName" style="display:none"></div>
+					</div>
+
+					<div class="ticket-progress" id="ticketProgress">
+						<div class="ticket-progress-bar">
+							<div class="ticket-progress-bar-fill" id="ticketProgressFill"></div>
+						</div>
+						<div class="ticket-progress-text" id="ticketProgressText">Processing...</div>
+					</div>
+
+					<div style="text-align:right; margin-top:12px;">
+						<button type="button" class="ticket-upload-btn" id="btnParseTicket" onclick="uploadAndParseTicket()" disabled>
+							Upload & Parse
+						</button>
+					</div>
+				</div>
+
+				<!-- Step 2: Matching Results -->
+				<div class="ticket-results" id="ticketStepResults">
+					<div class="ticket-results-summary">
+						<div class="ticket-stat matched">
+							<div class="stat-num" id="statMatched">0</div>
+							<div class="stat-label">Matched</div>
+						</div>
+						<div class="ticket-stat unmatched">
+							<div class="stat-num" id="statUnmatched">0</div>
+							<div class="stat-label">Unmatched</div>
+						</div>
+						<div class="ticket-stat total">
+							<div class="stat-num" id="statTotal">0</div>
+							<div class="stat-label">Total Parsed</div>
+						</div>
+					</div>
+
+					<table class="ticket-match-table">
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Parsed Name</th>
+								<th>Matched Traveler</th>
+								<th>Booking ID</th>
+								<th>Agent</th>
+								<th>Status</th>
+							</tr>
+						</thead>
+						<tbody id="ticketMatchBody"></tbody>
+					</table>
+
+					<div class="ticket-unmatched-section" id="ticketUnmatchedSection" style="display:none">
+						<h4>Unmatched Passengers</h4>
+						<ul id="ticketUnmatchedList"></ul>
+						<p style="font-size:12px;color:#6b7280;margin-top:8px;">These passengers could not be matched to any booking traveler. They will be skipped during ticket generation.</p>
+					</div>
+				</div>
+
+				<!-- Step 3: Success -->
+				<div class="ticket-success" id="ticketStepSuccess">
+					<div class="ticket-success-icon">
+						<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="20 6 9 17 4 12"/>
+						</svg>
+					</div>
+					<h3>Tickets Generated Successfully!</h3>
+					<p id="successMessage">Airline tickets have been created and saved.</p>
+					<div class="success-details">
+						<div class="detail-item">
+							<div class="detail-num" id="successCount">0</div>
+							<div class="detail-label">Bookings</div>
+						</div>
+						<div class="detail-item">
+							<div class="detail-num" id="successPaxCount">0</div>
+							<div class="detail-label">Passengers</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="ticket-modal-footer" id="ticketModalFooter">
+				<button type="button" class="jw-button typeF" onclick="closeTicketModal()" id="btnCloseTicketModal">Cancel</button>
+				<button type="button" class="jw-button typeA" id="btnConfirmGenerate" onclick="confirmAndGenerate()" style="display:none">
+					Confirm & Generate Tickets
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		// ============ State ============
+		let currentData = null; // { summary, agents }
+		let allTravelers = []; // flat list for numbering & export
+		let selectedDate = '';
+		let selectedPackageId = '';
+		// Room pool per booking: { bookingId: [{ roomId, roomType, capacity, key(=roomId-N) }] }
+		let bookingRoomPools = {};
+
+		// ============ Init ============
+		(function() {
+			const now = new Date();
+			const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+			document.getElementById('filterDate').value = dateStr;
+			loadPackagesForDate(dateStr);
+		})();
+
+		// ============ Events ============
+		document.getElementById('filterDate').addEventListener('change', function() {
+			const dateVal = this.value;
+			if (!dateVal) {
+				document.getElementById('packageCards').style.display = 'none';
+				return;
+			}
+			showPackageSelection();
+			loadPackagesForDate(dateVal);
+		});
+
+		document.getElementById('btnSaveAll').addEventListener('click', saveAll);
+		document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
+
+		// ============ View Toggle ============
+		function showPackageSelection() {
+			document.getElementById('summaryCard').style.display = 'none';
+			document.getElementById('actionBar').style.display = 'none';
+			document.getElementById('roomingContainer').innerHTML = '';
+			currentData = null;
+			allTravelers = [];
+			selectedPackageId = '';
+			bookingRoomPools = {};
+		}
+
+		function showBackButton() {
+			const container = document.getElementById('roomingContainer');
+			const backHtml = '<div class="back-bar"><button type="button" onclick="goBackToPackages()">' +
+				'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+				'Back to packages</button></div>';
+			container.insertAdjacentHTML('afterbegin', backHtml);
+		}
+
+		function goBackToPackages() {
+			showPackageSelection();
+			document.querySelectorAll('.package-card').forEach(c => c.classList.remove('active'));
+			document.getElementById('packageCards').style.display = 'block';
+		}
+
+		// ============ Room Pool Builder ============
+		function buildRoomPools(agents) {
+			bookingRoomPools = {};
+			agents.forEach(agent => {
+				agent.travelers.forEach(t => {
+					const bid = t.bookingId;
+					if (bookingRoomPools[bid]) return; // already built
+					const roomOptions = t.roomOptions || [];
+					const pool = [];
+					roomOptions.forEach(ro => {
+						const count = parseInt(ro.count) || 0;
+						for (let i = 1; i <= count; i++) {
+							pool.push({
+								roomId: ro.roomId,
+								roomType: ro.roomType,
+								capacity: parseInt(ro.capacity) || 1,
+								key: ro.roomId + '-' + i
+							});
+						}
+					});
+					bookingRoomPools[bid] = pool;
+				});
+			});
+		}
+
+		// Count current assignments for a specific room key within a booking
+		function getRoomAssignmentCount(bookingId, roomKey) {
+			let count = 0;
+			document.querySelectorAll('.rooming-table tbody tr[data-booking-id="' + bookingId + '"]').forEach(row => {
+				const sel = row.querySelector('.room-type-select');
+				if (sel && sel.value === roomKey) count++;
+			});
+			return count;
+		}
+
+		// Update all room type selects' option labels for a booking to show current counts
+		function updateRoomTypeLabels(bookingId) {
+			const pool = bookingRoomPools[bookingId] || [];
+			if (!pool.length) return;
+
+			// Count assignments per room key (capacity에 포함되는 traveler만 카운트)
+			const counts = {};
+			pool.forEach(r => { counts[r.key] = 0; });
+			document.querySelectorAll('.rooming-table tbody tr[data-booking-id="' + bookingId + '"]').forEach(row => {
+				const sel = row.querySelector('.room-type-select');
+				if (sel && sel.value && counts[sel.value] !== undefined) {
+					// infant, no-room child는 capacity 카운트 제외
+					if (sel.dataset.countsCapacity === '1') {
+						counts[sel.value]++;
+					}
+				}
+			});
+
+			// Update option text in all selects for this booking
+			document.querySelectorAll('.rooming-table tbody tr[data-booking-id="' + bookingId + '"]').forEach(row => {
+				const sel = row.querySelector('.room-type-select');
+				if (!sel) return;
+				Array.from(sel.options).forEach(opt => {
+					if (!opt.value) return; // skip '-'
+					const room = pool.find(r => r.key === opt.value);
+					if (room) {
+						const assigned = counts[room.key] || 0;
+						const label = formatRoomLabel(room) + ' (' + assigned + '/' + room.capacity + ')';
+						opt.textContent = label;
+						if (assigned >= room.capacity && sel.value !== opt.value) {
+							opt.classList.add('capacity-full');
+						} else {
+							opt.classList.remove('capacity-full');
+						}
+					}
+				});
+			});
+		}
+
+		function formatRoomLabel(room) {
+			// e.g. "Double #1", "Triple #2"
+			const typeName = room.roomType || room.roomId;
+			const num = room.key.split('-').pop();
+			return typeName + ' #' + num;
+		}
+
+		// ============ API Functions ============
+		async function loadPackagesForDate(dateStr) {
+			selectedDate = dateStr;
+			const cardsEl = document.getElementById('packageCards');
+			cardsEl.style.display = 'block';
+			cardsEl.innerHTML = '<div class="loading-spinner"></div>';
+
+			const month = dateStr.substring(0, 7);
+
+			try {
+				const res = await fetch('../backend/api/super-api.php?action=getRoomingDates&month=' + encodeURIComponent(month), {
+					credentials: 'same-origin'
+				});
+				const json = await res.json();
+
+				if (!json.success || !json.data) {
+					cardsEl.innerHTML = '<div class="no-packages-msg">Failed to load packages.</div>';
+					return;
+				}
+
+				const packages = json.data.filter(d => d.departureDate === dateStr);
+
+				if (packages.length === 0) {
+					cardsEl.innerHTML = '<div class="no-packages-msg">No B2B bookings found for ' + formatDate(dateStr) + '.</div>';
+					return;
+				}
+
+				if (packages.length === 1) {
+					cardsEl.style.display = 'none';
+					selectedPackageId = packages[0].packageId;
+					loadRoomingList(dateStr, packages[0].packageId);
+					return;
+				}
+
+				let html = '<div class="package-cards">';
+				packages.forEach(pkg => {
+					html += '<div class="package-card" onclick="selectPackage(this, ' + pkg.packageId + ')">' +
+						'<div class="pkg-icon"><svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div>' +
+						'<div class="pkg-info">' +
+							'<div class="pkg-name" title="' + escapeAttr(pkg.packageName) + '">' + escapeHtml(pkg.packageName) + '</div>' +
+							'<div class="pkg-meta">' +
+								'<span>' + pkg.bookingCount + ' bookings</span>' +
+							'</div>' +
+						'</div>' +
+						'<div class="pkg-pax">' + pkg.totalPax + ' PAX</div>' +
+					'</div>';
+				});
+				html += '</div>';
+				cardsEl.innerHTML = html;
+			} catch (e) {
+				cardsEl.innerHTML = '<div class="no-packages-msg">Error loading packages.</div>';
+				console.error('loadPackagesForDate error:', e);
+			}
+		}
+
+		function selectPackage(cardEl, packageId) {
+			document.querySelectorAll('.package-card').forEach(c => c.classList.remove('active'));
+			cardEl.classList.add('active');
+			selectedPackageId = packageId;
+			loadRoomingList(selectedDate, packageId);
+		}
+
+		async function loadRoomingList(departureDate, packageId) {
+			const container = document.getElementById('roomingContainer');
+			container.innerHTML = '<div class="loading-spinner"></div>';
+			document.getElementById('summaryCard').style.display = 'none';
+			document.getElementById('actionBar').style.display = 'none';
+
+			try {
+				const res = await fetch('../backend/api/super-api.php?action=getRoomingList&departureDate=' + encodeURIComponent(departureDate) + '&packageId=' + encodeURIComponent(packageId), {
+					credentials: 'same-origin'
+				});
+				const json = await res.json();
+
+				if (!json.success) {
+					container.innerHTML = '<div class="empty-state"><p>Error: ' + (json.message || 'Unknown error') + '</p></div>';
+					return;
+				}
+
+				currentData = json;
+				buildRoomPools(json.agents);
+				renderSummary(json.summary);
+				renderRoomingList(json.agents);
+				document.getElementById('actionBar').style.display = 'flex';
+
+				if (document.querySelectorAll('.package-card').length > 1) {
+					showBackButton();
+				}
+			} catch (e) {
+				container.innerHTML = '<div class="empty-state"><p>Failed to load rooming list.</p></div>';
+				console.error('loadRoomingList error:', e);
+			}
+		}
+
+		async function saveAll() {
+			if (!currentData) return;
+			const btn = document.getElementById('btnSaveAll');
+			btn.disabled = true;
+			btn.textContent = 'Saving...';
+
+			const assignments = [];
+			document.querySelectorAll('.rooming-table tbody tr[data-traveler-id]').forEach(row => {
+				const travelerId = parseInt(row.dataset.travelerId);
+				const roomType = row.querySelector('.room-type-select')?.value || '';
+				const tipping = row.querySelector('.tipping-select')?.value || '';
+				const remarks = row.querySelector('.remarks-input')?.value || '';
+
+				assignments.push({
+					bookingTravelerId: travelerId,
+					roomNumber: null,
+					roomType: roomType,
+					luggage: '',
+					tipping: tipping,
+					remarks: remarks
+				});
+			});
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'saveRoomingAssignments',
+						departureDate: selectedDate,
+						packageId: selectedPackageId,
+						assignments: assignments
+					})
+				});
+				const json = await res.json();
+
+				if (json.success) {
+					btn.textContent = 'Saved!';
+					setTimeout(() => { btn.textContent = 'Save All'; btn.disabled = false; }, 2000);
+				} else {
+					alert('Save failed: ' + (json.message || 'Unknown error'));
+					btn.textContent = 'Save All';
+					btn.disabled = false;
+				}
+			} catch (e) {
+				alert('Save failed: ' + e.message);
+				btn.textContent = 'Save All';
+				btn.disabled = false;
+			}
+		}
+
+		// ============ Render Functions ============
+		function renderSummary(summary) {
+			const card = document.getElementById('summaryCard');
+			card.style.display = 'block';
+
+			document.getElementById('summaryTitle').textContent = summary.packageName || '-';
+
+			const depDate = formatDate(summary.departureDate);
+			const retDate = summary.returnDate ? formatDate(summary.returnDate) : '';
+			document.getElementById('summaryDate').textContent = depDate + (retDate ? ' ~ ' + retDate : '');
+
+			const paxParts = [summary.totalPax + ' total'];
+			if (summary.adults) paxParts.push('Adults: ' + summary.adults);
+			if (summary.children) paxParts.push('Children: ' + summary.children);
+			if (summary.infants) paxParts.push('Infants: ' + summary.infants);
+			document.getElementById('summaryPax').textContent = paxParts.join(', ');
+
+			document.getElementById('summaryHotel').textContent = summary.accommodation || '-';
+			document.getElementById('summaryGuide').textContent = summary.guideName || '-';
+
+			const depFlight = summary.flights?.departure;
+			if (depFlight) {
+				document.getElementById('summaryFlightDep').textContent =
+					(depFlight.flight_number || '') + ' ' +
+					formatTime(depFlight.departure_time) + ' \u2192 ' + formatTime(depFlight.arrival_time);
+			} else {
+				document.getElementById('summaryFlightDep').textContent = '-';
+			}
+
+			const retFlight = summary.flights?.return;
+			if (retFlight) {
+				document.getElementById('summaryFlightRet').textContent =
+					(retFlight.flight_number || '') + ' ' +
+					formatTime(retFlight.departure_time) + ' \u2192 ' + formatTime(retFlight.arrival_time);
+			} else {
+				document.getElementById('summaryFlightRet').textContent = '-';
+			}
+
+			document.getElementById('summaryRooms').innerHTML = '-';
+		}
+
+		function renderRoomingList(agents) {
+			const container = document.getElementById('roomingContainer');
+			if (!agents || agents.length === 0) {
+				container.innerHTML = '<div class="empty-state"><p>No B2B bookings found for this date and package.</p></div>';
+				return;
+			}
+
+			allTravelers = [];
+			let globalIndex = 0;
+			let html = '';
+
+			agents.forEach(agent => {
+				html += '<div class="agent-section">';
+				html += '<div class="agent-header">' +
+					'<span>' + escapeHtml(agent.agentName) + '</span>' +
+					'<span class="pax-badge">' + agent.paxCount + ' PAX</span>' +
+					'</div>';
+
+				html += '<div class="rooming-table-wrap"><table class="rooming-table">';
+				html += '<thead><tr>' +
+					'<th>#</th>' +
+					'<th>AGE</th>' +
+					'<th>MS/MR</th>' +
+					'<th>GIVEN NAME</th>' +
+					'<th>SURNAME</th>' +
+					'<th>DOB</th>' +
+					'<th>NAT.</th>' +
+					'<th>PASSPORT</th>' +
+					'<th>Issue Date</th>' +
+					'<th>Expiry Date</th>' +
+					'<th>SEX</th>' +
+					'<th>ROOM TYPE</th>' +
+					'<th>TIPPING</th>' +
+					'<th>LUGGAGE</th>' +
+					'<th>REMARKS</th>' +
+					'</tr></thead>';
+				html += '<tbody>';
+
+				agent.travelers.forEach(t => {
+					globalIndex++;
+					t._index = globalIndex;
+					t._agentName = agent.agentName;
+					allTravelers.push(t);
+
+					const age = calcAge(t.birthDate);
+					const genderClass = (t.gender === 'male') ? 'gender-m' : 'gender-f';
+					const genderLabel = (t.gender === 'male') ? 'M' : 'F';
+
+					html += '<tr data-traveler-id="' + t.bookingTravelerId + '" data-booking-id="' + escapeAttr(t.bookingId) + '">';
+					html += '<td>' + globalIndex + '</td>';
+					html += '<td>' + (age !== null ? age : '-') + '</td>';
+					html += '<td>' + escapeHtml(t.title || '') + '</td>';
+					html += '<td style="text-align:left;">' + escapeHtml(t.firstName || '') + '</td>';
+					html += '<td style="text-align:left;">' + escapeHtml(t.lastName || '') + '</td>';
+					html += '<td>' + formatDateShort(t.birthDate) + '</td>';
+					html += '<td>' + escapeHtml(t.nationality || '') + '</td>';
+					html += '<td>' + escapeHtml(t.passportNumber || '') + '</td>';
+					html += '<td>' + formatDateShort(t.passportIssueDate) + '</td>';
+					html += '<td>' + formatDateShort(t.passportExpiry) + '</td>';
+					html += '<td><span class="' + genderClass + '">' + genderLabel + '</span></td>';
+
+					// ROOM TYPE - dynamic select from booking's room pool
+					// infant → 방 불필요 (N/A), child(childRoom=0) → 방 배정 가능하지만 capacity 미포함
+					const isInfant = t.travelerType === 'infant';
+					const countsCapacity = !isInfant && !(t.travelerType === 'child' && !t.childRoom);
+
+					if (isInfant) {
+						html += '<td><span style="color:#94a3b8;font-size:11px;">N/A</span></td>';
+					} else {
+						const pool = bookingRoomPools[t.bookingId] || [];
+						html += '<td><select class="edit-select room-type-select" data-booking-id="' + escapeAttr(t.bookingId) + '" data-counts-capacity="' + (countsCapacity ? '1' : '0') + '" onchange="onRoomTypeChange(this)">';
+						html += '<option value="">-</option>';
+						pool.forEach(room => {
+							const label = formatRoomLabel(room) + ' (0/' + room.capacity + ')';
+							const selected = (t.roomType === room.key) ? ' selected' : '';
+							html += '<option value="' + escapeAttr(room.key) + '"' + selected + '>' + escapeHtml(label) + '</option>';
+						});
+						html += '</select></td>';
+					}
+
+					// TIPPING - select dropdown
+					html += '<td><select class="edit-select tipping-select">';
+					html += '<option value="">-</option>';
+					html += '<option value="Tip in Office"' + (t.tipping === 'Tip in Office' ? ' selected' : '') + '>Tip in Office</option>';
+					html += '<option value="Tip to Guide"' + (t.tipping === 'Tip to Guide' ? ' selected' : '') + '>Tip to Guide</option>';
+					html += '<option value="Tip to Korea"' + (t.tipping === 'Tip to Korea' ? ' selected' : '') + '>Tip to Korea</option>';
+					html += '</select></td>';
+
+					// LUGGAGE - read-only from flight options
+					const luggageText = t.flightOptions || '-';
+					html += '<td><span class="luggage-text">' + escapeHtml(luggageText) + '</span></td>';
+
+					// REMARKS
+					html += '<td><input type="text" class="edit-input remarks-input" value="' + escapeAttr(t.remarks || '') + '"></td>';
+					html += '</tr>';
+				});
+
+				html += '</tbody></table></div></div>';
+			});
+
+			container.innerHTML = html;
+
+			// Update room type labels with actual counts
+			const processedBookings = {};
+			allTravelers.forEach(t => {
+				if (!processedBookings[t.bookingId]) {
+					processedBookings[t.bookingId] = true;
+					updateRoomTypeLabels(t.bookingId);
+				}
+			});
+
+			updateRoomSummary();
+		}
+
+		function onRoomTypeChange(selectEl) {
+			const bookingId = selectEl.dataset.bookingId;
+			updateRoomTypeLabels(bookingId);
+			updateRoomSummary();
+		}
+
+		function updateRoomSummary() {
+			// Count rooms by type prefix (e.g. 'triple-1' → 'triple')
+			const usedRoomKeys = new Set();
+			document.querySelectorAll('.rooming-table tbody tr[data-traveler-id]').forEach(row => {
+				const sel = row.querySelector('.room-type-select');
+				if (sel && sel.value) {
+					usedRoomKeys.add(row.dataset.bookingId + '|' + sel.value);
+				}
+			});
+
+			// Group by type prefix
+			const counts = {};
+			usedRoomKeys.forEach(bk => {
+				const roomKey = bk.split('|')[1]; // e.g. 'triple-1'
+				const prefix = roomKey.replace(/-\d+$/, ''); // e.g. 'triple'
+				counts[prefix] = (counts[prefix] || 0) + 1;
+			});
+
+			const total = Object.values(counts).reduce((s, v) => s + v, 0);
+			const labels = { single: 'SGL', twin: 'TWN', double: 'DBL', triple: 'TRP' };
+			let html = total + ' total ';
+			html += '<span class="room-summary-pills">';
+			for (const [prefix, count] of Object.entries(counts)) {
+				const label = labels[prefix] || prefix.toUpperCase();
+				html += '<span class="room-pill">' + label + ' ' + count + '</span>';
+			}
+			html += '</span>';
+
+			const el = document.getElementById('summaryRooms');
+			if (el) el.innerHTML = html;
+		}
+
+		// ============ Excel Export ============
+		function exportExcel() {
+			if (!currentData || !allTravelers.length) {
+				alert('No data to export.');
+				return;
+			}
+
+			const summary = currentData.summary;
+			const wb = XLSX.utils.book_new();
+			const wsData = [];
+			const merges = [];
+			const separatorRowIndices = [];
+
+			const agentNames = [...new Set(allTravelers.map(t => t._agentName))].join(', ');
+
+			// --- Build global room number map ---
+			const globalRoomMap = {};
+			let globalRoomSeq = 0;
+			const roomTypeCounts = {};
+
+			allTravelers.forEach(t => {
+				const row = document.querySelector('tr[data-traveler-id="' + t.bookingTravelerId + '"]');
+				const roomKey = row?.querySelector('.room-type-select')?.value || '';
+				if (roomKey) {
+					const mapKey = t.bookingId + '|' + roomKey;
+					if (globalRoomMap[mapKey] === undefined) {
+						globalRoomSeq++;
+						globalRoomMap[mapKey] = globalRoomSeq;
+						const prefix = roomKey.replace(/-\d+$/, '');
+						roomTypeCounts[prefix] = (roomTypeCounts[prefix] || 0) + 1;
+					}
+				}
+			});
+
+			const totalRooms = Object.values(roomTypeCounts).reduce((s, v) => s + v, 0);
+			const typeLabels = { single: 'SGL', twin: 'TWN', double: 'DBL', triple: 'TRP' };
+			const roomParts = [];
+			for (const [prefix, count] of Object.entries(roomTypeCounts)) {
+				roomParts.push((typeLabels[prefix] || prefix.toUpperCase()) + ' ' + count);
+			}
+			const roomStr = totalRooms + ' (' + roomParts.join(' + ') + ')';
+
+			// Flight info
+			const depFlight = summary.flights?.departure;
+			const retFlight = summary.flights?.return;
+			const flightParts = [];
+			if (depFlight) flightParts.push(depFlight.flight_number + ' ' + formatTime(depFlight.departure_time) + ' - ' + formatTime(depFlight.arrival_time));
+			if (retFlight) flightParts.push(retFlight.flight_number + ' ' + formatTime(retFlight.departure_time) + ' - ' + formatTime(retFlight.arrival_time));
+			const flightStr = flightParts.join(' ; ');
+
+			const dateRange = formatDateExcel(summary.departureDate) + ' - ' + (summary.returnDate ? formatDateExcel(summary.returnDate) : '');
+
+			// === Build worksheet data ===
+
+			// Row 0: TRAVEL AGENCY
+			wsData.push(['TRAVEL AGENCY', '', '', agentNames, '', '', 'ROOMS', roomStr, '', '', '', '', '', '', '', '', '', '']);
+			merges.push({s:{r:0,c:0}, e:{r:0,c:2}});
+			merges.push({s:{r:0,c:3}, e:{r:0,c:5}});
+			merges.push({s:{r:0,c:7}, e:{r:0,c:17}});
+
+			// Row 1: TRAVEL DATE
+			wsData.push(['TRAVEL DATE', '', '', dateRange, '', '', 'BREAKFAST', summary.totalPax + 'PAX', '', '', '', '', '', '', '', '', '', '']);
+			merges.push({s:{r:1,c:0}, e:{r:1,c:2}});
+			merges.push({s:{r:1,c:3}, e:{r:1,c:5}});
+			merges.push({s:{r:1,c:7}, e:{r:1,c:17}});
+
+			// Row 2: NO. OF PAX
+			wsData.push(['NO. OF PAX', '', '', summary.totalPax + 'PAX', '', '', 'FLIGHT DETAILS', flightStr, '', '', '', '', '', '', '', '', '', '']);
+			merges.push({s:{r:2,c:0}, e:{r:2,c:2}});
+			merges.push({s:{r:2,c:3}, e:{r:2,c:5}});
+			merges.push({s:{r:2,c:7}, e:{r:2,c:17}});
+
+			// Row 3: Date range (merged A:R)
+			wsData.push([dateRange, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+			merges.push({s:{r:3,c:0}, e:{r:3,c:17}});
+
+			// Row 4: Column headers
+			wsData.push(['#', 'AGE', 'MS/MR', 'GIVEN NAME', 'SURNAME', 'FULL NAME', 'DOB', 'NAT.', 'PASSPORT',
+				'I of E\nIssue of Date', 'D of E\nExpiry of Date', 'SEX', '', 'ROOMING', '', 'Tipping', 'LUGGAGE(AIR TICKET)', 'REMARKS']);
+			merges.push({s:{r:4,c:11}, e:{r:4,c:12}});
+			merges.push({s:{r:4,c:13}, e:{r:4,c:14}});
+
+			let curRowIdx = 5;
+
+			// --- Data rows ---
+			let currentAgent = '';
+			allTravelers.forEach(t => {
+				const domRow = document.querySelector('tr[data-traveler-id="' + t.bookingTravelerId + '"]');
+				const roomKey = domRow?.querySelector('.room-type-select')?.value || '';
+				const tipping = domRow?.querySelector('.tipping-select')?.value || '';
+				const remarks = domRow?.querySelector('.remarks-input')?.value || '';
+				const luggageText = t.flightOptions || '';
+
+				// Agent separator row
+				if (t._agentName !== currentAgent) {
+					currentAgent = t._agentName;
+					const agentPax = allTravelers.filter(x => x._agentName === currentAgent).length;
+					const sepText = currentAgent + '_' + agentPax + 'PAX';
+					wsData.push([sepText, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+					merges.push({s:{r:curRowIdx,c:0}, e:{r:curRowIdx,c:17}});
+					separatorRowIndices.push(curRowIdx);
+					curRowIdx++;
+				}
+
+				const age = calcAge(t.birthDate);
+				const sexLetter = t.gender === 'male' ? 'M' : 'F';
+				const sexCode = t.gender === 'male' ? 1 : 2;
+				const fullName = ((t.firstName || '') + ' ' + (t.lastName || '')).trim();
+
+				let roomNo = '';
+				let roomTypeName = '';
+				if (roomKey) {
+					const mapKey = t.bookingId + '|' + roomKey;
+					roomNo = globalRoomMap[mapKey] || '';
+					const pool = bookingRoomPools[t.bookingId] || [];
+					const room = pool.find(r => r.key === roomKey);
+					if (room) roomTypeName = (room.roomId || '').toUpperCase();
+				}
+
+				wsData.push([
+					t._index, age !== null ? age : '', t.title || '',
+					t.firstName || '', t.lastName || '', fullName,
+					t.birthDate || '', t.nationality || '', t.passportNumber || '',
+					t.passportIssueDate || '', t.passportExpiry || '',
+					sexLetter, sexCode, roomNo, roomTypeName,
+					tipping, luggageText, remarks
+				]);
+				curRowIdx++;
+			});
+
+			const ws = XLSX.utils.aoa_to_sheet(wsData);
+			ws['!merges'] = merges;
+
+			// Column widths
+			ws['!cols'] = [
+				{ wch: 4 }, { wch: 6.375 }, { wch: 7.375 }, { wch: 32.875 },
+				{ wch: 22.125 }, { wch: 40.875 }, { wch: 21.375 }, { wch: 5.875 },
+				{ wch: 16 }, { wch: 8.43 }, { wch: 15.625 }, { wch: 4.375 },
+				{ wch: 8.43 }, { wch: 4 }, { wch: 11.375 }, { wch: 10.375 },
+				{ wch: 20.125 }, { wch: 36.125 }
+			];
+
+			// Row heights
+			const rowHeights = [];
+			for (let r = 0; r < wsData.length; r++) {
+				if (r <= 2) rowHeights.push({ hpt: 16.5 });
+				else if (r === 3) rowHeights.push({ hpt: 21 });
+				else if (r === 4) rowHeights.push({ hpt: 27 });
+				else if (separatorRowIndices.includes(r)) rowHeights.push({ hpt: 20.25 });
+				else rowHeights.push({ hpt: 20.1 });
+			}
+			ws['!rows'] = rowHeights;
+
+			// ====== Apply Cell Styles ======
+			const CC = 18; // columns A-R
+			function cr(r, c) { return XLSX.utils.encode_cell({ r: r, c: c }); }
+			function ss(r, c, s) {
+				const ref = cr(r, c);
+				if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+				if (s.fill && s.fill.fgColor) s.fill.patternType = 'solid';
+				ws[ref].s = s;
+			}
+
+			// Border templates
+			const tB = { style: 'thin', color: { rgb: '000000' } };
+			const bAll = { top: tB, bottom: tB, left: tB, right: tB };
+
+			// Color palette (matching sample xlsx)
+			const C_YELLOW     = 'FEF2CB';  // header labels bg
+			const C_GREEN_HDR  = 'A9D08E';  // column header bg (theme9 tint0.4)
+			const C_CYAN       = '66FFFF';  // tipping header bg
+			const C_PEACH      = 'FFF2CC';  // agent separator bg (theme7 tint0.8)
+			const C_LIGHT_BLUE = 'DAE3F3';  // data col D, Q bg (theme4 tint0.8)
+			const C_LIGHT_GREEN= 'E2EFDA';  // data col N, O bg (theme9 tint0.8)
+			const C_TIP_BG     = 'FFFF00';  // tipping data bg (yellow)
+			const C_RED        = 'FF0000';
+
+			// --- Header rows (0–2): TRAVEL AGENCY / TRAVEL DATE / NO. OF PAX ---
+			for (let r = 0; r <= 2; r++) {
+				for (let c = 0; c < CC; c++) {
+					let s;
+					if (c <= 2) {
+						// A:C label — yellow bg, bold, center
+						s = { font: { name: 'Malgun Gothic', sz: 10, bold: true }, fill: { fgColor: { rgb: C_YELLOW } }, alignment: { horizontal: 'center', vertical: 'center' }, border: bAll };
+					} else if (c <= 5) {
+						// D:F value — no fill, left
+						s = { font: { name: 'Malgun Gothic', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' }, border: bAll };
+					} else if (c === 6) {
+						// G label — yellow bg, bold, center
+						s = { font: { name: 'Malgun Gothic', sz: 10, bold: true }, fill: { fgColor: { rgb: C_YELLOW } }, alignment: { horizontal: 'center', vertical: 'center' }, border: bAll };
+					} else {
+						// H:R value — red font for flight row
+						const fontObj = { name: 'Malgun Gothic', sz: 10 };
+						if (r === 2) fontObj.color = { rgb: C_RED };
+						s = { font: fontObj, alignment: { horizontal: 'left', vertical: 'center' }, border: bAll };
+					}
+					ss(r, c, s);
+				}
+			}
+
+			// --- Date row (3) ---
+			for (let c = 0; c < CC; c++) {
+				ss(3, c, {
+					font: { name: 'Malgun Gothic', sz: 16, bold: true },
+					alignment: { horizontal: 'center', vertical: 'center' },
+					border: bAll
+				});
+			}
+
+			// --- Column headers (4) ---
+			for (let c = 0; c < CC; c++) {
+				const isTip = (c === 15);
+				ss(4, c, {
+					font: { name: 'Malgun Gothic', sz: 10, bold: true, color: isTip ? { rgb: C_RED } : { rgb: '000000' } },
+					fill: { fgColor: { rgb: isTip ? C_CYAN : C_GREEN_HDR } },
+					alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+					border: bAll
+				});
+			}
+
+			// --- Agent separator rows ---
+			separatorRowIndices.forEach(r => {
+				for (let c = 0; c < CC; c++) {
+					ss(r, c, {
+						font: { name: 'Malgun Gothic', sz: 14, bold: true },
+						fill: { fgColor: { rgb: C_PEACH } },
+						alignment: { horizontal: 'center', vertical: 'center' },
+						border: bAll
+					});
+				}
+			});
+
+			// --- Data rows ---
+			for (let r = 5; r < wsData.length; r++) {
+				if (separatorRowIndices.includes(r)) continue;
+				for (let c = 0; c < CC; c++) {
+					const ref = cr(r, c);
+					const val = ws[ref] ? ws[ref].v : '';
+					let s = {
+						font: { name: 'Malgun Gothic', sz: 12 },
+						alignment: { horizontal: 'center', vertical: 'center' },
+						border: bAll
+					};
+					if (c === 3) {
+						// D: GIVEN NAME — light blue bg
+						s.fill = { fgColor: { rgb: C_LIGHT_BLUE } };
+					} else if (c === 13 || c === 14) {
+						// N,O: ROOMING — light green bg
+						s.fill = { fgColor: { rgb: C_LIGHT_GREEN } };
+					} else if (c === 15) {
+						// P: Tipping — yellow bg, bold red
+						s.font = { name: 'Malgun Gothic', sz: 12, bold: true, color: { rgb: C_RED } };
+						s.fill = { fgColor: { rgb: C_TIP_BG } };
+					} else if (c === 16) {
+						// Q: LUGGAGE — light blue bg
+						s.fill = { fgColor: { rgb: C_LIGHT_BLUE } };
+					} else if (c === 17 && val) {
+						// R: REMARKS (with content) — yellow bg, bold red
+						s.font = { name: 'Malgun Gothic', sz: 12, bold: true, color: { rgb: C_RED } };
+						s.fill = { fgColor: { rgb: C_TIP_BG } };
+					}
+					ss(r, c, s);
+				}
+			}
+
+			// ====== Write file ======
+			const safeName = (summary.packageName || 'Rooming').replace(/[\\\/\?\*\[\]]/g, '').substring(0, 20);
+			XLSX.utils.book_append_sheet(wb, ws, safeName);
+
+			const fileName = 'RoomingList_' + summary.departureDate + '_' + safeName + '.xlsx';
+			XLSX.writeFile(wb, fileName);
+		}
+
+		function formatDateExcel(dateStr) {
+			if (!dateStr) return '';
+			const d = new Date(dateStr + 'T00:00:00');
+			if (isNaN(d.getTime())) return dateStr;
+			const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+				'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+			return months[d.getMonth()] + ' ' + String(d.getDate()).padStart(2, '0') + ', ' + d.getFullYear();
+		}
+
+		// ============ Utility Functions ============
+		function calcAge(birthDate) {
+			if (!birthDate) return null;
+			const today = new Date();
+			const birth = new Date(birthDate);
+			if (isNaN(birth.getTime())) return null;
+			let age = today.getFullYear() - birth.getFullYear();
+			const m = today.getMonth() - birth.getMonth();
+			if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+			return age;
+		}
+
+		function formatDate(dateStr) {
+			if (!dateStr) return '-';
+			const d = new Date(dateStr + 'T00:00:00');
+			if (isNaN(d.getTime())) return dateStr;
+			const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+			return months[d.getMonth()] + ' ' + String(d.getDate()).padStart(2, '0') + ', ' + d.getFullYear();
+		}
+
+		function formatDateShort(dateStr) {
+			if (!dateStr) return '-';
+			const d = new Date(dateStr + 'T00:00:00');
+			if (isNaN(d.getTime())) return dateStr;
+			return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+		}
+
+		function formatTime(timeStr) {
+			if (!timeStr) return '';
+			return timeStr.substring(0, 5);
+		}
+
+		function escapeHtml(str) {
+			const div = document.createElement('div');
+			div.textContent = str;
+			return div.innerHTML;
+		}
+
+		function escapeAttr(str) {
+			return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+
+		// ============ Bulk Airline Ticket Upload ============
+		let ticketParseResult = null; // stored after parse for confirm step
+
+		function openTicketModal() {
+			if (!selectedDate || !selectedPackageId) {
+				alert('Please select a departure date and package first.');
+				return;
+			}
+			// Reset modal state
+			ticketParseResult = null;
+			document.getElementById('ticketFileInput').value = '';
+			document.getElementById('ticketFileName').style.display = 'none';
+			document.getElementById('btnParseTicket').disabled = true;
+			document.getElementById('ticketStepUpload').style.display = 'block';
+			document.getElementById('ticketStepResults').classList.remove('active');
+			document.getElementById('ticketProgress').classList.remove('active');
+			document.getElementById('btnConfirmGenerate').style.display = 'none';
+			document.getElementById('ticketStepSuccess').classList.remove('active');
+			document.getElementById('btnCloseTicketModal').textContent = 'Cancel';
+			document.getElementById('ticketModalOverlay').classList.add('active');
+		}
+
+		function closeTicketModal() {
+			document.getElementById('ticketModalOverlay').classList.remove('active');
+		}
+
+		// File input & drag-drop
+		(function() {
+			const dropZone = document.getElementById('ticketDropZone');
+			const fileInput = document.getElementById('ticketFileInput');
+
+			if (!dropZone || !fileInput) return;
+
+			fileInput.addEventListener('change', function() {
+				if (this.files.length > 0) {
+					showSelectedFile(this.files[0]);
+				}
+			});
+
+			dropZone.addEventListener('dragover', function(e) {
+				e.preventDefault();
+				this.classList.add('dragover');
+			});
+			dropZone.addEventListener('dragleave', function() {
+				this.classList.remove('dragover');
+			});
+			dropZone.addEventListener('drop', function(e) {
+				e.preventDefault();
+				this.classList.remove('dragover');
+				const file = e.dataTransfer.files[0];
+				if (file && file.type === 'application/pdf') {
+					fileInput.files = e.dataTransfer.files;
+					showSelectedFile(file);
+				} else {
+					alert('Please drop a PDF file.');
+				}
+			});
+		})();
+
+		function showSelectedFile(file) {
+			const nameEl = document.getElementById('ticketFileName');
+			nameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+			nameEl.style.display = 'block';
+			document.getElementById('btnParseTicket').disabled = false;
+		}
+
+		async function uploadAndParseTicket() {
+			const fileInput = document.getElementById('ticketFileInput');
+			if (!fileInput.files.length) {
+				alert('Please select a PDF file first.');
+				return;
+			}
+
+			const btn = document.getElementById('btnParseTicket');
+			btn.disabled = true;
+			btn.textContent = 'Processing...';
+
+			// Show progress
+			const progress = document.getElementById('ticketProgress');
+			const fill = document.getElementById('ticketProgressFill');
+			const text = document.getElementById('ticketProgressText');
+			progress.classList.add('active');
+			fill.classList.add('indeterminate');
+			text.textContent = 'Uploading PDF and running OCR... This may take a minute.';
+
+			try {
+				const formData = new FormData();
+				formData.append('action', 'parseBulkTicket');
+				formData.append('ticketPdf', fileInput.files[0]);
+				formData.append('departureDate', selectedDate);
+				formData.append('packageId', selectedPackageId);
+
+				const resp = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData
+				});
+				const data = await resp.json();
+
+				fill.classList.remove('indeterminate');
+
+				if (!data.success) {
+					fill.style.width = '100%';
+					fill.style.background = '#dc2626';
+					text.textContent = 'Error: ' + (data.message || 'Parse failed');
+					btn.textContent = 'Upload & Parse';
+					btn.disabled = false;
+					return;
+				}
+
+				fill.style.width = '100%';
+				fill.style.background = '#16a34a';
+				text.textContent = 'Parsing complete! ' + data.pageCount + ' pages processed.';
+
+				ticketParseResult = data;
+				renderMatchingResults(data);
+
+			} catch (err) {
+				fill.classList.remove('indeterminate');
+				fill.style.width = '100%';
+				fill.style.background = '#dc2626';
+				text.textContent = 'Network error: ' + err.message;
+				btn.textContent = 'Upload & Parse';
+				btn.disabled = false;
+			}
+		}
+
+		function renderMatchingResults(data) {
+			const matched = data.matched || {};
+			const unmatched = data.unmatched || [];
+
+			// Count matched passengers
+			let matchedCount = 0;
+			Object.values(matched).forEach(b => { matchedCount += b.passengers.length; });
+			const totalCount = matchedCount + unmatched.length;
+
+			document.getElementById('statMatched').textContent = matchedCount;
+			document.getElementById('statUnmatched').textContent = unmatched.length;
+			document.getElementById('statTotal').textContent = totalCount;
+
+			// Build matched table rows
+			const tbody = document.getElementById('ticketMatchBody');
+			let html = '';
+			let rowNum = 1;
+
+			Object.entries(matched).forEach(([bookingId, bookingData]) => {
+				bookingData.passengers.forEach(pax => {
+					const score = pax.matchScore || 0;
+					let statusClass, statusText;
+					if (score >= 95) { statusClass = 'exact'; statusText = 'Exact'; }
+					else if (score >= 80) { statusClass = 'partial'; statusText = 'High'; }
+					else { statusClass = 'partial'; statusText = 'Partial'; }
+
+					html += '<tr>'
+						+ '<td>' + rowNum++ + '</td>'
+						+ '<td><strong>' + escapeHtml(pax.parsedName) + '</strong><br><span style="font-size:11px;color:#6b7280;">' + escapeHtml(pax.parsedType) + '</span></td>'
+						+ '<td>' + escapeHtml(pax.dbFirstName + ' ' + pax.dbLastName) + '</td>'
+						+ '<td><code>' + escapeHtml(bookingId) + '</code></td>'
+						+ '<td>' + escapeHtml(bookingData.agentName || '-') + '</td>'
+						+ '<td><span class="match-status ' + statusClass + '">' + statusText + ' (' + score + '%)</span></td>'
+						+ '</tr>';
+				});
+			});
+
+			tbody.innerHTML = html;
+
+			// Unmatched section
+			const unmatchedSection = document.getElementById('ticketUnmatchedSection');
+			if (unmatched.length > 0) {
+				const ul = document.getElementById('ticketUnmatchedList');
+				ul.innerHTML = unmatched.map(p => '<li>' + escapeHtml(p.parsedName) + ' (' + escapeHtml(p.parsedType) + ')</li>').join('');
+				unmatchedSection.style.display = 'block';
+			} else {
+				unmatchedSection.style.display = 'none';
+			}
+
+			// Show results, hide upload step
+			document.getElementById('ticketStepUpload').style.display = 'none';
+			document.getElementById('ticketStepResults').classList.add('active');
+
+			// Show confirm button only if there are matches
+			if (matchedCount > 0) {
+				document.getElementById('btnConfirmGenerate').style.display = 'inline-flex';
+			}
+		}
+
+		async function confirmAndGenerate() {
+			if (!ticketParseResult) return;
+
+			const btn = document.getElementById('btnConfirmGenerate');
+			btn.disabled = true;
+			btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generating PDFs...';
+
+			try {
+				const resp = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'confirmBulkTicket',
+						tmpFile: ticketParseResult.tmpFile,
+						matchedBookings: ticketParseResult.matched,
+						flights: ticketParseResult.flights,
+						bookingRef: ticketParseResult.bookingRef,
+						departureDate: selectedDate,
+						packageId: selectedPackageId,
+						airline: ticketParseResult.airline || 'unknown',
+						bookingDate: ticketParseResult.bookingDate || ''
+					})
+				});
+				const data = await resp.json();
+
+				if (data.success) {
+					// Count total passengers
+					let totalPax = 0;
+					Object.values(ticketParseResult.matched || {}).forEach(b => { totalPax += (b.passengers || []).length; });
+
+					// Show success step
+					document.getElementById('ticketStepResults').classList.remove('active');
+					document.getElementById('successCount').textContent = data.generatedCount;
+					document.getElementById('successPaxCount').textContent = totalPax;
+					document.getElementById('ticketStepSuccess').classList.add('active');
+
+					// Update footer button
+					btn.style.display = 'none';
+					document.getElementById('btnCloseTicketModal').textContent = 'Close';
+
+					// Show toast notification
+					showToast('success', 'Successfully generated ' + data.generatedCount + ' airline ticket(s) for ' + totalPax + ' passenger(s).');
+				} else {
+					showToast('error', 'Error: ' + (data.message || 'Generation failed'));
+					btn.disabled = false;
+					btn.textContent = 'Confirm & Generate Tickets';
+				}
+			} catch (err) {
+				showToast('error', 'Network error: ' + err.message);
+				btn.disabled = false;
+				btn.textContent = 'Confirm & Generate Tickets';
+			}
+		}
+
+		function showToast(type, message) {
+			// Remove existing toast
+			const existing = document.querySelector('.toast-notification');
+			if (existing) existing.remove();
+
+			const toast = document.createElement('div');
+			toast.className = 'toast-notification ' + type;
+			const icon = type === 'success'
+				? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+				: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+			toast.innerHTML = icon + '<span>' + message + '</span>';
+			document.body.appendChild(toast);
+
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => toast.classList.add('show'));
+			});
+
+			setTimeout(() => {
+				toast.classList.remove('show');
+				setTimeout(() => toast.remove(), 400);
+			}, 5000);
+		}
+
+		// Close modal on overlay click
+		document.getElementById('ticketModalOverlay').addEventListener('click', function(e) {
+			if (e.target === this) closeTicketModal();
+		});
+	</script>
+
+</body>
+</html>

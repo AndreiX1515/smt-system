@@ -1,0 +1,273 @@
+<div style="padding:24px; max-height:80vh; overflow-y:auto;">
+    <h3 style="margin:0 0 20px 0; font-size:18px; font-weight:600;" data-lan-eng="Edit Inventory">Edit Inventory</h3>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+        <!-- Left: Edit Form -->
+        <div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Date">Date</label>
+                <input type="text" id="editDate" readonly
+                       style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; background:#f5f5f5; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Available Seats">Available Seats</label>
+                    <input type="number" id="editSeats" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Status">Status</label>
+                    <select id="editStatus"
+                            style="display:block !important; width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5 !important; border-radius:6px; font-size:14px; box-sizing:border-box; background:#fff !important; cursor:pointer; appearance:auto !important;">
+                        <option value="open" data-lan-eng="Open">Open</option>
+                        <option value="closed" data-lan-eng="Closed">Closed</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Price Fields Grid -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:24px;">
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Adult Price">B2B Adult Price</label>
+                    <input type="number" id="editPrice" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Child Price">B2B Child Price</label>
+                    <input type="number" id="editChildPrice" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Infant Price">B2B Infant Price</label>
+                    <input type="number" id="editInfantPrice" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="B2B Infant Seat Price">B2B Infant Seat Price</label>
+                    <input type="number" id="editInfantSeatPrice" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; font-size:14px; color:#666;" data-lan-eng="Single Price">Single Price</label>
+                    <input type="number" id="editSinglePrice" min="0" placeholder="0"
+                           style="width:100%; height:44px; padding:0 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button type="button" id="cancelBtn" class="jw-button typeA" data-lan-eng="Cancel">Cancel</button>
+                <button type="button" id="saveBtn" class="jw-button typeB" data-lan-eng="Save">Save</button>
+            </div>
+        </div>
+
+        <!-- Right: Bookings List -->
+        <div style="border-left:1px solid #e5e5e5; padding-left:24px;">
+            <label style="display:block; margin-bottom:12px; font-size:14px; font-weight:600; color:#333;" data-lan-eng="Bookings on this date">Bookings on this date</label>
+            <div id="bookingsList" style="max-height:350px; overflow-y:auto;">
+                <div style="color:#999; font-size:13px;" data-lan-eng="Loading...">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .booking-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .booking-item:hover {
+        background: #f7faff;
+        border-color: #3b82f6;
+    }
+    .booking-item .booking-id {
+        font-weight: 600;
+        font-size: 13px;
+        color: #333;
+    }
+    .booking-item .booking-info {
+        font-size: 12px;
+        color: #666;
+        margin-top: 2px;
+    }
+    .booking-item .booking-pax {
+        font-size: 12px;
+        color: #666;
+        text-align: right;
+    }
+    .booking-item .booking-status {
+        display: inline-block;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+    .booking-item .booking-status.pending { background: #fef3c7; color: #d97706; }
+    .booking-item .booking-status.confirmed { background: #dcfce7; color: #16a34a; }
+    .booking-item .booking-status.cancelled { background: #fee2e2; color: #dc2626; }
+    .no-bookings {
+        color: #999;
+        font-size: 13px;
+        text-align: center;
+        padding: 20px;
+    }
+</style>
+
+<script>
+document.addEventListener('modal:loaded', (evt) => {
+    const { dialog, action, data } = evt.detail;
+
+    if (!action.includes('inventory-management-m1.html')) return;
+
+    const dateInput = dialog.querySelector('#editDate');
+    const seatsInput = dialog.querySelector('#editSeats');
+    const statusSelect = dialog.querySelector('#editStatus');
+    const priceInput = dialog.querySelector('#editPrice');
+    const childPriceInput = dialog.querySelector('#editChildPrice');
+    const infantPriceInput = dialog.querySelector('#editInfantPrice');
+    const infantSeatPriceInput = dialog.querySelector('#editInfantSeatPrice');
+    const singlePriceInput = dialog.querySelector('#editSinglePrice');
+    const cancelBtn = dialog.querySelector('#cancelBtn');
+    const saveBtn = dialog.querySelector('#saveBtn');
+    const bookingsList = dialog.querySelector('#bookingsList');
+
+    // 데이터 채우기
+    if (data) {
+        dateInput.value = data.date || '';
+        seatsInput.value = data.availableSeats ?? '';
+        // status 매핑: 'closed'만 closed로, 나머지(soldout, available, past, open 등)는 open으로 매핑
+        const editableStatus = (data.status === 'closed') ? 'closed' : 'open';
+        statusSelect.value = editableStatus;
+        priceInput.value = data.price ?? '';
+        childPriceInput.value = data.childPrice ?? '';
+        infantPriceInput.value = data.infantPrice ?? '';
+        infantSeatPriceInput.value = data.infantSeatPrice ?? '';
+        singlePriceInput.value = data.singlePrice ?? '';
+    }
+
+    // 예약 목록 로드
+    async function loadBookings() {
+        if (!data?.packageId || !data?.date) {
+            bookingsList.innerHTML = '<div class="no-bookings" data-lan-eng="No data available">No data available</div>';
+            return;
+        }
+
+        try {
+            const params = new URLSearchParams({
+                action: 'getBookingsByDateAndPackage',
+                packageId: data.packageId,
+                date: data.date
+            });
+
+            const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+                credentials: 'same-origin'
+            });
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                bookingsList.innerHTML = result.data.map(booking => `
+                    <div class="booking-item" data-booking-id="${booking.bookingId}">
+                        <div>
+                            <div class="booking-id">${booking.reservationDate || 'N/A'}</div>
+                            <div class="booking-info">${booking.agencyName || 'N/A'}</div>
+                            <span class="booking-status ${booking.bookingStatus}">${booking.bookingStatus}</span>
+                        </div>
+                        <div class="booking-pax">
+                            <div>${booking.adults || 0}A ${booking.children || 0}C ${booking.infants || 0}I</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // 클릭 이벤트 바인딩
+                bookingsList.querySelectorAll('.booking-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const bookingId = item.dataset.bookingId;
+                        if (bookingId) {
+                            window.open('b2b-booking-detail.html?id=' + bookingId, '_blank');
+                        }
+                    });
+                });
+            } else {
+                bookingsList.innerHTML = '<div class="no-bookings" data-lan-eng="No bookings on this date">No bookings on this date</div>';
+            }
+        } catch (error) {
+            console.error('Failed to load bookings:', error);
+            bookingsList.innerHTML = '<div class="no-bookings" data-lan-eng="Failed to load bookings">Failed to load bookings</div>';
+        }
+    }
+
+    loadBookings();
+
+    // 취소 버튼
+    cancelBtn.addEventListener('click', () => {
+        modal_close();
+    });
+
+    // 저장 버튼
+    saveBtn.addEventListener('click', async () => {
+        const packageId = data?.packageId;
+        const availableDate = dateInput.value;
+        const availableSeats = seatsInput.value !== '' ? parseInt(seatsInput.value) : null;
+        const status = statusSelect.value;
+        const price = priceInput.value !== '' ? parseFloat(priceInput.value) : null;
+        const childPrice = childPriceInput.value !== '' ? parseFloat(childPriceInput.value) : null;
+        const infantPrice = infantPriceInput.value !== '' ? parseFloat(infantPriceInput.value) : null;
+        const infantSeatPrice = infantSeatPriceInput.value !== '' ? parseFloat(infantSeatPriceInput.value) : null;
+        const singlePrice = singlePriceInput.value !== '' ? parseFloat(singlePriceInput.value) : null;
+
+        if (!packageId || !availableDate) {
+            alert('Invalid data');
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+            const fd = new FormData();
+            fd.append('action', 'updateInventory');
+            fd.append('packageId', packageId);
+            fd.append('availableDate', availableDate);
+            if (availableSeats !== null) fd.append('availableSeats', availableSeats);
+            fd.append('status', status);
+            if (price !== null) fd.append('b2bPrice', price);
+            if (childPrice !== null) fd.append('b2bChildPrice', childPrice);
+            if (infantPrice !== null) fd.append('b2bInfantPrice', infantPrice);
+            if (infantSeatPrice !== null) fd.append('b2bInfantSeatPrice', infantSeatPrice);
+            if (singlePrice !== null) fd.append('singlePrice', singlePrice);
+
+            const response = await fetch('../backend/api/super-api.php', {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (typeof data.onSave === 'function') {
+                    data.onSave();
+                }
+                modal_close();
+            } else {
+                alert(result.message || 'Failed to save');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            alert('Failed to save');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        }
+    });
+});
+</script>

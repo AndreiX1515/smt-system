@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- Common styles -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header placeholder -->
+	<header class="layout-header"></header>
+
+	<!-- main -->
+	<main class="layout-main">
+		<!-- nav placeholder -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="b2c-booking-list.html" class="jw-button" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<select class="select" id="guideSelect" aria-label="Assigned guide">
+						<option value="" selected data-lan-eng="Unassigned">Unassigned</option>
+					</select>
+					<select class="select" id="bookingStatusSelect" aria-label="Reservation status">
+						<option value="payment_suspended" data-lan-eng="Payment Suspended">Payment Suspended</option>
+						<option value="payment_completed" data-lan-eng="Payment Completed">Payment Completed</option>
+						<option value="payment_canceled" data-lan-eng="Payment Canceled">Payment Canceled</option>
+						<option value="refund_completed" data-lan-eng="Refund Completed">Refund Completed</option>
+						<option value="trip_completed" data-lan-eng="Trip Completed">Trip Completed</option>
+					</select>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="B2C Reservation Details">B2C Reservation Details</h1>
+
+			<div class="tab-wrap jw-mgt32">
+				<p data-lan-eng="Product and Reservation Information">Product and Reservation Information</p>
+				<a href="../common/reservation-location.html" target="_blank" id="meetingLocationLink">
+					<span data-lan-eng="Meeting location">Meeting location</span><img src="../image/linkout.svg" alt="">
+				</a>
+				<a href="../common/reservation-notices.html" target="_blank" id="announcementsLink">
+					<span data-lan-eng="Announcements">Announcements</span><img src="../image/linkout.svg" alt="">
+				</a>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Product Information">Product Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Product Name">Product Name</label>
+						<input type="text" class="form-control" id="packageName" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Travel period">Travel period</label>
+						<input type="text" class="form-control" id="travelPeriod" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Meeting time">Meeting time</label>
+						<input type="text" class="form-control" id="meetingTime" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Meeting place">Meeting place</label>
+						<input type="text" class="form-control" id="meetingLocation" disabled>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Information">Reservation Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- Row 1 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Reservation number">Reservation number</label>
+						<input type="text" class="form-control" id="bookingNo" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Reservation date and time">Reservation date and time</label>
+						<input type="text" class="form-control" id="bookingDate" disabled>
+					</div>
+					<div class="grid-item"></div>
+
+					<!-- Row 2 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Number of people for reservation">Number of people for reservation</label>
+						<input type="text" class="form-control" id="reservationPeople" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Room options">Room options</label>
+						<input type="text" class="form-control" id="roomOption" disabled>
+					</div>
+					<div class="grid-item"></div>
+
+					<!-- SMT   - Add Cabin Baggage, Breakfast Request, WiFi Rental    -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Add Cabin Baggage">Add Cabin Baggage</label>
+						<select class="select" id="extraBaggage" aria-label="Add Cabin Baggage">
+							<option value="" selected data-lan-eng="Not selected">Not selected</option>
+							<option value="15kg">15kg</option>
+							<option value="20kg">20kg</option>
+							<option value="30kg">30kg</option>
+						</select>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Breakfast Request">Breakfast Request</label>
+						<select class="select" id="breakfast" aria-label="Breakfast Request">
+							<option value="apply" selected data-lan-eng="Apply">Apply</option>
+							<option value="not_applied" data-lan-eng="Not applied">Not applied</option>
+						</select>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="WiFi Rental">WiFi Rental</label>
+						<select class="select" id="wifiRental" aria-label="WiFi Rental">
+							<option value="apply" selected data-lan-eng="Apply">Apply</option>
+							<option value="not_applied" data-lan-eng="Not applied">Not applied</option>
+						</select>
+					</div>
+					<!-- SMT   -->
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Airline seat request details">Airline seat request details</label>
+						<div class="editor-box-wrap">
+							<textarea rows="6" id="seatRequest" style="resize:none" disabled></textarea>
+						</div>
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Other requests">Other requests</label>
+						<div class="editor-box-wrap">
+							<textarea rows="6" id="otherRequest" style="resize:none" disabled></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Payment Information">Payment Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Payment Method">Payment Method</label>
+						<input type="text" class="form-control" id="paymentMethod" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Payment date">Payment date</label>
+						<input type="text" class="form-control" id="paymentDate" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Order Amount">Order Amount</label>
+						<input type="text" class="form-control" id="totalAmount" disabled>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Flight Information">Flight Information</h2>
+			<div class="card-panel jw-mgt16">
+				<h3 class="grid-wrap-title" data-lan-eng="Departure flight">Departure flight</h3>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Flight number">Flight number</label>
+						<input type="text" class="form-control" id="departureFlightNumber" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Departure date and time">Departure date and time</label>
+						<input type="text" class="form-control" id="departureDateTime" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Arrival time">Arrival time</label>
+						<input type="text" class="form-control" id="departureArrivalDateTime" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Departure point">Departure point</label>
+						<input type="text" class="form-control" id="departurePoint" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Destination">Destination</label>
+						<input type="text" class="form-control" id="departureDestination" disabled>
+					</div>
+					<div class="grid-item"></div>
+				</div>
+			</div>
+
+			<div class="card-panel jw-mgt16">
+				<h3 class="grid-wrap-title" data-lan-eng="Return trip">Return trip</h3>
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Flight number">Flight number</label>
+						<input type="text" class="form-control" id="returnFlightNumber" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Departure date and time">Departure date and time</label>
+						<input type="text" class="form-control" id="returnDepartureDateTime" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Arrival time">Arrival time</label>
+						<input type="text" class="form-control" id="returnArrivalDateTime" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Departure point">Departure point</label>
+						<input type="text" class="form-control" id="returnDeparturePoint" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Destination">Destination</label>
+						<input type="text" class="form-control" id="returnDestination" disabled>
+					</div>
+					<div class="grid-item"></div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Customer Information">Customer Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- SMT   - Customer Information    -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Name">Name</label>
+						<input type="text" class="form-control" id="customerName">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">Email</label>
+						<input type="email" class="form-control" id="customerEmail">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contacts">Contacts</label>
+						<div class="field-row">
+							<select class="select w-auto" id="customerPhoneCode" aria-label="Country code">
+								<option value="+63" selected>Philippines (+63)</option>
+							</select>
+							<input type="tel" class="form-control" id="customerPhone">
+						</div>
+					</div>
+					<!-- SMT   -->
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Travel Customer Information">Travel Customer Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="tableA-scroll">
+					<table class="jw-tableA booking-detail">
+						<colgroup>
+							<col style="width:50px;"><!-- No -->
+							<col style="width:100px;"><!-- Main traveler -->
+							<col style="width:400px;"><!-- Reservation status -->
+							<col style="width:200px;"><!-- People option -->
+							<col style="width:200px;"><!-- Visa status -->
+							<col style="width:200px;"><!-- Title -->
+							<col style="width:200px;"><!-- First name -->
+							<col style="width:200px;"><!-- Last name -->
+							<col style="width:200px;"><!-- Gender -->
+							<col style="width:200px;"><!-- Age -->
+							<col style="width:200px;"><!-- Date of birth -->
+							<col style="width:200px;"><!-- Nationality -->
+							<col style="width:200px;"><!-- Passport no -->
+							<col style="width:200px;"><!-- Passport issue -->
+							<col style="width:200px;"><!-- Passport expiry -->
+							<col style="width:240px;"><!-- Passport photo -->
+						</colgroup>
+
+						<thead>
+							<tr>
+								<th>No</th>
+								<th data-lan-eng="Main traveler">Main traveler</th>
+								<th data-lan-eng="Reservation Status">Reservation Status</th>
+								<th data-lan-eng="Number of people option">Number of people option</th>
+								<th data-lan-eng="Visa application status">Visa application status</th>
+								<th data-lan-eng="Title">Title</th>
+								<th data-lan-eng="Name">Name</th>
+								<!-- SMT   --><th data-lan-eng="Last Name">Last Name</th><!-- SMT   -->
+								<th data-lan-eng="Gender">Gender</th>
+								<th data-lan-eng="Age">Age</th>
+								<th data-lan-eng="Date of birth">Date of birth</th>
+								<th data-lan-eng="Country of origin">Country of origin</th>
+								<th data-lan-eng="Passport number">Passport number</th>
+								<th data-lan-eng="Passport Issue Date">Passport Issue Date</th>
+								<th data-lan-eng="Passport expiration date">Passport expiration date</th>
+								<th data-lan-eng="Passport photo">Passport photo</th>
+							</tr>
+						</thead>
+
+						<tbody id="travelersTbody">
+							<tr><td colspan="16" class="is-center" data-lan-eng="Loading data...">Loading data...</td></tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="jw-pagebox" role="navigation" aria-label="Pagination">
+					<div class="contents">
+						<button type="button" class="first" id="travelersFirstPage" aria-label="First page" aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" id="travelersPrevPage" aria-label="Previous page" aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" id="travelersPageNumbers" role="list"></div>
+
+						<button type="button" class="next" id="travelersNextPage" aria-label="Next page" aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" id="travelersLastPage" aria-label="Last page" aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+		</section>
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<!-- scripts -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_b2cdetailfix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let bookingId = null;
+		let lastLoadedBooking = null;
+		let allTravelers = [];
+		let travelersPage = 1;
+		const travelersPageSize = 10;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', { credentials: 'same-origin' });
+				const sessionData = await sessionResponse.json();
+				if (!sessionData?.authenticated || !['admin_ph', 'admin_kr'].includes(sessionData.userType)) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				const urlParams = new URLSearchParams(window.location.search);
+				bookingId = urlParams.get('id') || urlParams.get('bookingId');
+				if (!bookingId) return;
+
+				const loc = document.getElementById('meetingLocationLink');
+				const noti = document.getElementById('announcementsLink');
+				if (loc) loc.href = `../common/reservation-location.html?bookingId=${encodeURIComponent(bookingId)}`;
+				if (noti) noti.href = `../common/reservation-notices.html?bookingId=${encodeURIComponent(bookingId)}`;
+
+				document.getElementById('saveBtn')?.addEventListener('click', handleSave);
+
+				await loadCountryCodesForCustomerPhone();
+				await loadGuides();
+				await loadBookingDetail();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+			}
+		});
+
+		async function loadCountryCodesForCustomerPhone() {
+			const codeEl = document.getElementById('customerPhoneCode');
+			if (!codeEl) return;
+			try {
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json().catch(() => ({}));
+				if (!res.ok || !json.success || !Array.isArray(json.countries)) return;
+
+				const prev = String(codeEl.dataset.pendingCode || codeEl.value || '+63');
+				codeEl.innerHTML = json.countries
+					.map(c => {
+						const code = String(c.code || '').trim();
+						const name = String(c.name || '').trim();
+						const label = name ? `${name} (${code})` : code;
+						return `<option value="${escapeHtml(code)}">${escapeHtml(label)}</option>`;
+					})
+					.join('');
+				codeEl.value = prev;
+				if (!codeEl.value && prev) codeEl.value = prev;
+				delete codeEl.dataset.pendingCode;
+				await ensureJwSelectReady(codeEl);
+				refreshJwSelect(codeEl);
+			} catch (_) { }
+		}
+
+		async function loadGuides() {
+			try {
+				const response = await fetch('../backend/api/super-api.php?action=getContractGuides', { credentials: 'same-origin' });
+				if (!response.ok) {
+					if (response.status === 401 || response.status === 403) {
+						window.location.href = '../index.html';
+						return;
+					}
+					throw new Error('HTTP ' + response.status);
+				}
+
+				const result = await response.json().catch(() => ({}));
+				const guides = (result?.success && Array.isArray(result?.data?.guides)) ? result.data.guides : [];
+				const guideSelect = document.getElementById('guideSelect');
+				if (!guideSelect) return;
+
+				guideSelect.innerHTML = '<option value="">Unassigned</option>' + guides.map(g => (
+					`<option value="${escapeHtml(String(g.guideId))}">${escapeHtml(g.guideName || '')}</option>`
+				)).join('');
+
+				await ensureJwSelectReady(guideSelect);
+				refreshJwSelect(guideSelect);
+			} catch (e) {
+				console.error('Error loading guides:', e);
+			}
+		}
+
+		async function loadBookingDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getBookingDetail&id=${encodeURIComponent(bookingId)}`, {
+					credentials: 'same-origin'
+				});
+				if (!response.ok) {
+					if (response.status === 401 || response.status === 403) {
+						window.location.href = '../index.html';
+						return;
+					}
+					throw new Error('HTTP ' + response.status);
+				}
+
+				const result = await response.json().catch(() => ({}));
+				const booking = result?.data?.booking || null;
+				if (!result?.success || !booking) return;
+
+				lastLoadedBooking = booking;
+				allTravelers = Array.isArray(result?.data?.travelers) ? result.data.travelers : [];
+
+				// Toolbar selects
+				const guideSelect = document.getElementById('guideSelect');
+				if (guideSelect) {
+					guideSelect.value = booking.guideId ? String(booking.guideId) : '';
+					await ensureJwSelectReady(guideSelect);
+					refreshJwSelect(guideSelect);
+				}
+				const st = document.getElementById('bookingStatusSelect');
+				if (st) {
+					// select   jw_select( UI)    "Payment Suspended"   
+					st.value = toUiStatusKey(booking.paymentStatus, booking.bookingStatus);
+					await ensureJwSelectReady(st);
+					refreshJwSelect(st);
+				}
+
+				// Product
+				setValue('packageName', booking.fullPackageName || booking.packageName || '');
+				setValue('travelPeriod', formatPeriod(booking.departureDate, booking.returnDate));
+				setValue('meetingTime', formatMeetingDateTime(booking));
+				setValue('meetingLocation', booking.meeting_location || booking.meetingPoint || booking.meeting_address || booking.meetingLocation || '');
+
+				// Reservation
+				setValue('bookingNo', booking.bookingId || bookingId || '');
+				setValue('bookingDate', formatDateTime(booking.createdAt));
+				setValue('reservationPeople', formatReservationPeople(booking, result?.data?.selectedOptions, allTravelers));
+				setValue('roomOption', String(result?.data?.roomSummary || ''));
+				setTextArea('seatRequest', getSelectedOptionText(result?.data?.selectedOptions, 'seatRequest') || booking.seatRequest || '');
+				setTextArea('otherRequest', getSelectedOptionText(result?.data?.selectedOptions, 'otherRequest') || booking.otherRequest || '');
+				applySelectedOptionsUI(result?.data?.selectedOptions);
+
+				// Payment
+				setValue('paymentMethod', guessPaymentMethod(booking));
+				setValue('paymentDate', formatDateTime(booking.paidAt || booking.paymentDate || booking.updatedAt || ''));
+				setValue('totalAmount', formatCurrency(booking.totalAmount));
+
+				// Flights
+				applyFlights(result?.data?.flights || {}, booking.departureDate, booking.returnDate);
+
+				// Customer
+				const ci = result?.data?.customerInfo || {};
+				setValue('customerName', ci.name || '');
+				setValue('customerEmail', ci.email || '');
+				setValue('customerPhone', ci.phone || '');
+				const codeSel = document.getElementById('customerPhoneCode');
+				if (codeSel) {
+					codeSel.dataset.pendingCode = ci.countryCode || '+63';
+					codeSel.value = ci.countryCode || '+63';
+					// SMT   - jw_select 
+					refreshJwSelect(codeSel);
+					// SMT  
+				}
+
+				// Travelers
+				travelersPage = 1;
+				renderTravelers();
+				renderTravelersPager();
+
+				try { if (typeof jw_select === 'function') jw_select(); } catch (_) { }
+			} catch (error) {
+				console.error('Error loading booking detail:', error);
+			}
+		}
+
+		function toUiStatusKey(paymentStatus, bookingStatus) {
+			const ps = String(paymentStatus || '').toLowerCase();
+			const bs = String(bookingStatus || '').toLowerCase();
+			if (bs === 'completed') return 'trip_completed';
+			if (ps === 'refunded') return 'refund_completed';
+			if (ps === 'failed' || bs === 'cancelled') return 'payment_canceled';
+			if (ps === 'paid' || bs === 'confirmed') return 'payment_completed';
+			return 'payment_suspended';
+		}
+
+		function statusLabelFromKey(key) {
+			switch (String(key || '')) {
+				case 'payment_completed': return 'Payment Completed';
+				case 'payment_canceled': return 'Payment Canceled';
+				case 'payment_suspended': return 'Payment Suspended';
+				case 'trip_completed': return 'Trip Completed';
+				case 'refund_completed': return 'Refund Completed';
+				default: return '';
+			}
+		}
+
+		// SMT   - Travel Customer Information   
+		function renderTravelers() {
+			const tbody = document.getElementById('travelersTbody');
+			if (!tbody) return;
+			if (!Array.isArray(allTravelers) || allTravelers.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="16" class="is-center" data-lan-eng="No travelers">No travelers</td></tr>';
+				return;
+			}
+
+			const start = (travelersPage - 1) * travelersPageSize;
+			const rows = allTravelers.slice(start, start + travelersPageSize);
+
+			tbody.innerHTML = rows.map((t, idx) => {
+				const no = start + idx + 1;
+				const main = String(t.isMainTraveler || '0') === '1';
+				const travelerType = String(t.travelerType || '').toLowerCase();
+				const peopleOpt = travelerType === 'child' ? 'Child' : travelerType === 'infant' ? 'Infant' : 'Adult';
+
+				const visa = String(t.visaStatus || 'not_required').toLowerCase();
+
+				let title = String(t.title || '').trim().toUpperCase();
+				if (title !== 'MR' && title !== 'MS') title = '';
+				const gender = String(t.gender || '').toLowerCase();
+				const genderValue = (gender === 'female' || gender === 'f') ? 'female' : (gender === 'male' || gender === 'm') ? 'male' : '';
+
+				const firstName = String(t.firstName || '');
+				const lastName = String(t.lastName || '');
+				const birth = String(t.birthDate || '');
+				const age = calcAge(birth);
+				const nat = String(t.nationality || '');
+				const passportNo = String(t.passportNumber || '');
+				const issue = String(t.passportIssueDate || '');
+				const expiry = String(t.passportExpiry || '');
+				const travelerId = String(t.bookingTravelerId || '');
+				const hasPassport = !!(t.passportImage && String(t.passportImage).trim());
+
+				//   
+				const resStatus = String(t.reservationStatus || '').toLowerCase();
+
+				return `
+					<tr data-traveler-id="${escapeHtml(travelerId)}">
+						<td class="is-center">${escapeHtml(String(no))}</td>
+						<td class="is-center">
+							<label class="jw-radio jw-self-center">
+								<input type="radio" name="mainTraveler" value="${escapeHtml(travelerId)}" ${main ? 'checked' : ''}>
+								<i class="icon"></i>
+							</label>
+						</td>
+						<td class="show">
+							<div class="cell">
+								<select class="select traveler-field" data-field="reservationStatus">
+									<option value="pending" ${resStatus === 'pending' || !resStatus ? 'selected' : ''} data-lan-eng="Payment Suspended">Payment Suspended</option>
+									<option value="confirmed" ${resStatus === 'confirmed' ? 'selected' : ''} data-lan-eng="Payment Completed">Payment Completed</option>
+									<option value="cancelled" ${resStatus === 'cancelled' ? 'selected' : ''} data-lan-eng="Payment Canceled">Payment Canceled</option>
+									<option value="refunded" ${resStatus === 'refunded' ? 'selected' : ''} data-lan-eng="Refund Completed">Refund Completed</option>
+									<option value="completed" ${resStatus === 'completed' ? 'selected' : ''} data-lan-eng="Trip Completed">Trip Completed</option>
+								</select>
+							</div>
+						</td>
+						<td class="show">
+							<div class="cell">
+								<select class="select" disabled>
+									<option selected data-lan-eng="${escapeHtml(peopleOpt)}">${escapeHtml(peopleOpt)}</option>
+								</select>
+							</div>
+						</td>
+						<td class="show">
+							<div class="cell">
+								<select class="select traveler-field" data-field="visaStatus">
+									<option value="not_required" ${visa === 'not_required' ? 'selected' : ''} data-lan-eng="Not required">Not required</option>
+									<option value="applied" ${visa === 'applied' ? 'selected' : ''} data-lan-eng="Applied">Applied</option>
+									<option value="approved" ${visa === 'approved' ? 'selected' : ''} data-lan-eng="Approved">Approved</option>
+									<option value="rejected" ${visa === 'rejected' ? 'selected' : ''} data-lan-eng="Rejected">Rejected</option>
+								</select>
+							</div>
+						</td>
+						<td class="show">
+							<div class="cell">
+								<select class="select w-auto traveler-field" data-field="title">
+									<option value="MR" ${title === 'MR' ? 'selected' : ''}>MR</option>
+									<option value="MS" ${title === 'MS' ? 'selected' : ''}>MS</option>
+								</select>
+							</div>
+						</td>
+						<td class="is-center"><div class="cell"><input type="text" class="form-control traveler-field" data-field="firstName" value="${escapeHtml(firstName)}"></div></td>
+						<td class="is-center"><div class="cell"><input type="text" class="form-control traveler-field" data-field="lastName" value="${escapeHtml(lastName)}"></div></td>
+						<td class="show">
+							<div class="cell">
+								<select class="select w-auto traveler-field" data-field="gender">
+									<option value="male" ${genderValue === 'male' ? 'selected' : ''} data-lan-eng="Male">Male</option>
+									<option value="female" ${genderValue === 'female' ? 'selected' : ''} data-lan-eng="Female">Female</option>
+								</select>
+							</div>
+						</td>
+						<td class="is-center"><div class="cell"><input type="text" class="form-control" value="${escapeHtml(age)}" disabled></div></td>
+						<td class="is-center"><div class="cell"><input type="date" class="form-control traveler-field" data-field="birthDate" value="${escapeHtml(birth)}"></div></td>
+						<td class="is-center"><div class="cell"><input type="text" class="form-control traveler-field" data-field="nationality" value="${escapeHtml(nat)}"></div></td>
+						<td class="is-center"><div class="cell"><input type="text" class="form-control traveler-field" data-field="passportNumber" value="${escapeHtml(passportNo)}"></div></td>
+						<td class="is-center"><div class="cell"><input type="date" class="form-control traveler-field" data-field="passportIssueDate" value="${escapeHtml(issue)}"></div></td>
+						<td class="is-center"><div class="cell"><input type="date" class="form-control traveler-field" data-field="passportExpiry" value="${escapeHtml(expiry)}"></div></td>
+						<td class="is-center">
+							<div class="cell">
+								<div class="field-row jw-center">
+									<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span data-lan-eng="Passport photo">Passport photo</span></div>
+									<div class="jw-center jw-gap10">
+										<i></i>
+										<label class="jw-button typeF" style="cursor:pointer;" aria-label="Upload">
+											<input type="file" accept=".jpg,.jpeg,.png,.gif" style="display:none;" onchange="uploadTravelerPassportImage('${escapeJs(travelerId)}', this.files && this.files[0]); this.value='';">
+											<img src="../image/button-upload.svg" alt="" onerror="this.src='../image/file.svg'">
+										</label>
+										<button type="button" class="jw-button typeF" aria-label="Download" ${hasPassport ? '' : 'disabled'} onclick="event.preventDefault();event.stopPropagation();downloadTravelerPassport('${escapeJs(travelerId)}')">
+											<img src="../image/buttun-download.svg" alt="">
+										</button>
+										<button type="button" class="jw-button typeF" aria-label="Delete" ${hasPassport ? '' : 'disabled'} onclick="event.preventDefault();event.stopPropagation();deleteTravelerPassport('${escapeJs(travelerId)}')">
+											<img src="../image/button-close2.svg" alt="">
+										</button>
+									</div>
+								</div>
+							</div>
+						</td>
+					</tr>
+				`;
+			}).join('');
+
+			try { if (typeof jw_select === 'function') jw_select(); } catch (_) { }
+		}
+		// SMT  
+
+		function renderTravelersPager() {
+			const total = Array.isArray(allTravelers) ? allTravelers.length : 0;
+			const totalPages = Math.max(1, Math.ceil(total / travelersPageSize));
+			travelersPage = Math.min(Math.max(1, travelersPage), totalPages);
+
+			const groupSize = 5;
+			const groupStart = Math.floor((travelersPage - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			const wrap = document.getElementById('travelersPageNumbers');
+			if (wrap) {
+				wrap.innerHTML = '';
+				for (let p = groupStart; p <= groupEnd; p++) {
+					const btn = document.createElement('button');
+					btn.type = 'button';
+					btn.className = 'p' + (p === travelersPage ? ' show' : '');
+					btn.setAttribute('role', 'listitem');
+					if (p === travelersPage) btn.setAttribute('aria-current', 'page');
+					btn.textContent = String(p);
+					btn.addEventListener('click', () => {
+						travelersPage = p;
+						renderTravelers();
+						renderTravelersPager();
+					});
+					wrap.appendChild(btn);
+				}
+			}
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			const firstBtn = document.getElementById('travelersFirstPage');
+			const lastBtn = document.getElementById('travelersLastPage');
+			const prevBtn = document.getElementById('travelersPrevPage');
+			const nextBtn = document.getElementById('travelersNextPage');
+
+			if (firstBtn) firstBtn.onclick = () => {
+				travelersPage = 1;
+				renderTravelers();
+				renderTravelersPager();
+			};
+			if (lastBtn) lastBtn.onclick = () => {
+				travelersPage = totalPages;
+				renderTravelers();
+				renderTravelersPager();
+			};
+			if (prevBtn) prevBtn.onclick = () => {
+				travelersPage = prevTarget;
+				renderTravelers();
+				renderTravelersPager();
+			};
+			if (nextBtn) nextBtn.onclick = () => {
+				travelersPage = nextTarget;
+				renderTravelers();
+				renderTravelersPager();
+			};
+		}
+
+		// SMT   - select    
+		function getSelectValue(id) {
+			const sel = document.getElementById(id);
+			if (!sel) return '';
+			return sel.value || '';
+		}
+		// SMT  
+
+		// SMT   - travelers   
+		function collectTravelersData() {
+			const travelers = [];
+			const rows = document.querySelectorAll('#travelersTbody tr[data-traveler-id]');
+
+			rows.forEach(row => {
+				const travelerId = row.dataset.travelerId;
+				if (!travelerId) return;
+
+				const traveler = { bookingTravelerId: parseInt(travelerId, 10) };
+
+				// Main traveler 
+				const mainRadio = row.querySelector('input[name="mainTraveler"]');
+				if (mainRadio) {
+					traveler.isMainTraveler = mainRadio.checked ? '1' : '0';
+				}
+
+				//   
+				row.querySelectorAll('.traveler-field').forEach(field => {
+					const fieldName = field.dataset.field;
+					if (!fieldName) return;
+					traveler[fieldName] = field.value || '';
+				});
+
+				travelers.push(traveler);
+			});
+
+			return travelers;
+		}
+		// SMT  
+
+		async function handleSave() {
+			try {
+				const qp = new URLSearchParams(window.location.search);
+				const resolvedBookingId = bookingId || qp.get('id') || qp.get('bookingId') || '';
+				if (!resolvedBookingId) {
+					alert('Booking ID is missing. Please reload this page.');
+					return;
+				}
+
+				const guideId = (document.getElementById('guideSelect')?.value || '').trim() || null;
+				const statusKey = (document.getElementById('bookingStatusSelect')?.value || '').trim();
+
+				// SMT   -   
+				const cabinBaggage = getSelectValue('extraBaggage');
+				const breakfastRequest = getSelectValue('breakfast');
+				const wifiRental = getSelectValue('wifiRental');
+				// SMT  
+
+				// SMT   -   
+				const customerName = (document.getElementById('customerName')?.value || '').trim();
+				const customerEmail = (document.getElementById('customerEmail')?.value || '').trim();
+				const customerPhoneCode = getSelectValue('customerPhoneCode') || '+63';
+				const customerPhone = (document.getElementById('customerPhone')?.value || '').trim();
+				// SMT  
+
+				// SMT   - travelers  
+				const travelers = collectTravelersData();
+				// SMT  
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'updateB2CBooking',
+						bookingId: resolvedBookingId,
+						guideId,
+						statusKey,
+						// SMT   -   
+						cabinBaggage,
+						breakfastRequest,
+						wifiRental,
+						// SMT  
+						// SMT   -   
+						customerInfo: {
+							name: customerName,
+							email: customerEmail,
+							countryCode: customerPhoneCode,
+							phone: customerPhone
+						},
+						// SMT  
+						// SMT   - travelers 
+						travelers
+						// SMT  
+					})
+				});
+
+				const result = await response.json().catch(() => ({}));
+				if (!response.ok) {
+					const msg = result?.message ? String(result.message) : ('HTTP ' + response.status);
+					throw new Error(msg);
+				}
+
+				if (result.success) {
+					alert('Saved.');
+					await loadBookingDetail();
+					return;
+				}
+				alert(result.message ? String(result.message) : 'Save failed.');
+			} catch (error) {
+				console.error('Save error:', error);
+				alert(error?.message ? String(error.message) : 'An error occurred while saving.');
+			}
+		}
+
+		function downloadTravelerPassport(travelerId) {
+			if (!travelerId) return;
+			window.open(`../backend/api/super-api.php?action=downloadTravelerPassport&bookingTravelerId=${encodeURIComponent(travelerId)}`, '_blank');
+		}
+
+		async function uploadTravelerPassportImage(travelerId, file) {
+			const tid = String(travelerId || '').trim();
+			if (!tid || !file) return;
+			try {
+				if (file.size > 10 * 1024 * 1024) throw new Error('File size exceeds 10MB limit');
+				const allowed = ['image/jpeg', 'image/png', 'image/gif'];
+				if (!allowed.includes(file.type)) throw new Error('Invalid file type. Only JPG, PNG, GIF are allowed.');
+
+				const fd = new FormData();
+				fd.append('action', 'uploadTravelerPassportImage');
+				fd.append('bookingTravelerId', tid);
+				fd.append('passportImage', file);
+
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: fd
+				});
+				const json = await res.json().catch(() => ({}));
+				if (!res.ok || !json?.success) {
+					const msg = json?.message ? String(json.message) : ('HTTP ' + res.status);
+					throw new Error(msg);
+				}
+
+				alert('Uploaded.');
+				await loadBookingDetail();
+			} catch (e) {
+				console.error('Upload passport error:', e);
+				alert(e?.message ? String(e.message) : 'Failed to upload passport photo.');
+			}
+		}
+
+		async function deleteTravelerPassport(travelerId) {
+			if (!travelerId) return;
+			if (!confirm('Are you sure you want to delete the passport photo?')) return;
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'deleteTravelerPassportImage', bookingTravelerId: Number(travelerId) })
+				});
+				const json = await res.json().catch(() => ({}));
+				if (!res.ok || !json?.success) {
+					const msg = json?.message ? String(json.message) : ('HTTP ' + res.status);
+					throw new Error(msg);
+				}
+				alert('Deleted.');
+				await loadBookingDetail();
+			} catch (e) {
+				console.error('Delete passport error:', e);
+				alert(e?.message ? String(e.message) : 'Failed to delete passport photo.');
+			}
+		}
+
+		function applyFlights(flights, departureDate, returnDate) {
+			const dep = flights?.departure || null;
+			const ret = flights?.return || null;
+
+			setValue('departureFlightNumber', dep?.flight_number || '');
+			setValue('departurePoint', dep?.departure_point || '');
+			setValue('departureDestination', dep?.destination || '');
+			setValue('departureDateTime', formatDateAndTime(departureDate, dep?.departure_time));
+			setValue('departureArrivalDateTime', formatDateAndTime(departureDate, dep?.arrival_time));
+
+			setValue('returnFlightNumber', ret?.flight_number || '');
+			setValue('returnDeparturePoint', ret?.departure_point || '');
+			setValue('returnDestination', ret?.destination || '');
+			setValue('returnDepartureDateTime', formatDateAndTime(returnDate, ret?.departure_time));
+			setValue('returnArrivalDateTime', formatDateAndTime(returnDate, ret?.arrival_time));
+		}
+
+		function applySelectedOptionsUI(selectedOptions) {
+			const raw = (selectedOptions && typeof selectedOptions === 'object') ? selectedOptions : {};
+			const opts = (raw.selectedOptions && typeof raw.selectedOptions === 'object') ? raw.selectedOptions : raw;
+
+			const extraBaggage = opts.extraBaggage ?? opts.baggage ?? opts.cabinBaggage ?? '';
+			const breakfast = opts.breakfast ?? opts.breakfastRequest ?? null;
+			const wifi = opts.wifi ?? opts.wifiRental ?? null;
+
+			const baggageSelect = document.getElementById('extraBaggage');
+			if (baggageSelect) {
+				const v = (extraBaggage === null || extraBaggage === undefined) ? '' : String(extraBaggage).trim();
+				const normalized = v.toLowerCase();
+				let matchValue = '';
+				if (!v || v === 'none' || normalized === 'not selected') matchValue = '';
+				else if (normalized.includes('15')) matchValue = '15kg';
+				else if (normalized.includes('20')) matchValue = '20kg';
+				else if (normalized.includes('30')) matchValue = '30kg';
+				baggageSelect.value = matchValue;
+				// SMT   - jw_select 
+				refreshJwSelect(baggageSelect);
+				// SMT  
+			}
+
+			const yesNo = (val) => {
+				if (val === true || val === 'true' || val === 'yes' || val === 1 || val === '1' || val === 'apply') return 'apply';
+				if (val === false || val === 'false' || val === 'no' || val === 0 || val === '0' || val === 'not_applied') return 'not_applied';
+				return 'not_applied';
+			};
+
+			const breakfastSelect = document.getElementById('breakfast');
+			if (breakfastSelect) {
+				breakfastSelect.value = yesNo(breakfast);
+				// SMT   - jw_select 
+				refreshJwSelect(breakfastSelect);
+				// SMT  
+			}
+
+			const wifiSelect = document.getElementById('wifiRental');
+			if (wifiSelect) {
+				wifiSelect.value = yesNo(wifi);
+				// SMT   - jw_select 
+				refreshJwSelect(wifiSelect);
+				// SMT  
+			}
+		}
+
+		function guessPaymentMethod(booking) {
+			const raw = (booking && (booking.paymentMethod || booking.payMethod || booking.payment_method))
+				? String(booking.paymentMethod || booking.payMethod || booking.payment_method)
+				: '';
+			const pm = raw.trim().toLowerCase();
+			if (!pm) return '';
+			const map = {
+				'bank_transfer': 'Bank transfer',
+				'card': 'Card',
+				'paypal': 'PayPal',
+				'gcash': 'GCash',
+				'paymaya': 'PayMaya'
+			};
+			return map[pm] || raw;
+		}
+
+		function formatReservationPeople(booking, selectedOptions, travelers) {
+			// 1) selectedOptions 기반(예약 1단계에서 선택한 옵션/수량이 저장되어 있으면 최우선)
+			try {
+				const so = (selectedOptions && typeof selectedOptions === 'object') ? selectedOptions : {};
+				const root = (so.selectedOptions && typeof so.selectedOptions === 'object') ? so.selectedOptions : so;
+				const pickArray = (...keys) => {
+					for (const k of keys) {
+						const v = root?.[k];
+						if (Array.isArray(v) && v.length) return v;
+					}
+					return null;
+				};
+				const arr =
+					pickArray('reservationOptions', 'pricingOptionsSelected', 'pricingOptions', 'guestOptions', 'peopleOptions', 'selectedGuests') ||
+					(Array.isArray(root?.options) ? root.options : null);
+
+				if (arr && arr.length) {
+					const parts = [];
+					for (const it of arr) {
+						if (!it || typeof it !== 'object') continue;
+						const name = String(it.optionName ?? it.name ?? it.label ?? it.type ?? '').trim();
+						const qty = Number(it.qty ?? it.quantity ?? it.count ?? it.num ?? (it.selectedQty ?? 0));
+						if (!name || !Number.isFinite(qty) || qty <= 0) continue;
+						parts.push(`${name} x${qty}`);
+					}
+					if (parts.length) return parts.join(', ');
+				}
+			} catch (_) {}
+
+			// 2) travelers 기반(여행자 정보가 있으면 travelerType으로 그룹핑)
+			try {
+				if (Array.isArray(travelers) && travelers.length) {
+					const map = new Map();
+					for (const t of travelers) {
+						const raw = String(t?.travelerType ?? '').trim();
+						if (!raw) continue;
+						const key = raw.toLowerCase();
+						// legacy 타입은 그대로 두되, 고정 라벨(Adult/Child/Infant)로 강제 표기하지 않도록 함
+						map.set(key, { label: raw, count: (map.get(key)?.count || 0) + 1 });
+					}
+					const parts = [];
+					for (const v of map.values()) {
+						if (v.count > 0) parts.push(`${String(v.label).trim()} x${v.count}`);
+					}
+					if (parts.length) return parts.join(', ');
+				}
+			} catch (_) {}
+
+			// 3) 마지막 fallback: 고정 Adult/Child/Infant 표기는 사용하지 않고 총 인원만 표시
+			const a = Number(booking?.adults || 0);
+			const c = Number(booking?.children || 0);
+			const i = Number(booking?.infants || 0);
+			const total = (Number.isFinite(a) ? a : 0) + (Number.isFinite(c) ? c : 0) + (Number.isFinite(i) ? i : 0);
+			const rawTotal = String(booking?.numberOfPeople || booking?.guests || '').trim();
+			const n = rawTotal !== '' ? Number(rawTotal) : total;
+			return Number.isFinite(n) && n > 0 ? String(n) : '0';
+		}
+
+		function formatPeriod(departureDate, returnDate) {
+			const d = String(departureDate || '').slice(0, 10);
+			const r = String(returnDate || '').slice(0, 10);
+			if (d && r) return `${d} - ${r}`;
+			return d || r || '';
+		}
+
+		function formatMeetingDateTime(booking) {
+			const d = String(booking?.departureDate || '').slice(0, 10);
+			const t = (booking?.meeting_time ?? booking?.meetingTime ?? '').toString().slice(0, 5);
+			if (d && t) return `${d} ${t}`;
+			return d || t || '';
+		}
+
+		function formatDateAndTime(date, time) {
+			const d = String(date || '').slice(0, 10);
+			const t = (time ?? '').toString().slice(0, 5);
+			if (d && t) return `${d} ${t}`;
+			return d || t || '';
+		}
+
+		function formatDateTime(raw) {
+			if (!raw) return '';
+			const s = String(raw);
+			// 'YYYY-MM-DD HH:MM:SS' -> 'YYYY-MM-DD HH:MM'
+			if (s.includes(' ')) {
+				const [d, tm] = s.split(' ');
+				if (d && tm) return `${d} ${tm.slice(0, 5)}`;
+			}
+			return s;
+		}
+
+		function formatCurrency(v) {
+			const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
+			if (!isFinite(n)) return '';
+			return `₱${Math.round(n).toLocaleString()}`;
+		}
+
+		function setValue(id, value) {
+			const el = document.getElementById(id);
+			if (!el) return;
+			el.value = value ?? '';
+		}
+
+		function setTextArea(id, value) {
+			const el = document.getElementById(id);
+			if (!el) return;
+			el.value = value ?? '';
+		}
+
+		function getSelectedOptionText(selectedOptions, key) {
+			if (!selectedOptions || typeof selectedOptions !== 'object') return '';
+			if (selectedOptions[key] !== undefined) return String(selectedOptions[key] ?? '');
+			if (selectedOptions?.selectedOptions && selectedOptions.selectedOptions[key] !== undefined) return String(selectedOptions.selectedOptions[key] ?? '');
+			return '';
+		}
+
+		function calcAge(birthDate) {
+			const s = String(birthDate || '').trim();
+			if (!s) return '';
+			// Expect YYYY-MM-DD or YYYYMMDD
+			let y, m, d;
+			if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+				[y, m, d] = s.split('-').map(n => parseInt(n, 10));
+			} else if (/^\d{8}$/.test(s)) {
+				y = parseInt(s.slice(0, 4), 10);
+				m = parseInt(s.slice(4, 6), 10);
+				d = parseInt(s.slice(6, 8), 10);
+			} else {
+				return '';
+			}
+			if (!y || !m || !d) return '';
+			const today = new Date();
+			let age = today.getFullYear() - y;
+			const mm = today.getMonth() + 1;
+			const dd = today.getDate();
+			if (mm < m || (mm === m && dd < d)) age--;
+			return String(age);
+		}
+
+		async function ensureJwSelectReady(nativeSel, timeoutMs = 2000) {
+			if (!nativeSel) return;
+			if (nativeSel.closest('.jw-select')) return;
+			if (typeof jw_select === 'function') {
+				try { jw_select(); } catch (_) { }
+			}
+			const start = Date.now();
+			while (Date.now() - start < timeoutMs) {
+				if (nativeSel.closest('.jw-select')) return;
+				await new Promise(r => setTimeout(r, 50));
+			}
+		}
+
+		function refreshJwSelect(nativeSel) {
+			if (!nativeSel) return;
+			const wrap = nativeSel.closest('.jw-select');
+			if (!wrap) return;
+			const box = wrap.querySelector('.jw-selected');
+			const list = wrap.querySelector('.jw-select-list');
+			if (!box || !list) return;
+
+			if (nativeSel.disabled) {
+				wrap.classList.add('is-disabled');
+				box.setAttribute('aria-disabled', 'true');
+				box.tabIndex = -1;
+			} else {
+				wrap.classList.remove('is-disabled');
+				box.removeAttribute('aria-disabled');
+				box.tabIndex = 0;
+			}
+
+			const opt = nativeSel.selectedOptions?.[0] || nativeSel.options?.[0];
+			box.textContent = opt ? (opt.textContent || '') : '';
+
+			list.innerHTML = '';
+			Array.from(nativeSel.options || []).forEach((o) => {
+				const li = document.createElement('li');
+				li.className = 'jw-select-item';
+				li.setAttribute('role', 'option');
+				li.dataset.value = o.value;
+				li.textContent = o.textContent || '';
+				if (o.disabled) {
+					li.setAttribute('aria-disabled', 'true');
+					li.classList.add('is-disabled');
+				}
+				if (o.selected) li.setAttribute('aria-selected', 'true');
+				list.appendChild(li);
+			});
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text ?? '';
+			return div.innerHTML;
+		}
+
+		function escapeJs(text) {
+			return String(text ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+		}
+	</script>
+</body>
+
+</html>
+
+

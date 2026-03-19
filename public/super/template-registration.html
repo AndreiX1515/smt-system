@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- editor -->
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들어올 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content layout-content-aside">
+			<div class="page-toolbar">
+				<a href="template-list.html" class="jw-button jw-button-back" aria-label="목록으로 돌아가기">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">목록으로 돌아가기</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+				</div>
+			</div>
+			
+			<div class="content-main">
+				<h1 class="page-title" data-lan-eng="Template Registration">Template Registration</h1>
+				<h2 class="section-title jw-mgt32" data-lan-eng="Template Information">템플릿 정보</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Template name">템플릿명</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" value="" data-essential="y" placeholder="Template name">
+						</div>
+
+					</div>
+				</div>
+				<h2 class="section-title jw-mgt32" data-lan-eng="Product Information">상품 정보</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Product Name">상품명</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" data-essential="y" value="Product Name">
+						</div>
+						<div class="grid-item ">
+							<label class="label-name" ><span data-lan-eng="Sales Target">판매 대상</span> <span class="req">*</span></label>
+							<select class="select" data-essential="y">
+								<option selected>B2B</option>
+								<option>B2C</option>
+							</select>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Category">대분류</span> <span class="req">*</span></label>
+							<select class="select" data-essential="y" data-category="1" onchange="template_detail_sdaf_cate()">
+								<option  selected>Select main category</option>
+								<option value="계절별">Seasonal</option>
+								<option value="지역별">Regional</option>
+								<option value="테마별">Theme</option>
+							</select>
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Category">중분류</span> <span class="req">*</span></label>
+							<select class="select" data-essential="y" data-category="2" disabled>
+								<option selected>Please select a main category first</option>
+								<option>Spring</option>
+								<option>Summer</option>
+								<option>Autumn</option>
+								<option>Winter</option>
+							</select>
+						</div>
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Product Description">상품 설명</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder="내용을 입력해주세요"></div>
+							</div>
+							</div>
+						</div>
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Thumbnail image">썸네일 이미지</span> <span class="req">*</span></label>
+							<div class="upload-grid">
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" data-essential="y" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload">
+											<img src="../image/upload3.svg" alt="">
+											<span data-lan-eng="Image upload">Image upload</span>
+										</button>
+									</label>
+								</div>
+							</div>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Product image">상품 이미지</label>
+							<div class="upload-grid">
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+									</label>
+								</div>
+							</div>
+						</div>
+
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Detailed introduction image">상세 소개 이미지</span> <span class="req">*</span></label>
+							<div class="upload-grid">
+								<div class="upload-item jw-center">
+									<label class="inputFile">
+										<input name="" type="file" data-essential="y" accept="image/*" onchange="filePreview(this);" >
+										<button type="button" class="btn-upload">
+											<img src="../image/upload3.svg" alt="">
+											<span data-lan-eng="Image upload">Image upload</span>
+										</button>
+									</label>
+								</div>
+							</div>
+
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Schedule">일정표</h2>
+				<div class="card-panel jw-mgt16">
+					<h3 class="grid-wrap-title" data-lan-eng="Meeting Information">미팅 정보</h3>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Meeting time">미팅 시간</span> <span class="req">*</span></label>
+							<div class="meeting-wrap">
+								<select class="select" data-essential="y">
+									<option>00</option>
+									<option>01</option>
+									<option>02</option>
+									<option>03</option>
+									<option>04</option>
+									<option>05</option>
+									<option>06</option>
+									<option>07</option>
+									<option>08</option>
+									<option selected>09</option>
+									<option>10</option>
+									<option>11</option>
+									<option>12</option>
+									<option>13</option>
+									<option>14</option>
+									<option>15</option>
+									<option>16</option>
+									<option>17</option>
+									<option>18</option>
+									<option>19</option>
+									<option>20</option>
+									<option>21</option>
+									<option>22</option>
+									<option>23</option>
+								</select>
+								<select class="select" data-essential="y">
+									<option selected>00</option>
+									<option>05</option>
+									<option>10</option>
+									<option>15</option>
+									<option>20</option>
+									<option>25</option>
+									<option>30</option>
+									<option>35</option>
+									<option>40</option>
+									<option>45</option>
+									<option>50</option>
+									<option>55</option>
+								</select>
+							</div>
+						</div>
+						<div class="grid-item"></div>
+						<div class="grid-item"></div>
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Meeting place name">미팅 장소명</span> <span class="req">*</span></label>
+							<div class="jw-center jw-gap20">
+								<input type="text" class="form-control jw-wf" data-essential="y" value="Please search for an address" disabled>
+								<button type="button" class="jw-button typeA ">Address Search</button>
+							</div>
+						</div>
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Meeting place address">미팅 장소 주소</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" data-essential="y" value="Please search for an address" disabled>
+						</div>
+					</div>
+				</div>
+
+				<div class="card-panel jw-mgt16" id="nday" >
+					<h3 class="grid-wrap-title">
+						<button type="button" class="jw-w jw-cols jw-between" onclick="ndasdtoggle(this)">1Day <img src="../image/arrow42.svg" alt=""></button>
+					</h3>
+					<i class="line"></i>
+					<div class="grid-wrap jw-mgt12">
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Schedule Summary">일정 요약</label>
+							<input type="text" class="form-control" placeholder="Schedule Summary">
+						</div>
+					</div>
+					<div class="sub-panel jw-mgt20">
+						<h3 class="grid-wrap-title" data-lan-eng="Tourist Information">관광지 정보</h3>
+						<button type="button" class="jw-button typeA jw-mgt12" data-lan-eng="＋ Add Tourist Attraction" onclick="template_detail_dfghs(this)">＋ 관광지 추가</button>
+
+						<div class="grid-wrap grid-highlight jw-mgt12 dfghs">
+							<div class="grid-item">
+								<label class="label-name"><span data-lan-eng="Schedule start time">Schedule start time</span> <span class="req">*</span></label>
+								<div class="meeting-wrap">
+									<select class="select" data-essential="y">
+										<option>00</option>
+										<option>01</option>
+										<option>02</option>
+										<option>03</option>
+										<option>04</option>
+										<option>05</option>
+										<option>06</option>
+										<option>07</option>
+										<option>08</option>
+										<option selected>09</option>
+										<option>10</option>
+										<option>11</option>
+										<option>12</option>
+										<option>13</option>
+										<option>14</option>
+										<option>15</option>
+										<option>16</option>
+										<option>17</option>
+										<option>18</option>
+										<option>19</option>
+										<option>20</option>
+										<option>21</option>
+										<option>22</option>
+										<option>23</option>
+									</select>
+									<select class="select" data-essential="y">
+										<option selected>00</option>
+										<option>10</option>
+										<option>20</option>
+										<option>30</option>
+										<option>40</option>
+										<option>50</option>
+									</select>
+								</div>
+							</div>
+							<div class="grid-item">
+								<label class="label-name"><span data-lan-eng="Schedule end time">Schedule end time</span> <span class="req">*</span></label>
+								<div class="meeting-wrap">
+									<select class="select">
+										<option>00</option>
+										<option>01</option>
+										<option>02</option>
+										<option>03</option>
+										<option>04</option>
+										<option>05</option>
+										<option>06</option>
+										<option>07</option>
+										<option>08</option>
+										<option>09</option>
+										<option selected>10</option>
+										<option>11</option>
+										<option>12</option>
+										<option>13</option>
+										<option>14</option>
+										<option>15</option>
+										<option>16</option>
+										<option>17</option>
+										<option>18</option>
+										<option>19</option>
+										<option>20</option>
+										<option>21</option>
+										<option>22</option>
+										<option>23</option>
+									</select>
+									<select class="select">
+										<option selected>00</option>
+										<option>10</option>
+										<option>20</option>
+										<option>30</option>
+										<option>40</option>
+										<option>50</option>
+									</select>
+								</div>
+							</div>
+							<div class="grid-item"></div>
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Name">Sight Name</span> <span class="req">*</span></label>
+								<div class="jw-center jw-gap20">
+									<input type="text" class="form-control jw-wf" data-essential="y" value="Nami Island" disabled>
+									<button type="button" class="jw-button typeA " data-lan-eng="Address Search">Address Search</button>
+								</div>
+							</div>
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Address">Sight Address</span> <span class="req">*</span></label>
+								<input type="text" class="form-control" data-essential="y" value="Gangwon Chuncheon-si Namsan-myeon Nami Island Road 1" disabled>
+							</div>
+							<!-- multi-editor.js -->
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Information">Sight Information</span> <span class="req">*</span></label>
+								<div class="editor-box-wrap">
+								<div class="jw-editor">
+									<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										<option value="" selected>Font</option>
+										<option value="12px">12px</option>
+										<option value="14px">14px</option>
+										<option value="16px">16px</option>
+										<option value="18px">18px</option>
+										<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+									</div>
+							
+									<div class="jweditor" data-placeholder="내용을 입력해주세요"></div>
+								</div>
+								</div>
+							</div>
+
+							<div class="grid-item col-span-3">
+								<label class="label-name"><span data-lan-eng="Sight Image">Sight Image</span> <span class="req">*</span></label>
+								<div class="upload-grid">
+									<div class="upload-item jw-center">
+										<label class="inputFile">
+											<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+											<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image Upload">Image upload</span></button>
+										</label>
+									</div>
+								</div>
+							</div>
+							<div class="grid-item col-span-3">
+								<div class="grid-item-controoler">
+									<button type="button" class="jw-button typeA" onclick="template_detail_hsdfghsh(this)"><img src="../image/trash.svg" alt=""><span data-lan-eng="Delete tourist attraction">Delete tourist attraction</span></button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="sub-panel jw-mgt20">
+						<h4 class="grid-wrap-title" data-lan-eng="Meal Information">Meal Information</h4>
+						<div class="grid-wrap grid-highlight jw-mgt12">
+							<div class="grid-item">
+								<label class="label-name" data-lan-eng="Breakfast">조식</label>
+								<input type="text" class="form-control" value="" placeholder="Breakfast">
+							</div>
+							<div class="grid-item">
+								<label class="label-name" data-lan-eng="Lunch">중식</label>
+								<input type="text" class="form-control" value="" placeholder="Lunch">
+							</div>
+							<div class="grid-item">
+								<label class="label-name" data-lan-eng="Dinner">석식</label>
+								<input type="text" class="form-control" value="" placeholder="Dinner">
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Common Settings">공통 사항</h2>
+				<div class="card-panel jw-mgt16" id="commonAccommodationPanel">
+					<div class="jw-cols jw-between jw-align-center">
+						<h3 class="grid-wrap-title"><span data-lan-eng="Accommodation Information">숙소 정보</span></h3>
+						<button type="button" class="jw-button typeA" onclick="addAccommodationBlock()" data-lan-eng="+ Add Accommodation">+ 숙소 추가</button>
+					</div>
+					<div id="accommodationBlocksContainer">
+						<div class="accommodation-block" data-accom-idx="0">
+							<div class="jw-cols jw-between jw-align-center jw-mgt16">
+								<h4 class="accom-block-title" style="font-size:14px;font-weight:600;color:#4A90D9;">Accommodation 1</h4>
+								<button type="button" class="jw-button typeB btn-sm" onclick="removeAccommodationBlock(this)" style="display:none;" data-lan-eng="Delete">삭제</button>
+							</div>
+							<div class="grid-wrap jw-mgt12 grid-highlight">
+								<div class="grid-item col-span-3">
+									<label class="label-name"><span data-lan-eng="Accommodation name">숙소명</span> <span class="req">*</span></label>
+									<input type="text" class="form-control accom-name" value="" placeholder="Enter accommodation name" data-lan-eng-placeholder="Enter accommodation name">
+								</div>
+								<div class="grid-item col-span-3">
+									<label class="label-name"><span data-lan-eng="Accommodation address">숙소 주소</span></label>
+									<input type="text" class="form-control accom-address" value="" placeholder="Enter accommodation address" data-lan-eng-placeholder="Enter accommodation address">
+								</div>
+								<div class="grid-item col-span-3">
+									<label class="label-name"><span data-lan-eng="Accommodation Description">숙소 설명</span></label>
+									<div class="editor-box-wrap">
+										<div class="jw-editor">
+											<div class="toolbar">
+												<div class="group">
+													<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+													<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+													<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+													<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+												</div>
+												<div class="group">
+													<select class="ql-size">
+														<option value="" selected>Font</option>
+														<option value="12px">12px</option>
+														<option value="14px">14px</option>
+														<option value="16px">16px</option>
+														<option value="18px">18px</option>
+														<option value="24px">24px</option>
+													</select>
+												</div>
+												<div class="group">
+													<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+													<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+													<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+												</div>
+												<div class="group">
+													<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+													<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+												</div>
+											</div>
+											<div class="jweditor accom-description" data-placeholder="Enter accommodation description"></div>
+										</div>
+									</div>
+								</div>
+								<div class="grid-item">
+									<label class="label-name"><span data-lan-eng="Accommodation image">숙소 이미지</span></label>
+									<div class="upload-grid accom-image-grid">
+										<div class="upload-item jw-center">
+											<label class="inputFile">
+												<input type="file" accept="image/*" onchange="filePreview(this);">
+												<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+											</label>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="card-panel jw-mgt16" id="commonTransportation">
+					<h3 class="grid-wrap-title" data-lan-eng="Transportation Information">교통편 정보</h3>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item col-span-3">
+							<label class="label-name" data-lan-eng="Description">설명</label>
+							<div class="editor-box-wrap">
+								<div class="jw-editor">
+									<div class="toolbar" id="commonTransToolbar">
+										<div class="group">
+											<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										</div>
+										<div class="group">
+											<select class="ql-size">
+												<option value="" selected>Font</option>
+												<option value="12px">12px</option>
+												<option value="14px">14px</option>
+												<option value="16px">16px</option>
+												<option value="18px">18px</option>
+												<option value="24px">24px</option>
+											</select>
+										</div>
+										<div class="group">
+											<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+										</div>
+										<div class="group">
+											<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+										</div>
+									</div>
+									<div class="jweditor" id="commonTransEditor" data-placeholder="Enter transportation description"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Fee information">요금 정보</h2>
+				<div class="card-panel jw-mgt16">
+					<h3 class="grid-wrap-title" data-lan-eng="Number of people fee">인원별 요금</h3>
+					<i class="line"></i>
+					<button type="button" class="jw-button typeA" onclick="template_detail_sfg1(this)" data-lan-eng="＋ Add">＋ 추가</button>
+					<div class="tableA-scroll jw-mgt12">
+						<table class="jw-tableA booking-detail">
+							<colgroup>
+								<col class="col-80"> <!-- No -->
+								<col> <!-- 옵션명 -->
+								<col class="col-300"> <!-- 인원별 요금 -->
+								<col class="col-100"> <!-- 삭제 -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th class="is-center">No</th>
+									<th data-lan-eng="Option name">옵션명</th>
+									<th data-lan-eng="Number of people fee (₱)">인원별 요금 (₱)</th>
+									<th data-lan-eng="Delete">삭제</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="is-center">1</td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="Adult" placeholder="옵션명"></div></td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="34,000" inputmode="numeric" placeholder="0"></div></td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="template_detail_sfg1d(this)"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">2</td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="Child"></div></td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="23,800" inputmode="numeric"></div></td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="template_detail_sfg1d(this)"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">3</td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="Child"></div></td>
+									<td class="is-center"><div class="cell"><input type="text" class="form-control" value="0" inputmode="numeric"></div></td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="template_detail_sfg1d(this)"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="card-panel jw-mgt16">
+					<h3 class="grid-wrap-title" data-lan-eng="Room rate for single occupancy">싱글룸 이용 요금</h3>
+					<div class="grid-wrap jw-mgt16">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Single room usage fee (₱)">싱글룸 이용 요금 (₱)</span> <span class="req">*</span></label>
+							<input type="text" class="form-control jw-w348" value="10,000" inputmode="numeric" placeholder="Enter numbers">
+							<p class="form-desc is-warning" data-lan-eng="* When booking for 2 or more people, you will be charged for the number of single rooms selected. For 1 person booking, it is applied for free.">* 2인 이상 예약 시, 선택한 싱글룸 수만큼 요금이 부과됩니다. 1인 예약 시에는 무료로 적용됩니다.</p>
+						</div>
+					</div>
+				</div>
+				<h2 class="section-title jw-mgt32" data-section-name="poham" data-lan-eng="Included/Not Included Items">포함/불포함 사항</h2>
+				<div class="card-panel jw-mgt16" data-section-name="poham">
+					<h3 class="grid-wrap-title" data-lan-eng="Included items">포함 사항</h3>
+					<i class="line"></i>
+					<button type="button" class="jw-button typeA" data-lan-eng="＋ Add" onclick="template_detail_sfg3(this)">＋ 추가</button>
+					<div class="tableA-scroll jw-mgt20">
+						<table class="jw-tableA booking-detail">
+							<colgroup>
+								<col class="col-80"> <!-- No -->
+								<col> <!-- 포함 사항 -->
+								<col class="col-100"> <!-- 삭제 -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th>No</th>
+									<th data-lan-eng="Included items">포함 사항</th>
+									<th data-lan-eng="Delete">삭제</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="is-center">1</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="All accommodation (based on 2 people per room)">
+										</div>
+									</td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">2</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="Accompanied by a dedicated vehicle and professional guide">
+										</div>
+									</td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">3</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="All meals and entrance fees specified in the schedule are included">
+										</div>
+									</td>
+									<td class="is-center jw-center">
+										<button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="card-panel jw-mgt16" data-section-name="poham">
+					<h3 class="grid-wrap-title" data-lan-eng="Excluded items">불포함 사항</h3>
+					<i class="line"></i>
+					<button type="button" class="jw-button typeA" data-lan-eng="＋ Add" onclick="template_detail_sfg3(this)">＋ 추가</button>
+
+					<div class="tableA-scroll jw-mgt20">
+						<table class="jw-tableA booking-detail">
+							<colgroup>
+								<col class="col-80"> <!-- No -->
+								<col> <!-- 불포함 사항 -->
+								<col class="col-100"> <!-- 삭제 -->
+							</colgroup>
+							<thead>
+								<tr>
+									<th data-lan-eng="">No</th>
+									<th data-lan-eng="Excluded items">불포함 사항</th>
+									<th data-lan-eng="Delete">삭제</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="is-center">1</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="Personal travel insurance and personal expenses">
+										</div>
+									</td>
+									<td class="is-center jw-center"><button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">2</td>
+									<td class="is-center">
+										<div class="cell">
+											<input type="text" class="form-control" value="Meals and transportation costs during free time">
+										</div>
+									</td>
+									<td class="is-center jw-center"><button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								<tr>
+									<td class="is-center">3</td>
+									<td class="is-center">	
+										<div class="cell">
+											<input type="text" class="form-control" value="Manner tips and optional tourism costs">
+										</iv>
+									</td>
+									<td class="is-center jw-center"><button type="button" class="jw-button" aria-label="row delete" onclick="trash_typeA(this);"><img src="../image/trash.svg" alt=""></button>
+									</td>
+								</tr>
+								
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Usage Guide">이용안내</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap jw-mgt0">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Notice">안내문</span> <span class="req">*</span></label>
+							<div class="cell">
+								<div class="field-row jw-center">
+									<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> <span data-lan-eng="File">파일</span> [pdf, 328KB]</div>
+									<div class="jw-center jw-gap10">
+										<i></i>
+										<button type="button" class="jw-button typeF"><img src="../image/buttun-download.svg" alt=""></button>
+										<button type="button" class="jw-button typeF"><img src="../image/button-close2.svg" alt=""></button>
+									</div>
+								</div>
+							</div>
+
+						</div>
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Description">설명</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder="내용을 입력해주세요"></div>
+							</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Cancellation/Refund Policy">취소/환불 규정</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap jw-mgt0">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Full refund available standard date">Full refund available standard date</span> <span class="req">*</span></label>
+							<input type="text" class="form-control jw-w348" value="15" inputmode="numeric" placeholder="Enter numbers">
+							<p class="form-desc is-warning" data-lan-eng="Cancel up to 1 day before for a full refund">Cancel up to 1 day before for a full refund</p>
+						</div>
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Description">설명</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar">
+								<div class="group">
+									<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+									<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+									<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+								</div>
+								<div class="group">
+									<select class="ql-size">
+									<option value="" selected>Font</option>
+									<option value="12px">12px</option>
+									<option value="14px">14px</option>
+									<option value="16px">16px</option>
+									<option value="18px">18px</option>
+									<option value="24px">24px</option>
+									</select>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+								</div>
+								<div class="group">
+									<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+									<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+								</div>
+								</div>
+						
+								<div class="jweditor" data-placeholder="내용을 입력해주세요">Please enter a description</div>
+							</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<h2 class="section-title jw-mgt32" data-lan-eng="Visa Application Guide">비자 신청 안내</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap jw-mgt0">
+						<!-- multi-editor.js -->
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Description">설명</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+								<div class="jw-editor">
+									<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										<option value="" selected>Font</option>
+										<option value="12px">12px</option>
+										<option value="14px">14px</option>
+										<option value="16px">16px</option>
+										<option value="18px">18px</option>
+										<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+									</div>
+							
+									<div class="jweditor" data-placeholder="내용을 입력해주세요">Please enter a description</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<aside class="content-aside" aria-label="구성 요소" style="top:0px">
+				<h3 class="aside-title" data-lan-eng="Components">구성 요소</h3>
+				<div class="card-panel jw-mgt16">
+						<div class="grid-item">
+
+							<div class="aside-list">
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Template Information">템플릿 정보</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<hr>
+
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Product Information">상품 정보</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<hr>
+
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Schedule">일정표</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<div class="aside-sub">
+									<div class="aside-row">
+										<div class="aside-row__subtitle" data-lan-eng="Meeting Information">미팅 정보</div>
+										<span class="aside-row__req" data-lan-eng="Required">필수</span>
+									</div>
+									
+									<div class="aside-row-list">
+										<div class="aside-row">
+											<div class="aside-row__subtitle" data-lan-eng="1st day">1일차</div>
+											<span class="aside-row__req" data-lan-eng="Required">필수</span>
+										</div>
+									</div>
+									<div class="aside-row">
+										<button type="button" class="jw-button aside-button-typeA" onclick="template_detail_sdaf(this)"><img src="../image/plus.svg" alt=""> <span data-lan-eng="Add day">일차 추가</span></button>
+									</div>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Common Settings">공통 사항</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Fee information">요금 정보</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Included/Not Included Items">포함/불포함 사항</div>
+									<button type="button" class="jw-button aside-add-section" data-target-section="poham" onclick="togglePlusMinus(this)"><img src="../image/minus.svg" alt=""></button>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Usage Guide">이용안내</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Cancellation/Refund Policy">취소/환불 규정</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+								<hr>
+								<div class="aside-row">
+									<div class="aside-row__title" data-lan-eng="Visa Application Guide">비자 신청 안내</div>
+									<span class="aside-row__req" data-lan-eng="Required">필수</span>
+								</div>
+
+							</div>
+
+						</div>
+						<div class="temporary-guide" style="position:relative; margin-top:50px; ">
+							<button type="button" class="jw-button" onclick="modal('template-detail-modal1.html', '600px', '252px')">필수값 입력 요청</button>
+							<button type="button" class="jw-button" onclick="modal('product-detail_modal_5.html', '580px', '252px')">테이블 삭제 시</button>
+						</div>
+				</div>
+			</aside>
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button" id="testFillBtn" data-lan-eng="Test Fill">테스트 입력</button>
+		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			gap: 16px;
+			z-index: 100;
+		}
+	</style>
+
+	<!-- 기본 스크립트 -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_tplfix7"></script>
+	<script src="../js/multi-editor.js"></script>
+
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		// 숙소 블록 추가
+		let accommodationBlockCounter = 1;
+		function addAccommodationBlock() {
+			const container = document.getElementById('accommodationBlocksContainer');
+			if (!container) return;
+
+			accommodationBlockCounter++;
+			const idx = accommodationBlockCounter;
+
+			// 첫 번째 블록을 템플릿으로 복제
+			const firstBlock = container.querySelector('.accommodation-block');
+			if (!firstBlock) return;
+
+			const newBlock = firstBlock.cloneNode(true);
+			newBlock.dataset.accomIdx = String(idx);
+
+			// 제목 업데이트
+			const title = newBlock.querySelector('.accom-block-title');
+			if (title) title.textContent = `Accommodation ${idx}`;
+
+			// 삭제 버튼 표시
+			const deleteBtn = newBlock.querySelector('button[onclick*="removeAccommodationBlock"]');
+			if (deleteBtn) deleteBtn.style.display = '';
+
+			// 입력값 초기화
+			newBlock.querySelectorAll('input.form-control').forEach(inp => {
+				inp.value = '';
+				inp.removeAttribute('disabled');
+			});
+
+			// 에디터 초기화
+			const editorEl = newBlock.querySelector('.accom-description');
+			if (editorEl) {
+				editorEl.innerHTML = '';
+				editorEl.removeAttribute('data-quill-ready');
+			}
+
+			// 이미지 업로드 초기화
+			const imageGrid = newBlock.querySelector('.accom-image-grid');
+			if (imageGrid) {
+				imageGrid.innerHTML = `
+					<div class="upload-item jw-center">
+						<label class="inputFile">
+							<input type="file" accept="image/*" onchange="filePreview(this);">
+							<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+						</label>
+					</div>
+				`;
+			}
+
+			container.appendChild(newBlock);
+
+			// 에디터 재초기화 (multi-editor.js의 board 함수 사용)
+			if (typeof window.board === 'function') {
+				try { window.board(); } catch (_) {}
+			}
+
+			// 모든 블록의 삭제 버튼 가시성 업데이트
+			updateAccommodationDeleteButtons();
+
+			try { newBlock.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
+		}
+
+		// 숙소 블록 삭제
+		function removeAccommodationBlock(btn) {
+			const block = btn.closest('.accommodation-block');
+			if (!block) return;
+
+			const container = document.getElementById('accommodationBlocksContainer');
+			const blocks = container?.querySelectorAll('.accommodation-block') || [];
+
+			// 마지막 하나는 삭제 불가
+			if (blocks.length <= 1) {
+				alert('At least one accommodation block is required.');
+				return;
+			}
+
+			if (!confirm('Are you sure you want to delete this accommodation?')) return;
+
+			block.remove();
+			updateAccommodationDeleteButtons();
+			renumberAccommodationBlocks();
+		}
+
+		// 숙소 블록 삭제 버튼 가시성 업데이트
+		function updateAccommodationDeleteButtons() {
+			const container = document.getElementById('accommodationBlocksContainer');
+			if (!container) return;
+			const blocks = container.querySelectorAll('.accommodation-block');
+			blocks.forEach((block, i) => {
+				const deleteBtn = block.querySelector('button[onclick*="removeAccommodationBlock"]');
+				if (deleteBtn) {
+					// 블록이 1개면 삭제 버튼 숨김, 2개 이상이면 표시
+					deleteBtn.style.display = blocks.length > 1 ? '' : 'none';
+				}
+			});
+		}
+
+		// 숙소 블록 번호 재정렬
+		function renumberAccommodationBlocks() {
+			const container = document.getElementById('accommodationBlocksContainer');
+			if (!container) return;
+			const blocks = container.querySelectorAll('.accommodation-block');
+			blocks.forEach((block, i) => {
+				const num = i + 1;
+				block.dataset.accomIdx = String(num);
+				const title = block.querySelector('.accom-block-title');
+				if (title) title.textContent = `Accommodation ${num}`;
+			});
+			accommodationBlockCounter = blocks.length;
+		}
+
+		(function () {
+			function randInt(min, max) {
+				const mn = Number(min);
+				const mx = Number(max);
+				if (Number.isNaN(mn) || Number.isNaN(mx) || mx < mn) return mn;
+				if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+					const buf = new Uint32Array(1);
+					window.crypto.getRandomValues(buf);
+					return mn + (buf[0] % (mx - mn + 1));
+				}
+				return Math.floor(Math.random() * (mx - mn + 1)) + mn;
+			}
+
+			function randToken(prefix = 'TEST') {
+				const t = Date.now().toString(36);
+				const r = randInt(0, 0xffffff).toString(36).padStart(6, '0');
+				return `${prefix}_${t}_${r}`.toUpperCase();
+			}
+
+			function randPrice(min = 0, max = 500000) {
+				const n = randInt(min, max);
+				try {
+					return new Intl.NumberFormat('en-US').format(n);
+				} catch (_) {
+					return String(n);
+				}
+			}
+
+			function pickNonPlaceholderOption(selectEl) {
+				if (!selectEl || !selectEl.options || !selectEl.options.length) return null;
+				const options = Array.from(selectEl.options)
+					.filter(o => !o.disabled)
+					.filter(o => (o.value ?? '').trim() !== '' || (o.textContent ?? '').trim() !== '')
+					// 흔한 placeholder 텍스트 제외(원본 퍼블리싱 문구 기준)
+					.filter(o => {
+						const t = (o.textContent || '').trim().toLowerCase();
+						return !(
+							t.includes('select') ||
+							t.includes('please select') ||
+							t.includes('first') ||
+							t.includes('대분류 선택') ||
+							t.includes('중분류 선택')
+						);
+					});
+				if (!options.length) return null;
+				return options[randInt(0, options.length - 1)];
+			}
+
+			function syncJwSelectDisplay(selectEl) {
+				// jw_select가 만든 커스텀 셀렉트 UI 텍스트 동기화
+				try {
+					const wrap = selectEl.closest('.jw-select');
+					if (!wrap) return;
+					const box = wrap.querySelector('.jw-selected');
+					if (!box) return;
+					const opt = selectEl.selectedOptions?.[0] || selectEl.options?.[selectEl.selectedIndex] || null;
+					if (!opt) return;
+					const label = opt.textContent || '';
+					const icon = opt?.dataset?.icon;
+					box.innerHTML = icon ? `<i class="${icon}"></i> ${label}` : label;
+				} catch (_) { }
+			}
+
+			function fillSelect(selectEl) {
+				if (!selectEl) return;
+				const opt = pickNonPlaceholderOption(selectEl);
+				if (opt) {
+					selectEl.value = opt.value;
+					selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+					syncJwSelectDisplay(selectEl);
+					return;
+				}
+				// fallback: 2번째 옵션이 있으면 선택
+				if (selectEl.options.length >= 2) {
+					selectEl.selectedIndex = 1;
+					selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+					syncJwSelectDisplay(selectEl);
+				}
+			}
+
+			function guessLabelTextForField(el) {
+				const gridItem = el.closest('.grid-item');
+				const label = gridItem ? gridItem.querySelector('.label-name') : null;
+				const text = (label?.textContent || '').replace('*', '').trim();
+				return text || '';
+			}
+
+			function fillInput(inputEl) {
+				if (!inputEl) return;
+				const type = (inputEl.getAttribute('type') || 'text').toLowerCase();
+				if (type === 'file' || type === 'button' || type === 'submit' || type === 'reset') return;
+
+				const labelText = guessLabelTextForField(inputEl);
+				const placeholder = (inputEl.getAttribute('placeholder') || '').trim();
+				const hasNumericMode = (inputEl.getAttribute('inputmode') || '').toLowerCase() === 'numeric';
+
+				// 시간/분 select가 아니라 input인 경우 대비
+				if (type === 'time') {
+					const hh = String(randInt(0, 23)).padStart(2, '0');
+					const mm = String(randInt(0, 59)).padStart(2, '0');
+					inputEl.value = `${hh}:${mm}`;
+					return;
+				}
+
+				if (type === 'number' || hasNumericMode) {
+					// ₱ 등 가격 입력 UI에 맞게 콤마 포함 문자열로
+					inputEl.value = randPrice(0, 999999);
+					return;
+				}
+
+				if (type === 'email') {
+					inputEl.value = `test_${randInt(1000, 9999)}@example.com`;
+					return;
+				}
+
+				if (type === 'tel') {
+					inputEl.value = `010-${randInt(1000, 9999)}-${randInt(1000, 9999)}`;
+					return;
+				}
+
+				if (type === 'date') {
+					const d = new Date();
+					d.setDate(d.getDate() + randInt(1, 120));
+					inputEl.value = d.toISOString().slice(0, 10);
+					return;
+				}
+
+				// 주소/장소명 등: label/placeholder 기반으로 텍스트 생성
+				const addrSamples = [
+					'서울특별시 중구 세종대로 110',
+					'부산광역시 해운대구 해운대해변로 264',
+					'인천광역시 중구 공항로 272',
+					'제주특별자치도 제주시 첨단로 242'
+				];
+				const placeSamples = [
+					'인천국제공항 제2여객터미널',
+					'서울역 1번 출구',
+					'해운대역 3번 출구',
+					'제주공항 1층 도착장'
+				];
+
+				const isAddressLike = /주소|address/i.test(labelText) || /address/i.test(placeholder);
+				const isPlaceLike = /장소|place|관광지|숙소|name/i.test(labelText) && !isAddressLike;
+
+				if (isAddressLike) {
+					inputEl.value = addrSamples[randInt(0, addrSamples.length - 1)];
+					return;
+				}
+				if (isPlaceLike) {
+					inputEl.value = placeSamples[randInt(0, placeSamples.length - 1)];
+					return;
+				}
+
+				// 기본 텍스트
+				const base = labelText || placeholder || 'VALUE';
+				inputEl.value = `${base} ${randToken('VAL')}`;
+			}
+
+			function fillTextarea(textareaEl) {
+				if (!textareaEl) return;
+				const labelText = guessLabelTextForField(textareaEl);
+				const base = labelText || textareaEl.getAttribute('placeholder') || '설명';
+				textareaEl.value = `${base}\n- 테스트 데이터: ${randToken('TXT')}\n- 랜덤 입력\n- 저장/검수용`;
+			}
+
+			function fillQuillEditors() {
+				const areas = Array.from(document.querySelectorAll('.jw-editor .jweditor'));
+				if (!areas.length) return;
+				const hasQuill = typeof window.Quill !== 'undefined';
+
+				areas.forEach((area) => {
+					const gridItem = area.closest('.grid-item');
+					const label = gridItem ? gridItem.querySelector('.label-name') : null;
+					const labelText = (label?.textContent || '').replace('*', '').trim();
+					const title = labelText || '설명';
+
+					const html = `
+						<p><strong>${title}</strong> 테스트 입력 (${randToken('ED')})</p>
+						<ul>
+							<li>랜덤 데이터 자동 채움</li>
+							<li>퍼블리싱 화면 확인용</li>
+							<li>${new Date().toISOString()}</li>
+						</ul>
+					`.trim();
+
+					if (hasQuill) {
+						let quill = null;
+						try {
+							// Quill은 DOM node에 인스턴스를 매핑해 찾을 수 있음
+							quill = (typeof window.Quill.find === 'function') ? window.Quill.find(area) : (area.__quill || null);
+						} catch (_) {
+							quill = area.__quill || null;
+						}
+						if (quill && quill.clipboard && typeof quill.clipboard.dangerouslyPasteHTML === 'function') {
+							quill.setSelection(0, 0);
+							quill.clipboard.dangerouslyPasteHTML(html);
+							return;
+						}
+					}
+
+					// fallback (Quill 미초기화/실패 시)
+					area.innerHTML = html;
+				});
+			}
+
+			function ensureUploadPreview(item) {
+				if (!item) return;
+				// Test Fill 이미지: 서버에 이미 존재하는 파일(/uploads/template_images) 중 랜덤으로 선택
+				// (브라우저 file input 주입/업로드 없이도 항상 미리보기 표시 가능)
+				const BASE = 'https://www.smt-escape.com/uploads/template_images/';
+				const POOL = [
+					'여권fe.jpeg',
+					'여권m.jpeg',
+					'여행일정표.png',
+					'은행거래내역서.jpeg',
+					'은행계좌증명서.jpeg',
+					'증명사진.jpeg',
+					'63-540x702.jpg',
+					'197-545x709.jpg',
+					'351-630x604.jpg',
+					'554-595x668.jpg',
+					'804-738x670.jpg',
+					'840-620x660.jpg',
+					'893-631x716.jpg',
+					'proof_deposit_BKPD251220081610757_1766373158_6948b726946a3.jpg'
+				];
+				const pickUrl = () => {
+					const name = POOL[randInt(0, POOL.length - 1)];
+					// 한글 파일명도 안전하게 인코딩
+					return BASE + encodeURIComponent(name);
+				};
+
+				// upload UI가 없는 경우를 대비해 생성
+				let fileInput = item.querySelector('input[type="file"]') || null;
+				if (!fileInput) {
+					const label = document.createElement('label');
+					label.className = 'inputFile';
+					label.innerHTML = `
+						<input name="" type="file" data-essential="y" accept="image/*" onchange="filePreview(this);" >
+						<button type="button" class="btn-upload">
+							<img src="../image/upload3.svg" alt="">
+							<span data-lan-eng="Image upload">Image upload</span>
+						</button>
+					`;
+					item.classList.add('jw-center');
+					item.appendChild(label);
+					fileInput = label.querySelector('input[type="file"]');
+				}
+
+				// 미리보기 표시(/uploads URL이므로 저장 로직에서도 유효한 기존 경로로 취급됨)
+				item.classList.add('is-filled');
+				let pv = item.querySelector('img.preview');
+				if (!pv) {
+					pv = document.createElement('img');
+					pv.className = 'preview';
+					pv.alt = 'preview';
+					item.insertAdjacentElement('afterbegin', pv);
+				}
+				pv.src = pickUrl();
+
+				// 업로드 UI 숨김 + 삭제 버튼 보장
+				try {
+					const lab = item.querySelector('label.inputFile');
+					const btn = lab?.querySelector('.btn-upload') || null;
+					if (lab) lab.style.display = 'none';
+					if (btn) btn.style.display = 'none';
+				} catch (_) { }
+				try {
+					if (!item.querySelector('.btn-close')) {
+						const closeBtn = document.createElement('button');
+						closeBtn.type = 'button';
+						closeBtn.className = 'jw-button btn-close';
+						closeBtn.setAttribute('aria-label', 'remove');
+						closeBtn.innerHTML = '<div class="ic-close" style="width:15px; height:15px; --line:1px; --color:#969696"></div>';
+						item.appendChild(closeBtn);
+					}
+				} catch (_) { }
+			}
+
+			async function fillUploads() {
+				// 업로드 그리드에 있는 이미지 input만 대상으로 더미 파일을 세팅
+				const items = Array.from(document.querySelectorAll('.upload-grid .upload-item'));
+				items.forEach(ensureUploadPreview);
+
+				// 이용안내(안내문 PDF)는 UI가 file input이 아닌 전용 로직(super.js:initUsageGuideUpload)이라
+				// 서버 업로드 후 업로드된 메타로 채워둔다(브라우저 파일 주입 불필요).
+				try {
+					const PDF_B64 =
+						'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGQKKFRlc3QgR1VJREUpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjQgMDAwMDAgbiAKMDAwMDAwMDEyMSAwMDAwMCBuIAowMDAwMDAwMjEyIDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgNSAvUm9vdCAxIDAgUiA+PgpzdGFydHhyZWYKMzEwCiUlRU9G';
+					const b64ToBlob = (b64, mime) => {
+						const bin = atob(String(b64 || ''));
+						const len = bin.length;
+						const bytes = new Uint8Array(len);
+						for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+						return new Blob([bytes], { type: mime || 'application/octet-stream' });
+					};
+					const uploadDummy = async (blob, filename, type) => {
+						const fd = new FormData();
+						fd.append('file', blob, filename);
+						fd.append('type', type);
+						fd.append('related_id', '0');
+						const res = await fetch('/backend/api/upload.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+						const json = await res.json().catch(() => ({}));
+						if (!res.ok || json.success === false) throw new Error(json.message || `upload failed (HTTP ${res.status})`);
+						return json.data || null;
+					};
+					const pdfBlob = b64ToBlob(PDF_B64, 'application/pdf');
+					const pdfMeta = await uploadDummy(pdfBlob, `test_${randToken('PDF')}.pdf`, 'template_guides');
+					if (pdfMeta?.filePath) {
+						window.__usageGuideFile = null;
+						window.__usageGuideFileUploaded = pdfMeta;
+						try { if (typeof initUsageGuideUpload === 'function') initUsageGuideUpload(); } catch (_) { }
+					}
+				} catch (_) { }
+			}
+
+			async function fillAllFields() {
+				// select
+				Array.from(document.querySelectorAll('select')).forEach(fillSelect);
+
+				// input
+				Array.from(document.querySelectorAll('input')).forEach(fillInput);
+
+				// textarea (혹시 남아있는 경우)
+				Array.from(document.querySelectorAll('textarea')).forEach(fillTextarea);
+
+				// quill editors
+				fillQuillEditors();
+
+				// uploads
+				await fillUploads();
+			}
+
+			function ensureMinDays(minDays) {
+				const getPanels = () => Array.from(document.querySelectorAll('.card-panel[id^="nday"]'));
+				const addBtn = document.querySelector('button.aside-button-typeA');
+				if (!addBtn || typeof window.template_detail_sdaf !== 'function') return;
+				while (getPanels().length < minDays) {
+					try { window.template_detail_sdaf(addBtn); } catch (e) { console.error(e); break; }
+				}
+			}
+
+			// 등록페이지는 "신규" 화면이므로: 처음 진입 시 무조건 1일차만 보이게 초기화
+			function resetDaysToOne() {
+				// 본문 day 패널: nday만 남기고 제거
+				try {
+					Array.from(document.querySelectorAll('.card-panel[id^="nday"]')).forEach((p) => {
+						if (p.id !== 'nday') p.remove();
+					});
+					const base = document.getElementById('nday');
+					if (base) {
+						const headBtn = base.querySelector('h3.grid-wrap-title button');
+						if (headBtn) {
+							const img = headBtn.querySelector('img');
+							headBtn.innerHTML = `1Day ` + (img ? img.outerHTML : '');
+						}
+					}
+				} catch (_) { }
+
+				// aside day 리스트: 1일차만 남기고 제거
+				try {
+					const list = document.querySelector('.aside-row-list');
+					if (list) {
+						const rows = Array.from(list.querySelectorAll('.aside-row'));
+						rows.forEach((r, idx) => { if (idx > 0) r.remove(); });
+					}
+				} catch (_) { }
+			}
+
+			function resetPublishingDefaults() {
+				// 퍼블리싱 임시 데이터(하드코딩 value/disabled/미리보기/에디터 텍스트)를 화면에서 제거
+				try {
+					// input: file 제외하고 비우고 enable
+					Array.from(document.querySelectorAll('input')).forEach((el) => {
+						const type = (el.getAttribute('type') || 'text').toLowerCase();
+						if (type === 'file') return;
+						el.disabled = false;
+						el.readOnly = false;
+						el.value = '';
+					});
+
+					// select: 첫 옵션으로 초기화 + enable
+					Array.from(document.querySelectorAll('select')).forEach((sel) => {
+						sel.disabled = false;
+						sel.selectedIndex = 0;
+						try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) { }
+					});
+
+					// 에디터 내용 비우기 (Quill 초기화 전/후 모두 안전)
+					Array.from(document.querySelectorAll('.jw-editor .jweditor')).forEach((area) => {
+						try {
+							if (typeof window.Quill !== 'undefined' && typeof window.Quill.find === 'function') {
+								const q = window.Quill.find(area);
+								if (q && typeof q.setText === 'function') {
+									q.setText('');
+									return;
+								}
+							}
+						} catch (_) { }
+						area.innerHTML = '';
+					});
+
+					// 업로드 미리보기 제거 + 업로드 input이 없으면 추가
+					Array.from(document.querySelectorAll('.upload-item')).forEach((item) => {
+						item.classList.remove('is-filled');
+						item.querySelectorAll('img.preview').forEach((img) => img.remove());
+						item.querySelectorAll('.btn-close, .jw-button.btn-close').forEach((b) => b.remove());
+
+						const hasFileInput = !!item.querySelector('input[type="file"]');
+						if (!hasFileInput) {
+							const label = document.createElement('label');
+							label.className = 'inputFile';
+							label.innerHTML = `
+								<input name="" type="file" data-essential="y" onchange="filePreview(this);" >
+								<button type="button" class="btn-upload">
+									<img src="../image/upload3.svg" alt="">
+									<span data-lan-eng="Image upload">Image upload</span>
+								</button>
+							`;
+							item.insertAdjacentElement('afterbegin', label);
+						}
+					});
+				} catch (_) { }
+			}
+
+			async function initCategoriesFromDb() {
+				const apiUrl = '../backend/api/super-api.php';
+				const mainSel = document.querySelector('select[data-category="1"]');
+				const subSel = document.querySelector('select[data-category="2"]');
+				if (!mainSel || !subSel) return;
+
+				const unwrapJwSelect = (sel) => {
+					try {
+						const wrap = sel.closest('.jw-select');
+						if (!wrap) return;
+						// select를 wrapper 밖으로 꺼내고, 기존 wrapper 제거 후 class 복구
+						const parent = wrap.parentElement;
+						if (!parent) return;
+						parent.insertBefore(sel, wrap);
+						wrap.remove();
+						sel.classList.remove('jw-sr-only');
+						if (!sel.classList.contains('select')) sel.classList.add('select');
+					} catch (_) { }
+				};
+
+				const rebuildJwSelectFor = (sel) => {
+					unwrapJwSelect(sel);
+					if (typeof jw_select === 'function') {
+						try { jw_select(); } catch (_) { }
+					}
+				};
+
+				const setMainOptions = (categories) => {
+					const cur = mainSel.value;
+					mainSel.innerHTML = '';
+					// 퍼블리싱 placeholder 유지
+					const ph = document.createElement('option');
+					ph.value = '';
+					ph.selected = true;
+					ph.textContent = 'Select main category';
+					mainSel.appendChild(ph);
+
+					categories.forEach((c) => {
+						const opt = document.createElement('option');
+						opt.value = c.code || c.name || '';
+						opt.textContent = c.name || c.code || '';
+						mainSel.appendChild(opt);
+					});
+
+					// 기존 값 유지 시도
+					if (cur) mainSel.value = cur;
+				};
+
+				const setSubOptions = (subCategories) => {
+					const cur = subSel.value;
+					subSel.innerHTML = '';
+					const ph = document.createElement('option');
+					ph.value = '';
+					ph.selected = true;
+					ph.textContent = 'Please select a main category first';
+					subSel.appendChild(ph);
+
+					(subCategories || []).forEach((s) => {
+						const opt = document.createElement('option');
+						opt.value = s.code || s.name || '';
+						opt.textContent = s.name || s.code || '';
+						subSel.appendChild(opt);
+					});
+
+					// 기존 값 유지 시도
+					if (cur) subSel.value = cur;
+				};
+
+				const res = await fetch(`${apiUrl}?action=getCategories`, { credentials: 'same-origin' });
+				if (res.status === 401) throw new Error('Login required.');
+				const json = await res.json().catch(() => ({}));
+				if (!res.ok || json.success === false) throw new Error(json.message || `Failed to load categories. (HTTP ${res.status})`);
+
+				const categories = json?.data?.categories || json?.categories || [];
+				const list = Array.isArray(categories) ? categories : [];
+				setMainOptions(list);
+				setSubOptions([]); // 초기엔 비워두고 disabled 처리
+				subSel.disabled = true;
+
+				rebuildJwSelectFor(mainSel);
+				rebuildJwSelectFor(subSel);
+
+				const populateSubByMain = () => {
+					const mainKey = mainSel.value;
+					const mainObj = list.find(c => (c.code && c.code === mainKey) || c.name === mainKey);
+					const subs = mainObj?.subCategories || [];
+					setSubOptions(subs);
+					subSel.disabled = !(mainKey && subs.length);
+					rebuildJwSelectFor(subSel);
+					try { if (typeof window.template_detail_sdaf_cate === 'function') window.template_detail_sdaf_cate(); } catch (_) { }
+				};
+
+				mainSel.addEventListener('change', populateSubByMain);
+			}
+
+			// Quill 초기화 전에 샘플값을 먼저 제거해서 에디터가 깨지지 않게 함
+			try { resetPublishingDefaults(); } catch (_) {}
+
+			document.addEventListener('DOMContentLoaded', () => {
+				// 카테고리(1차/2차) DB에서 로드
+				// - admin/backend/api/super-api.php?action=getCategories
+				initCategoriesFromDb().catch((e) => console.error(e));
+				// 신규 작성: 초기 1일차만 표시
+				try { resetDaysToOne(); } catch (_) { }
+
+				const btn = document.getElementById('testFillBtn');
+				if (btn) btn.addEventListener('click', () => {
+					try {
+						// Quill 초기화가 아직 안 된 경우를 대비해 한 번 더 호출
+						if (typeof window.board === 'function') {
+							try { window.board(); } catch (_) {}
+						}
+						// 기획서 요구: 최소 3일치(1~3일차) 생성 후 전체 랜덤 입력
+						ensureMinDays(3);
+						Promise.resolve()
+							.then(() => fillAllFields())
+							.then(() => alert('Test data has been filled.'))
+							.catch((e) => {
+								console.error(e);
+								alert(`Test fill failed: ${e?.message || e}`);
+							});
+					} catch (e) {
+						console.error(e);
+						alert(`Test fill failed: ${e?.message || e}`);
+					}
+				});
+
+				const saveBtn = document.getElementById('saveBtn');
+				if (saveBtn) saveBtn.addEventListener('click', () => {
+					try {
+						if (typeof window.template_detail_save === 'function') {
+							window.template_detail_save(saveBtn);
+							return;
+						}
+						alert('저장 기능이 연결되지 않았습니다. (template_detail_save 미정의)');
+					} catch (e) {
+						console.error(e);
+						alert('저장 중 오류가 발생했습니다.');
+					}
+				});
+			});
+		})();
+	</script>
+</body>
+
+</html>

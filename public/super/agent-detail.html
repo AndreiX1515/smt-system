@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="agent-list.html" class="jw-button" aria-label=" ">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Agent Details">Agent Details</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Basic Information">Basic Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- 1 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Agency Name">Agency Name</label>
+						<input type="text" class="form-control" id="companyName" value="Bacolod City">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Person in charge">Person in charge</label>
+						<input type="text" class="form-control" id="managerName" value="Maria Santos">
+					</div>
+
+					<!-- 2 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Person in charge email">Person in charge email</label>
+						<input type="email" class="form-control" id="emailAddress" value="maria@agency.davao.ph">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contact information">Contact information</label>
+						<div class="field-row">
+							<select class="select w-auto" id="countryCode">
+								<option value="+63">+63</option>
+								<option value="+82">+82</option>
+								<option value="+81">+81</option>
+								<option value="+1">+1</option>
+							</select>
+							<input type="text" class="form-control" id="contactNo" value="917 123 4567">
+						</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">ID</label>
+						<input type="text" class="form-control" id="username" value="abc123">
+					</div>
+
+					<!-- 3 -->
+					<div class="grid-item">
+						<label class="label-name">PW</label>
+						<input type="password" class="form-control" id="passwordMasked" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Partnership code">Partnership code</label>
+						<input type="text" class="form-control" id="partnershipCode" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Number of affiliated customers">Number of affiliated customers</label>
+						<input type="text" class="form-control" id="customerCount" value="0" disabled>
+					</div>
+
+					<!-- 4 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Registration date/time">Registration date/time</label>
+						<input type="text" class="form-control" id="createdAt" value="2025-06-20 12:12" disabled>
+					</div>
+					<div class="grid-item"></div>
+					<div class="grid-item"></div>
+
+					<!-- 5 :   -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Note">Note</label>
+						<div class="editor-box-wrap">
+							<textarea id="memo" name="memo" rows="8" placeholder="." data-lan-eng-placeholder="Enter notes here"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_agentdetailfix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let agentId = null;
+		let agentAccountId = null;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super  admin  
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				const urlParams = new URLSearchParams(window.location.search);
+				agentId = urlParams.get('id') || urlParams.get('agentId');
+
+				//   (+)
+				await loadCountryCodeOptions();
+				
+				//
+				const saveButton = document.getElementById('saveBtn');
+				if (saveButton) {
+					saveButton.addEventListener('click', handleSave);
+				}
+				
+				if (agentId) {
+					await loadAgentDetail();
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodeOptions() {
+			const sel = document.getElementById('countryCode');
+			if (!sel) return;
+			try {
+				const current = (sel.value || '').trim() || '+63';
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json();
+				if (!json?.success || !Array.isArray(json.countries)) return;
+				sel.innerHTML = '';
+				json.countries.forEach((c) => {
+					const code = String(c?.code || '').trim();
+					const name = String(c?.name || '').trim();
+					if (!code) return;
+					const opt = document.createElement('option');
+					opt.value = code;
+					opt.textContent = name ? `${name} (${code})` : code;
+					sel.appendChild(opt);
+				});
+				sel.value = current;
+			} catch (_) {
+				// ignore - keep fallback options
+			} finally {
+				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			}
+		}
+
+		function parseCountryCodeFromContact(raw) {
+			const s = String(raw || '').trim();
+			if (!s) return { code: '', rest: '' };
+			// patterns: "+63 917...", "+63917...", "63 917..."(unlikely)
+			const m = s.match(/^(\+\d{1,4})\s*(.*)$/);
+			if (m) return { code: m[1], rest: (m[2] || '').trim() };
+			return { code: '', rest: s.replace(/^\+\d+\s*/, '').trim() };
+		}
+
+		function applyCountryCodeAndLocalNumber(rawContact) {
+			const ccSel = document.getElementById('countryCode');
+			const localEl = document.getElementById('contactNo');
+			if (!localEl) return;
+			const parsed = parseCountryCodeFromContact(rawContact);
+			if (ccSel) {
+				// choose longest matching code available (because +7 appears multiple times)
+				const options = Array.from(ccSel.options || []).map(o => String(o.value || '').trim()).filter(Boolean);
+				let best = '';
+				for (const code of options) {
+					if (parsed.code && parsed.code === code) { best = code; break; }
+					if (parsed.code && parsed.code.startsWith(code) && code.length > best.length) best = code;
+				}
+				if (best) ccSel.value = best;
+			}
+			localEl.value = parsed.rest || '';
+			try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+		}
+
+		async function loadAgentDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getAgentDetail&id=${agentId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.agent) {
+					const agent = result.data.agent;
+					console.log('Loaded agent data:', agent);
+					agentAccountId = agent.accountId ? Number(agent.accountId) : null;
+
+					//    (    id  )
+					const $ = (id) => document.getElementById(id);
+					if ($('companyName')) $('companyName').value = agent.companyName || '';
+					if ($('branchName')) $('branchName').value = agent.branchName || '';
+					if ($('managerName')) $('managerName').value = agent.managerName || '';
+					if ($('emailAddress')) $('emailAddress').value = agent.emailAddress || '';
+
+					//  ID accounts.username
+					if ($('username')) $('username').value = agent.username || '';
+
+					//   agent.agentId (AGT007)
+					if ($('partnershipCode')) $('partnershipCode').value = agent.agentId || '';
+
+					if ($('createdAt')) $('createdAt').value = agent.createdAt || '';
+
+					// /  (DB  )
+					if ($('depositRatio') && agent.depositRatio !== undefined && agent.depositRatio !== null) {
+						$('depositRatio').value = agent.depositRatio;
+					}
+					if ($('commissionRate') && agent.comissionRate !== undefined && agent.comissionRate !== null) {
+						$('commissionRate').value = agent.comissionRate;
+					}
+					// :     select
+					if (agent.contactNo) applyCountryCodeAndLocalNumber(agent.contactNo);
+
+					if ($('customerCount')) $('customerCount').value = String(agent.customerCount ?? 0);
+					if ($('memo')) $('memo').value = agent.memo || '';
+					
+					//   
+					await loadActivityLogs();
+				}
+			} catch (error) {
+				console.error('Error loading agent detail:', error);
+				alert('     .');
+			}
+		}
+
+		function updateContractStatusFromInput() {
+			// Contract Information 삭제됨 - 호환성을 위해 빈 함수 유지
+		}
+		
+		async function loadActivityLogs() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getAgentActivityLogs&agentId=${agentId}`, {
+					credentials: 'same-origin'
+				});
+				
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				
+				const result = await response.json();
+				const tbody = document.getElementById('activityLogsTableBody');
+				
+				if (result.success && result.data && result.data.logs && result.data.logs.length > 0) {
+					tbody.innerHTML = result.data.logs.map((log, index) => `
+						<tr>
+							<td class="no is-center">${index + 1}</td>
+							<td class="is-center">${log.action || '-'}</td>
+							<td class="td-ellipsis"><span>${log.description || '-'}</span></td>
+							<td class="is-center">${log.createdAt || '-'}</td>
+							<td class="is-center">${log.actor || ''}</td>
+						</tr>
+					`).join('');
+				} else {
+					tbody.innerHTML = '<tr><td colspan="5" class="is-center">  .</td></tr>';
+				}
+			} catch (error) {
+				console.error('Error loading activity logs:', error);
+				const tbody = document.getElementById('activityLogsTableBody');
+				if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="is-center">    .</td></tr>';
+			}
+		}
+
+		async function handleSave() {
+			try {
+				const managerName = (document.getElementById('managerName')?.value || '').trim();
+				const emailAddress = (document.getElementById('emailAddress')?.value || '').trim();
+				const contactLocal = (document.getElementById('contactNo')?.value || '').trim();
+				const countryCode = (document.getElementById('countryCode')?.value || '').trim();
+				const companyName = (document.getElementById('companyName')?.value || '').trim();
+				const region = (document.getElementById('branchName')?.value || '').trim(); // UI: Area
+				const username = (document.getElementById('username')?.value || '').trim();
+				const passwordRaw = (document.getElementById('passwordMasked')?.value || '').trim();
+				const memo = (document.getElementById('memo')?.value || '').trim();
+
+				if (!managerName || !emailAddress || !contactLocal) {
+					alert('   .');
+					return;
+				}
+
+				//    
+				const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+				if (!emailRegex.test(emailAddress)) {
+					alert('   .');
+					return;
+				}
+				
+				//  
+				const nameParts = managerName.split(/\s+/);
+				const fName = nameParts[0] || managerName;
+				const lName = nameParts.slice(1).join(' ') || '';
+
+				// ( + ) 
+				const fullContactNo = (countryCode ? (countryCode + ' ') : '') + contactLocal;
+				
+				const formData = new FormData();
+				formData.append('action', 'updateAgent');
+				formData.append('agentId', agentId);
+				formData.append('fName', fName);
+				formData.append('lName', lName);
+				formData.append('contactNo', fullContactNo);
+				formData.append('emailAddress', emailAddress);
+				if (companyName) formData.append('companyName', companyName);
+				if (region) formData.append('region', region);
+				if (username) formData.append('username', username);
+				// PW     (*****     )
+				if (passwordRaw && !/^\*+$/.test(passwordRaw)) {
+					formData.append('password', passwordRaw);
+				}
+				formData.append('memo', memo);
+				
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+				if (response.status === 401) {
+					alert(' .');
+					window.location.href = '../index.html';
+					return;
+				}
+
+				const result = await response.json();
+				
+				if (result.success) {
+					alert('  .');
+					await loadAgentDetail();
+				} else {
+					alert(' : ' + (result.message || '   '));
+				}
+			} catch (error) {
+				console.error('Error saving agent:', error);
+				alert('   : ' + (error?.message || ''));
+			}
+		}
+
+	</script>
+</body>
+
+</html>

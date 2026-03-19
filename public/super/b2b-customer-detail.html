@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- editor (publishing parity) -->
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들어올 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="b2b-customer-list.html" class="jw-button" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="B2B Customer Details">B2B Customer Details</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Basic Information">Basic Information</h2>
+			<div class="card-panel jw-mgt16">
+			
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Customer Name">Customer Name</label>
+						<input type="text" id="customerName" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contacts">Contacts</label>
+						<div class="field-row">
+							<select class="select" id="countryCode">
+								<!-- populated by /backend/api/countries.php -->
+								<option value="+63">Philippines (+63)</option>
+							</select>
+							<input type="text" id="contactNo" value="">
+						</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">Email</label>
+						<input type="email" id="emailAddress" value="">
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name">PW</label>
+						<div class="input-box">
+							<input type="password" value="**********">
+							<button type="button" class="jw-button typeD" id="resetPwBtn"><img src="../image/replay.svg" alt=""><span data-lan-eng="Reset">초기화</span></button>
+						</div>
+						
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Customer number">Customer number</label>
+						<input type="text" id="customerNo" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Agent Name">Agent Name</label>
+						<input type="text" id="branchName" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Registration date/time">Registration date/time</label>
+						<input type="text" id="registeredAt" value="" disabled>
+					</div>
+
+					<!-- NOTE: Memo editor (Quill) -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Note">Note</label>
+						<div class="editor-box-wrap">
+							<div class="jw-editor" id="memoEditorRoot">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+											<option value="" selected>Font</option>
+											<option value="12px">12px</option>
+											<option value="14px">14px</option>
+											<option value="16px">16px</option>
+											<option value="18px">18px</option>
+											<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+								<div class="jweditor"></div>
+							</div>
+							<textarea name="memo" id="memo" rows="5" style="display:none;"></textarea>
+						</div>
+					</div>
+					<!-- NOTE: Memo editor end -->
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Traveler Information">Traveler Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- 1행 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Title">Title</label>
+						<select class="select" id="travelerTitle">
+							<option value="MR">MR</option>
+							<option value="MS">MS</option>
+						</select>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Name">Name</label>
+						<input type="text" id="travelerFName" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Nature">Nature</label>
+						<input type="text" id="travelerLName" value="">
+					</div>
+
+					<!-- 2행 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Gender">Gender</label>
+						<select class="select" id="travelerGender">
+							<option value="male">Male</option>
+							<option value="female">Female</option>
+						</select>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Age">Age</label>
+						<input type="text" id="travelerAge" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Date of birth">Date of birth</label>
+						<input type="text" id="dateOfBirth" value="" placeholder="YYYYMMDD">
+					</div>
+
+					<!-- 3행 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Country of origin">Country of origin</label>
+						<input type="text" id="nationality" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Passport number">Passport number</label>
+						<input type="text" id="passportNumber" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Passport Issue Date">Passport Issue Date</label>
+						<input type="text" id="passportIssueDate" value="" placeholder="YYYYMMDD">
+					</div>
+
+					<!-- 4행 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Passport expiration date">Passport expiration date</label>
+						<input type="text" id="passportExpiry" value="" placeholder="YYYYMMDD">
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Passport photo">Passport photo</label>
+						<div class="upload-box">
+							<input id="file-passport" type="file" accept="image/*">
+							<label for="file-passport" class="thumb" aria-label="preview"></label>
+							<div class="upload-meta">
+								<div class="file-title" data-lan-eng="Image">Image</div>
+								<div class="file-info">jpg, 328KB</div>
+								<div class="file-controller">
+									<button type="button" class="btn-icon" id="passportDownloadBtn" aria-label="다운로드"><img src="../image/button-download.svg" alt=""></button>
+									<button type="button" class="btn-icon" id="passportDeleteBtn" aria-label="삭제"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="grid-item"></div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Details">예약 내역</h2>
+			<div class="card-panel jw-mgt16">
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!-- 상품명 (auto) -->
+						<col> <!-- 예약일 -->
+						<col> <!-- 여행 시작일 -->
+						<col> <!-- 예약 상태 -->
+						<col> <!-- 예약 인원 -->
+						<col> <!-- 주문 금액(₱) -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no">No</th>
+							<th data-lan-eng="Product Name">상품명</th>
+							<th data-lan-eng="Reservation date">예약일</th>
+							<th data-lan-eng="Travel start date">여행 시작일</th>
+							<th data-lan-eng="Reservation Status">예약 상태</th>
+							<th class="is-center" data-lan-eng="Number of people for reservation">예약 인원</th>
+							<th class="is-center" data-lan-eng="Order Amount (₱)">주문 금액(₱)</th>
+						</tr>
+					</thead>
+					<tbody id="bookingHistoryBody">
+						<tr><td colspan="7" class="is-center">Loading...</td></tr>
+					</tbody>
+				</table>
+				
+				<div class="jw-pagebox" role="navigation" aria-label="페이지네이션" id="bookingPagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label="첫 페이지" aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="이전 페이지" aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list"></div>
+
+						<button type="button" class="next" aria-label="다음 페이지" aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label="마지막 페이지" aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Inquiry History">문의 내역</h2>
+			<div class="card-panel jw-mgt16">
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!-- 문의 유형 -->
+						<col> <!-- 문의 제목 (auto) -->
+						<col> <!-- 작성일 -->
+						<col> <!-- 답변 여부 -->
+						<col> <!-- 처리 상태 -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th data-lan-eng="Inquiry type">문의 유형</th>
+							<th data-lan-eng="Inquiry Title">문의 제목</th>
+							<th data-lan-eng="Date created">작성일</th>
+							<th class="is-center" data-lan-eng="Response status">답변 여부</th>
+							<th class="is-center" data-lan-eng="Processing status">처리 상태</th>
+						</tr>
+					</thead>
+					<tbody id="inquiryHistoryBody">
+						<tr><td colspan="6" class="is-center">Loading...</td></tr>
+					</tbody>
+				</table>
+				
+				<div class="jw-pagebox" role="navigation" aria-label="페이지네이션" id="inquiryPagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label="첫 페이지" aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="이전 페이지" aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list"></div>
+
+						<button type="button" class="next" aria-label="다음 페이지" aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label="마지막 페이지" aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<!-- 기본 스크립트 -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="../js/multi-editor.js"></script>
+	<script src="../js/passport-photo.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = String(text ?? '');
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+
+		let customerId = null;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super 화면은 admin만 접근 가능 (agent/guide 로그인 세션을 차단)
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				const urlParams = new URLSearchParams(window.location.search);
+				customerId = urlParams.get('id') || urlParams.get('accountId');
+				
+				// Populate country dial code options before setting selected value
+				await loadCountryCodeOptions();
+
+				if (customerId) {
+					await loadCustomerDetail();
+				}
+
+				// Auto-calc Age when Date of birth changes (dev_tasks #106 follow-up)
+				try {
+					const dobEl = document.getElementById('dateOfBirth');
+					const ageEl = document.getElementById('travelerAge');
+					const calcAge = () => {
+						if (!dobEl || !ageEl) return;
+						const s = String(dobEl.value || '').replace(/[^0-9]/g, '');
+						if (s.length !== 8) return;
+						const y = parseInt(s.slice(0, 4), 10);
+						const m = parseInt(s.slice(4, 6), 10) - 1;
+						const d = parseInt(s.slice(6, 8), 10);
+						const birth = new Date(y, m, d);
+						if (isNaN(birth.getTime())) return;
+						const today = new Date();
+						let age = today.getFullYear() - birth.getFullYear();
+						const md = today.getMonth() - birth.getMonth();
+						if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) age--;
+						if (age >= 0 && age <= 130) ageEl.value = String(age);
+					};
+					dobEl?.addEventListener('input', calcAge);
+					dobEl?.addEventListener('change', calcAge);
+				} catch (_) {}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodeOptions() {
+			const sel = document.getElementById('countryCode');
+			if (!sel) return;
+			try {
+				const current = (sel.value || '').trim() || '+63';
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json();
+				if (!json?.success || !Array.isArray(json.countries)) return;
+				sel.innerHTML = '';
+				json.countries.forEach((c) => {
+					const code = String(c?.code || '').trim();
+					const name = String(c?.name || '').trim();
+					if (!code) return;
+					const opt = document.createElement('option');
+					opt.value = code;
+					opt.textContent = name ? `${name} (${code})` : code;
+					sel.appendChild(opt);
+				});
+				// restore selection if possible
+				sel.value = current;
+			} catch (e) {
+				// ignore - keep fallback options
+			} finally {
+				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			}
+		}
+
+		function setMemoHtml(html) {
+			const raw = String(html || '');
+			const hidden = document.getElementById('memo');
+			if (hidden) hidden.value = raw;
+			// Prefer Quill instance if initialized to preserve line breaks/formatting reliably (dev_tasks #105)
+			try {
+				const area = document.querySelector('#memoEditorRoot .jweditor');
+				const q = area && area.__quill ? area.__quill : null;
+				if (q && q.clipboard && typeof q.clipboard.dangerouslyPasteHTML === 'function') {
+					q.clipboard.dangerouslyPasteHTML(raw);
+					return;
+				}
+			} catch (_) {}
+			// Fallback: set raw HTML into editor element
+			const editor = document.querySelector('#memoEditorRoot .jweditor .ql-editor') || document.querySelector('#memoEditorRoot .jweditor');
+			if (editor) editor.innerHTML = raw;
+		}
+
+		function syncMemoFromEditor() {
+			const hidden = document.getElementById('memo');
+			// Prefer Quill instance if available (dev_tasks #105)
+			try {
+				const area = document.querySelector('#memoEditorRoot .jweditor');
+				const q = area && area.__quill ? area.__quill : null;
+				if (q && q.root) {
+					if (hidden) hidden.value = q.root.innerHTML;
+					return;
+				}
+			} catch (_) {}
+			const editor = document.querySelector('#memoEditorRoot .jweditor .ql-editor') || document.querySelector('#memoEditorRoot .jweditor');
+			if (!editor) return;
+			if (hidden) hidden.value = editor.innerHTML;
+		}
+
+		function hasMeaningfulTravelerInfo(customer) {
+			if (!customer) return false;
+			const s = (v) => String(v ?? '').trim();
+			const onlyDigits = (v) => s(v).replace(/[^0-9]/g, '');
+			const nat = s(customer.nationality);
+			const natLower = nat.toLowerCase();
+			const natIsDefault = (natLower === 'philippines');
+			const hasPassportImg = s(customer.passportImage) !== '';
+			// If traveler name exists, treat it as meaningful (dev_tasks #106)
+			const hasTravelerName = (s(customer.travelerFirstName) !== '' || s(customer.travelerLastName) !== '');
+			return (
+				hasTravelerName ||
+				s(customer.passportNumber) !== '' ||
+				onlyDigits(customer.dateOfBirth).length === 8 ||
+				onlyDigits(customer.passportIssueDate).length === 8 ||
+				onlyDigits(customer.passportExpiry).length === 8 ||
+				hasPassportImg ||
+				(nat !== '' && !natIsDefault)
+			);
+		}
+
+		async function loadCustomerDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getCustomerDetail&id=${customerId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.customer) {
+					const customer = result.data.customer;
+					document.getElementById('customerName').value = customer.customerName || '';
+					document.getElementById('emailAddress').value = customer.emailAddress || '';
+					// ensure options exist then set value
+					const cc = document.getElementById('countryCode');
+					if (cc) {
+						const code = (customer.countryCode || '').trim() || '+63';
+						cc.value = code;
+					}
+					document.getElementById('contactNo').value = customer.contactNo || '';
+					// jw_select(커스텀 셀렉트) 표시/옵션 동기화
+					try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+					document.getElementById('customerNo').value = customer.customerNo || '';
+					// Agent Name (B2B): 항상 표시하되, 값이 없으면 공란으로 유지한다.
+					const branchEl = document.getElementById('branchName');
+					if (branchEl) {
+						branchEl.value = customer.branchName || '';
+					}
+					document.getElementById('registeredAt').value = customer.registrationDate || '';
+					setMemoHtml(customer.memo || '');
+
+					const hasTraveler = hasMeaningfulTravelerInfo(customer);
+
+					// traveler fields: if not explicitly provided, keep UI empty (no auto-fill from customer name)
+					document.getElementById('travelerTitle').value = (String(customer.title || '').trim() === 'MS') ? 'MS' : 'MR';
+					document.getElementById('travelerGender').value = (String(customer.gender || '').trim() === 'female') ? 'female' : 'male';
+
+					// Traveler Name/Last Name은 고객명과 별도(travelerFirstName/LastName)
+					document.getElementById('travelerFName').value = hasTraveler ? (customer.travelerFirstName || '') : '';
+					document.getElementById('travelerLName').value = hasTraveler ? (customer.travelerLastName || '') : '';
+					// 나이: 서버가 계산해준 값 우선, 없으면 생년월일로 계산
+					(function setAge() {
+						const ageEl = document.getElementById('travelerAge');
+						if (!ageEl) return;
+						if (!hasTraveler) { ageEl.value = ''; return; }
+						const direct = String(customer.age ?? '').trim();
+						if (direct !== '') { ageEl.value = direct; return; }
+						const dob = String(customer.dateOfBirth || '').replace(/[^0-9]/g, '');
+						if (dob.length !== 8) { ageEl.value = ''; return; }
+						const y = parseInt(dob.slice(0, 4), 10);
+						const m = parseInt(dob.slice(4, 6), 10) - 1;
+						const d = parseInt(dob.slice(6, 8), 10);
+						const birth = new Date(y, m, d);
+						if (isNaN(birth.getTime())) { ageEl.value = ''; return; }
+						const today = new Date();
+						let age = today.getFullYear() - birth.getFullYear();
+						const md = (today.getMonth() - birth.getMonth());
+						if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) age--;
+						ageEl.value = (age >= 0 && age <= 130) ? String(age) : '';
+					})();
+					document.getElementById('dateOfBirth').value = hasTraveler ? (customer.dateOfBirth || '').replace(/-/g,'') : '';
+					// When traveler info is not entered, don't show default nationality (e.g. Philippines)
+					document.getElementById('nationality').value = hasTraveler ? (customer.nationality || '') : '';
+					document.getElementById('passportNumber').value = hasTraveler ? (customer.passportNumber || '') : '';
+					document.getElementById('passportIssueDate').value = hasTraveler ? (customer.passportIssueDate || '').replace(/-/g,'') : '';
+					document.getElementById('passportExpiry').value = hasTraveler ? (customer.passportExpiry || '').replace(/-/g,'') : '';
+
+					updatePassportPreview(hasTraveler ? (customer.passportImage || '') : '');
+				}
+			} catch (error) {
+				console.error('Error loading customer detail:', error);
+			}
+		}
+
+		let bookingPage = 1;
+		const bookingLimit = 10;
+		let inquiryPage = 1;
+		const inquiryLimit = 10;
+
+		async function loadCustomerBookings(page = bookingPage) {
+			const tbody = document.getElementById('bookingHistoryBody');
+			if (!tbody) return;
+			tbody.innerHTML = '<tr><td colspan="7" class="is-center">Loading...</td></tr>';
+
+			try {
+				const res = await fetch(`../backend/api/super-api.php?action=getB2BCustomerBookings&accountId=${customerId}&page=${page}&limit=${bookingLimit}`, {
+					credentials: 'same-origin'
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				const list = json?.success ? (json.data?.bookings || []) : [];
+				const pagination = json?.success ? (json.data?.pagination || null) : null;
+
+				if (!list.length) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">No reservations found.</td></tr>';
+					return;
+				}
+
+				const statusLabel = (s) =>
+					s === 'confirmed' ? 'Reservation confirmed'
+						: s === 'pending' ? 'Pending'
+							: s === 'cancelled' ? 'Cancelled'
+								: s === 'completed' ? 'Completed'
+									: (s || '');
+
+				tbody.innerHTML = list.map(row => {
+					const bookingId = escapeHtml(row.bookingId || '');
+					const detailPage = (row.customerType === 'B2C') ? 'b2c-booking-detail.html' : 'b2b-booking-detail.html';
+					return `
+						<tr data-booking-id="${bookingId}" data-detail="${detailPage}" style="cursor:pointer;">
+							<td class="no">${row.rowNum ?? ''}</td>
+							<!-- (HTML 태그 수정) 디코딩 적용 -->
+							<td class="td-ellipsis"><span>${escapeHtml(decodeHtmlEntities(row.packageName) || '')}</span></td>
+							<td class="is-center">${escapeHtml(row.reservationDate || '')}</td>
+							<td class="is-center">${escapeHtml(row.travelStartDate || '')}</td>
+							<td class="is-center">${escapeHtml(statusLabel(row.bookingStatus))}</td>
+							<td class="is-center">${Number(row.guests || 0)}</td>
+							<td class="is-center">${Number(row.totalAmount || 0).toLocaleString()}</td>
+						</tr>
+					`;
+				}).join('');
+
+				tbody.querySelectorAll('tr[data-booking-id]').forEach(tr => {
+					tr.addEventListener('click', () => {
+						const id = tr.getAttribute('data-booking-id');
+						const dp = tr.getAttribute('data-detail') || 'b2b-booking-detail.html';
+						if (id) window.location.href = `${dp}?id=${encodeURIComponent(id)}`;
+					});
+				});
+
+				if (pagination) {
+					bookingPage = pagination.currentPage || page;
+					renderSectionPagination('bookingPagination', pagination, (p) => loadCustomerBookings(p));
+				}
+			} catch (e) {
+				console.error('Error loading bookings:', e);
+				tbody.innerHTML = '<tr><td colspan="7" class="is-center">Failed to load reservations.</td></tr>';
+			}
+		}
+
+		async function loadCustomerInquiries(page = inquiryPage) {
+			const tbody = document.getElementById('inquiryHistoryBody');
+			if (!tbody) return;
+			tbody.innerHTML = '<tr><td colspan="6" class="is-center">Loading...</td></tr>';
+
+			try {
+				const res = await fetch(`../backend/api/super-api.php?action=getB2BCustomerInquiries&accountId=${customerId}&page=${page}&limit=${inquiryLimit}`, {
+					credentials: 'same-origin'
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				const list = json?.success ? (json.data?.inquiries || []) : [];
+				const pagination = json?.success ? (json.data?.pagination || null) : null;
+
+				if (!list.length) {
+					tbody.innerHTML = '<tr><td colspan="6" class="is-center">No inquiries found.</td></tr>';
+					return;
+				}
+
+				const mapInquiryType = (raw) => {
+					// inquiries.category(enum) 또는 레거시 문자열을 그대로 라벨링
+					const c = String(raw || '').toLowerCase().trim();
+					if (c === 'general') return 'General Inquiry';
+					if (c === 'product') return 'Product Inquiry';
+					if (c === 'booking') return 'Booking Inquiry';
+					if (c === 'reservation') return 'Reservation Inquiry';
+					if (c === 'visa') return 'Visa Inquiry';
+					if (c === 'payment') return 'Payment Inquiry';
+					if (c === 'technical') return 'Technical Inquiry';
+					if (c === 'complaint') return 'Complaint';
+					if (c === 'cancellation') return 'Cancellation Inquiry';
+					if (c === 'suggestion') return 'Suggestion';
+					if (c === 'other') return 'Other';
+					// fallback: 원문 표시(최소한 product로 강제하지 않음)
+					return raw ? String(raw) : '';
+				};
+
+				tbody.innerHTML = list.map(row => {
+					const created = (row.createdAt || '').split(' ')[0] || '';
+					return `
+						<tr data-inquiry-id="${row.inquiryId}" style="cursor:pointer;">
+							<td class="no is-center">${row.rowNum ?? ''}</td>
+							<td class="is-center">${escapeHtml(mapInquiryType(row.inquiryType || ''))}</td>
+							<td class="td-ellipsis"><span>${escapeHtml(row.inquiryTitle || '')}</span></td>
+							<td class="is-center">${escapeHtml(created)}</td>
+							<td class="is-center">${escapeHtml(row.replyStatus || '')}</td>
+							<td class="is-center">${escapeHtml(row.processingStatus || '')}</td>
+						</tr>
+					`;
+				}).join('');
+
+				tbody.querySelectorAll('tr[data-inquiry-id]').forEach(tr => {
+					tr.addEventListener('click', () => {
+						const id = tr.getAttribute('data-inquiry-id');
+						if (id) window.location.href = `user-inquiry-detail.html?id=${encodeURIComponent(id)}`;
+					});
+				});
+
+				if (pagination) {
+					inquiryPage = pagination.currentPage || page;
+					renderSectionPagination('inquiryPagination', pagination, (p) => loadCustomerInquiries(p));
+				}
+			} catch (e) {
+				console.error('Error loading inquiries:', e);
+				tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load inquiries.</td></tr>';
+			}
+		}
+
+		function renderSectionPagination(containerId, pagination, onPageChange) {
+			const box = document.getElementById(containerId);
+			if (!box) return;
+			const pageWrap = box.querySelector('.page');
+			if (!pageWrap) return;
+
+			const totalPages = Math.max(1, Number(pagination.totalPages || 1));
+			const current = Math.max(1, Number(pagination.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => onPageChange(p));
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = box.querySelector('.first');
+			const prevBtn = box.querySelector('.prev');
+			const nextBtn = box.querySelector('.next');
+			const lastBtn = box.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => onPageChange(1);
+			if (lastBtn) lastBtn.onclick = () => onPageChange(totalPages);
+			if (prevBtn) prevBtn.onclick = () => onPageChange(prevTarget);
+			if (nextBtn) nextBtn.onclick = () => onPageChange(nextTarget);
+		}
+
+		// 상세 로드 후 섹션 데이터도 로드
+		const _origLoadCustomerDetail = loadCustomerDetail;
+		loadCustomerDetail = async function() {
+			await _origLoadCustomerDetail();
+			await loadCustomerBookings(1);
+			await loadCustomerInquiries(1);
+		};
+
+		function updatePassportPreview(path) {
+			// 경로 정규화(레거시: smart-travel2, uploads/uploads, 파일명만 저장 등)
+			const normalize = (p) => {
+				let s = String(p || '').trim();
+				if (!s) return '';
+				if (/^(data:|https?:\/\/)/i.test(s)) return s;
+				s = s.replace(/\\/g, '/');
+				s = s.replace('/smart-travel2/', '/').replace('smart-travel2/', '');
+				s = s.replace(/\/uploads\/uploads\//g, '/uploads/').replace(/^uploads\/uploads\//, 'uploads/');
+				if (s.indexOf('/') === -1) s = 'uploads/passports/' + s;
+				if (!s.startsWith('/')) s = '/' + s;
+				return s;
+			};
+			path = normalize(path);
+			const thumb = document.querySelector('label.thumb[for="file-passport"], label.thumb');
+			if (!thumb) return;
+			thumb.dataset.path = path || '';
+			const titleEl = document.querySelector('.upload-meta .file-title');
+			const infoEl = document.querySelector('.upload-meta .file-info');
+			const metaEl = document.querySelector('.upload-meta');
+			const dlBtn = document.getElementById('passportDownloadBtn');
+			const delBtn = document.getElementById('passportDeleteBtn');
+			if (path) {
+				thumb.style.backgroundImage = `url('${path}')`;
+				thumb.style.backgroundSize = 'cover';
+				thumb.style.backgroundPosition = 'center';
+				if (titleEl) titleEl.textContent = (path.split('/').pop() || 'Image');
+				if (infoEl) infoEl.textContent = '';
+				if (metaEl) metaEl.style.display = '';
+				if (dlBtn) dlBtn.style.display = '';
+				if (delBtn) delBtn.style.display = '';
+			} else {
+				thumb.style.backgroundImage = '';
+				if (titleEl) titleEl.textContent = '';
+				if (infoEl) infoEl.textContent = '';
+				if (metaEl) metaEl.style.display = 'none';
+				if (dlBtn) dlBtn.style.display = 'none';
+				if (delBtn) delBtn.style.display = 'none';
+			}
+		}
+
+		document.getElementById('resetPwBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			if (!confirm('Reset the password?')) return;
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'resetCustomerPassword', accountId: Number(customerId) })
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				if (json.success) {
+					const pw = (json.data?.tempPassword || json.tempPassword || '');
+					if (pw) {
+						try {
+							await navigator.clipboard.writeText(pw);
+							alert('Temporary password (copied): ' + pw);
+						} catch (_) {
+							alert('Temporary password: ' + pw);
+						}
+					} else {
+						alert('Temporary password: ');
+					}
+				} else {
+					alert(json.message || 'Failed to reset password.');
+				}
+			} catch (err) {
+				console.error('Reset password error:', err);
+				alert('An error occurred while resetting the password.');
+			}
+		});
+
+		document.getElementById('passportDownloadBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			const thumb = document.querySelector('label.thumb');
+			const path = thumb?.dataset?.path || '';
+			if (!path) { alert('No file to download.'); return; }
+			window.open(`/backend/api/download.php?file=${encodeURIComponent(path)}`, '_blank');
+		});
+
+		// SMT 수정 시작 - 여권 사진 선택 시 즉시 미리보기 표시
+		document.getElementById('file-passport')?.addEventListener('change', function(e) {
+			const file = e.target.files?.[0];
+			if (!file) return;
+
+			const reader = new FileReader();
+			reader.onload = function(evt) {
+				const metaEl = document.querySelector('.upload-meta');
+				if (metaEl) metaEl.style.display = '';
+				const dlBtn = document.getElementById('passportDownloadBtn');
+				const delBtn = document.getElementById('passportDeleteBtn');
+				if (dlBtn) dlBtn.style.display = 'none';
+				if (delBtn) delBtn.style.display = '';
+
+				const thumb = document.querySelector('label.thumb[for="file-passport"], label.thumb');
+				if (thumb) {
+					thumb.style.backgroundImage = `url('${evt.target.result}')`;
+					thumb.style.backgroundSize = 'cover';
+					thumb.style.backgroundPosition = 'center';
+				}
+				const titleEl = document.querySelector('.upload-meta .file-title');
+				const infoEl = document.querySelector('.upload-meta .file-info');
+				if (titleEl) titleEl.textContent = file.name;
+				if (infoEl) {
+					const sizeKB = Math.round(file.size / 1024);
+					infoEl.textContent = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)}MB` : `${sizeKB}KB`;
+				}
+			};
+			reader.readAsDataURL(file);
+		});
+		// SMT 수정 완료
+
+		document.getElementById('passportDeleteBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			if (!confirm('Delete the uploaded passport photo?')) return;
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'deleteCustomerPassportImage', accountId: Number(customerId) })
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				if (json.success) {
+					updatePassportPreview('');
+					const input = document.getElementById('file-passport');
+					if (input) input.value = '';
+					alert('Deleted.');
+				} else {
+					alert(json.message || 'Failed to delete.');
+				}
+			} catch (err) {
+				console.error('Delete passport error:', err);
+				alert('An error occurred while deleting.');
+			}
+		});
+
+		document.getElementById('saveBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			// Memo: sync from editor -> hidden textarea
+			syncMemoFromEditor();
+			const fullName = document.getElementById('customerName').value.trim();
+			const emailAddress = document.getElementById('emailAddress').value.trim();
+			const countryCode = document.getElementById('countryCode').value;
+			const contactNo = document.getElementById('contactNo').value.trim();
+			let memo = document.getElementById('memo')?.value || '';
+
+			if (!fullName || !emailAddress || !contactNo) {
+				alert('Please fill in required fields (Name/Email/Contact).');
+				return;
+			}
+			// 고객 기본명(fName/lName)은 customerName에서 분리해서 저장하고,
+			// traveler first/last는 별도 컬럼(travelerFirstName/LastName)에 저장한다. (dev_tasks #106)
+			const travelerF = (document.getElementById('travelerFName')?.value || '').trim();
+			const travelerL = (document.getElementById('travelerLName')?.value || '').trim();
+			const parts = fullName.split(/\\s+/).filter(Boolean);
+			const fName = parts[0] || fullName;
+			const lName = parts.slice(1).join(' ') || '';
+
+			const fd = new FormData();
+			fd.append('action', 'updateB2BCustomer');
+			fd.append('accountId', String(customerId));
+			fd.append('fName', fName);
+			fd.append('lName', lName);
+			fd.append('emailAddress', emailAddress);
+			fd.append('countryCode', countryCode);
+			fd.append('contactNo', contactNo);
+			fd.append('memo', memo);
+
+			// traveler identity
+			fd.append('travelerFirstName', travelerF);
+			fd.append('travelerLastName', travelerL);
+			fd.append('title', document.getElementById('travelerTitle').value);
+			fd.append('gender', document.getElementById('travelerGender').value);
+			// allow editing/saving Age explicitly (dev_tasks #106 follow-up)
+			fd.append('age', (document.getElementById('travelerAge')?.value || '').trim());
+			fd.append('dateOfBirth', document.getElementById('dateOfBirth').value.trim());
+			fd.append('nationality', document.getElementById('nationality').value.trim());
+			fd.append('passportNumber', document.getElementById('passportNumber').value.trim());
+			fd.append('passportIssueDate', document.getElementById('passportIssueDate').value.trim());
+			fd.append('passportExpiry', document.getElementById('passportExpiry').value.trim());
+
+			const file = document.getElementById('file-passport')?.files?.[0];
+			if (file) fd.append('passportImage', file);
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', { method: 'POST', credentials: 'same-origin', body: fd });
+				// super-api.php는 에러 시에도 JSON을 내려주므로, status와 무관하게 먼저 파싱을 시도
+				let json = null;
+				try { json = await res.json(); } catch (_) { json = null; }
+
+				if (res.status === 401) {
+					alert((json && json.message) ? json.message : 'Login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+
+				if (!res.ok) {
+					// 400 등 에러여도 서버 메시지를 우선 노출
+					const msg = (json && json.message) ? json.message : ('HTTP ' + res.status);
+					throw new Error(msg);
+				}
+
+				if (json && json.success) {
+					alert('Saved.');
+					// If passport image was uploaded, immediately update preview without requiring re-enter (dev_tasks #109)
+					try {
+						const p = json?.data?.passportImage || json?.data?.passportImagePath || json?.passportImage || '';
+						if (p) updatePassportPreview(p);
+					} catch (_) {}
+					await loadCustomerDetail();
+				} else {
+					alert((json && json.message) ? json.message : 'Failed to save.');
+				}
+			} catch (err) {
+				console.error('Save error:', err);
+				alert('An error occurred while saving: ' + (err?.message || ''));
+			}
+		});
+	</script>
+</body>
+
+</html>

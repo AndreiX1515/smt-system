@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- editor (publishing parity) -->
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
+
+	<!-- Flatpickr for English date picker -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+		<!-- nav 들어올 자리 -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+		
+			<div class="page-toolbar">
+				<a href="guide-list.html" class="jw-button" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<select class="select" id="contractStatusSelect" disabled>
+						<option value="under_contract" selected data-lan-eng="In Contract">In Contract</option>
+						<option value="contract_ended" data-lan-eng="Contract Ended">Contract Ended</option>
+					</select>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Guide Details">Guide Details</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Basic Information">Basic Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- 1행 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Guide Name">Guide Name</label>
+						<input type="text" class="form-control" id="guideName" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">Email</label>
+						<input type="email" class="form-control" id="emailAddress" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contacts">Contacts</label>
+						<div class="field-row">
+							<select class="select w-auto" id="countryCode">
+								<option value="+63">+63</option>
+								<option value="+82" selected>+82</option>
+								<option value="+81">+81</option>
+								<option value="+1">+1</option>
+							</select>
+							<input type="text" class="form-control" id="phoneNumber" value="" placeholder="Enter numbers only">
+						</div>
+					</div>
+
+					<!-- 2행 -->
+					<div class="grid-item">
+						<label class="label-name">ID</label>
+						<input type="text" class="form-control" id="username" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name">PW</label>
+						<div class="input-box">
+							<input type="password" id="passwordMasked" value="*********" placeholder="8–12 chars incl. letters/numbers/specials" disabled>
+							<button type="button" class="jw-button typeD" id="resetPwBtn" data-lan-eng="Reset"><img src="../image/replay.svg" alt="">Reset</button>
+						</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Registration date/time">Registration date/time</label>
+						<input type="text" class="form-control" id="createdAt" value="" disabled>
+					</div>
+
+					<!-- 3행 : 증명사진 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="ID Photo">ID Photo</label>
+						<div class="upload-box">
+							<input id="file-passport" type="file" accept="image/*">
+							<label for="file-passport" class="thumb" aria-label="preview"></label>
+							<div class="upload-meta">
+								<div class="file-title" data-lan-eng="Image">Image</div>
+								<div class="file-info">jpg, 328KB</div>
+								<div class="file-controller">
+									<button type="button" class="btn-icon" aria-label="Download"><img src="../image/button-download.svg" alt=""></button>
+									<button type="button" class="btn-icon" aria-label="Delete"><img src="../image/button-close2.svg" alt=""></button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="grid-item"></div>
+					<div class="grid-item"></div>
+
+					<!-- 4행 : 가이드 소개 전체폭 -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Guide Introduction">Guide Introduction</label>
+						<div class="editor-box-wrap">
+							<div class="jw-editor" id="introEditorRoot">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										  <option value="" selected>Font</option>
+										  <option value="12px">12px</option>
+										  <option value="14px">14px</option>
+										  <option value="16px">16px</option>
+										  <option value="18px">18px</option>
+										  <option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+								<div class="jweditor"></div>
+							</div>
+							<textarea name="guide_desc" id="introduction" rows="8" style="display:none;"></textarea>
+						</div>
+					</div>
+
+					<!-- 5행 : 메모 전체폭 -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Note">Note</label>
+						<div class="editor-box-wrap">
+							<div class="jw-editor" id="memoEditorRoot">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+										  <option value="" selected>Font</option>
+										  <option value="12px">12px</option>
+										  <option value="14px">14px</option>
+										  <option value="16px">16px</option>
+										  <option value="18px">18px</option>
+										  <option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+								<div class="jweditor"></div>
+							</div>
+							<textarea name="memo" id="memo" rows="8" style="display:none;"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Contract Information">Contract Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item" style="max-width: 280px;">
+						<label class="label-name" data-lan-eng="Contract period">Contract period</label>
+						<div class="field-row" style="width: fit-content;">
+							<input type="text" class="form-control" id="contractStartDate" name="contract_start" value="" aria-label="Contract start date" placeholder="YYYY-MM-DD" style="width: 100px; flex: none;">
+							<span class="w-auto" aria-hidden="true">~</span>
+							<input type="text" class="form-control" id="contractEndDate" name="contract_end" value="" aria-label="Contract end date" placeholder="YYYY-MM-DD" style="width: 100px; flex: none;">
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Assigned schedule list">Assigned schedule list</h2>
+			<div class="card-panel jw-mgt16">
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!-- 상품명 (auto) -->
+						<col> <!-- 여행 시작일 -->
+						<col> <!-- 예약자명 -->
+						<col> <!-- 예약 인원 -->
+						<col> <!-- 여행 상태 -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th data-lan-eng="Product Name">Product Name</th>
+							<th data-lan-eng="Travel start date">Travel start date</th>
+							<th data-lan-eng="Reserver's name">Reserver's name</th>
+							<th data-lan-eng="Number of people for reservation" class="is-center">Number of people for reservation</th>
+							<th data-lan-eng="Travel status" class="is-center">Travel status</th>
+						</tr>
+					</thead>
+					<tbody id="assignmentsTableBody">
+						<tr>
+							<td colspan="6" class="is-center">Loading...</td>
+						</tr>
+					</tbody>
+				</table>
+				
+				<div class="jw-pagebox" role="navigation" aria-label="Pagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label="First page" aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="Previous page" aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list">
+							<button type="button" class="p" role="listitem">1</button>
+							<button type="button" class="p" role="listitem">2</button>
+							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
+							<button type="button" class="p" role="listitem">4</button>
+							<button type="button" class="p" role="listitem">5</button>
+						</div>
+
+						<button type="button" class="next" aria-label="Next page" aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label="Last page" aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<!-- 기본 스크립트 -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_guidedetailfix1"></script>
+	<script src="../js/multi-editor.js?v=20251226_guidedetailfix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let guideId = null;
+		let guideAccountId = null;
+		let currentProfileImagePath = '';
+
+		function decodeHtmlEntities(s) {
+			const str = String(s ?? '');
+			// common case: stored as escaped entities like &lt;p&gt;...&lt;/p&gt;
+			const t = document.createElement('textarea');
+			t.innerHTML = str;
+			return t.value;
+		}
+
+		function sanitizeHtmlForEditor(html) {
+			let s = String(html || '');
+			// remove scripts
+			s = s.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+			// prevent javascript: urls
+			s = s.replace(/javascript:/gi, '');
+			return s;
+		}
+
+		function escapeHtml(s) {
+			return String(s ?? '')
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+		}
+
+		function looksLikeHtmlTag(s) {
+			// Detect actual tags, not comparison operators like "1 < 2"
+			return /<\s*\/?\s*[a-z][^>]*>/i.test(String(s ?? ''));
+		}
+
+		function normalizeForEditor(value) {
+			// DB에 HTML(혹은 엔티티로 escape된 HTML) / 또는 순수 텍스트(\n 포함) 둘 다 들어올 수 있음.
+			// - HTML이면 sanitize 후 그대로 사용
+			// - 순수 텍스트면 escape + 줄바꿈을 <br>로 변환해서 에디터에서 동일하게 보이게 함
+			const decoded = decodeHtmlEntities(value);
+			if (looksLikeHtmlTag(decoded)) return sanitizeHtmlForEditor(decoded);
+			const txt = String(decoded ?? '').replace(/\r\n?/g, '\n');
+			return escapeHtml(txt).replace(/\n/g, '<br>');
+		}
+
+		function setEditorHtml(rootId, html) {
+			const safe = normalizeForEditor(html);
+			const hiddenId = (rootId === 'introEditorRoot') ? 'introduction' : (rootId === 'memoEditorRoot' ? 'memo' : '');
+			const hidden = hiddenId ? document.getElementById(hiddenId) : null;
+			if (hidden) hidden.value = safe;
+			const editor = document.querySelector(`#${rootId} .jweditor .ql-editor`);
+			if (editor) editor.innerHTML = safe;
+		}
+
+		function syncEditorToHiddenTextarea(rootId) {
+			const hiddenId = (rootId === 'introEditorRoot') ? 'introduction' : (rootId === 'memoEditorRoot' ? 'memo' : '');
+			const hidden = hiddenId ? document.getElementById(hiddenId) : null;
+			const editor = document.querySelector(`#${rootId} .jweditor .ql-editor`);
+			if (!hidden || !editor) return;
+			hidden.value = editor.innerHTML;
+		}
+
+		function stripLeadingSlashes(p) {
+			let s = String(p || '');
+			while (s.startsWith('/')) s = s.slice(1);
+			return s;
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super 화면은 admin만 접근 가능
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				const urlParams = new URLSearchParams(window.location.search);
+				guideId = urlParams.get('id') || urlParams.get('guideId');
+
+				// 국가번호 옵션 로드(국가명+국가번호)
+				await loadCountryCodeOptions();
+				
+			// 저장 버튼 이벤트 추가
+			const saveButton = document.getElementById('saveBtn');
+			if (saveButton) saveButton.addEventListener('click', handleSave);
+			
+			// 이미지 업로드 이벤트
+			const fileInput = document.getElementById('file-passport');
+			const thumbLabel = document.querySelector('label[for="file-passport"]');
+			const fileInfo = document.querySelector('.file-info');
+			const removeBtn = document.querySelector('.file-controller button[aria-label="Delete"]');
+			const downloadBtn = document.querySelector('.file-controller button[aria-label="Download"]');
+			
+			if (fileInput && thumbLabel) {
+				fileInput.addEventListener('change', function(e) {
+					const file = e.target.files[0];
+					if (file) {
+						const reader = new FileReader();
+						reader.onload = function(e) {
+							thumbLabel.style.backgroundImage = `url('${e.target.result}')`;
+							thumbLabel.style.backgroundSize = 'cover';
+							thumbLabel.style.backgroundPosition = 'center';
+							thumbLabel.innerHTML = '';
+							if (fileInfo) fileInfo.textContent = `${(file.name.split('.').pop() || '').toLowerCase()}, ${(file.size / 1024).toFixed(0)}KB`;
+						};
+						reader.readAsDataURL(file);
+					}
+				});
+				
+				if (removeBtn) {
+					removeBtn.addEventListener('click', async function() {
+						// 1) 아직 저장하지 않은 새 파일 선택 상태면: 그냥 로컬만 초기화
+						if (fileInput.files && fileInput.files.length > 0) {
+							fileInput.value = '';
+							thumbLabel.style.backgroundImage = '';
+							thumbLabel.innerHTML = '<span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999;">Image</span>';
+							if (fileInfo) fileInfo.textContent = 'No file selected';
+							return;
+						}
+
+						// 2) DB에 저장된 이미지가 있으면: 서버에서도 삭제
+						if (!currentProfileImagePath) {
+							// 화면만 초기화
+							thumbLabel.style.backgroundImage = '';
+							thumbLabel.innerHTML = '<span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999;">Image</span>';
+							if (fileInfo) fileInfo.textContent = 'No file selected';
+							return;
+						}
+
+						if (!confirm('Are you sure you want to delete the ID photo?')) return;
+						try {
+							const res = await fetch('../backend/api/super-api.php', {
+								method: 'POST',
+								credentials: 'same-origin',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({ action: 'deleteGuideProfileImage', guideId: guideId })
+							});
+							if (res.status === 401) {
+								alert('Login required.');
+								window.location.href = '../index.html';
+								return;
+							}
+							const json = await res.json().catch(() => ({}));
+							if (!res.ok || !json.success) throw new Error(json.message || ('HTTP ' + res.status));
+
+							currentProfileImagePath = '';
+							// UI 초기화
+							thumbLabel.style.backgroundImage = '';
+							thumbLabel.innerHTML = '<span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999;">Image</span>';
+							if (fileInfo) fileInfo.textContent = 'No file selected';
+							alert('Deleted.');
+						} catch (err) {
+							console.error('Delete profile image error:', err);
+							alert('An error occurred while deleting.');
+						}
+					});
+				}
+			}
+
+			// 다운로드 버튼 (저장된 파일이 있을 때만)
+			if (downloadBtn) {
+				downloadBtn.addEventListener('click', () => {
+					if (!currentProfileImagePath) {
+						alert('No image available to download.');
+						return;
+					}
+					const rel = stripLeadingSlashes(currentProfileImagePath);
+					window.open(`../../${encodeURIComponent(rel)}`, '_blank');
+				});
+			}
+
+			// 계약기간 입력에 따라 계약상태 자동 판정
+			// NOTE: Date 객체 비교는 타임존/파싱 차이로 오판될 수 있어 YYYY-MM-DD 문자열 비교로 통일한다.
+			// SMT fix: loadGuideDetail() 스코프 밖에서도 쓰이므로 전역(window)으로 보장
+			window.isContractEnded = window.isContractEnded || ((endDateStr) => {
+				const end = String(endDateStr || '').trim().slice(0, 10);
+				if (!end) return false;
+				// toISOString()은 UTC 기준이라 로컬(KST 등)과 날짜가 어긋날 수 있음 → 로컬 날짜로 생성
+				const now = new Date();
+				const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+				return end < today;
+			});
+			const updateContractStatusFromInput = () => {
+				const statusSelect = document.getElementById('contractStatusSelect');
+				const endEl = document.getElementById('contractEndDate');
+				const ended = window.isContractEnded(endEl?.value || '');
+				if (statusSelect) statusSelect.value = ended ? 'contract_ended' : 'under_contract';
+			};
+			document.getElementById('contractStartDate')?.addEventListener('change', updateContractStatusFromInput);
+			document.getElementById('contractEndDate')?.addEventListener('change', updateContractStatusFromInput);
+			updateContractStatusFromInput();
+
+			// Flatpickr 초기화 (영어 달력)
+			if (typeof flatpickr !== 'undefined') {
+				flatpickr('#contractStartDate', {
+					dateFormat: 'Y-m-d',
+					locale: 'en'
+				});
+				flatpickr('#contractEndDate', {
+					dateFormat: 'Y-m-d',
+					locale: 'en',
+					onChange: function() {
+						updateContractStatusFromInput();
+					}
+				});
+			}
+			
+			if (guideId) {
+				await loadGuideDetail();
+			}
+
+			// Apply language (admin supports eng/tl only)
+			try {
+				const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+				if (typeof language_apply === 'function') language_apply(lang);
+			} catch (_) { }
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodeOptions() {
+			const sel = document.getElementById('countryCode');
+			if (!sel) return;
+			try {
+				const current = (sel.value || '').trim() || '+63';
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json();
+				if (!json?.success || !Array.isArray(json.countries)) return;
+				sel.innerHTML = '';
+				json.countries.forEach((c) => {
+					const code = String(c?.code || '').trim();
+					const name = String(c?.name || '').trim();
+					if (!code) return;
+					const opt = document.createElement('option');
+					opt.value = code;
+					opt.textContent = name ? `${name} (${code})` : code;
+					sel.appendChild(opt);
+				});
+				sel.value = current;
+			} catch (_) {
+				// ignore - keep fallback options
+			} finally {
+				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			}
+		}
+
+		async function loadGuideDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getGuideDetail&id=${guideId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.guide) {
+					const guide = result.data.guide;
+					console.log('Loaded guide data:', guide);
+					guideAccountId = guide.accountId ? Number(guide.accountId) : null;
+					
+					// 기본 정보 업데이트 (id 기반)
+					const guideNameEl = document.getElementById('guideName');
+					if (guideNameEl) guideNameEl.value = guide.guideName || '';
+					const emailEl = document.getElementById('emailAddress');
+					if (emailEl) emailEl.value = guide.emailAddress || '';
+					const phoneEl = document.getElementById('phoneNumber');
+					const ccEl = document.getElementById('countryCode');
+					if (phoneEl) {
+						const raw = String(guide.phoneNumber || '').trim();
+						const m = raw.match(/^(\+\d+)\s*(.*)$/);
+						if (m && ccEl) {
+							ccEl.value = m[1];
+							phoneEl.value = (m[2] || '').trim();
+						} else {
+							phoneEl.value = raw;
+						}
+					}
+					try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+					const codeEl = document.getElementById('guideCode');
+					// guideCode 필드는 화면에서 제거/미사용
+					const createdAtEl = document.getElementById('createdAt');
+					if (createdAtEl) createdAtEl.value = guide.createdAt || '';
+
+					// ID(로그인 username) - 수정 가능
+					const usernameEl = document.getElementById('username');
+					if (usernameEl) usernameEl.value = guide.username || '';
+					
+					// 가이드 소개
+					setEditorHtml('introEditorRoot', guide.introduction || '');
+
+					// 메모
+					setEditorHtml('memoEditorRoot', guide.memo || '');
+
+					// 계약 기간
+					const sEl = document.getElementById('contractStartDate');
+					const eEl = document.getElementById('contractEndDate');
+					if (sEl) sEl.value = guide.contractStartDate ? String(guide.contractStartDate).slice(0, 10) : '';
+					if (eEl) eEl.value = guide.contractEndDate ? String(guide.contractEndDate).slice(0, 10) : '';
+
+					// 활동 상태 (In Contract / Contract Ended)
+					// 계약상태는 입력된 계약기간을 기준으로 자동 판정(셀렉트는 disabled)
+					{
+						const statusSelect = document.getElementById('contractStatusSelect');
+						const end = guide.contractEndDate ? String(guide.contractEndDate).slice(0, 10) : '';
+						const ended = isContractEnded(end);
+						if (statusSelect) statusSelect.value = ended ? 'contract_ended' : 'under_contract';
+					}
+					
+					// 증명사진 표시
+					if (guide.profileImage) {
+						const thumbLabel = document.querySelector('label[for="file-passport"]');
+						const fileTitle = document.querySelector('.file-title');
+						const fileInfo = document.querySelector('.file-info');
+						
+						currentProfileImagePath = stripLeadingSlashes(guide.profileImage || '');
+						if (thumbLabel) {
+							thumbLabel.style.backgroundImage = `url('../../${guide.profileImage}')`;
+							thumbLabel.style.backgroundSize = 'cover';
+							thumbLabel.style.backgroundPosition = 'center';
+							thumbLabel.innerHTML = '';
+						}
+						if (fileTitle) fileTitle.textContent = 'Image';
+						if (fileInfo) {
+							// DB에 파일 메타가 있으면 우선 사용
+							const original = String(guide.profileImageOriginalName || '').trim();
+							const bytes = Number(guide.profileImageSize || 0);
+							if (original && bytes > 0) {
+								const ext = (original.split('.').pop() || '').toLowerCase();
+								fileInfo.textContent = `${ext}, ${(bytes / 1024).toFixed(0)}KB`;
+							} else {
+								const fileName = String(guide.profileImage || '').split('/').pop() || '';
+								fileInfo.textContent = fileName || 'Image uploaded';
+							}
+						}
+					}
+					
+					// 배정된 일정 로드
+					await loadGuideAssignments();
+				}
+			} catch (error) {
+				console.error('Error loading guide detail:', error);
+				alert('An error occurred while loading guide information.');
+			}
+		}
+		
+		async function loadGuideAssignments() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getGuideAssignments&guideId=${guideId}`, {
+					credentials: 'same-origin'
+				});
+				
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				
+				const result = await response.json();
+				const tbody = document.getElementById('assignmentsTableBody');
+				
+				if (result.success && result.data && result.data.assignments && result.data.assignments.length > 0) {
+					tbody.innerHTML = result.data.assignments.map((item, index) => `
+						<tr>
+							<td class="no is-center">${index + 1}</td>
+							<td class="td-ellipsis"><span>${item.productName || '-'}</span></td>
+							<td class="is-center">${item.tourDate || '-'}</td>
+							<td class="is-center">${item.customerName || '-'}</td>
+							<td class="is-center">${item.participants || '-'}</td>
+							<td class="is-center">${item.status || '-'}</td>
+						</tr>
+					`).join('');
+				} else {
+					tbody.innerHTML = '<tr><td colspan="6" class="is-center">No assigned schedules.</td></tr>';
+				}
+			} catch (error) {
+				console.error('Error loading assignments:', error);
+				const tbody = document.getElementById('assignmentsTableBody');
+				if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load schedules.</td></tr>';
+			}
+		}
+		
+
+		async function handleSave() {
+			try {
+				const guideName = document.getElementById('guideName')?.value.trim() || '';
+				const emailAddress = document.getElementById('emailAddress')?.value.trim() || '';
+				const phoneLocal = document.getElementById('phoneNumber')?.value.trim() || '';
+				const countryCode = document.getElementById('countryCode')?.value || '';
+				const username = document.getElementById('username')?.value.trim() || '';
+				// sync Quill -> hidden textareas
+				syncEditorToHiddenTextarea('introEditorRoot');
+				syncEditorToHiddenTextarea('memoEditorRoot');
+
+				const memo = document.getElementById('memo')?.value || '';
+				const contractStartDate = document.getElementById('contractStartDate')?.value || '';
+				const contractEndDate = document.getElementById('contractEndDate')?.value || '';
+				
+				if (!guideName || !phoneLocal || !username) {
+					alert('Please fill in all required fields.');
+					return;
+				}
+				
+				const formData = new FormData();
+				formData.append('action', 'updateGuide');
+				formData.append('guideId', guideId);
+				formData.append('username', username);
+				formData.append('guideName', guideName);
+				formData.append('phoneNumber', (countryCode ? (countryCode + ' ') : '') + phoneLocal);
+				formData.append('emailAddress', emailAddress);
+				formData.append('memo', memo);
+				formData.append('contractStartDate', contractStartDate);
+				formData.append('contractEndDate', contractEndDate);
+				
+				// 가이드 소개
+				const introTextarea = document.getElementById('introduction');
+				if (introTextarea) {
+					formData.append('introduction', introTextarea.value);
+				}
+				
+				// 증명사진 파일 추가
+				const fileInput = document.getElementById('file-passport');
+				if (fileInput && fileInput.files[0]) {
+					formData.append('profileImage', fileInput.files[0]);
+				}
+				
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+				if (response.status === 401) {
+					alert('Login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+
+				const result = await response.json();
+				
+				if (result.success) {
+					alert('Saved.');
+					await loadGuideDetail();
+				} else {
+					alert('Save failed: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Error saving guide:', error);
+				alert('An error occurred while saving: ' + (error?.message || ''));
+			}
+		}
+
+		// Password reset (random by policy)
+		document.getElementById('resetPwBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			if (!guideAccountId) {
+				alert('Account information not found.');
+				return;
+			}
+			if (!confirm('Do you want to reset the password?')) return;
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'resetAccountPassword', accountId: Number(guideAccountId) })
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				if (json.success) {
+					const temp = String(json.data?.tempPassword || '').trim();
+					try {
+						if (temp) await navigator.clipboard.writeText(temp);
+					} catch (_) {}
+					const pwMasked = document.getElementById('passwordMasked');
+					if (pwMasked && temp) {
+						pwMasked.disabled = false;
+						pwMasked.value = temp;
+						pwMasked.disabled = true;
+					}
+					alert('Temporary password: ' + temp + (temp ? '\n(Copied to clipboard.)' : ''));
+				} else {
+					alert(json.message || 'Reset failed.');
+				}
+			} catch (err) {
+				console.error('Reset password error:', err);
+				alert('An error occurred while resetting.');
+			}
+		});
+	</script>
+</body>
+
+</html>

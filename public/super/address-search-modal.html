@@ -1,0 +1,31 @@
+<div class="dialog-container">
+	<button type="button" class="dialog-close" id="closeDialog" onclick="modal_close()"><i class="ic-close"></i></button>
+
+	<h1 data-lan-eng="Search Address">주소 검색</h1>
+
+	<div class="dialog-content jw-mgt24">
+		<p class="form-desc" data-lan-eng="Search and select an address.">검색어를 입력하고 주소를 선택하세요.</p>
+
+		<div class="field-row jw-mgt16">
+			<input type="text" class="form-control" id="addrQuery" placeholder="예) Incheon Airport, Nami Island" autocomplete="off">
+			<button type="button" class="jw-button typeA" id="addrSearchBtn">검색</button>
+		</div>
+
+		<div class="jw-rows jw-gap10 jw-mgt16" id="addrResults">
+			<!-- 결과 렌더링 -->
+		</div>
+
+		<p class="form-desc jw-mgt16" style="font-size:12px; color:#6b7684;">
+			* Search results use Google Places search.
+		</p>
+	</div>
+
+	<div class="dialog-controls jw-mgt24">
+		<button type="button" class="jw-button typeB2" data-lan-eng="Close" onclick="modal_close()">닫기</button>
+	</div>
+</div>
+
+<!-- NOTE:
+  - 모달 HTML은 super.js에서 이벤트를 바인딩합니다.
+  - innerHTML로 주입된 <script>는 실행되지 않을 수 있으므로 여기에는 스크립트를 두지 않습니다.
+-->

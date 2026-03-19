@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- Quill editor -->
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+
+	<!-- Calendar / Date Range Picker -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content layout-content-aside">
+			<div class="page-toolbar">
+				<a href="announcements-list.html" class="jw-button jw-button-back" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+				</div>
+			</div>
+
+			<div class="content-main">
+				<h1 class="page-title" data-lan-eng="Create Announcement">Create Announcement</h1>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Target Product">Target Product</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-2">
+							<label class="label-name"><span data-lan-eng="Select Product">Select Product</span> <span class="req">*</span></label>
+							<div class="jw-center jw-gap20">
+								<input type="text" id="selectedProductName" class="form-control jw-wf" placeholder="Please select a product" disabled>
+								<button type="button" class="jw-button typeA" onclick="openProductSearchModal()">
+									<img src="../image/search2.svg" alt="">
+									<span data-lan-eng="Product Search">Product Search</span>
+								</button>
+							</div>
+							<input type="hidden" id="selectedPackageId">
+						</div>
+						<div class="grid-item">
+							<label class="label-name"><span data-lan-eng="Target Type">Target Type</span> <span class="req">*</span></label>
+							<select class="select" id="targetTypeSelect" onchange="toggleTargetDate(); updateTargetCount();">
+								<option value="all_purchasers">All Purchasers</option>
+								<option value="specific_date">Specific Travel Date</option>
+							</select>
+						</div>
+					</div>
+					<div class="target-info-row jw-mgt16">
+						<div class="info-box" id="infoBox" style="background:#f5f5f5; padding:16px; border-radius:8px;">
+							<span data-lan-eng="Target Customers">Target Customers:</span>
+							<strong id="targetCount">0</strong>
+							<span data-lan-eng="customers will receive this announcement">customers will receive this announcement</span>
+						</div>
+						<div class="target-date-box" id="targetDateWrapper" style="display:none;">
+							<label class="label-name"><span data-lan-eng="Travel Date">Travel Date</span> <span class="req">*</span></label>
+							<div class="field-row">
+								<input type="text" class="form-control" id="targetDateRange" placeholder="YYYY-MM-DD" readonly>
+								<button type="button" class="btn-icon calendar" data-target="#targetDateRange">
+									<img src="../image/calendar.svg" alt="">
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<h2 class="section-title jw-mgt32" data-lan-eng="Announcement Content">Announcement Content</h2>
+				<div class="card-panel jw-mgt16">
+					<div class="grid-wrap">
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Title">Title</span> <span class="req">*</span></label>
+							<input type="text" class="form-control" id="announcementTitle" placeholder="Enter announcement title" maxlength="255">
+						</div>
+
+						<div class="grid-item col-span-3">
+							<label class="label-name"><span data-lan-eng="Content">Content</span> <span class="req">*</span></label>
+							<div class="editor-box-wrap">
+								<div class="jw-editor" id="contentEditorRoot">
+									<div class="toolbar">
+										<div class="group">
+											<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+											<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+											<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+										</div>
+										<div class="group">
+											<select class="ql-size">
+												<option value="" selected>Font</option>
+												<option value="12px">12px</option>
+												<option value="14px">14px</option>
+												<option value="16px">16px</option>
+												<option value="18px">18px</option>
+												<option value="24px">24px</option>
+											</select>
+										</div>
+										<div class="group">
+											<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+										</div>
+										<div class="group">
+											<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+											<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+										</div>
+									</div>
+									<div class="jweditor" style="min-height: 250px;"></div>
+								</div>
+								<textarea name="content" id="announcementContent" rows="8" style="display:none;"></textarea>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+			<aside class="content-aside">
+				<div class="aside-section">
+					<h3 class="aside-title" data-lan-eng="Actions">Actions</h3>
+					<div class="aside-content">
+						<button type="button" class="jw-button typeA full" onclick="saveAnnouncement('draft')">
+							<span data-lan-eng="Save as Draft">Save as Draft</span>
+						</button>
+						<button type="button" class="jw-button typeB full jw-mgt8" onclick="saveAnnouncement('publish')">
+							<img src="../image/buttonB.svg" alt="">
+							<span data-lan-eng="Publish Now">Publish Now</span>
+						</button>
+					</div>
+				</div>
+
+				<div class="aside-section jw-mgt24">
+					<h3 class="aside-title" data-lan-eng="Preview">Preview</h3>
+					<div class="aside-content">
+						<div class="preview-box" style="background:#f9f9f9; padding:16px; border-radius:8px; font-size:13px;">
+							<div class="preview-item">
+								<span class="preview-label" data-lan-eng="Product:">Product:</span>
+								<span class="preview-value" id="previewProduct">-</span>
+							</div>
+							<div class="preview-item jw-mgt8">
+								<span class="preview-label" data-lan-eng="Target:">Target:</span>
+								<span class="preview-value" id="previewTarget">All Purchasers</span>
+							</div>
+							<div class="preview-item jw-mgt8">
+								<span class="preview-label" data-lan-eng="Recipients:">Recipients:</span>
+								<span class="preview-value" id="previewRecipients">0</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</aside>
+
+		</section>
+
+	</main>
+
+	<!-- Product Search Modal -->
+	<div id="product-search-modal" class="modal" style="display: none;">
+		<div class="modal-content modal-large">
+			<div class="modal-header">
+				<h3 data-lan-eng="Product Search">Product Search</h3>
+				<button type="button" class="modal-close" onclick="closeProductSearchModal()">
+					<img src="../image/button-close2.svg" alt="">
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="search-box">
+					<input type="text" id="product-search-input" class="form-control" placeholder="Enter product name" data-lan-eng-placeholder="Enter product name">
+					<button type="button" id="product-search-submit" class="jw-button typeA" data-lan-eng="Search">Search</button>
+				</div>
+				<div class="search-results" id="product-search-results">
+					<!-- Search results will be displayed here -->
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="jw-button" onclick="closeProductSearchModal()">Cancel</button>
+				<button type="button" class="jw-button typeB" id="product-search-confirm" onclick="confirmProductSelection()" disabled>Select</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="../js/multi-editor.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let selectedPackage = null;
+		let selectedProductInModal = null;
+
+		function getEditorContent() {
+			const editor = document.querySelector('#contentEditorRoot .jweditor .ql-editor');
+			return editor ? editor.innerHTML : '';
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			// Session check
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				// Product search event listeners
+				document.getElementById('product-search-submit').addEventListener('click', searchProducts);
+				document.getElementById('product-search-input').addEventListener('keypress', function(e) {
+					if (e.key === 'Enter') {
+						e.preventDefault();
+						searchProducts();
+					}
+				});
+
+				// Initialize date picker (single date)
+				$('#targetDateRange').daterangepicker({
+					singleDatePicker: true,
+					autoUpdateInput: false,
+					locale: {
+						format: 'YYYY-MM-DD',
+						applyLabel: 'Apply',
+						cancelLabel: 'Cancel',
+						daysOfWeek: ['Su','Mo','Tu','We','Th','Fr','Sa'],
+						monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+						firstDay: 0
+					}
+				});
+
+				$('#targetDateRange').on('apply.daterangepicker', function(ev, picker) {
+					$(this).val(picker.startDate.format('YYYY-MM-DD'));
+					$(this).attr('data-start', picker.startDate.format('YYYY-MM-DD'));
+					$(this).attr('data-end', picker.startDate.format('YYYY-MM-DD'));
+					updateTargetCount();
+				});
+
+				$('#targetDateRange').on('cancel.daterangepicker', function() {
+					$(this).val('');
+					$(this).removeAttr('data-start');
+					$(this).removeAttr('data-end');
+					updateTargetCount();
+				});
+
+				// Calendar button click handler
+				$(document).on('click', '.btn-icon.calendar', function() {
+					const targetSelector = $(this).data('target');
+					if (targetSelector) {
+						$(targetSelector).trigger('click').focus();
+					}
+				});
+
+			} catch (error) {
+				console.error('Initialization error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		// Open product search modal
+		function openProductSearchModal() {
+			selectedProductInModal = null;
+			document.getElementById('product-search-input').value = '';
+			document.getElementById('product-search-results').innerHTML = '';
+			document.getElementById('product-search-confirm').disabled = true;
+			document.getElementById('product-search-modal').style.display = 'flex';
+			// Auto-load all products when modal opens
+			searchProducts();
+		}
+
+		// Close product search modal
+		function closeProductSearchModal() {
+			document.getElementById('product-search-modal').style.display = 'none';
+		}
+
+		// Search products
+		async function searchProducts() {
+			const searchInput = document.getElementById('product-search-input');
+			const searchTerm = searchInput.value.trim();
+			const resultsContainer = document.getElementById('product-search-results');
+
+			try {
+				resultsContainer.innerHTML = '<div class="is-center" style="padding:20px;">Searching...</div>';
+
+				const params = new URLSearchParams({
+					action: 'getProducts',
+					limit: '50'
+				});
+				if (searchTerm) {
+					params.append('search', searchTerm);
+				}
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+				const result = await response.json();
+
+				if (result.success && result.data?.products && result.data.products.length > 0) {
+					let html = '<div class="product-list">';
+					result.data.products.forEach(pkg => {
+						const isSelected = selectedProductInModal === pkg.packageId ? 'selected' : '';
+						const statusLabel = pkg.status === 'active' ? 'On Sale' : (pkg.status === 'inactive' ? 'Sale Ended' : 'Draft');
+						const statusClass = pkg.status === 'active' ? 'status-active' : 'status-inactive';
+
+						// (HTML 태그 수정) 디코딩 적용
+						html += `
+							<div class="product-item ${isSelected}" onclick="selectProduct(${pkg.packageId}, '${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}')">
+								<div class="product-item-content">
+									<div class="product-thumb" style="${pkg.thumbnailUrl ? `background-image:url('${escapeHtml(pkg.thumbnailUrl)}')` : ''}"></div>
+									<div class="product-info">
+										<div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || 'Unnamed Product')}</div>
+										<div class="product-meta">
+											<span class="product-status ${statusClass}">${statusLabel}</span>
+											<span class="product-target">${escapeHtml(pkg.targetMarket || 'B2B')}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						`;
+					});
+					html += '</div>';
+					resultsContainer.innerHTML = html;
+				} else {
+					resultsContainer.innerHTML = '<div class="is-center" style="padding:40px; color:#666;">No products found.</div>';
+				}
+			} catch (error) {
+				console.error('Product search error:', error);
+				resultsContainer.innerHTML = '<div class="is-center" style="padding:40px; color:#c00;">Failed to search products.</div>';
+			}
+		}
+
+		// Select product in modal
+		function selectProduct(packageId, packageName) {
+			selectedProductInModal = { packageId, packageName };
+
+			// Update UI - remove previous selection and add new
+			document.querySelectorAll('#product-search-results .product-item').forEach(item => {
+				item.classList.remove('selected');
+			});
+			event.currentTarget.classList.add('selected');
+
+			// Enable confirm button
+			document.getElementById('product-search-confirm').disabled = false;
+		}
+
+		// Confirm product selection
+		function confirmProductSelection() {
+			if (!selectedProductInModal) {
+				alert('Please select a product.');
+				return;
+			}
+
+			selectedPackage = selectedProductInModal;
+			document.getElementById('selectedPackageId').value = selectedPackage.packageId;
+			document.getElementById('selectedProductName').value = selectedPackage.packageName;
+			document.getElementById('previewProduct').textContent = selectedPackage.packageName;
+
+			closeProductSearchModal();
+			updateTargetCount();
+		}
+
+		function toggleTargetDate() {
+			const targetType = document.getElementById('targetTypeSelect').value;
+			const wrapper = document.getElementById('targetDateWrapper');
+			const row = document.querySelector('.target-info-row');
+
+			if (targetType === 'specific_date') {
+				wrapper.style.display = 'block';
+				row.classList.add('has-date');
+			} else {
+				wrapper.style.display = 'none';
+				row.classList.remove('has-date');
+			}
+
+			// Update preview
+			const previewTarget = document.getElementById('previewTarget');
+			if (targetType === 'all_purchasers') {
+				previewTarget.textContent = 'All Purchasers';
+			} else {
+				previewTarget.textContent = 'Specific Date';
+			}
+		}
+
+		async function updateTargetCount() {
+			const packageId = document.getElementById('selectedPackageId').value;
+			const targetType = document.getElementById('targetTypeSelect').value;
+			const dateRangeInput = document.getElementById('targetDateRange');
+			const startDate = dateRangeInput?.getAttribute('data-start') || '';
+			const endDate = dateRangeInput?.getAttribute('data-end') || '';
+
+			if (!packageId) {
+				document.getElementById('targetCount').textContent = '0';
+				document.getElementById('previewRecipients').textContent = '0';
+				return;
+			}
+
+			try {
+				let url = `../backend/api/super-api.php?action=getAnnouncementTargetCount&packageId=${packageId}&targetType=${targetType}`;
+				if (targetType === 'specific_date' && startDate && endDate) {
+					url += `&startDate=${startDate}&endDate=${endDate}`;
+				}
+
+				const response = await fetch(url, { credentials: 'same-origin' });
+				const result = await response.json();
+
+				if (result.success) {
+					const count = result.data?.count || 0;
+					document.getElementById('targetCount').textContent = count;
+					document.getElementById('previewRecipients').textContent = count;
+				}
+			} catch (error) {
+				console.error('Failed to get target count:', error);
+			}
+		}
+
+		async function saveAnnouncement(mode) {
+			const packageId = document.getElementById('selectedPackageId').value;
+			const title = document.getElementById('announcementTitle').value.trim();
+			const content = getEditorContent();
+			const targetType = document.getElementById('targetTypeSelect').value;
+			const dateRangeInput = document.getElementById('targetDateRange');
+			const startDate = dateRangeInput?.getAttribute('data-start') || '';
+			const endDate = dateRangeInput?.getAttribute('data-end') || '';
+
+			// Validation
+			if (!packageId) {
+				alert('Please select a product.');
+				return;
+			}
+			if (!title) {
+				alert('Please enter a title.');
+				return;
+			}
+			if (!content || content === '<p><br></p>') {
+				alert('Please enter content.');
+				return;
+			}
+			if (targetType === 'specific_date' && (!startDate || !endDate)) {
+				alert('Please select a travel date range.');
+				return;
+			}
+
+			try {
+				// Create announcement
+				const createResponse = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						action: 'createProductAnnouncement',
+						packageId: parseInt(packageId),
+						title: title,
+						content: content,
+						targetType: targetType,
+						targetStartDate: targetType === 'specific_date' ? startDate : null,
+						targetEndDate: targetType === 'specific_date' ? endDate : null
+					})
+				});
+
+				const createResult = await createResponse.json();
+
+				if (!createResult.success) {
+					alert('Failed to create announcement: ' + (createResult.message || 'Unknown error'));
+					return;
+				}
+
+				const announcementId = createResult.data.announcementId;
+
+				// If publish mode, publish immediately
+				if (mode === 'publish') {
+					const publishResponse = await fetch('../backend/api/super-api.php', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						credentials: 'same-origin',
+						body: JSON.stringify({
+							action: 'publishProductAnnouncement',
+							announcementId: announcementId
+						})
+					});
+
+					const publishResult = await publishResponse.json();
+
+					if (publishResult.success) {
+						alert(`Announcement published successfully to ${publishResult.data.targetCount} customers!`);
+					} else {
+						alert('Announcement saved but failed to publish: ' + (publishResult.message || 'Unknown error'));
+					}
+				} else {
+					alert('Announcement saved as draft.');
+				}
+
+				// Redirect to list
+				window.location.href = 'announcements-list.html';
+
+			} catch (error) {
+				console.error('Save error:', error);
+				alert('Failed to save announcement.');
+			}
+		}
+
+		function escapeHtml(text) {
+			if (!text) return '';
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+	</script>
+
+	<style>
+		.preview-item {
+			display: flex;
+			justify-content: space-between;
+		}
+		.preview-label {
+			color: #666;
+		}
+		.preview-value {
+			font-weight: 500;
+		}
+		.editor-box-wrap {
+			border: 1px solid #ddd;
+			border-radius: 4px;
+		}
+
+		/* Target Info Row Layout */
+		.target-info-row {
+			display: flex;
+			gap: 16px;
+			align-items: flex-end;
+		}
+		.target-info-row .info-box {
+			flex: 1;
+			transition: flex 0.2s ease;
+		}
+		.target-info-row.has-date .info-box {
+			flex: 0 0 calc(100% - 280px);
+		}
+		.target-date-box {
+			flex: 0 0 260px;
+		}
+		.target-date-box .field-row {
+			display: flex;
+			gap: 8px;
+		}
+		.target-date-box .form-control {
+			flex: 1;
+			min-width: 180px;
+		}
+		.target-date-box .btn-icon {
+			flex-shrink: 0;
+		}
+
+		/* Product Search Modal Styles */
+		#product-search-modal .modal-content {
+			max-width: 700px;
+		}
+		#product-search-modal .search-box {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 20px;
+		}
+		#product-search-modal .search-box .form-control {
+			flex: 1;
+		}
+		#product-search-modal .search-results {
+			max-height: 400px;
+			overflow-y: auto;
+		}
+		#product-search-modal .product-item {
+			cursor: pointer;
+			border: 1px solid #E5E7EB;
+			border-radius: 10px;
+			padding: 12px;
+			margin-bottom: 10px;
+			background: #fff;
+			transition: all 0.2s;
+		}
+		#product-search-modal .product-item:hover {
+			border-color: #9CA3AF;
+			background: #F9FAFB;
+		}
+		#product-search-modal .product-item.selected {
+			border: 2px solid #0050C8;
+			box-shadow: 0 0 0 3px rgba(0, 80, 200, 0.12);
+			background: #F7FAFF;
+		}
+		#product-search-modal .product-item-content {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+		}
+		#product-search-modal .product-thumb {
+			width: 60px;
+			height: 60px;
+			border-radius: 8px;
+			background-color: #f0f0f0;
+			background-size: cover;
+			background-position: center;
+			flex-shrink: 0;
+		}
+		#product-search-modal .product-info {
+			flex: 1;
+			min-width: 0;
+		}
+		#product-search-modal .product-name {
+			font-weight: 600;
+			font-size: 14px;
+			margin-bottom: 6px;
+		}
+		#product-search-modal .product-meta {
+			display: flex;
+			gap: 10px;
+			font-size: 12px;
+		}
+		#product-search-modal .product-status {
+			padding: 2px 8px;
+			border-radius: 4px;
+		}
+		#product-search-modal .product-status.status-active {
+			background: #e8f5e9;
+			color: #2e7d32;
+		}
+		#product-search-modal .product-status.status-inactive {
+			background: #f5f5f5;
+			color: #666;
+		}
+		#product-search-modal .product-target {
+			color: #666;
+		}
+		#product-search-modal .modal-footer {
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+			padding: 16px 24px;
+			border-top: 1px solid #e5e7eb;
+		}
+	</style>
+</body>
+
+</html>

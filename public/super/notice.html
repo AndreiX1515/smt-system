@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Announcements">Announcements</h1>
+
+			<div class="card-panel jw-mgt32">
+
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" action="" method="get" id="filterForm">
+						<select class="select" name="sortOrder" id="sortOrderFilter" onchange="applyFilters()">
+							<option value="latest" data-lan-eng="Latest">Latest</option>
+							<option value="oldest" data-lan-eng="Oldest">Oldest</option>
+						</select>
+					</form>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!--  -->
+						<col class="col-200"> <!--  -->
+						<col class="col-260"> <!--   -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="is-center">No</th>
+							<th data-lan-eng="Title">Title</th>
+							<th data-lan-eng="Registration date/time">Registration date/time</th>
+							<th data-lan-eng="Exposure period">Exposure period</th>
+						</tr>
+					</thead>
+					<tbody id="noticesTableBody">
+						<tr>
+							<td colspan="4" class="is-center">  ...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				
+				<div class="jw-pagebox" role="navigation" aria-label="">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list">
+							<button type="button" class="p" role="listitem">1</button>
+							<button type="button" class="p" role="listitem">2</button>
+							<button type="button" class="p show" role="listitem" aria-current="page">3</button>
+							<button type="button" class="p" role="listitem">4</button>
+							<button type="button" class="p" role="listitem">5</button>
+						</div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+			
+			<div class="controller">
+				<button type="button" class="jw-button typeB" onclick="window.location.href='notice-registration.html'"><img src="../image/buttonB.svg" alt=""><span data-lan-eng="Notice Registration">Notice Registration</span></button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_noticehtmlfix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 10;
+		let currentFilters = { sortOrder: 'latest' };
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadNotices();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.sortOrder = document.getElementById('sortOrderFilter').value;
+			currentPage = 1;
+			loadNotices();
+		}
+
+		async function loadNotices(page = currentPage) {
+			try {
+				const tbody = document.getElementById('noticesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="4" class="is-center">  ...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getNotices',
+					page: page,
+					limit: limit
+				});
+				
+				if (currentFilters.sortOrder) params.append('sortOrder', currentFilters.sortOrder);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { notices, pagination } = result.data;
+					
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					if (tbody) {
+						if (notices.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="4" class="is-center"> .</td></tr>';
+						} else {
+							tbody.innerHTML = notices.map((notice) => {
+								const createdAt = notice.createdAt ? notice.createdAt.split(' ')[0] + ' ' + notice.createdAt.split(' ')[1] : '';
+								const exposurePeriod = notice.startDate && notice.endDate ? `${notice.startDate} ~ ${notice.endDate}` : '';
+								const titleText = renderNoticeTitle(notice.title || '');
+								return `
+									<tr onclick="window.location.href='notice-detail.html?id=${escapeHtml(notice.noticeId)}'" style="cursor: pointer;">
+										<td class="no is-center">${notice.rowNum || ''}</td>
+										<td>${escapeHtml(titleText)}</td>
+										<td class="is-center">${escapeHtml(createdAt)}</td>
+										<td class="is-center">${escapeHtml(exposurePeriod)}</td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					if (pagination) {
+						updatePagination(pagination);
+						currentPage = pagination.currentPage;
+					}
+				}
+			} catch (error) {
+				console.error('Error loading notices:', error);
+				const tbody = document.getElementById('noticesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="4" class="is-center">    .</td></tr>';
+				}
+			}
+		}
+
+		function stripHtmlToText(html) {
+			try {
+				const s = String(html ?? '');
+				if (!s) return '';
+				// HTML tag  
+				if (!/[<][a-z!\/]/i.test(s)) return s;
+				const div = document.createElement('div');
+				div.innerHTML = s;
+				return (div.textContent || '').replace(/\s+/g, ' ').trim();
+			} catch (_) {
+				return String(html ?? '');
+			}
+		}
+
+		function pickKoFromJsonOrRaw(v) {
+			const s = String(v ?? '').trim();
+			if (!s) return '';
+			if (s.startsWith('{') && s.endsWith('}')) {
+				try {
+					const obj = JSON.parse(s);
+					if (obj && typeof obj === 'object') {
+						return String(obj.ko ?? obj.en ?? obj.tl ?? s);
+					}
+				} catch (_) { /* ignore */ }
+			}
+			return s;
+		}
+
+		//  HTML/JSON    ""  .
+		function renderNoticeTitle(rawTitle) {
+			const picked = pickKoFromJsonOrRaw(rawTitle);
+			return stripHtmlToText(picked);
+		}
+		
+		function updatePagination(pagination) {
+			const { currentPage, totalPages } = pagination;
+			const pageContainer = document.querySelector('.jw-pagebox .page');
+			
+			if (pageContainer) {
+				pageContainer.innerHTML = '';
+				const groupSize = 5;
+				const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+				const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+				
+				for (let i = groupStart; i <= groupEnd; i++) {
+					const button = document.createElement('button');
+					button.type = 'button';
+					button.className = 'p' + (i === currentPage ? ' show' : '');
+					button.setAttribute('role', 'listitem');
+					if (i === currentPage) button.setAttribute('aria-current', 'page');
+					button.textContent = i;
+					button.onclick = () => loadNotices(i);
+					pageContainer.appendChild(button);
+				}
+			}
+			
+			const firstBtn = document.querySelector('.jw-pagebox .first');
+			const prevBtn = document.querySelector('.jw-pagebox .prev');
+			const nextBtn = document.querySelector('.jw-pagebox .next');
+			const lastBtn = document.querySelector('.jw-pagebox .last');
+			
+			if (firstBtn) {
+				firstBtn.disabled = currentPage === 1;
+				firstBtn.setAttribute('aria-disabled', currentPage === 1);
+				firstBtn.onclick = currentPage === 1 ? null : () => loadNotices(1);
+			}
+			// prev/next 5  
+			const groupSize = 5;
+			const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (prevBtn) {
+				prevBtn.disabled = currentPage === 1;
+				prevBtn.setAttribute('aria-disabled', currentPage === 1);
+				prevBtn.onclick = currentPage === 1 ? null : () => loadNotices(prevTarget);
+			}
+			if (nextBtn) {
+				nextBtn.disabled = currentPage >= totalPages;
+				nextBtn.setAttribute('aria-disabled', currentPage >= totalPages);
+				nextBtn.onclick = currentPage >= totalPages ? null : () => loadNotices(nextTarget);
+			}
+			if (lastBtn) {
+				lastBtn.disabled = currentPage >= totalPages;
+				lastBtn.setAttribute('aria-disabled', currentPage >= totalPages);
+				lastBtn.onclick = currentPage >= totalPages ? null : () => loadNotices(totalPages);
+			}
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- calendar (publishing same as @tools/guide-registration.html) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+	<!-- editor (publishing same as @tools/guide-registration.html) -->
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="guide-list.html" class="jw-button" aria-label=" ">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<button type="button" class="jw-button typeB" data-lan-eng="Save">Save</button>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Register Guide">Register Guide</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Basic Information">Basic Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<!-- 1 -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Guide Name">Guide Name</label>
+						<input type="text" class="form-control" id="guideName" placeholder="" data-lan-eng-placeholder="Guide Name">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">Email</label>
+						<input type="email" class="form-control" id="emailAddress" placeholder="" data-lan-eng-placeholder="Email">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contacts">Contacts</label>
+						<div class="field-row">
+							<select class="select w-auto" id="countryCode">
+								<option value="+63">+63</option>
+								<option value="+82" selected>+82</option>
+								<option value="+81">+81</option>
+								<option value="+1">+1</option>
+							</select>
+							<input type="text" class="form-control" id="phoneNumber" placeholder=" " data-lan-eng-placeholder="Enter numbers">
+						</div>
+					</div>
+
+					<!-- 2 -->
+					<div class="grid-item">
+						<label class="label-name">ID</label>
+						<input type="text" class="form-control" id="username" name="guide_username" placeholder="ID" autocomplete="new-password" readonly>
+					</div>
+					<div class="grid-item">
+						<label class="label-name">PW</label>
+						<div class="input-box">
+							<input type="password" id="password" name="guide_password" value="" placeholder="8~12, // " data-lan-eng-placeholder="8~12 characters with letters, numbers and symbols" autocomplete="new-password">
+							<button type="button" class="jw-button typeD" id="autoPwBtn">
+								<img src="../image/replay.svg" alt="">
+								<span data-lan-eng="Auto Input">Auto Input</span>
+							</button>
+						</div>
+					</div>
+					<div class="grid-item"></div>
+
+					<!-- 3 :  -->
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="ID Photo">ID Photo</label>
+						<div class="upload-box">
+							<label class="inputFile passport-upload">
+								<input id="file-profile" type="file" accept="image/*" onchange="onPassportUpload_withPreview(this)">
+								<button type="button" class="jw-button typeE" style="width: 216px;" onclick="triggerPassportInput(this)">
+									<img src="../image/upload.svg" alt="">
+									<span data-lan-eng="Image upload">Image upload</span>
+								</button>
+							</label>
+						</div>
+					</div>
+					<div class="grid-item"></div>
+					<div class="grid-item"></div>
+
+					<!-- 4 :    -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="content" data-lan-eng="Guide Introduction">Guide Introduction</label>
+						<div class="editor-box-wrap">
+							<!-- multi-editor.js (publishing structure) -->
+							<div class="jw-editor">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+											<option value="" selected>Font</option>
+											<option value="12px">12px</option>
+											<option value="14px">14px</option>
+											<option value="16px">16px</option>
+											<option value="18px">18px</option>
+											<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+
+								<div class="jweditor" id="introductionEditor" data-placeholder=" "></div>
+							</div>
+							<!-- (hidden) -->
+							<textarea id="introduction" style="display:none;"></textarea>
+						</div>
+					</div>
+
+					<!-- 5 :   -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" for="content" data-lan-eng="Note">Note</label>
+						<div class="editor-box-wrap">
+							<!-- multi-editor.js (publishing structure) -->
+							<div class="jw-editor">
+								<div class="toolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt=""></button>
+										<button type="button" class="editor-btn font-color" onclick="setColor(this);">A</button>
+										<button type="button" class="background-color" onclick="setColor(this, 2);"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+											<option value="" selected>Font</option>
+											<option value="12px">12px</option>
+											<option value="14px">14px</option>
+											<option value="16px">16px</option>
+											<option value="18px">18px</option>
+											<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt=""></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt=""></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_bullet.svg" alt=""></button>
+									</div>
+								</div>
+
+								<div class="jweditor" id="memoEditor" data-placeholder=" "></div>
+							</div>
+							<!-- (hidden) -->
+							<textarea id="memo" style="display:none;"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Contract Information">Contract Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contract period">Contract period</label>
+						<div class="field-row">
+							<input id="contract-period" type="text" class="jw-w form-control" placeholder="Please select a date" readonly>
+							<button type="button" class="btn-icon calendar" aria-label=" " data-target="#contract-period"></button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_guideregfix1"></script>
+	<script src="../js/datepicker.js"></script>
+	<script src="../js/multi-editor.js"></script>
+	<script src="../js/passport-photo.js?v=20251226_guideregfix1"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		function generatePassword(minLen = 8, maxLen = 12) {
+			const len = Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
+			const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+			const numbers = '0123456789';
+			const symbols = '!@#$%^&*';
+			const pick = (s) => s[Math.floor(Math.random() * s.length)];
+			const chars = [pick(letters), pick(numbers), pick(symbols)];
+			const all = letters + numbers + symbols;
+			while (chars.length < len) chars.push(pick(all));
+			for (let i = chars.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[chars[i], chars[j]] = [chars[j], chars[i]];
+			}
+			return chars.join('');
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				//    (:   )
+				try { await loadCountryCodeOptions(); } catch (_) {}
+				
+				//    
+				const saveButton = document.querySelector('.page-toolbar-actions .jw-button.typeB');
+				if (saveButton) {
+					saveButton.addEventListener('click', handleSave);
+				}
+
+				//  
+				const autoBtn = document.getElementById('autoPwBtn');
+				if (autoBtn) {
+					autoBtn.addEventListener('click', (e) => {
+						e.preventDefault();
+						const pw = generatePassword();
+						const pwInput = document.getElementById('password');
+						if (pwInput) pwInput.value = pw;
+						//    
+						try {
+							navigator.clipboard.writeText(pw);
+							alert('    .');
+						} catch (_) {
+							alert('  . (    .)');
+						}
+					});
+				}
+				
+				// URL ID  ( )
+				const urlParams = new URLSearchParams(window.location.search);
+				const guideId = urlParams.get('id') || urlParams.get('guideId');
+
+				// create : ID (autofill)  
+				const usernameEl = document.getElementById('username');
+				if (usernameEl) {
+					const isCreate = !guideId;
+					if (isCreate) {
+						// placeholder   (  )
+						usernameEl.value = '';
+						usernameEl.setAttribute('readonly', 'readonly');
+						setTimeout(() => { usernameEl.value = ''; }, 0);
+						setTimeout(() => { usernameEl.value = ''; }, 50);
+						setTimeout(() => { usernameEl.value = ''; usernameEl.removeAttribute('readonly'); }, 250);
+						setTimeout(() => { usernameEl.value = ''; }, 600);
+					} else {
+						// edit :   
+						usernameEl.setAttribute('disabled', 'disabled');
+					}
+				}
+
+				// edit   // (  )
+				if (guideId) {
+					const pwInput = document.getElementById('password');
+					if (pwInput) {
+						pwInput.value = '';
+						pwInput.setAttribute('disabled', 'disabled');
+					}
+					document.getElementById('autoPwBtn')?.setAttribute('disabled', 'disabled');
+				}
+
+				if (guideId) {
+					await loadGuideDetail(guideId);
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodeOptions() {
+			const sel = document.getElementById('countryCode');
+			if (!sel) return;
+			try {
+				const current = (sel.value || '').trim() || '+63';
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json().catch(() => ({}));
+				if (!json?.success || !Array.isArray(json.countries)) return;
+				sel.innerHTML = '';
+				json.countries.forEach((c) => {
+					const code = String(c?.code || '').trim();
+					const name = String(c?.name || '').trim();
+					if (!code) return;
+					const opt = document.createElement('option');
+					opt.value = code;
+					opt.textContent = name ? `${name} (${code})` : code;
+					sel.appendChild(opt);
+				});
+				sel.value = current;
+			} catch (_) {
+				// ignore - keep fallback options
+			} finally {
+				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			}
+		}
+
+		function findQuillInstance(editorAreaEl) {
+			try {
+				if (!editorAreaEl) return null;
+				if (!window.Quill) return null;
+				if (typeof window.Quill.find !== 'function') return null;
+				return window.Quill.find(editorAreaEl);
+			} catch (_) {
+				return null;
+			}
+		}
+
+		async function loadGuideDetail(guideId) {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getGuideDetail&id=${guideId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.guide) {
+					const guide = result.data.guide;
+					console.log('Loaded guide for edit:', guide);
+
+					document.getElementById('guideName').value = guide.guideName || '';
+					document.getElementById('emailAddress').value = guide.emailAddress || '';
+					// phoneNumber (+82 010...)  
+					const ccEl = document.getElementById('countryCode');
+					const phoneEl = document.getElementById('phoneNumber');
+					const raw = String(guide.phoneNumber || '').trim();
+					const m = raw.match(/^(\\+\\d+)\\s*(.*)$/);
+					if (m && ccEl) {
+						ccEl.value = m[1];
+						phoneEl.value = (m[2] || '').trim();
+					} else {
+						phoneEl.value = raw;
+					}
+
+					// ID guideCode(    )
+					const usernameEl = document.getElementById('username');
+					if (usernameEl) {
+						usernameEl.value = guide.guideCode || '';
+						usernameEl.setAttribute('disabled', 'disabled');
+					}
+
+					const introEl = document.getElementById('introduction');
+					const memoEl = document.getElementById('memo');
+					if (introEl) introEl.value = guide.introduction || '';
+					if (memoEl) memoEl.value = guide.memo || '';
+
+					// multi-editor  
+					try {
+						const introArea = document.getElementById('introductionEditor');
+						const memoArea = document.getElementById('memoEditor');
+						if (introArea) {
+							const q = findQuillInstance(introArea);
+							if (q) q.clipboard.dangerouslyPasteHTML(guide.introduction || '');
+							else introArea.innerHTML = guide.introduction || '';
+						}
+						if (memoArea) {
+							const q = findQuillInstance(memoArea);
+							if (q) q.clipboard.dangerouslyPasteHTML(guide.memo || '');
+							else memoArea.innerHTML = guide.memo || '';
+						}
+					} catch (_) {}
+
+					//  ( range )
+					const contract = document.getElementById('contract-period');
+					const s = guide.contractStartDate ? String(guide.contractStartDate).slice(0, 10) : '';
+					const e = guide.contractEndDate ? String(guide.contractEndDate).slice(0, 10) : '';
+					if (contract) contract.value = (s && e) ? `${s} ~ ${e}` : (s || e || '');
+					
+					//  UI  ( ) .
+				}
+			} catch (error) {
+				console.error('Error loading guide detail:', error);
+			}
+		}
+
+		async function handleSave() {
+			try {
+				const guideName = (document.getElementById('guideName')?.value || '').trim();
+				const email = (document.getElementById('emailAddress')?.value || '').trim();
+				const countryCode = (document.getElementById('countryCode')?.value || '').trim();
+				const phoneLocal = (document.getElementById('phoneNumber')?.value || '').trim();
+				const username = (document.getElementById('username')?.value || '').trim();
+				const password = (document.getElementById('password')?.value || '').trim();
+				// multi-editor HTML ( hidden textarea fallback)
+				const introArea = document.getElementById('introductionEditor');
+				const memoArea = document.getElementById('memoEditor');
+				const introQuill = findQuillInstance(introArea);
+				const memoQuill = findQuillInstance(memoArea);
+				const introduction = String(introQuill?.root?.innerHTML ?? introArea?.innerHTML ?? document.getElementById('introduction')?.value ?? '').trim();
+				const memo = String(memoQuill?.root?.innerHTML ?? memoArea?.innerHTML ?? document.getElementById('memo')?.value ?? '').trim();
+
+				//  range 
+				const contractRaw = String(document.getElementById('contract-period')?.value || '').trim();
+				const m = contractRaw.match(/(\d{4}-\d{2}-\d{2})/g) || [];
+				const contractStartDate = (m[0] || '').trim();
+				const contractEndDate = (m[1] || m[0] || '').trim();
+				
+				if (!guideName || !email || !phoneLocal) {
+					alert('   . (, , )');
+					return;
+				}
+				
+				// URL ID  (  )
+				const urlParams = new URLSearchParams(window.location.search);
+				const guideId = urlParams.get('id') || urlParams.get('guideId');
+				
+				const formData = new FormData();
+				if (guideId) {
+					formData.append('action', 'updateGuide');
+					formData.append('guideId', guideId);
+				} else {
+					formData.append('action', 'createGuide');
+					if (!username) {
+						alert('ID .');
+						return;
+					}
+					if (!password) {
+						alert(' .');
+						return;
+					}
+					formData.append('username', username);
+					formData.append('password', password);
+				}
+				
+				formData.append('guideName', guideName);
+				formData.append('emailAddress', email);
+				formData.append('phoneNumber', (countryCode ? (countryCode + ' ') : '') + phoneLocal);
+				formData.append('introduction', introduction);
+				formData.append('memo', memo);
+				formData.append('contractStartDate', contractStartDate);
+				formData.append('contractEndDate', contractEndDate);
+				
+				//   
+				const fileInput = document.getElementById('file-profile') || document.querySelector('.passport-upload input[type="file"]');
+				if (fileInput && fileInput.files && fileInput.files[0]) formData.append('profileImage', fileInput.files[0]);
+				
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+				
+				const result = await response.json();
+				
+				if (result.success) {
+					alert(guideId ? '  .' : ' .');
+					// :    
+					window.location.href = 'guide-list.html';
+				} else {
+					alert(' : ' + (result.message || '   '));
+				}
+			} catch (error) {
+				console.error('Error saving guide:', error);
+				alert('   .');
+			}
+		}
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="jw-cols jw-between">
+				<h1 class="page-title" id="pageTitle" data-lan-eng="Register Sight">Register Sight</h1>
+				<a href="sight-list.html" class="jw-button" data-lan-eng="Back to List">
+					<img src="../image/arrow4.svg" alt=""> Back to List
+				</a>
+			</div>
+
+			<div class="card-panel jw-mgt32">
+				<h2 class="section-title" data-lan-eng="Sight Information">Sight Information</h2>
+
+				<div class="grid-wrap jw-mgt16">
+					<div class="grid-item">
+						<label class="label-name"><span data-lan-eng="Sight Name">Sight Name</span> <span class="req">*</span></label>
+						<input type="text" class="form-control" id="sightName" placeholder="Enter sight name" data-lan-eng-placeholder="Enter sight name">
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name"><span data-lan-eng="Search Name">Search Name</span></label>
+						<input type="text" class="form-control" id="searchName" placeholder="검색용 이름 (한글)" data-lan-eng-placeholder="Search name (Korean)">
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Status">Status</label>
+						<select class="select" id="sightStatus">
+							<option value="active" data-lan-eng="Active">Active</option>
+							<option value="inactive" data-lan-eng="Inactive">Inactive</option>
+						</select>
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name"><span data-lan-eng="Address">Address</span></label>
+						<input type="text" class="form-control" id="sightAddress" placeholder="Enter address" data-lan-eng-placeholder="Enter address">
+					</div>
+
+					<div class="grid-item col-span-3">
+						<label class="label-name"><span data-lan-eng="Description">Description</span></label>
+						<div class="editor-box-wrap">
+							<div class="jw-editor">
+								<div class="toolbar" id="descToolbar">
+									<div class="group">
+										<button type="button" class="editor-btn ql-bold"><img src="../image/editer_bold.svg" alt="Bold"></button>
+										<button type="button" class="editor-btn ql-italic"><img src="../image/editer_italic.svg" alt="Italic"></button>
+										<button type="button" class="editor-btn ql-underline"><img src="../image/editer_underline.svg" alt="Underline"></button>
+										<button type="button" class="editor-btn ql-strike"><img src="../image/editer_strikethrough.svg" alt="Strike"></button>
+									</div>
+									<div class="group">
+										<select class="ql-size">
+											<option value="" selected>Font</option>
+											<option value="12px">12px</option>
+											<option value="14px">14px</option>
+											<option value="16px">16px</option>
+											<option value="18px">18px</option>
+											<option value="24px">24px</option>
+										</select>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-align" value=""><img src="../image/editer_left.svg" alt="Left"></button>
+										<button type="button" class="editor-btn ql-align" value="center"><img src="../image/editer_center.svg" alt="Center"></button>
+										<button type="button" class="editor-btn ql-align" value="right"><img src="../image/editer_right.svg" alt="Right"></button>
+									</div>
+									<div class="group">
+										<button type="button" class="editor-btn ql-list" value="ordered"><img src="../image/editer_ordered.svg" alt="Ordered"></button>
+										<button type="button" class="editor-btn ql-list" value="bullet"><img src="../image/editer_unordered.svg" alt="Bullet"></button>
+									</div>
+								</div>
+								<div class="jweditor" id="sightDescriptionEditor" data-placeholder="Enter description"></div>
+							</div>
+						</div>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name"><span data-lan-eng="Sight Image">Sight Image</span></label>
+						<div class="upload-grid" data-field="sightImage">
+							<div class="upload-item jw-center" id="imageUploadArea">
+								<label class="inputFile">
+									<input id="sightImageInput" name="sightImage" type="file" accept="image/*" onchange="handleImagePreview(this);">
+									<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+								</label>
+							</div>
+						</div>
+						<p class="form-desc" data-lan-eng="Recommended: JPG, PNG, max 5MB">Recommended: JPG, PNG, max 5MB</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="jw-cols jw-gap16 jw-end jw-mgt32">
+				<button type="button" class="jw-button typeB" onclick="location.href='sight-list.html'" data-lan-eng="Cancel">Cancel</button>
+				<button type="button" class="jw-button typeA" onclick="saveSight()" data-lan-eng="Save">Save</button>
+			</div>
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let quillEditor = null;
+		let sightId = null;
+		let existingImage = null;
+		let selectedImageFile = null; // 선택한 이미지 파일 저장
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			// Initialize Quill editor
+			const Size = Quill.import('attributors/style/size');
+			Size.whitelist = ['12px', '14px', '16px', '18px', '24px'];
+			Quill.register(Size, true);
+
+			quillEditor = new Quill('#sightDescriptionEditor', {
+				modules: {
+					toolbar: '#descToolbar'
+				},
+				theme: 'snow',
+				placeholder: 'Enter description'
+			});
+
+			// Check if editing existing sight
+			const urlParams = new URLSearchParams(window.location.search);
+			sightId = urlParams.get('id');
+
+			if (sightId) {
+				document.getElementById('pageTitle').textContent = 'Edit Sight';
+				document.getElementById('pageTitle').setAttribute('data-lan-eng', 'Edit Sight');
+				await loadSightDetail(sightId);
+			}
+		});
+
+		async function loadSightDetail(id) {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getSightDetail&sightId=${id}`);
+				const data = await response.json();
+
+				const sight = data.data?.sight || data.sight;
+				if (!data.success || !sight) {
+					throw new Error(data.message || 'Failed to load sight');
+				}
+
+				document.getElementById('sightName').value = sight.sightName || '';
+				document.getElementById('searchName').value = sight.searchName || '';
+				document.getElementById('sightAddress').value = sight.sightAddress || '';
+				document.getElementById('sightStatus').value = sight.status || 'active';
+
+				if (sight.sightDescription) {
+					quillEditor.root.innerHTML = sight.sightDescription;
+				}
+
+				if (sight.sightImage) {
+					existingImage = sight.sightImage;
+					showImagePreview('/uploads/sights/' + sight.sightImage);
+				}
+
+			} catch (e) {
+				console.error('loadSightDetail error:', e);
+				alert('Error loading sight: ' + e.message);
+				// Sight not found (deleted) — fall back to create mode
+				sightId = null;
+				document.getElementById('pageTitle').textContent = 'Register Sight';
+				document.getElementById('pageTitle').setAttribute('data-lan-eng', 'Register Sight');
+			}
+		}
+
+		function handleImagePreview(input) {
+			if (input.files && input.files[0]) {
+				selectedImageFile = input.files[0]; // 파일 저장
+				const reader = new FileReader();
+				reader.onload = function(e) {
+					showImagePreview(e.target.result);
+				};
+				reader.readAsDataURL(input.files[0]);
+			}
+		}
+
+		function showImagePreview(src) {
+			const uploadArea = document.getElementById('imageUploadArea');
+			uploadArea.classList.add('is-filled');
+			uploadArea.innerHTML = `
+				<div class="preview-wrap">
+					<img src="${src}" alt="Preview" class="preview" style="max-width:200px;max-height:150px;object-fit:cover;">
+					<button type="button" class="btn-remove" onclick="removeImage()">
+						<img src="../image/close.svg" alt="Remove">
+					</button>
+				</div>
+				<label class="inputFile" style="margin-top:8px;">
+					<input id="sightImageInput" name="sightImage" type="file" accept="image/*" onchange="handleImagePreview(this);">
+					<button type="button" class="btn-upload btn-sm"><span data-lan-eng="Change">Change</span></button>
+				</label>
+			`;
+		}
+
+		function removeImage() {
+			existingImage = null;
+			selectedImageFile = null; // 파일도 초기화
+			const uploadArea = document.getElementById('imageUploadArea');
+			uploadArea.classList.remove('is-filled');
+			uploadArea.innerHTML = `
+				<label class="inputFile">
+					<input id="sightImageInput" name="sightImage" type="file" accept="image/*" onchange="handleImagePreview(this);">
+					<button type="button" class="btn-upload"><img src="../image/upload3.svg" alt=""> <span data-lan-eng="Image upload">Image upload</span></button>
+				</label>
+			`;
+		}
+
+		async function saveSight() {
+			const sightName = document.getElementById('sightName').value.trim();
+			if (!sightName) {
+				alert('Please enter sight name');
+				document.getElementById('sightName').focus();
+				return;
+			}
+
+			const searchName = document.getElementById('searchName').value.trim();
+			const sightAddress = document.getElementById('sightAddress').value.trim();
+			const sightDescription = quillEditor.root.innerHTML;
+			const status = document.getElementById('sightStatus').value;
+
+			try {
+				const formData = new FormData();
+				formData.append('action', sightId ? 'updateSight' : 'createSight');
+				if (sightId) formData.append('sightId', sightId);
+				formData.append('sightName', sightName);
+				formData.append('searchName', searchName);
+				formData.append('sightAddress', sightAddress);
+				formData.append('sightDescription', sightDescription);
+				formData.append('status', status);
+
+				// 저장된 파일 사용
+				if (selectedImageFile) {
+					formData.append('sightImage', selectedImageFile);
+				}
+
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					body: formData
+				});
+				const data = await response.json();
+
+				if (data.success) {
+					alert(sightId ? 'Sight updated successfully' : 'Sight created successfully');
+					location.href = 'sight-list.html';
+				} else {
+					alert(data.message || 'Failed to save sight');
+				}
+
+			} catch (e) {
+				console.error('saveSight error:', e);
+				alert('Error saving sight: ' + e.message);
+			}
+		}
+	</script>
+
+</body>
+</html>

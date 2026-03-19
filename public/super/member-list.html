@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Member List">Member List</h1>
+
+			<div class="card-panel jw-mgt32">
+
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Search results">Search results</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+						<div class="search-field">
+							<input type="text" class="search-input" id="searchInput" placeholder=" " data-lan-eng="Customer Name Search">
+							<button type="button" class="jw-button search-btn" aria-label="" onclick="applyFilters()">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col class="col-100"> <!-- ID -->
+						<col> <!--   -->
+						<col> <!--  (auto) -->
+						<col> <!--  -->
+						<col class="col-140"> <!--  -->
+						<col class="col-100"> <!--  -->
+						<col class="col-120"> <!-- Actions -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no">No</th>
+							<th data-lan-eng="ID">ID</th>
+							<th data-lan-eng="Member type">Member type</th>
+							<th data-lan-eng="Name">Name</th>
+							<th data-lan-eng="Email">Email</th>
+							<th data-lan-eng="Phone">Phone</th>
+							<th data-lan-eng="Status" class="is-center">Status</th>
+							<th data-lan-eng="Actions" class="is-center">Actions</th>
+						</tr>
+					</thead>
+					<tbody id="membersTableBody">
+						<tr>
+							<td colspan="8" class="is-center">  ...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				
+				<div class="jw-pagebox" role="navigation" aria-label="" id="pagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list" id="pageButtons"></div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+			
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadCsvBtn" data-lan-eng="Download">Download</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 20;
+		let currentFilters = { search: '' };
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			// Prevent full page refresh when pressing Enter in search input (dev_tasks #104)
+			try {
+				const form = document.getElementById('filterForm');
+				form?.addEventListener('submit', (e) => { e.preventDefault(); applyFilters(); });
+				const inp = document.getElementById('searchInput');
+				inp?.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter') { e.preventDefault(); applyFilters(); }
+				});
+			} catch (_) {}
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				await loadMembers();
+				setupDownload();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			currentPage = 1;
+			loadMembers();
+		}
+
+		async function loadMembers(page = currentPage) {
+			try {
+				const tbody = document.getElementById('membersTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="8" class="is-center">  ...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getMembers',
+					page: page,
+					limit: limit
+				});
+				
+				if (currentFilters.search) params.append('search', currentFilters.search);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { members, pagination } = result.data;
+					
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = pagination.totalCount || 0;
+
+					if (tbody) {
+						if (members.length === 0) {
+							tbody.innerHTML = '<tr><td colspan="8" class="is-center"> .</td></tr>';
+						} else {
+							tbody.innerHTML = members.map((member) => {
+								const accountTypeLabel = getMemberTypeLabel(member);
+								const status = (member.accountStatus || '') === 'active' ? '' : (member.accountStatus || '') === 'inactive' ? '' : '';
+								const detailUrl = getMemberDetailUrl(member);
+								return `
+									<tr data-href="${detailUrl}" style="cursor: pointer;">
+										<td class="no is-center">${member.rowNum || ''}</td>
+										<td class="is-center">${escapeHtml(member.accountId || '')}</td>
+										<td class="is-center">${escapeHtml(accountTypeLabel)}</td>
+										<td class="is-center">${escapeHtml(member.memberName || '')}</td>
+										<td class="is-center">${escapeHtml(member.emailAddress || '')}</td>
+										<td class="is-center">${escapeHtml(member.contactNo || '')}</td>
+										<td class="is-center">${escapeHtml(status)}</td>
+										<td class="is-center">
+											<button type="button" class="jw-button typeD" onclick="window.location.href='${detailUrl}'"></button>
+										</td>
+									</tr>
+								`;
+							}).join('');
+						}
+					}
+
+					currentPage = pagination.currentPage;
+					renderPagination(pagination);
+					bindRowClick(tbody);
+				} else {
+					const tbody = document.getElementById('membersTableBody');
+					if (tbody) {
+						tbody.innerHTML = `<tr><td colspan="8" class="is-center">${escapeHtml(result.message || '    .')}</td></tr>`;
+					}
+				}
+			} catch (error) {
+				console.error('Error loading members:', error);
+				const tbody = document.getElementById('membersTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="8" class="is-center">    .</td></tr>';
+				}
+			}
+		}
+
+		function getMemberTypeLabel(member) {
+			if (!member) return '';
+			// accounts.accountType: guest(=customer), agent, guide
+			if (member.accountType === 'guest') {
+				return (member.clientType === 'Wholeseller') ? 'B2B' : 'B2C';
+			}
+			if (member.accountType === 'agent') return 'Agent';
+			if (member.accountType === 'guide') return 'Guide';
+			// admin/employee API 
+			return '';
+		}
+
+		function getMemberDetailUrl(member) {
+			if (!member) return '#';
+			if (member.accountType === 'guest') {
+				return (member.clientType === 'Wholeseller')
+					? `b2b-customer-detail.html?id=${encodeURIComponent(member.accountId)}`
+					: `b2c-customer-detail.html?id=${encodeURIComponent(member.accountId)}`;
+			}
+			if (member.accountType === 'agent') return `agent-detail.html?id=${encodeURIComponent(member.accountId)}`;
+			if (member.accountType === 'guide') return `guide-detail.html?id=${encodeURIComponent(member.accountId)}`;
+			return '#';
+		}
+
+		function bindRowClick(tbody) {
+			if (!tbody || tbody._rowClickBound) return;
+			tbody.addEventListener('click', (e) => {
+				if (e.target.closest('button')) return;
+				const tr = e.target.closest('tr[data-href]');
+				if (!tr) return;
+				const href = tr.getAttribute('data-href');
+				if (href && href !== '#') window.location.href = href;
+			});
+			tbody._rowClickBound = true;
+		}
+
+		function renderPagination(pagination) {
+			const totalPages = Math.max(1, Number(pagination?.totalPages || 1));
+			const current = Math.max(1, Number(pagination?.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			const pageBox = document.getElementById('pagination');
+			const pageWrap = document.getElementById('pageButtons');
+			if (!pageBox || !pageWrap) return;
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => { currentPage = p; loadMembers(p); });
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = pageBox.querySelector('.first');
+			const prevBtn = pageBox.querySelector('.prev');
+			const nextBtn = pageBox.querySelector('.next');
+			const lastBtn = pageBox.querySelector('.last');
+
+			// prev/next " (5)" 
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => { currentPage = 1; loadMembers(1); };
+			if (lastBtn) lastBtn.onclick = () => { currentPage = totalPages; loadMembers(totalPages); };
+			if (prevBtn) prevBtn.onclick = () => { currentPage = prevTarget; loadMembers(prevTarget); };
+			if (nextBtn) nextBtn.onclick = () => { currentPage = nextTarget; loadMembers(nextTarget); };
+		}
+
+		function setupDownload() {
+			const btn = document.getElementById('downloadCsvBtn');
+			if (!btn || btn._bound) return;
+			btn.addEventListener('click', () => {
+				const params = new URLSearchParams({ action: 'exportMembersCsv' });
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			});
+			btn._bound = true;
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<style>
+		.tab-wrap { display: flex; gap: 8px; margin-bottom: 24px; }
+		.tab-btn {
+			padding: 8px 20px; border: 1px solid #ddd; border-radius: 6px;
+			background: #fff; cursor: pointer; font-size: 14px; font-weight: 500; color: #666;
+			transition: all .2s;
+		}
+		.tab-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+
+		.summary-stats {
+			display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px;
+		}
+		.stat-card {
+			background: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center;
+		}
+		.stat-card .stat-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+		.stat-card .stat-value { font-size: 24px; font-weight: 700; color: #333; }
+
+		.occupancy-bar-wrap {
+			display: flex; align-items: center; gap: 10px;
+		}
+		.occupancy-bar {
+			flex: 1; height: 20px; background: #eee; border-radius: 10px; overflow: hidden;
+		}
+		.occupancy-bar-fill {
+			height: 100%; border-radius: 10px; transition: width .3s;
+		}
+		.occupancy-pct { font-size: 13px; font-weight: 600; min-width: 48px; text-align: right; }
+
+		.occupancy-green .occupancy-bar-fill { background: #34a853; }
+		.occupancy-orange .occupancy-bar-fill { background: #f9ab00; }
+		.occupancy-red .occupancy-bar-fill { background: #ea4335; }
+
+		.total-row td { font-weight: 700 !important; background: #f0f4ff !important; }
+
+		/* ===== Mobile Responsive ===== */
+		@media (max-width: 768px) {
+			/* Sidebar overlay */
+			.layout-nav {
+				position: fixed; left: -280px; top: 70px; bottom: 0;
+				width: 260px; z-index: 200; background: #fff;
+				transition: left 0.3s ease;
+				box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+				padding: 20px 12px; overflow-y: auto;
+			}
+			.layout-nav.open { left: 0; }
+			.nav-overlay {
+				display: none; position: fixed; inset: 0; top: 70px;
+				background: rgba(0,0,0,0.4); z-index: 199;
+			}
+			.nav-overlay.show { display: block; }
+			.hamburger-btn {
+				display: flex; align-items: center; justify-content: center;
+				width: 40px; height: 40px; background: none; border: none;
+				cursor: pointer; font-size: 24px;
+			}
+			.layout-content { padding: 16px; }
+			.page-title { font-size: 20px !important; }
+			.card-panel { padding: 16px; border-radius: 16px; }
+
+			/* Tabs */
+			.tab-wrap { flex-wrap: wrap; gap: 4px; }
+			.tab-btn { padding: 6px 14px; font-size: 13px; flex: 1; text-align: center; min-width: 0; }
+
+			/* Summary cards */
+			.summary-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+			.stat-card { padding: 14px; }
+			.stat-card .stat-value { font-size: 18px; }
+
+			/* Table -> Card */
+			.jw-tableA { border: none; }
+			.jw-tableA colgroup { display: none; }
+			.jw-tableA thead { display: none; }
+			.jw-tableA tbody tr {
+				display: block; border: 1px solid #e5e7eb; border-radius: 12px;
+				padding: 14px; margin-bottom: 10px; background: #fff;
+			}
+			.jw-tableA tbody td {
+				display: flex; justify-content: space-between; align-items: center;
+				padding: 6px 0; border: none; height: auto; white-space: normal;
+				text-overflow: unset; overflow: visible;
+			}
+			.jw-tableA tbody td::before {
+				content: attr(data-label);
+				font-weight: 600; color: #64748b; font-size: 13px;
+				flex-shrink: 0; margin-right: 12px; min-width: 100px;
+			}
+			.jw-tableA tbody td.no { display: none; }
+
+			/* Occupancy bar in card */
+			.occupancy-bar-wrap { flex-direction: column; align-items: flex-end; gap: 4px; }
+			.occupancy-bar { width: 100%; }
+
+			/* TOTAL row highlight */
+			.total-row { border: 2px solid #3b82f6 !important; background: #f0f4ff; }
+
+			/* Download button */
+			.controller { margin-top: 20px; }
+			.controller .jw-button { width: 100%; }
+
+			/* Pagination */
+			.jw-pagebox { margin-top: 16px; }
+		}
+		@media (min-width: 769px) {
+			.hamburger-btn { display: none; }
+			.nav-overlay { display: none !important; }
+		}
+		@media (max-width: 480px) {
+			.summary-stats { grid-template-columns: 1fr; }
+			.stat-card .stat-value { font-size: 16px; }
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+			<h1 class="page-title" data-lan-eng="Sales Dashboard">Sales Dashboard</h1>
+
+			<div class="card-panel jw-mgt32">
+
+				<div class="tab-wrap">
+					<button type="button" class="tab-btn active" data-tab="all">All Bookings</button>
+					<button type="button" class="tab-btn" data-tab="confirmed">Confirmed Only</button>
+					<button type="button" class="tab-btn" data-tab="landonly">Land Only</button>
+				</div>
+
+				<div class="summary-stats">
+					<div class="stat-card">
+						<div class="stat-label">Total Inventory</div>
+						<div class="stat-value" id="summaryCapacity">-</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-label">Booked Seats</div>
+						<div class="stat-value" id="summaryBooked">-</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-label">Available Seats</div>
+						<div class="stat-value" id="summaryAvailable">-</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-label">Total Amount (&#8369;)</div>
+						<div class="stat-value" id="summaryAmount">-</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-label">Occupancy Rate</div>
+						<div class="stat-value" id="summaryOccupancy">-</div>
+					</div>
+				</div>
+
+				<div class="list-header">
+					<div class="result-count">
+						<span>Search results</span> <span class="result-count__num" id="totalCount">0</span><span> items</span>
+					</div>
+				</div>
+
+				<table class="jw-tableA">
+					<colgroup>
+						<col style="width:5%">
+						<col style="width:12%">
+						<col style="width:12%">
+						<col style="width:10%">
+						<col style="width:11%">
+						<col style="width:22%">
+						<col style="width:28%">
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th class="is-center">Month</th>
+							<th class="is-center">Inventory</th>
+							<th class="is-center">Booked</th>
+							<th class="is-center">Available</th>
+							<th class="is-center">Occupancy</th>
+							<th class="is-center">Amount (&#8369;)</th>
+						</tr>
+					</thead>
+					<tbody id="salesTableBody">
+						<tr>
+							<td colspan="7" class="is-center">Loading...</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<div class="jw-pagebox" role="navigation" aria-label="">
+					<div class="contents">
+						<button type="button" class="first" aria-label="first">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label="prev">
+							<img src="../image/prev.svg" alt="">
+						</button>
+						<div class="page" role="list">
+							<button type="button" class="p show" role="listitem" aria-current="page">1</button>
+						</div>
+						<button type="button" class="next" aria-label="next">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label="last">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadBtn" onclick="handleDownload()" data-lan-eng="Download">Download</button>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentPage = 1;
+		const limit = 50;
+		let currentTab = 'all';
+		let cachedData = null;
+
+		function initMobileMenu() {
+			const header = document.querySelector('.layout-header');
+			if (!header) return;
+			const brand = header.querySelector('.brand');
+			if (!brand) return;
+			const btn = document.createElement('button');
+			btn.className = 'hamburger-btn';
+			btn.innerHTML = '☰';
+			btn.setAttribute('aria-label', 'Menu');
+			brand.parentElement.insertBefore(btn, brand);
+			const overlay = document.createElement('div');
+			overlay.className = 'nav-overlay';
+			document.body.appendChild(overlay);
+			btn.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.toggle('open');
+				overlay.classList.toggle('show');
+			});
+			overlay.addEventListener('click', () => {
+				document.querySelector('.layout-nav').classList.remove('open');
+				overlay.classList.remove('show');
+			});
+		}
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				initMobileMenu();
+
+				// Tab click handlers
+				document.querySelectorAll('.tab-btn').forEach(btn => {
+					btn.addEventListener('click', () => {
+						document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+						btn.classList.add('active');
+						currentTab = btn.dataset.tab;
+						if (cachedData) {
+							renderDashboard(cachedData);
+						}
+					});
+				});
+
+				await loadDashboard();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadDashboard(page = 1) {
+			try {
+				const tbody = document.getElementById('salesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">Loading...</td></tr>';
+				}
+
+				const params = new URLSearchParams({
+					action: 'getSalesDashboard',
+					page: page,
+					limit: limit
+				});
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (response.status === 401) {
+					alert('Session expired.');
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					cachedData = result.data;
+					currentPage = result.data.pagination?.currentPage || 1;
+					renderDashboard(cachedData);
+				}
+			} catch (error) {
+				console.error('Error loading dashboard:', error);
+				const tbody = document.getElementById('salesTableBody');
+				if (tbody) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">Failed to load data.</td></tr>';
+				}
+			}
+		}
+
+		function getTabValues(item, grandTotals, tab) {
+			const isLandOnly = tab === 'landonly';
+			const isConfirmed = tab === 'confirmed';
+
+			if (item) {
+				// Per-row values
+				const cap = isLandOnly ? item.landOnlyCapacity : item.normalCapacity;
+				let seats, amt;
+				if (isLandOnly) {
+					seats = item.landOnlyBookedSeats;
+					amt = item.landOnlyTotalAmount;
+				} else if (isConfirmed) {
+					seats = item.confirmedBookedSeats;
+					amt = item.confirmedTotalAmount;
+				} else {
+					seats = item.allBookedSeats;
+					amt = item.allTotalAmount;
+				}
+				return { cap, seats, amt };
+			} else {
+				// Grand totals
+				const g = grandTotals;
+				const cap = isLandOnly ? g.landOnlyCapacity : g.normalCapacity;
+				let seats, amt;
+				if (isLandOnly) {
+					seats = g.landOnlyBookedSeats;
+					amt = g.landOnlyTotalAmount;
+				} else if (isConfirmed) {
+					seats = g.confirmedBookedSeats;
+					amt = g.confirmedTotalAmount;
+				} else {
+					seats = g.allBookedSeats;
+					amt = g.allTotalAmount;
+				}
+				return { cap, seats, amt };
+			}
+		}
+
+		function renderDashboard(data) {
+			const { months, grandTotals, pagination } = data;
+
+			// Summary cards
+			const totals = getTabValues(null, grandTotals, currentTab);
+			const occ = totals.cap > 0 ? (totals.seats / totals.cap * 100).toFixed(1) : '0.0';
+
+			document.getElementById('summaryCapacity').textContent = Number(totals.cap).toLocaleString();
+			document.getElementById('summaryBooked').textContent = Number(totals.seats).toLocaleString();
+			document.getElementById('summaryAvailable').textContent = Number(Math.max(0, totals.cap - totals.seats)).toLocaleString();
+			document.getElementById('summaryAmount').textContent = '\u20B1' + Number(totals.amt).toLocaleString();
+			document.getElementById('summaryOccupancy').textContent = occ + '%';
+
+			// Total count
+			document.getElementById('totalCount').textContent = pagination?.totalCount || months.length;
+
+			// Table body
+			const tbody = document.getElementById('salesTableBody');
+			if (!tbody) return;
+
+			if (!months || months.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="7" class="is-center">No data available.</td></tr>';
+				return;
+			}
+
+			let html = months.map((item, index) => {
+				const rowNum = (pagination.currentPage - 1) * pagination.limit + index + 1;
+				const v = getTabValues(item, null, currentTab);
+				const pct = v.cap > 0 ? (v.seats / v.cap * 100).toFixed(1) : '0.0';
+				const colorClass = pct < 50 ? 'occupancy-green' : pct < 80 ? 'occupancy-orange' : 'occupancy-red';
+
+				const avail = Math.max(0, v.cap - v.seats);
+				return `<tr>
+					<td class="no is-center" data-label="No">${rowNum}</td>
+					<td class="is-center" data-label="Month">${escapeHtml(item.yearMonth)}</td>
+					<td class="is-center" data-label="Total Inventory">${Number(v.cap).toLocaleString()}</td>
+					<td class="is-center" data-label="Booked Seats">${Number(v.seats).toLocaleString()}</td>
+					<td class="is-center" data-label="Available Seats">${Number(avail).toLocaleString()}</td>
+					<td class="is-center" data-label="Occupancy Rate">
+						<div class="occupancy-bar-wrap ${colorClass}">
+							<div class="occupancy-bar"><div class="occupancy-bar-fill" style="width:${Math.min(pct, 100)}%"></div></div>
+							<span class="occupancy-pct">${pct}%</span>
+						</div>
+					</td>
+					<td class="is-center" data-label="Total Amount">${Number(v.amt).toLocaleString()}</td>
+				</tr>`;
+			}).join('');
+
+			// TOTAL row
+			const totalPct = totals.cap > 0 ? (totals.seats / totals.cap * 100).toFixed(1) : '0.0';
+			const totalColor = totalPct < 50 ? 'occupancy-green' : totalPct < 80 ? 'occupancy-orange' : 'occupancy-red';
+
+			const totalAvail = Math.max(0, totals.cap - totals.seats);
+			html += `<tr class="total-row">
+				<td class="no is-center" data-label="No"></td>
+				<td class="is-center" data-label="Month">TOTAL</td>
+				<td class="is-center" data-label="Total Inventory">${Number(totals.cap).toLocaleString()}</td>
+				<td class="is-center" data-label="Booked Seats">${Number(totals.seats).toLocaleString()}</td>
+				<td class="is-center" data-label="Available Seats">${Number(totalAvail).toLocaleString()}</td>
+				<td class="is-center" data-label="Occupancy Rate">
+					<div class="occupancy-bar-wrap ${totalColor}">
+						<div class="occupancy-bar"><div class="occupancy-bar-fill" style="width:${Math.min(totalPct, 100)}%"></div></div>
+						<span class="occupancy-pct">${totalPct}%</span>
+					</div>
+				</td>
+				<td class="is-center" data-label="Total Amount">${Number(totals.amt).toLocaleString()}</td>
+			</tr>`;
+
+			tbody.innerHTML = html;
+
+			// Pagination
+			if (pagination) {
+				updatePagination(pagination);
+			}
+		}
+
+		function updatePagination(pagination) {
+			const box = document.querySelector('.jw-pagebox');
+			if (!box) return;
+			const pageWrap = box.querySelector('.page');
+			if (!pageWrap) return;
+
+			const totalPages = Math.max(1, Number(pagination.totalPages || 1));
+			const current = Math.max(1, Number(pagination.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => loadDashboard(p));
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = box.querySelector('.first');
+			const prevBtn = box.querySelector('.prev');
+			const nextBtn = box.querySelector('.next');
+			const lastBtn = box.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => loadDashboard(1);
+			if (lastBtn) lastBtn.onclick = () => loadDashboard(totalPages);
+			if (prevBtn) prevBtn.onclick = () => loadDashboard(prevTarget);
+			if (nextBtn) nextBtn.onclick = () => loadDashboard(nextTarget);
+		}
+
+		async function handleDownload() {
+			try {
+				const params = new URLSearchParams({
+					action: 'downloadSalesDashboard'
+				});
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			} catch (error) {
+				console.error('Error downloading CSV:', error);
+				alert('Failed to download CSV.');
+			}
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>

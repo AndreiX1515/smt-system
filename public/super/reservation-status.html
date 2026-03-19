@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>Reservation Status - SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+	<style>
+		/* Compact Status Cards */
+		.status-cards-compact {
+			display: flex;
+			gap: 16px;
+			margin-top: 24px;
+			margin-bottom: 24px;
+		}
+		.status-card-mini {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			background: #fff;
+			border-radius: 12px;
+			padding: 14px 18px;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			cursor: pointer;
+			transition: all 0.2s ease;
+			border: 2px solid transparent;
+			min-width: 180px;
+		}
+		.status-card-mini:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+		}
+		.status-card-mini.pending:hover {
+			border-color: #f59e0b;
+		}
+		.status-card-mini.pending-update:hover {
+			border-color: #0ea5e9;
+		}
+		.status-card-mini .card-icon {
+			width: 36px;
+			height: 36px;
+			border-radius: 8px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+		}
+		.status-card-mini .card-icon svg {
+			width: 18px;
+			height: 18px;
+			stroke: #fff;
+		}
+		.status-card-mini.pending .card-icon {
+			background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+		}
+		.status-card-mini.pending-update .card-icon {
+			background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+		}
+		.status-card-mini .card-info {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+		.status-card-mini .card-count {
+			font-size: 28px;
+			font-weight: 700;
+			color: #1f2937;
+			line-height: 1;
+		}
+		.status-card-mini .card-label {
+			font-size: 12px;
+			color: #6b7280;
+			font-weight: 500;
+		}
+		.status-card-mini .card-arrow {
+			margin-left: auto;
+			color: #9ca3af;
+			font-size: 16px;
+			transition: all 0.2s ease;
+		}
+		.status-card-mini:hover .card-arrow {
+			color: #374151;
+			transform: translateX(2px);
+		}
+
+		/* Dashboard Grid */
+		.dashboard-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 24px;
+			margin-top: 8px;
+		}
+		.dashboard-panel {
+			background: #fff;
+			border-radius: 12px;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			padding: 20px;
+			min-height: 400px;
+			display: flex;
+			flex-direction: column;
+		}
+		.panel-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 16px;
+			padding-bottom: 12px;
+			border-bottom: 1px solid #e5e7eb;
+		}
+		.panel-header h2 {
+			font-size: 16px;
+			font-weight: 600;
+			color: #1f2937;
+			margin: 0;
+		}
+		.panel-header a {
+			font-size: 13px;
+			color: #2563eb;
+			text-decoration: none;
+			font-weight: 500;
+		}
+		.panel-header a:hover {
+			text-decoration: underline;
+		}
+
+		/* Compact Table */
+		.jw-tableA.is-compact {
+			font-size: 12px;
+		}
+		#bookingsPanel .jw-tableA {
+			table-layout: fixed;
+			width: 100%;
+		}
+		.jw-tableA.is-compact th,
+		.jw-tableA.is-compact td {
+			padding: 8px 10px;
+		}
+		.jw-tableA.is-compact th {
+			background: #f9fafb;
+			font-weight: 600;
+			color: #374151;
+		}
+		.jw-tableA.is-compact tbody tr {
+			cursor: pointer;
+			transition: background 0.15s;
+		}
+		.jw-tableA.is-compact tbody tr:hover {
+			background: #f3f4f6;
+		}
+		.jw-tableA.is-compact .booking-link {
+			color: #2563eb;
+			font-weight: 500;
+			text-decoration: none;
+		}
+		.jw-tableA.is-compact .booking-link:hover {
+			text-decoration: underline;
+		}
+
+		/* Status Badges */
+		.status-badge {
+			display: inline-block;
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 11px;
+			font-weight: 500;
+			text-transform: capitalize;
+		}
+		.status-badge.pending {
+			background: #fef3c7;
+			color: #92400e;
+		}
+		.status-badge.pending_update {
+			background: #e0f2fe;
+			color: #0369a1;
+		}
+		.status-badge.confirmed {
+			background: #d1fae5;
+			color: #065f46;
+		}
+		.status-badge.cancelled {
+			background: #fee2e2;
+			color: #991b1b;
+		}
+		.status-badge.completed {
+			background: #e5e7eb;
+			color: #374151;
+		}
+		.status-badge.rejected {
+			background: #fce7f3;
+			color: #9d174d;
+		}
+
+		/* Empty State */
+		.empty-state {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 40px 20px;
+			color: #9ca3af;
+			flex: 1;
+		}
+		.empty-state svg {
+			width: 48px;
+			height: 48px;
+			margin-bottom: 12px;
+			stroke: #d1d5db;
+		}
+		.empty-state p {
+			font-size: 14px;
+			margin: 0;
+		}
+
+		/* Refresh Controls */
+		.refresh-controls {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+			margin-bottom: 16px;
+		}
+		.last-updated {
+			font-size: 13px;
+			color: #6b7280;
+		}
+		.refresh-btn {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 8px 16px;
+			border: 1px solid #d1d5db;
+			border-radius: 8px;
+			background: #fff;
+			font-size: 13px;
+			color: #374151;
+			cursor: pointer;
+			transition: all 0.2s;
+		}
+		.refresh-btn:hover {
+			background: #f9fafb;
+			border-color: #9ca3af;
+		}
+		.refresh-btn svg {
+			width: 16px;
+			height: 16px;
+		}
+		.refresh-btn.spinning svg {
+			animation: spin 1s linear infinite;
+		}
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+		.auto-toggle {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			font-size: 13px;
+			color: #6b7280;
+		}
+		.toggle-switch {
+			position: relative;
+			width: 40px;
+			height: 22px;
+		}
+		.toggle-switch input {
+			opacity: 0;
+			width: 0;
+			height: 0;
+		}
+		.toggle-slider {
+			position: absolute;
+			cursor: pointer;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-color: #d1d5db;
+			transition: 0.3s;
+			border-radius: 22px;
+		}
+		.toggle-slider:before {
+			position: absolute;
+			content: "";
+			height: 16px;
+			width: 16px;
+			left: 3px;
+			bottom: 3px;
+			background-color: white;
+			transition: 0.3s;
+			border-radius: 50%;
+		}
+		.toggle-switch input:checked + .toggle-slider {
+			background-color: #2563eb;
+		}
+		.toggle-switch input:checked + .toggle-slider:before {
+			transform: translateX(18px);
+		}
+
+		/* Responsive */
+		@media (max-width: 1200px) {
+			.dashboard-grid {
+				grid-template-columns: 1fr;
+			}
+		}
+		@media (max-width: 768px) {
+			.status-cards-compact {
+				flex-direction: column;
+			}
+			.status-card-mini {
+				width: 100%;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<header class="layout-header"></header>
+
+	<main class="layout-main">
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Reservation Status">Reservation Status</h1>
+
+			<!-- Refresh Controls -->
+			<div class="refresh-controls jw-mgt24">
+				<span class="last-updated">Last updated: <strong id="lastUpdated">-</strong></span>
+				<div class="auto-toggle">
+					<label class="toggle-switch">
+						<input type="checkbox" id="autoRefreshToggle" checked>
+						<span class="toggle-slider"></span>
+					</label>
+					<span>Auto-refresh (30s)</span>
+				</div>
+				<button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M23 4v6h-6M1 20v-6h6"/>
+						<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+					</svg>
+					Refresh
+				</button>
+			</div>
+
+			<!-- Compact Status Cards -->
+			<div class="status-cards-compact">
+				<div class="status-card-mini pending" onclick="goToPendingList('pending')">
+					<div class="card-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+							<circle cx="12" cy="12" r="10"/>
+							<polyline points="12,6 12,12 16,14"/>
+						</svg>
+					</div>
+					<div class="card-info">
+						<span class="card-count" id="pendingCount">0</span>
+						<span class="card-label">Pending</span>
+					</div>
+					<div class="card-arrow">→</div>
+				</div>
+				<div class="status-card-mini pending-update" onclick="goToPendingList('pending_update')">
+					<div class="card-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+							<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+							<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+						</svg>
+					</div>
+					<div class="card-info">
+						<span class="card-count" id="pendingUpdateCount">0</span>
+						<span class="card-label">Pending Update</span>
+					</div>
+					<div class="card-arrow">→</div>
+				</div>
+			</div>
+
+			<!-- Dashboard Grid -->
+			<div class="dashboard-grid">
+				<!-- Status Change History -->
+				<div class="dashboard-panel">
+					<div class="panel-header">
+						<h2>Status Change History</h2>
+						<a href="status-history.html">View All</a>
+					</div>
+					<div class="panel-content" id="historyPanel">
+						<table class="jw-tableA is-compact">
+							<thead>
+								<tr>
+									<th style="width:40px">No</th>
+									<th>Booking ID</th>
+									<th>Previous</th>
+									<th>New</th>
+									<th>Changed By</th>
+									<th style="width:100px">Changed At</th>
+								</tr>
+							</thead>
+							<tbody id="historyTableBody">
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<!-- Recent Bookings -->
+				<div class="dashboard-panel">
+					<div class="panel-header">
+						<h2>Recent Bookings</h2>
+						<a href="b2b-booking-list.html">View All</a>
+					</div>
+					<div class="panel-content" id="bookingsPanel">
+						<table class="jw-tableA is-compact">
+							<thead>
+								<tr>
+									<th style="width:30px">No</th>
+									<th style="width:115px">Booking ID</th>
+									<th style="width:85px">Travel Date</th>
+									<th style="width:80px">Agency</th>
+									<th style="width:35px">PAX</th>
+									<th style="width:105px">Status</th>
+								</tr>
+							</thead>
+							<tbody id="recentBookingsTableBody">
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+		</section>
+	</main>
+
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script>
+		const REFRESH_INTERVAL = 30000;
+		let autoRefreshInterval = null;
+		let isRefreshing = false;
+
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		function goToPendingList(status) {
+			window.location.href = `b2b-pending-list.html?status=${status}`;
+		}
+
+		function goToBookingDetail(bookingId) {
+			window.location.href = `b2b-booking-detail.html?bookingId=${encodeURIComponent(bookingId)}`;
+		}
+
+		function formatDateTime(dateStr) {
+			if (!dateStr) return '-';
+			const date = new Date(dateStr);
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			const hours = String(date.getHours()).padStart(2, '0');
+			const minutes = String(date.getMinutes()).padStart(2, '0');
+			return `${month}-${day} ${hours}:${minutes}`;
+		}
+
+		function formatDate(dateStr) {
+			if (!dateStr) return '-';
+			const date = new Date(dateStr);
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			return `${year}-${month}-${day}`;
+		}
+
+		function getStatusBadge(status) {
+			const statusLabels = {
+				'pending': 'Pending',
+				'pending_update': 'Pending Update',
+				'confirmed': 'Confirmed',
+				'cancelled': 'Cancelled',
+				'completed': 'Completed',
+				'rejected': 'Rejected'
+			};
+			const label = statusLabels[status] || status;
+			return `<span class="status-badge ${status}">${label}</span>`;
+		}
+
+		function renderEmptyState(message) {
+			return `
+				<div class="empty-state">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+					</svg>
+					<p>${message}</p>
+				</div>
+			`;
+		}
+
+		function renderStatusHistory(histories) {
+			const tbody = document.getElementById('historyTableBody');
+
+			if (!histories || histories.length === 0) {
+				document.getElementById('historyPanel').innerHTML = renderEmptyState('No status changes found');
+				return;
+			}
+
+			tbody.innerHTML = histories.map((item, index) => `
+				<tr onclick="goToBookingDetail('${item.bookingId}')">
+					<td>${index + 1}</td>
+					<td><a class="booking-link" onclick="event.stopPropagation(); goToBookingDetail('${item.bookingId}')">${item.bookingId}</a></td>
+					<td>${getStatusBadge(item.previousStatus || 'pending')}</td>
+					<td>${getStatusBadge(item.newStatus)}</td>
+					<td>${item.changedBy || '-'}</td>
+					<td>${formatDateTime(item.changedAt)}</td>
+				</tr>
+			`).join('');
+		}
+
+		function renderRecentBookings(bookings) {
+			const tbody = document.getElementById('recentBookingsTableBody');
+
+			if (!bookings || bookings.length === 0) {
+				document.getElementById('bookingsPanel').innerHTML = renderEmptyState('No recent bookings found');
+				return;
+			}
+
+			tbody.innerHTML = bookings.map((item, index) => {
+				const bookingId = item.bookingId || '-';
+				const agencyName = item.agentName || '-';
+				return `
+				<tr onclick="goToBookingDetail('${item.bookingId}')">
+					<td>${index + 1}</td>
+					<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a class="booking-link" onclick="event.stopPropagation()">${bookingId}</a></td>
+					<td style="white-space:nowrap">${formatDate(item.departureDate)}</td>
+					<td title="${agencyName}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${agencyName}</td>
+					<td>${item.numberOfPeople || 0}</td>
+					<td style="white-space:nowrap">${getStatusBadge(item.bookingStatus)}</td>
+				</tr>
+			`}).join('');
+		}
+
+		async function fetchData() {
+			if (isRefreshing) return;
+
+			const refreshBtn = document.getElementById('refreshBtn');
+			isRefreshing = true;
+			refreshBtn.classList.add('spinning');
+
+			try {
+				const [statusResponse, historyResponse, bookingsResponse] = await Promise.all([
+					fetch('../backend/api/reservation-status-api.php', { credentials: 'same-origin' }),
+					fetch('../backend/api/super-api.php?action=getBookingStatusHistory&limit=15', { credentials: 'same-origin' }),
+					fetch('../backend/api/super-api.php?action=getB2BBookings&updatedAtSort=desc&limit=15', { credentials: 'same-origin' })
+				]);
+
+				const [statusResult, historyResult, bookingsResult] = await Promise.all([
+					statusResponse.json(),
+					historyResponse.json(),
+					bookingsResponse.json()
+				]);
+
+				// Update status counts
+				if (statusResult.success) {
+					document.getElementById('pendingCount').textContent = statusResult.data.pending.count;
+					document.getElementById('pendingUpdateCount').textContent = statusResult.data.pendingUpdate.count;
+					document.getElementById('lastUpdated').textContent = statusResult.timestamp;
+				}
+
+				// Render status history
+				if (historyResult.success && historyResult.data) {
+					renderStatusHistory(historyResult.data.histories || []);
+				} else {
+					console.error('History API Error:', historyResult.error || historyResult.message);
+					renderStatusHistory([]);
+				}
+
+				// Render recent bookings (API returns { bookings: [...], pagination: {...} })
+				if (bookingsResult.success && bookingsResult.data && bookingsResult.data.bookings) {
+					renderRecentBookings(bookingsResult.data.bookings.slice(0, 15));
+				} else {
+					console.error('Bookings API Error:', bookingsResult.error || bookingsResult.message);
+					renderRecentBookings([]);
+				}
+
+			} catch (error) {
+				console.error('Fetch Error:', error);
+			} finally {
+				isRefreshing = false;
+				refreshBtn.classList.remove('spinning');
+			}
+		}
+
+		function toggleAutoRefresh(enabled) {
+			if (enabled) {
+				autoRefreshInterval = setInterval(fetchData, REFRESH_INTERVAL);
+			} else {
+				if (autoRefreshInterval) {
+					clearInterval(autoRefreshInterval);
+					autoRefreshInterval = null;
+				}
+			}
+		}
+
+		document.addEventListener('visibilitychange', function() {
+			const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+			if (document.hidden) {
+				if (autoRefreshInterval) {
+					clearInterval(autoRefreshInterval);
+					autoRefreshInterval = null;
+				}
+			} else {
+				if (autoRefreshToggle.checked) {
+					fetchData();
+					toggleAutoRefresh(true);
+				}
+			}
+		});
+
+		document.addEventListener('DOMContentLoaded', async function() {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+
+			fetchData();
+
+			const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+			autoRefreshToggle.addEventListener('change', function() {
+				toggleAutoRefresh(this.checked);
+			});
+
+			toggleAutoRefresh(true);
+		});
+	</script>
+</body>
+
+</html>

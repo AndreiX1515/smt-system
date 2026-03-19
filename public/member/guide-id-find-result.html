@@ -1,0 +1,30 @@
+<div class="dialog-container">
+	<h1 data-lan-eng="Find ID">Find ID</h1>
+	
+	<div class="dialog-content jw-mgt50">
+	
+		<div class="field">
+			<label class="label-name" data-lan-eng="ID">ID</label>
+			<div class="input-box">
+				<input type="text" id="foundEmail" value="" placeholder="Please Enter" readonly style="background-color: #f5f5f5;">
+			</div>
+		</div>
+		
+
+	</div>
+	
+	<div class="dialog-controls jw-mgt50">
+		<button type="button" class="jw-button typeB2" id="closeDialog" data-lan-eng="Close" onclick="modal_close()">Close</button>
+	</div>
+</div>
+
+<script>
+	(function() {
+		const urlParams = new URLSearchParams(window.location.search);
+		const idVal = urlParams.get('id') || urlParams.get('email') || '';
+		if (idVal) {
+			const emailInput = document.getElementById('foundEmail');
+			if (emailInput) emailInput.value = decodeURIComponent(idVal);
+		}
+	})();
+</script>

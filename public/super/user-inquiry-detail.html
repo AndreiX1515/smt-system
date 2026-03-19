@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!-- Common styles -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20260311">
+	<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+</head>
+
+<body>
+
+	<!-- Header slot -->
+	<header class="layout-header"></header>
+
+	<!-- Main content -->
+	<main class="layout-main">
+		<!-- Nav slot -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="user-inquiry-list.html" class="jw-button" aria-label="Return to list">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+					<select class="select" id="processingStatusSelect">
+						<option value="pending" data-lan-eng="Received">Received</option>
+						<option value="processing" data-lan-eng="Processing">Processing</option>
+						<option value="completed" data-lan-eng="Processing complete">Processing complete</option>
+					</select>
+					<button type="button" class="jw-button typeB" id="saveStatusBtn">Save</button>
+				</div>
+			</div>
+
+			<h1 class="page-title" data-lan-eng="Member Inquiry Details">Member Inquiry Details</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Inquirer Information">Inquirer Information</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Customer Name">Customer Name</label>
+						<input type="text" class="form-control" id="customerName" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contacts">Contacts</label>
+						<input type="text" class="form-control" id="customerContact" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">Email</label>
+						<input type="email" class="form-control" id="customerEmail" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Customer number">Customer number</label>
+						<input type="text" class="form-control" id="customerNumber" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Agent Name">Agent Name</label>
+						<input type="text" class="form-control" id="agentName" disabled>
+					</div>
+					<div class="grid-item"></div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Inquiry details">Inquiry details</h2>
+			<div class="card-panel jw-mgt16">
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Date Created">Date Created</label>
+						<input type="text" class="form-control" id="createdAt" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Inquiry type">Inquiry type</label>
+						<input type="text" class="form-control" id="inquiryType" disabled>
+					</div>
+					<div class="grid-item"></div>
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Title">Title</label>
+						<input type="text" class="form-control" id="inquiryTitle" disabled>
+					</div>
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Content">Content</label>
+						<div class="editor-box-wrap">
+							<textarea rows="8" id="inquiryContent" disabled></textarea>
+						</div>
+					</div>
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Attachment">Attachment</label>
+						<div class="cell" id="attachmentContainer">
+							<div class="field-row jw-center">
+								<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> No attachments</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Leave a reply">Leave a reply</h2>
+			<div class="card-panel jw-mgt16" id="replySection">
+				<div class="inquiry-response-wrap">
+					<!-- 답변 완료 상태: Response time + Content 텍스트박스 -->
+					<div class="inquiry-response-item" id="replyTimeContainer" style="display: none;">
+						<label class="label-name" data-lan-eng="Response time">Response time</label>
+						<div class="inquiry-response-input-box" id="replyTime"></div>
+					</div>
+					<div class="inquiry-response-item" id="replyContentContainer" style="display: none;">
+						<label class="label-name" data-lan-eng="Content">Content</label>
+						<div class="reply-content-box" id="replyContentBox"></div>
+					</div>
+					<!-- 답변 전 상태: 에디터 -->
+					<div class="inquiry-response-item" id="replyEditorContainer">
+						<label class="label-name" data-lan-eng="Content">Content</label>
+						<div id="replyEditor" style="height: 300px;"></div>
+					</div>
+					<div class="inquiry-response-item" id="sendAnswerBtnContainer">
+						<button type="button" class="jw-button typeB" id="sendAnswerBtn">Send answer</button>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!-- Base scripts -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let inquiryId = null;
+		let replyEditor = null;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				// Super pages allow admin only
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				const urlParams = new URLSearchParams(window.location.search);
+				inquiryId = urlParams.get('id') || urlParams.get('inquiryId');
+				if (!inquiryId) {
+					alert('Missing inquiry ID.');
+					window.location.href = 'user-inquiry-list.html';
+					return;
+				}
+
+				// Save button event
+				const saveStatusBtn = document.getElementById('saveStatusBtn');
+				if (saveStatusBtn) {
+					saveStatusBtn.addEventListener('click', handleSaveStatus);
+				}
+
+				// Send answer button event
+				const sendAnswerBtn = document.getElementById('sendAnswerBtn');
+				if (sendAnswerBtn) {
+					sendAnswerBtn.addEventListener('click', handleSendAnswer);
+				}
+
+				await loadInquiryDetail();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function handleUnauthorizedResponse(res) {
+			if (res && res.status === 401) {
+					alert('Admin login is required.');
+				window.location.href = '../index.html';
+				return true;
+			}
+			return false;
+		}
+
+		async function loadInquiryDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getUserInquiryDetail&id=${encodeURIComponent(inquiryId)}`, {
+					credentials: 'same-origin'
+				});
+
+				if (handleUnauthorizedResponse(response)) return;
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { inquiry, replies } = result.data;
+					
+					// Inquirer info
+					const customerName = document.getElementById('customerName');
+					if (customerName) {
+						const nm = `${inquiry.fName || ''} ${inquiry.lName || ''}`.trim();
+						customerName.value = nm || '-';
+					}
+					
+					const customerContact = document.getElementById('customerContact');
+					if (customerContact) {
+						customerContact.value = inquiry.contactNo || '';
+					}
+					
+					const customerEmail = document.getElementById('customerEmail');
+					if (customerEmail) {
+						customerEmail.value = inquiry.emailAddress || '';
+					}
+					
+					const customerNumber = document.getElementById('customerNumber');
+					if (customerNumber) {
+						customerNumber.value = inquiry.clientId || inquiry.accountId || '';
+					}
+					
+					const agentName = document.getElementById('agentName');
+					if (agentName) {
+						// B2C( )  
+						const ct = String(inquiry.clientType || '').toLowerCase();
+						agentName.value = (ct === 'wholeseller') ? (inquiry.branchName || inquiry.companyName || '') : '';
+					}
+					
+					// Inquiry details
+					const createdAt = document.getElementById('createdAt');
+					if (createdAt) {
+						createdAt.value = inquiry.createdAt || '';
+					}
+					
+					const inquiryType = document.getElementById('inquiryType');
+					if (inquiryType) {
+						const v = String(inquiry.inquiryType || inquiry.category || '').toLowerCase();
+						const map = {
+							product: 'Product Inquiry',
+							general: 'Product Inquiry',
+							reservation: 'Reservation Inquiry',
+							booking: 'Reservation Inquiry',
+							payment: 'Payment Inquiry',
+							cancel: 'Cancellation Inquiry',
+							cancellation: 'Cancellation Inquiry',
+							complaint: 'Cancellation Inquiry',
+							other: 'Other',
+							suggestion: 'Other'
+						};
+						inquiryType.value = map[v] || 'Other';
+					}
+					
+					const inquiryTitle = document.getElementById('inquiryTitle');
+					if (inquiryTitle) {
+						inquiryTitle.value = inquiry.subject || '';
+					}
+					
+					const inquiryContent = document.getElementById('inquiryContent');
+					if (inquiryContent) {
+						// content may contain HTML (Quill), show as plain text
+						const tmp = document.createElement('div');
+						tmp.innerHTML = inquiry.content || '';
+						inquiryContent.value = (tmp.textContent || tmp.innerText || '').trim();
+					}
+					
+					// Attachments (inquiry_attachments)
+					const attachmentContainer = document.getElementById('attachmentContainer');
+					if (attachmentContainer) {
+						const list = Array.isArray(inquiry.attachments) ? inquiry.attachments : [];
+						if (list.length === 0) {
+							attachmentContainer.innerHTML = `
+								<div class="field-row jw-center">
+									<div class="jw-center jw-gap10"><img src="../image/file.svg" alt=""> No attachments</div>
+								</div>
+							`;
+						} else {
+							attachmentContainer.innerHTML = list.map((att, idx) => {
+								const filePath = att.filePath || '';
+								const fileName = att.fileName || (filePath ? String(filePath).split('/').pop() : 'File');
+								const fileExt = (att.fileExt || (fileName ? String(fileName).split('.').pop() : '') || '').toLowerCase();
+								const fileSize = (typeof att.fileSize === 'number' && isFinite(att.fileSize)) ? att.fileSize : null;
+								const isImage = !!(att.isImage || ['jpg','jpeg','png','gif','webp'].includes(fileExt));
+
+								const sizeLabel = (fileSize != null) ? formatBytes(fileSize) : '-';
+								const extLabel = fileExt ? fileExt : '-';
+								const previewSrc = isImage ? buildAttachmentUrl(filePath, true) : '';
+
+								if (isImage) {
+									// Image attachment: 110x110 thumbnail + filename + ext,size + download icon
+									return `
+										<div style="display:inline-flex; flex-direction:column; gap:4px; width:110px; margin-right:16px; margin-bottom:16px;">
+											<button type="button" style="display:block; padding:0; border:0; background:#F3F3F3; cursor:pointer; width:110px; height:110px; border-radius:4px; overflow:hidden;" onclick="openAttachmentPreview('${escapeHtml(filePath)}','${escapeHtml(fileName)}')">
+												<img src="${escapeHtml(previewSrc)}" alt="" style="width:100%; height:100%; object-fit:cover;">
+											</button>
+											<div style="padding:0 2px;">
+												<div style="font-weight:500; font-size:14px; line-height:20px; color:#121212;">${escapeHtml(fileName.split('.')[0] || 'Image')}</div>
+												<div style="font-weight:400; font-size:14px; line-height:20px; color:#121212;">${escapeHtml(extLabel)}, ${escapeHtml(sizeLabel)}</div>
+											</div>
+											<div style="padding:2px;">
+												<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer;" onclick="downloadAttachment('${escapeHtml(filePath)}')" title="Download">
+													<img src="../image/button-download.svg" alt="" style="width:20px; height:20px;">
+												</button>
+											</div>
+										</div>
+									`;
+								} else {
+									// File attachment: box with icon + filename [ext, size] + download icon
+									return `
+										<div style="display:flex; align-items:center; gap:8px; padding:11px 12px; border:1px solid #D4D4D4; border-radius:12px; background:#fff; opacity:0.8; max-width:492px; margin-bottom:8px;">
+											<div style="display:flex; align-items:center; gap:6px; flex:1;">
+												<img src="../image/file.svg" alt="" style="width:20px; height:20px; flex-shrink:0;">
+												<div style="display:flex; align-items:center; gap:2px; font-size:14px; line-height:20px; color:#121212;">
+													<span style="font-weight:500;">${escapeHtml(fileName.split('.')[0] || 'File')}</span>
+													<span style="font-weight:400;">[${escapeHtml(extLabel)}, ${escapeHtml(sizeLabel)}]</span>
+												</div>
+											</div>
+											<div style="width:1px; height:20px; background:#D4D4D4;"></div>
+											<button type="button" style="padding:0; border:0; background:transparent; cursor:pointer; flex-shrink:0;" onclick="downloadAttachment('${escapeHtml(filePath)}')" title="Download">
+												<img src="../image/button-download.svg" alt="" style="width:24px; height:24px;">
+											</button>
+										</div>
+									`;
+								}
+							}).join('');
+						}
+					}
+					
+					// Processing status
+					const processingStatusSelect = document.getElementById('processingStatusSelect');
+					if (processingStatusSelect && inquiry.status) {
+						const map = {
+							open: 'pending',
+							in_progress: 'processing',
+							resolved: 'completed',
+							closed: 'completed'
+						};
+						processingStatusSelect.value = map[inquiry.status] || inquiry.status;
+					}
+					
+					// Reply
+					const replyTimeContainer = document.getElementById('replyTimeContainer');
+					const replyTime = document.getElementById('replyTime');
+					const replyContentContainer = document.getElementById('replyContentContainer');
+					const replyContentBox = document.getElementById('replyContentBox');
+					const replyEditorContainer = document.getElementById('replyEditorContainer');
+					const sendAnswerBtnContainer = document.getElementById('sendAnswerBtnContainer');
+					const sendAnswerBtn = document.getElementById('sendAnswerBtn');
+
+					if (replies && replies.length > 0) {
+						const latestReply = replies[0];
+
+						// 답변 완료 상태: 에디터 숨기고 텍스트박스 표시
+						if (replyTimeContainer) replyTimeContainer.style.display = '';
+						if (replyTime) replyTime.textContent = latestReply.createdAt || '';
+
+						if (replyContentContainer) replyContentContainer.style.display = '';
+						if (replyContentBox) {
+							replyContentBox.innerHTML = latestReply.content || '';
+						}
+
+						// 에디터 컨테이너 완전히 숨기기 (에디터 초기화하지 않음)
+						if (replyEditorContainer) replyEditorContainer.style.display = 'none';
+						if (sendAnswerBtnContainer) sendAnswerBtnContainer.style.display = 'none';
+					} else {
+						// 답변 전 상태: 에디터 표시
+						if (replyTimeContainer) replyTimeContainer.style.display = 'none';
+						if (replyContentContainer) replyContentContainer.style.display = 'none';
+						if (replyEditorContainer) replyEditorContainer.style.display = '';
+						if (sendAnswerBtnContainer) sendAnswerBtnContainer.style.display = '';
+
+						// 답변이 없을 때만 Quill 에디터 초기화
+						if (!replyEditor) {
+							replyEditor = new Quill('#replyEditor', {
+								theme: 'snow',
+								modules: {
+									toolbar: [
+										[{ 'header': [1, 2, 3, false] }],
+										['bold', 'italic', 'underline'],
+										[{ 'list': 'ordered'}, { 'list': 'bullet' }],
+										['link', 'image'],
+										['clean']
+									]
+								}
+							});
+						} else {
+							try { replyEditor.setText(''); } catch (_) {}
+							try { replyEditor.enable(true); } catch (_) {}
+						}
+						if (sendAnswerBtn) {
+							sendAnswerBtn.disabled = false;
+							sendAnswerBtn.textContent = 'Send answer';
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Error loading inquiry detail:', error);
+			}
+		}
+		
+		async function handleSaveStatus() {
+			try {
+				const processingStatusSelect = document.getElementById('processingStatusSelect');
+				const status = processingStatusSelect?.value || 'pending';
+				
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						action: 'updateInquiryStatus',
+						inquiryId: inquiryId,
+						status: status
+					}),
+					credentials: 'same-origin'
+				});
+				
+				if (handleUnauthorizedResponse(response)) return;
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				
+				const result = await response.json();
+				
+				if (result.success) {
+					alert('Status saved.');
+				} else {
+					alert('Save failed: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Error saving status:', error);
+				alert('Save failed.');
+			}
+		}
+		
+		async function handleSendAnswer() {
+			try {
+				if (!replyEditor) {
+					alert('Editor is not ready.');
+					return;
+				}
+				
+				const content = replyEditor.root.innerHTML;
+				if (!content || content.trim() === '<p><br></p>') {
+					alert('Please enter a reply.');
+					return;
+				}
+				
+				const response = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						action: 'sendInquiryAnswer',
+						inquiryId: inquiryId,
+						content: content
+					}),
+					credentials: 'same-origin'
+				});
+				
+				if (handleUnauthorizedResponse(response)) return;
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				
+				const result = await response.json();
+				
+				if (result.success) {
+					alert('Reply sent.');
+					await loadInquiryDetail();
+				} else {
+					alert('Reply failed: ' + (result.message || 'Unknown error'));
+				}
+			} catch (error) {
+				console.error('Error sending answer:', error);
+				alert('Reply failed.');
+			}
+		}
+		
+		function buildAttachmentUrl(filePath, inline = false) {
+			// super  : /admin/super -> ../../backend/api/download.php
+			const base = `../../backend/api/download.php?file=${encodeURIComponent(filePath || '')}`;
+			return inline ? (base + '&inline=1') : base;
+		}
+
+		function formatBytes(bytes) {
+			const n = Number(bytes);
+			if (!isFinite(n) || n <= 0) return '0 B';
+			const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+			const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+			const v = n / Math.pow(1024, i);
+			return (v >= 10 || i === 0) ? `${Math.round(v)} ${units[i]}` : `${v.toFixed(1)} ${units[i]}`;
+		}
+
+		function downloadAttachment(filePath) {
+			//    ,  ( )
+			const url = buildAttachmentUrl(filePath, false);
+			const iframe = document.createElement('iframe');
+			iframe.style.display = 'none';
+			iframe.src = url;
+			document.body.appendChild(iframe);
+			setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 30000);
+		}
+
+		function ensurePreviewModal() {
+			if (document.getElementById('attachmentPreviewLayer')) return;
+			const layer = document.createElement('div');
+			layer.id = 'attachmentPreviewLayer';
+			layer.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; padding:24px;';
+			layer.innerHTML = `
+				<div id="attachmentPreviewModal" style="width:min(920px, 100%); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+					<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #e5e7eb;">
+						<div id="attachmentPreviewTitle" style="font-weight:700; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+						<button type="button" class="jw-button typeF" id="attachmentPreviewCloseBtn" style="margin-left:12px;">Close</button>
+					</div>
+					<div style="padding:14px; background:#111; display:flex; align-items:center; justify-content:center;">
+						<img id="attachmentPreviewImg" src="" alt="" style="max-width:100%; max-height:70vh; object-fit:contain; background:#111;">
+					</div>
+				</div>
+			`;
+			document.body.appendChild(layer);
+
+			const close = () => { layer.style.display = 'none'; };
+			layer.addEventListener('click', (e) => {
+				if (e.target === layer) close();
+			});
+			layer.querySelector('#attachmentPreviewCloseBtn')?.addEventListener('click', close);
+		}
+
+		function openAttachmentPreview(filePath, fileName) {
+			ensurePreviewModal();
+			const layer = document.getElementById('attachmentPreviewLayer');
+			const img = document.getElementById('attachmentPreviewImg');
+			const title = document.getElementById('attachmentPreviewTitle');
+			if (!layer || !img || !title) return;
+
+			title.textContent = fileName || 'Preview';
+			img.src = buildAttachmentUrl(filePath, true);
+			layer.style.display = 'flex';
+		}
+		
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+</body>
+
+</html>
+

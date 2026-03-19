@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+
+	<!-- 공통 스타일 -->
+	<link rel="shortcut icon" href="./image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+
+
+	<link rel="stylesheet" href="./css/a_reset.css">
+	<link rel="stylesheet" href="./css/a_variables.css">
+	<link rel="stylesheet" href="./css/a_components.css">
+	<link rel="stylesheet" href="./css/a_contents.css">
+
+	<style>
+		@media (max-width: 768px) {
+			.layout-header { padding: 0 16px; }
+			.layout-content.jw-center { padding: 16px; }
+			.login-card {
+				width: 100%; height: auto;
+				padding: 40px 20px; gap: 36px;
+				border-radius: 16px;
+			}
+			.login-card > img { max-height: 80px; }
+			.login-card .field-wrap { width: 100%; }
+			.login-card .field { width: 100%; }
+			.login-card .row { width: 100%; flex-wrap: wrap; gap: 12px; }
+			.login-card .linkbar { gap: 16px; }
+			.login-card .linkbar .link { font-size: 13px; }
+			.login-button { width: 100%; height: 48px; }
+		}
+		@media (max-width: 380px) {
+			.login-card .row { flex-direction: column; align-items: flex-start; }
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header 들어올 자리 -->
+	<header class="layout-header"></header>
+
+	<!-- 본문 영역 -->
+	<main class="layout-main">
+
+		<section class="layout-content jw-center">
+		
+			<!-- 요구사항: 브라우저 기본(required) 검증 팝업 대신, 커스텀 문구(Please enter your ID/Password)를 노출 -->
+			<form id="loginForm" autocomplete="off" novalidate>
+				<div class="login-card">
+					<img src="./image/logo.png" alt="logo">
+					<div class="field-wrap">
+						<div class="field">
+							<label class="label-name" data-lan-eng="ID" >아이디</label>
+							<input type="text" id="username" name="username" value="" placeholder="아이디" data-lan-eng="ID">
+							<div id="usernameError" class="error-message" style="display:none; color:#ef4444; font-size:14px; margin-top:8px;"></div>
+						</div>
+						<div class="field jw-mgt16">
+							<label class="label-name" data-lan-eng="Password" >비밀번호</label>
+							<div class="input-box">
+								<input type="password" id="password" name="password" value="" placeholder="비밀번호" data-lan-eng="Password">
+								<button type="button" class="jw-button password-toggle" onclick="togglePassword()"><img src="./image/eye.svg" alt=""></button>
+							</div>
+							<div id="passwordError" class="error-message" style="display:none; color:#ef4444; font-size:14px; margin-top:8px;"></div>
+						</div>
+						
+						<div class="row jw-mgt32">
+							<label class="jw-checkbox">
+								<input type="checkbox" id="rememberId" name="rememberId" checked>
+								<i class="icon"></i>
+								<p class="text" data-lan-eng="Remember ID">아이디 저장</p>
+							</label>
+
+							<div class="linkbar">
+								<button type="button" class="link" data-lan-eng="Find ID" onclick="openIdFind()">아이디 찾기</button>
+								<button type="button" class="link" data-lan-eng="Reset Password" onclick="openPasswordReset()">비밀번호 재설정</button>
+							</div>
+						</div>
+						<div id="loginError" class="error-message" style="display:none; color:#ef4444; font-size:14px; margin-top:8px;"></div>
+						<button type="submit" class="jw-button typeB login-button jw-mgt8" data-lan-eng="Login">로그인</button>
+					</div>
+				</div>
+			</form>
+			
+		</section>
+
+	</main>
+	
+	<script src="./js/default.js"></script>
+	<script src="./js/super.js?v=20251226_adminloginfix1"></script>
+
+	<script>
+		init({
+			headerUrl: './inc/header-index.html'
+		});
+
+		// 페이지 로드 시 저장된 아이디 불러오기 및 세션 체크
+		document.addEventListener('DOMContentLoaded', async function() {
+			// 세션 확인 - 이미 로그인되어 있으면 리다이렉트
+			try {
+				const response = await fetch('./backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const data = await response.json();
+				
+				if (data.authenticated) {
+					// 이미 로그인되어 있으면 권한별 대시보드로 리다이렉트
+					const t = data.userType || 'admin_ph';
+					if (t === 'agent') window.location.href = './agent/overview.php';
+					else if (t === 'guide') window.location.href = './guide/full-list.php';
+					else if (t === 'cs') window.location.href = './cs/inquiry-list.php';
+					else window.location.href = './super/overview.php';
+					return;
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+			}
+
+			// 저장된 아이디 불러오기
+			const savedUsername = getCookie('saved_username');
+			if (savedUsername) {
+				document.getElementById('username').value = savedUsername;
+				document.getElementById('rememberId').checked = true;
+			}
+
+			// 로그인 폼 제출 처리
+			document.getElementById('loginForm').addEventListener('submit', handleLogin);
+		});
+
+		// 비밀번호 보기/숨기기 토글
+		function togglePassword() {
+			const passwordInput = document.getElementById('password');
+			const toggleBtn = document.querySelector('.password-toggle');
+			const eyeImg = toggleBtn.querySelector('img');
+			
+			if (passwordInput.type === 'password') {
+				passwordInput.type = 'text';
+				eyeImg.src = './image/eye-off.svg'; // 눈 아이콘 변경 (없으면 eye.svg 유지)
+			} else {
+				passwordInput.type = 'password';
+				eyeImg.src = './image/eye.svg';
+			}
+		}
+
+		// 로그인 처리
+		async function handleLogin(e) {
+			e.preventDefault();
+			
+			const username = document.getElementById('username').value.trim();
+			const password = document.getElementById('password').value;
+			const rememberId = document.getElementById('rememberId').checked;
+			const errorDiv = document.getElementById('loginError');
+			clearFieldErrors();
+			const submitBtn = document.querySelector('.login-button');
+			
+			// 입력 검증 (요구 문구)
+			if (!username) {
+				showFieldError('username', 'Please enter your ID');
+				return;
+			}
+			if (!password) {
+				showFieldError('password', 'Please enter your Password');
+				return;
+			}
+
+			// 로딩 상태
+			submitBtn.disabled = true;
+			submitBtn.textContent = '로그인 중...';
+			errorDiv.style.display = 'none';
+
+			try {
+				const formData = new FormData();
+				formData.append('username', username);
+				formData.append('password', password);
+
+				const response = await fetch('./backend/api/login.php', {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				});
+
+				const data = await response.json();
+
+				if (data.success) {
+					// 아이디 저장 처리
+					if (rememberId) {
+						setCookie('saved_username', username, 365);
+					} else {
+						setCookie('saved_username', '', -1); // 쿠키 삭제
+					}
+
+					// B2B/B2C 판별을 위해 accountType을 localStorage에 저장
+					// home.js의 getHomeSalesTarget()에서 사용
+					try {
+						localStorage.setItem('accountType', data.userType || '');
+					} catch (_) {}
+
+					// 로그인 성공 - 리다이렉트
+					const redirectUrl = data.redirectUrl || './super/overview.html';
+					window.location.href = redirectUrl;
+				} else {
+					// 로그인 실패
+					// - 기존에는 401을 무조건 "회원 정보 없음"으로 노출해 실제 원인(비번 불일치/계정 상태 등)을 가렸음
+					// - 서버에서 내려주는 message를 우선 노출해 운영/CS가 원인을 구분할 수 있게 함
+					const msg = (data && data.message) ? String(data.message) : 'Login failed.';
+					if (response.status === 401) {
+						alert(msg);
+						showError(msg);
+					} else {
+						showError(msg);
+					}
+					submitBtn.disabled = false;
+					submitBtn.textContent = '로그인';
+				}
+			} catch (error) {
+				console.error('Login error:', error);
+				showError('Login error occurred. Please try again.');
+				submitBtn.disabled = false;
+				submitBtn.textContent = '로그인';
+			}
+		}
+
+		function clearFieldErrors() {
+			const u = document.getElementById('usernameError');
+			const p = document.getElementById('passwordError');
+			if (u) { u.textContent = ''; u.style.display = 'none'; }
+			if (p) { p.textContent = ''; p.style.display = 'none'; }
+		}
+
+		function showFieldError(field, message) {
+			clearFieldErrors();
+			// 공통 에러 영역은 숨김(필드 누락은 필드 아래로)
+			const errorDiv = document.getElementById('loginError');
+			if (errorDiv) { errorDiv.textContent = ''; errorDiv.style.display = 'none'; }
+
+			const target = (field === 'password')
+				? document.getElementById('passwordError')
+				: document.getElementById('usernameError');
+			if (target) {
+				target.textContent = message;
+				target.style.display = 'block';
+			}
+		}
+
+		function showError(message) {
+			clearFieldErrors();
+			const errorDiv = document.getElementById('loginError');
+			errorDiv.textContent = message;
+			errorDiv.style.display = 'block';
+		}
+
+		// 아이디 찾기 모달 열기
+		function openIdFind() {
+			// 에이전트/가이드 구분 없이 통합 아이디 찾기
+			modal('member/agent-id-find.html', '580px', '582px');
+		}
+
+		// 비밀번호 재설정 모달 열기
+		function openPasswordReset() {
+			// 에이전트/가이드 구분 없이 통합 비밀번호 재설정
+			modal('member/agent-password-reset.html', '580px', '582px');
+		}
+	</script>
+
+</body>
+
+</html>

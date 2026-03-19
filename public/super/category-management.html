@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<h1 class="page-title" data-lan-eng="Category Management">Category Management</h1>
+
+			<div class="grid-panel jw-mgt32" id="categoryGrid"></div>
+
+			
+			
+			<div class="controller">
+				<button type="button" class="jw-button typeB" onclick="modal('category-management-m1.html', '580px', '512px')"><img src="../image/buttonB.svg" alt=""><span data-lan-eng="Add main category">Add main category</span></button>
+			</div>
+
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				await loadAndRenderCategories();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		const API_URL = '../backend/api/super-api.php';
+		const categoryGrid = document.getElementById('categoryGrid');
+
+		function escapeHtml(str) {
+			return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+				'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+			}[m]));
+		}
+
+		async function apiPost(action, data) {
+			const fd = new FormData();
+			fd.append('action', action);
+			if (data && typeof data === 'object') {
+				Object.entries(data).forEach(([k, v]) => {
+					if (Array.isArray(v)) {
+						v.forEach((item) => fd.append(`${k}[]`, item));
+					} else if (v !== undefined && v !== null) {
+						fd.append(k, v);
+					}
+				});
+			}
+			const res = await fetch(API_URL, { method: 'POST', body: fd, credentials: 'same-origin' });
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok || json.success === false) {
+				const msg = json.message || ` . (HTTP ${res.status})`;
+				const err = new Error(msg);
+				err.status = res.status;
+				err.payload = json;
+				throw err;
+			}
+			return json;
+		}
+
+		async function loadAndRenderCategories() {
+			if (!categoryGrid) return;
+			categoryGrid.innerHTML = '<div style="padding:12px;color:#6b7280;"> …</div>';
+			const result = await apiPost('getCategories', {});
+			const cats = result?.data?.categories || result?.categories || [];
+			renderCategories(cats);
+		}
+
+		function renderCategories(categories) {
+			if (!categoryGrid) return;
+			if (!Array.isArray(categories) || categories.length === 0) {
+				categoryGrid.innerHTML = '<div style="padding:12px;color:#6b7280;"> .</div>';
+				return;
+			}
+			categoryGrid.innerHTML = categories.map((c) => {
+				const mainId = c.mainCategoryId;
+				const mainName = escapeHtml(c.name);
+				const subs = Array.isArray(c.subCategories) ? c.subCategories : [];
+				const subsHtml = subs.map((s) => `
+					<div class="gpc-item" draggable="true" data-sub-id="${s.subCategoryId}" data-main-id="${mainId}">
+						<div class="category">
+							<span class="drag js-drag-handle" title=""><img src="../image/category-sort.svg" alt=""></span>
+							<span class="name js-sub-name">${escapeHtml(s.name)}</span>
+						</div>
+						<div class="actions">
+							<button class="icon-btn js-sub-edit" title=" "><img src="../image/category-edit.svg" alt=""></button>
+							<button class="icon-btn js-sub-delete" title=""><img src="../image/category-delete.svg" alt=""></button>
+						</div>
+					</div>
+				`).join('');
+
+				return `
+					<div class="grid-panel-card" data-main-id="${mainId}" draggable="true">
+						<div class="wrap">
+							<div class="gpc-head">
+								<span class="main-drag-handle js-main-drag-handle" title="Drag to reorder" style="cursor:grab; margin-right:8px; display:inline-flex; align-items:center;"><img src="../image/category-sort.svg" alt="" style="opacity:0.6;"></span>
+								<div class="gpc-title js-main-title">${mainName}</div>
+								<div class="gpc-head-actions">
+									<button class="icon-btn js-main-edit" title=" "><img src="../image/category-edit.svg" alt=""></button>
+									<button class="icon-btn js-main-delete" title=""><img src="../image/category-delete.svg" alt=""></button>
+								</div>
+							</div>
+							<div class="gpc-body" data-main-id="${mainId}">
+								${subsHtml}
+							</div>
+							<div class="gpc-foot"><button class="jw-button typeC js-add-sub" data-lan-eng="Add subcategory">Add subcategory</button></div>
+						</div>
+					</div>
+				`;
+			}).join('');
+		}
+
+		// ===== : /  =====
+		let pendingDelete = null; // {level:'main'|'sub', mainCategoryId?, subCategoryId?}
+
+		categoryGrid?.addEventListener('click', async (e) => {
+			const mainCard = e.target.closest('.grid-panel-card');
+			const mainId = mainCard ? parseInt(mainCard.dataset.mainId, 10) : null;
+
+			//  (/)
+			const mainEditBtn = e.target.closest('.js-main-edit');
+			if (mainEditBtn && mainCard && mainId) {
+				e.preventDefault();
+				await toggleMainEdit(mainCard, mainEditBtn, mainId);
+				return;
+			}
+
+			//  
+			const mainDeleteBtn = e.target.closest('.js-main-delete');
+			if (mainDeleteBtn && mainCard && mainId) {
+				e.preventDefault();
+				pendingDelete = { level: 'main', mainCategoryId: mainId };
+				modal('category-management-m2.html', '600px', '252px');
+				return;
+			}
+
+			//  (/)
+			const subEditBtn = e.target.closest('.js-sub-edit');
+			if (subEditBtn) {
+				e.preventDefault();
+				const item = subEditBtn.closest('.gpc-item');
+				if (!item) return;
+				const subId = parseInt(item.dataset.subId, 10);
+				const mId = parseInt(item.dataset.mainId, 10);
+				await toggleSubEdit(item, subEditBtn, mId, subId);
+				return;
+			}
+
+			//  
+			const subDeleteBtn = e.target.closest('.js-sub-delete');
+			if (subDeleteBtn) {
+				e.preventDefault();
+				const item = subDeleteBtn.closest('.gpc-item');
+				if (!item) return;
+				pendingDelete = { level: 'sub', subCategoryId: parseInt(item.dataset.subId, 10) };
+				modal('category-management-m2.html', '600px', '252px');
+				return;
+			}
+
+			//    
+			const addSubBtn = e.target.closest('.js-add-sub');
+			if (addSubBtn && mainId) {
+				e.preventDefault();
+				const body = mainCard.querySelector('.gpc-body');
+				if (!body) return;
+				//    
+				const existing = body.querySelector('.gpc-form[data-mode="create-sub"] input');
+				if (existing) { existing.focus(); return; }
+				const form = document.createElement('div');
+				form.className = 'gpc-form iptB jw-mgt4';
+				form.dataset.mode = 'create-sub';
+				form.innerHTML = `
+					<input type="text" placeholder=" " data-lan-eng="Enter category name" />
+					<button class="btn-ghost js-create-sub" type="button"><img src="../image/category-check2.svg" alt=""></button>
+				`;
+				body.appendChild(form);
+				form.querySelector('input')?.focus();
+				return;
+			}
+
+			//   ()
+			const createSubBtn = e.target.closest('.js-create-sub');
+			if (createSubBtn) {
+				e.preventDefault();
+				const form = createSubBtn.closest('.gpc-form[data-mode="create-sub"]');
+				const body = createSubBtn.closest('.gpc-body');
+				const mId = body ? parseInt(body.dataset.mainId, 10) : null;
+				const input = form ? form.querySelector('input') : null;
+				const name = input ? input.value.trim() : '';
+				if (!mId || !name) return;
+				try {
+					await apiPost('createSubCategory', { mainCategoryId: mId, subCategoryName: name });
+					await loadAndRenderCategories();
+				} catch (err) {
+					if (err?.status === 409) modal('category-management-m3.html', '600px', '252px');
+					else alert(err.message || ' .');
+				}
+				return;
+			}
+		});
+
+		async function toggleMainEdit(mainCard, btn, mainId) {
+			const titleEl = mainCard.querySelector('.js-main-title');
+			if (!titleEl) return;
+
+			const isEditing = titleEl.querySelector('input');
+			if (!isEditing) {
+				const cur = titleEl.textContent.trim();
+				titleEl.innerHTML = `<input type="text" class="js-main-edit-input" value="${escapeHtml(cur)}" style="width:100%;max-width:240px;">`;
+				btn.innerHTML = `<img src="../image/category-check2.svg" alt="">`;
+				titleEl.querySelector('input')?.focus();
+				return;
+			}
+
+			const input = titleEl.querySelector('input');
+			const next = input ? input.value.trim() : '';
+			if (!next) return;
+			try {
+				await apiPost('updateCategory', { level: 'main', mainCategoryId: mainId, name: next });
+				await loadAndRenderCategories();
+			} catch (err) {
+				if (err?.status === 409) modal('category-management-m3.html', '600px', '252px');
+				else alert(err.message || ' .');
+			}
+		}
+
+		async function toggleSubEdit(item, btn, mainId, subId) {
+			const nameEl = item.querySelector('.js-sub-name');
+			if (!nameEl) return;
+
+			const isEditing = nameEl.querySelector('input');
+			if (!isEditing) {
+				const cur = nameEl.textContent.trim();
+				nameEl.innerHTML = `<input type="text" class="js-sub-edit-input" value="${escapeHtml(cur)}" style="width:100%;max-width:200px;">`;
+				btn.innerHTML = `<img src="../image/category-check2.svg" alt="">`;
+				nameEl.querySelector('input')?.focus();
+				return;
+			}
+
+			const input = nameEl.querySelector('input');
+			const next = input ? input.value.trim() : '';
+			if (!next) return;
+			try {
+				await apiPost('updateCategory', { level: 'sub', mainCategoryId: mainId, subCategoryId: subId, name: next });
+				await loadAndRenderCategories();
+			} catch (err) {
+				if (err?.status === 409) modal('category-management-m3.html', '600px', '252px');
+				else alert(err.message || ' .');
+			}
+		}
+
+		// ===== /    =====
+		document.addEventListener('modal:loaded', (evt) => {
+			const action = evt?.detail?.action || '';
+			const dialog = evt?.detail?.dialog;
+			if (!dialog) return;
+
+			//   
+			if (action.includes('category-management-m2.html')) {
+				const deleteBtn = dialog.querySelector('.jw-button.typeB');
+				if (deleteBtn) {
+					deleteBtn.addEventListener('click', async () => {
+						if (!pendingDelete) return;
+						try {
+							if (pendingDelete.level === 'main') {
+								await apiPost('deleteCategory', { level: 'main', mainCategoryId: pendingDelete.mainCategoryId });
+							} else {
+								await apiPost('deleteCategory', { level: 'sub', subCategoryId: pendingDelete.subCategoryId });
+							}
+							pendingDelete = null;
+							modal_close();
+							await loadAndRenderCategories();
+						} catch (err) {
+							alert(err.message || ' .');
+						}
+					}, { once: true });
+				}
+			}
+
+			//   
+			if (action.includes('category-management-m1.html')) {
+				const mainInput = dialog.querySelector('#mainCategoryNameInput');
+				const subInput = dialog.querySelector('#subCategoryNameInput');
+				const addBtn = dialog.querySelector('#addMainCategoryBtn');
+				const help1 = dialog.querySelector('#help1');
+
+				const sync = () => {
+					const ok = !!(mainInput?.value?.trim() && subInput?.value?.trim());
+					if (addBtn) addBtn.disabled = !ok;
+					if (help1) help1.textContent = '\u00A0';
+				};
+				mainInput?.addEventListener('input', sync);
+				subInput?.addEventListener('input', sync);
+				sync();
+
+				addBtn?.addEventListener('click', async () => {
+					const mainName = mainInput?.value?.trim() || '';
+					const subName = subInput?.value?.trim() || '';
+					if (!mainName || !subName) return;
+					try {
+						await apiPost('createCategory', { mainCategoryName: mainName, subCategoryName: subName });
+						modal_close();
+						await loadAndRenderCategories();
+					} catch (err) {
+						if (err?.status === 409) {
+							//  
+							if (help1) help1.textContent = 'A category name with the same name already exists.';
+							modal('category-management-m3.html', '600px', '252px');
+						} else {
+							alert(err.message || ' .');
+						}
+					}
+				});
+			}
+		});
+
+		// ===== Drag & Drop (Main & Sub-categories) =====
+		let draggingSub = null;
+		let draggingMain = null;
+		categoryGrid?.addEventListener('dragstart', (e) => {
+			// Sub-category drag
+			const item = e.target.closest('.gpc-item[data-sub-id]');
+			if (item) {
+				if (!e.target.closest('.js-drag-handle')) {
+					e.preventDefault();
+					return;
+				}
+				draggingSub = item;
+				e.dataTransfer.effectAllowed = 'move';
+				try { e.dataTransfer.setData('text/plain', 'sub:' + item.dataset.subId); } catch (_) {}
+				return;
+			}
+
+			// Main-category drag
+			const card = e.target.closest('.grid-panel-card[data-main-id]');
+			if (card) {
+				if (!e.target.closest('.js-main-drag-handle')) {
+					e.preventDefault();
+					return;
+				}
+				draggingMain = card;
+				card.style.opacity = '0.5';
+				e.dataTransfer.effectAllowed = 'move';
+				try { e.dataTransfer.setData('text/plain', 'main:' + card.dataset.mainId); } catch (_) {}
+			}
+		});
+
+		categoryGrid?.addEventListener('dragover', (e) => {
+			// Sub-category dragover
+			if (draggingSub) {
+				const overItem = e.target.closest('.gpc-item[data-sub-id]');
+				if (!overItem) return;
+				if (overItem === draggingSub) return;
+				if (overItem.dataset.mainId !== draggingSub.dataset.mainId) return;
+				e.preventDefault();
+				const body = overItem.parentElement;
+				const rect = overItem.getBoundingClientRect();
+				const after = (e.clientY - rect.top) > rect.height / 2;
+				body.insertBefore(draggingSub, after ? overItem.nextSibling : overItem);
+				return;
+			}
+
+			// Main-category dragover
+			if (draggingMain) {
+				const overCard = e.target.closest('.grid-panel-card[data-main-id]');
+				if (!overCard || overCard === draggingMain) return;
+				e.preventDefault();
+				const rect = overCard.getBoundingClientRect();
+				const after = (e.clientX - rect.left) > rect.width / 2;
+				categoryGrid.insertBefore(draggingMain, after ? overCard.nextSibling : overCard);
+			}
+		});
+
+		categoryGrid?.addEventListener('dragend', async () => {
+			// Sub-category dragend
+			if (draggingSub) {
+				const mainId = parseInt(draggingSub.dataset.mainId, 10);
+				const body = draggingSub.closest('.gpc-body');
+				const ids = Array.from(body.querySelectorAll('.gpc-item[data-sub-id]')).map(el => parseInt(el.dataset.subId, 10));
+				draggingSub = null;
+				try {
+					await apiPost('reorderSubCategories', { mainCategoryId: mainId, order: ids });
+				} catch (err) {
+					alert(err.message || '순서 변경 실패.');
+					await loadAndRenderCategories();
+				}
+				return;
+			}
+
+			// Main-category dragend
+			if (draggingMain) {
+				draggingMain.style.opacity = '';
+				const ids = Array.from(categoryGrid.querySelectorAll('.grid-panel-card[data-main-id]')).map(el => parseInt(el.dataset.mainId, 10));
+				draggingMain = null;
+				try {
+					await apiPost('reorderMainCategories', { order: ids });
+				} catch (err) {
+					alert(err.message || '순서 변경 실패.');
+					await loadAndRenderCategories();
+				}
+			}
+		});
+	</script>
+</body>
+
+</html>

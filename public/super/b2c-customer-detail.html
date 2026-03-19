@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css">
+	<link rel="stylesheet" href="../css/a_contents.css">
+
+	<!-- editor (publishing parity) -->
+	<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.js"></script>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+			<div class="page-toolbar">
+				<a href="b2c-customer-list.html" class="jw-button" aria-label=" ">
+					<img src="../image/arrow4.svg" alt="">
+					<span data-lan-eng="Return to list">Return to list</span>
+				</a>
+
+				<div class="page-toolbar-actions">
+				</div>
+			</div>
+			
+			<h1 class="page-title" data-lan-eng="B2C Customer Details">B2C Customer Details</h1>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Basic Information">Basic Information</h2>
+			<div class="card-panel jw-mgt16">
+			
+				<div class="grid-wrap">
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Customer Name">Customer Name</label>
+						<input type="text" id="customerName" value="">
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Contacts">Contacts</label>
+						<div class="field-row">
+							<select class="select" id="countryCode">
+								<!-- populated by /backend/api/countries.php -->
+								<option value="+63">+63</option>
+							</select>
+							<input type="text" id="contactNo" value="">
+						</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Email">Email</label>
+						<input type="email" id="emailAddress" value="">
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name">PW</label>
+						<div class="input-box">
+							<input type="password" value="**********">
+							<button type="button" class="jw-button typeD" id="resetPwBtn"><img src="../image/replay.svg" alt=""><span data-lan-eng="Reset">Reset</span></button>
+						</div>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Customer number">Customer number</label>
+						<input type="text" id="customerNo" value="" disabled>
+					</div>
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Agent Name">Agent Name</label>
+						<input type="text" id="branchName" value="" disabled>
+					</div>
+
+					<div class="grid-item">
+						<label class="label-name" data-lan-eng="Registration date/time">Registration date/time</label>
+						<input type="text" id="registeredAt" value="" disabled>
+					</div>
+
+					<!-- SMT   - Quill   textarea  -->
+					<div class="grid-item col-span-3">
+						<label class="label-name" data-lan-eng="Note">Note</label>
+						<div class="editor-box-wrap">
+							<textarea name="memo" id="memo" rows="5" placeholder=" ."></textarea>
+						</div>
+					</div>
+					<!-- SMT   -->
+				</div>
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Reservation Details">Reservation Details</h2>
+			<div class="card-panel jw-mgt16">
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!--  (auto) -->
+						<col> <!--  -->
+						<col> <!--   -->
+						<col> <!--   -->
+						<col> <!--   -->
+						<col> <!--  (₱) -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no">No</th>
+							<th data-lan-eng="Product Name">Product Name</th>
+							<th data-lan-eng="Reservation date">Reservation date</th>
+							<th data-lan-eng="Travel start date">Travel start date</th>
+							<th data-lan-eng="Reservation Status">Reservation Status</th>
+							<th class="is-center" data-lan-eng="Number of people for reservation">Number of people for reservation</th>
+							<th class="is-right" data-lan-eng="Order Amount (₱)">Order Amount (₱)</th>
+						</tr>
+					</thead>
+					<tbody id="bookingHistoryBody">
+						<tr><td colspan="7" class="is-center">Loading...</td></tr>
+					</tbody>
+				</table>
+				
+				<div class="jw-pagebox" role="navigation" aria-label="" id="bookingPagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list"></div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+			<h2 class="section-title jw-mgt32" data-lan-eng="Inquiry History">Inquiry History</h2>
+			<div class="card-panel jw-mgt16">
+				<table class="jw-tableA">
+					<colgroup>
+						<col class="col-60"> <!-- No -->
+						<col> <!--   -->
+						<col> <!--   (auto) -->
+						<col> <!--  -->
+						<col> <!--   -->
+						<col> <!--   -->
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="no is-center">No</th>
+							<th data-lan-eng="Inquiry type">Inquiry type</th>
+							<th data-lan-eng="Inquiry Title">Inquiry Title</th>
+							<th data-lan-eng="Date created">Date created</th>
+							<th data-lan-eng="Response status" class="is-center">Response status</th>
+							<th data-lan-eng="Processing status" class="is-center">Processing status</th>
+						</tr>
+					</thead>
+					<tbody id="inquiryHistoryBody">
+						<tr><td colspan="6" class="is-center">Loading...</td></tr>
+					</tbody>
+				</table>
+				
+				<div class="jw-pagebox" role="navigation" aria-label="" id="inquiryPagination">
+					<div class="contents">
+						<button type="button" class="first" aria-label=" " aria-disabled="false">
+							<img src="../image/first.svg" alt="">
+						</button>
+						<button type="button" class="prev" aria-label=" " aria-disabled="false">
+							<img src="../image/prev.svg" alt="">
+						</button>
+
+						<div class="page" role="list"></div>
+
+						<button type="button" class="next" aria-label=" " aria-disabled="false">
+							<img src="../image/next.svg" alt="">
+						</button>
+						<button type="button" class="last" aria-label=" " aria-disabled="false">
+							<img src="../image/last.svg" alt="">
+						</button>
+					</div>
+				</div>
+
+			</div>
+
+		</section>
+
+	</main>
+
+	<!-- 하단 고정 액션 바 -->
+	<div class="fixed-bottom-bar">
+		<button type="button" class="jw-button typeB" id="saveBtn" data-lan-eng="Save">Save</button>
+	</div>
+
+	<style>
+		.layout-main {
+			padding-bottom: 60px !important;
+		}
+		.fixed-bottom-bar {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 60px;
+			background: #fff;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 24px;
+			z-index: 100;
+		}
+	</style>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_b2cdetailfix1"></script>
+	<script src="../js/multi-editor.js"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = String(text ?? '');
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+
+		let customerId = null;
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+				
+				// Super  admin   (agent/guide   )
+				const isAdmin = sessionData && sessionData.authenticated && (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+				if (!isAdmin) {
+					window.location.href = '../index.html';
+					return;
+				}
+				
+				const urlParams = new URLSearchParams(window.location.search);
+				customerId = urlParams.get('id') || urlParams.get('accountId');
+
+				// Populate country dial code options before setting selected value
+				await loadCountryCodeOptions();
+				
+				if (customerId) {
+					await loadCustomerDetail();
+					await loadCustomerBookings(1);
+					await loadCustomerInquiries(1);
+				}
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		async function loadCountryCodeOptions() {
+			const sel = document.getElementById('countryCode');
+			if (!sel) return;
+			try {
+				const current = (sel.value || '').trim() || '+63';
+				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const json = await res.json();
+				if (!json?.success || !Array.isArray(json.countries)) return;
+				sel.innerHTML = '';
+				json.countries.forEach((c) => {
+					const code = String(c?.code || '').trim();
+					const name = String(c?.name || '').trim();
+					if (!code) return;
+					const opt = document.createElement('option');
+					opt.value = code;
+					opt.textContent = name ? `${name} (${code})` : code;
+					sel.appendChild(opt);
+				});
+				sel.value = current;
+			} catch (e) {
+				// ignore - keep fallback options
+			} finally {
+				try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+			}
+		}
+
+		let bookingPage = 1;
+		const bookingLimit = 10;
+		let inquiryPage = 1;
+		const inquiryLimit = 10;
+
+		async function loadCustomerDetail() {
+			try {
+				const response = await fetch(`../backend/api/super-api.php?action=getCustomerDetail&id=${customerId}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data && result.data.customer) {
+					const customer = result.data.customer;
+
+					document.getElementById('customerName').value = customer.customerName || '';
+					document.getElementById('emailAddress').value = customer.emailAddress || '';
+					// ensure options exist then set value
+					const cc = document.getElementById('countryCode');
+					if (cc) {
+						const code = (customer.countryCode || '').trim() || '+63';
+						cc.value = code;
+					}
+					document.getElementById('contactNo').value = customer.contactNo || '';
+					// jw_select(커스텀 셀렉트) 표시/옵션 동기화
+					try { if (typeof window.refreshAllJwSelect === 'function') window.refreshAllJwSelect(); } catch (_) {}
+					document.getElementById('customerNo').value = customer.customerNo || '';
+					document.getElementById('branchName').value = customer.branchName || (customer.companyName || '');
+					document.getElementById('registeredAt').value = customer.registrationDate || '';
+					// SMT   -  textarea   
+					document.getElementById('memo').value = customer.memo || '';
+					// SMT  
+
+					// NOTE: B2C      .
+				}
+			} catch (error) {
+				console.error('Error loading customer detail:', error);
+			}
+		}
+
+		async function loadCustomerBookings(page = bookingPage) {
+			const tbody = document.getElementById('bookingHistoryBody');
+			if (!tbody) return;
+			tbody.innerHTML = '<tr><td colspan="7" class="is-center">Loading...</td></tr>';
+
+			try {
+				const res = await fetch(`../backend/api/super-api.php?action=getB2CCustomerBookings&accountId=${customerId}&page=${page}&limit=${bookingLimit}`, {
+					credentials: 'same-origin'
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				const list = json?.success ? (json.data?.bookings || []) : [];
+				const pagination = json?.success ? (json.data?.pagination || null) : null;
+
+				if (!list.length) {
+					tbody.innerHTML = '<tr><td colspan="7" class="is-center">No reservations found.</td></tr>';
+					return;
+				}
+
+				const statusLabel = (s) =>
+					s === 'confirmed' ? 'Reservation confirmed'
+						: s === 'pending' ? 'Pending'
+							: s === 'cancelled' ? 'Cancelled'
+								: s === 'completed' ? 'Completed'
+									: (s || '');
+
+				tbody.innerHTML = list.map(row => {
+					const bookingId = escapeHtml(row.bookingId || '');
+					const detailPage = (row.customerType === 'B2B') ? 'b2b-booking-detail.html' : 'b2c-booking-detail.html';
+					return `
+						<tr data-booking-id="${bookingId}" data-detail="${detailPage}" style="cursor:pointer;">
+							<td class="no">${row.rowNum ?? ''}</td>
+							<!-- (HTML 태그 수정) 디코딩 적용 -->
+							<td class="td-ellipsis"><span>${escapeHtml(decodeHtmlEntities(row.packageName) || '')}</span></td>
+							<td class="is-center">${escapeHtml(row.reservationDate || '')}</td>
+							<td class="is-center">${escapeHtml(row.travelStartDate || '')}</td>
+							<td class="is-center">${escapeHtml(statusLabel(row.bookingStatus))}</td>
+							<td class="is-center">${Number(row.guests || 0)}</td>
+							<td class="is-right">${Number(row.totalAmount || 0).toLocaleString()}</td>
+						</tr>
+					`;
+				}).join('');
+
+				tbody.querySelectorAll('tr[data-booking-id]').forEach(tr => {
+					tr.addEventListener('click', () => {
+						const id = tr.getAttribute('data-booking-id');
+						const dp = tr.getAttribute('data-detail') || 'b2c-booking-detail.html';
+						if (id) window.location.href = `${dp}?id=${encodeURIComponent(id)}`;
+					});
+				});
+
+				if (pagination) {
+					bookingPage = pagination.currentPage || page;
+					renderSectionPagination('bookingPagination', pagination, (p) => loadCustomerBookings(p));
+				}
+			} catch (e) {
+				console.error('Error loading bookings:', e);
+				tbody.innerHTML = '<tr><td colspan="7" class="is-center">Failed to load reservations.</td></tr>';
+			}
+		}
+
+		async function loadCustomerInquiries(page = inquiryPage) {
+			const tbody = document.getElementById('inquiryHistoryBody');
+			if (!tbody) return;
+			tbody.innerHTML = '<tr><td colspan="6" class="is-center">Loading...</td></tr>';
+
+			try {
+				const res = await fetch(`../backend/api/super-api.php?action=getB2CCustomerInquiries&accountId=${customerId}&page=${page}&limit=${inquiryLimit}`, {
+					credentials: 'same-origin'
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				const list = json?.success ? (json.data?.inquiries || []) : [];
+				const pagination = json?.success ? (json.data?.pagination || null) : null;
+
+				if (!list.length) {
+					tbody.innerHTML = '<tr><td colspan="6" class="is-center">No inquiries found.</td></tr>';
+					return;
+				}
+
+				const replyLabel = (s) => (String(s || '').includes('') ? 'Answered' : String(s || '').includes('') ? 'Unanswered' : (s || ''));
+				const procLabel = (s) => {
+					const v = String(s || '');
+					if (v.includes('')) return 'Received';
+					if (v.includes('')) return 'Processing';
+					if (v.includes('')) return 'Completed';
+					return s || '';
+				};
+
+				tbody.innerHTML = list.map(row => {
+					const created = (row.createdAt || '').split(' ')[0] || '';
+					return `
+						<tr data-inquiry-id="${row.inquiryId}" style="cursor:pointer;">
+							<td class="no is-center">${row.rowNum ?? ''}</td>
+							<td class="is-center">${escapeHtml(row.inquiryType || '')}</td>
+							<td class="td-ellipsis"><span>${escapeHtml(row.inquiryTitle || '')}</span></td>
+							<td class="is-center">${escapeHtml(created)}</td>
+							<td class="is-center">${escapeHtml(replyLabel(row.replyStatus || ''))}</td>
+							<td class="is-center">${escapeHtml(procLabel(row.processingStatus || ''))}</td>
+						</tr>
+					`;
+				}).join('');
+
+				tbody.querySelectorAll('tr[data-inquiry-id]').forEach(tr => {
+					tr.addEventListener('click', () => {
+						const id = tr.getAttribute('data-inquiry-id');
+						if (id) window.location.href = `user-inquiry-detail.html?id=${encodeURIComponent(id)}`;
+					});
+				});
+
+				if (pagination) {
+					inquiryPage = pagination.currentPage || page;
+					renderSectionPagination('inquiryPagination', pagination, (p) => loadCustomerInquiries(p));
+				}
+			} catch (e) {
+				console.error('Error loading inquiries:', e);
+				tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load inquiries.</td></tr>';
+			}
+		}
+
+		function renderSectionPagination(containerId, pagination, onPageChange) {
+			const box = document.getElementById(containerId);
+			if (!box) return;
+			const pageWrap = box.querySelector('.page');
+			if (!pageWrap) return;
+
+			const totalPages = Math.max(1, Number(pagination.totalPages || 1));
+			const current = Math.max(1, Number(pagination.currentPage || 1));
+			const groupSize = 5;
+			const groupStart = Math.floor((current - 1) / groupSize) * groupSize + 1;
+			const groupEnd = Math.min(totalPages, groupStart + groupSize - 1);
+
+			pageWrap.innerHTML = '';
+			for (let p = groupStart; p <= groupEnd; p++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p' + (p === current ? ' show' : '');
+				btn.setAttribute('role', 'listitem');
+				if (p === current) btn.setAttribute('aria-current', 'page');
+				btn.textContent = String(p);
+				btn.addEventListener('click', () => onPageChange(p));
+				pageWrap.appendChild(btn);
+			}
+
+			const firstBtn = box.querySelector('.first');
+			const prevBtn = box.querySelector('.prev');
+			const nextBtn = box.querySelector('.next');
+			const lastBtn = box.querySelector('.last');
+
+			const prevTarget = Math.max(1, groupStart - groupSize);
+			const nextTarget = Math.min(totalPages, groupStart + groupSize);
+
+			if (firstBtn) firstBtn.onclick = () => onPageChange(1);
+			if (lastBtn) lastBtn.onclick = () => onPageChange(totalPages);
+			if (prevBtn) prevBtn.onclick = () => onPageChange(prevTarget);
+			if (nextBtn) nextBtn.onclick = () => onPageChange(nextTarget);
+		}
+
+		document.getElementById('resetPwBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			if (!confirm('Reset the password?')) return;
+			try {
+				const res = await fetch('../backend/api/super-api.php', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'resetCustomerPassword', accountId: Number(customerId) })
+				});
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				if (json.success) {
+					const pw = (json.data?.tempPassword || json.tempPassword || '');
+					if (pw) {
+						try {
+							await navigator.clipboard.writeText(pw);
+							alert('Temporary password (copied): ' + pw);
+						} catch (_) {
+							alert('Temporary password: ' + pw);
+						}
+					} else {
+						alert('Temporary password: ');
+					}
+				} else {
+					alert(json.message || 'Failed to reset password.');
+				}
+			} catch (err) {
+				console.error('Reset password error:', err);
+				alert('An error occurred while resetting the password.');
+			}
+		});
+
+		document.getElementById('saveBtn')?.addEventListener('click', async (e) => {
+			e.preventDefault();
+			const fullName = document.getElementById('customerName').value.trim();
+			const emailAddress = document.getElementById('emailAddress').value.trim();
+			const countryCode = document.getElementById('countryCode').value;
+			const contactNo = document.getElementById('contactNo').value.trim();
+
+			// SMT   -  textarea   
+			let memo = document.getElementById('memo')?.value?.trim() || '';
+			// SMT  
+
+			if (!fullName || !emailAddress || !contactNo) {
+				alert('Please fill in required fields (Name/Email/Contact).');
+				return;
+			}
+
+			const parts = fullName.split(/\s+/);
+			const fName = parts[0] || fullName;
+			const lName = parts.slice(1).join(' ') || '';
+
+			const fd = new FormData();
+			fd.append('action', 'updateB2CCustomer');
+			fd.append('accountId', String(customerId));
+			fd.append('fName', fName);
+			fd.append('lName', lName);
+			fd.append('emailAddress', emailAddress);
+			fd.append('countryCode', countryCode);
+			fd.append('contactNo', contactNo);
+			fd.append('memo', memo);
+
+			try {
+				const res = await fetch('../backend/api/super-api.php', { method: 'POST', credentials: 'same-origin', body: fd });
+				if (res.status === 401) {
+					alert('Login required.');
+					window.location.href = '../index.html';
+					return;
+				}
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				const json = await res.json();
+				if (json.success) {
+					alert('Saved.');
+					await loadCustomerDetail();
+				} else {
+					alert(json.message || 'Failed to save.');
+				}
+			} catch (err) {
+				console.error('Save error:', err);
+				alert('An error occurred while saving: ' + (err?.message || ''));
+			}
+		});
+	</script>
+</body>
+
+</html>

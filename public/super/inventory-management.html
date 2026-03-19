@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>SMART TRAVEL ADMIN</title>
+    <link rel="stylesheet" href="../css/a_reset.css">
+    <link rel="stylesheet" href="../css/a_variables.css">
+    <link rel="stylesheet" href="../css/a_components.css">
+    <link rel="stylesheet" href="../css/a_contents.css">
+    <style>
+        .inventory-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .product-search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .product-search-wrapper .form-control {
+            min-width: 300px;
+            height: 44px;
+            padding: 0 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #f9fafb;
+            cursor: pointer;
+        }
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .calendar-nav .month-label {
+            font-size: 20px;
+            font-weight: 600;
+            min-width: 150px;
+            text-align: center;
+        }
+        .calendar-nav button {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-nav button:hover {
+            background: #f5f5f5;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e5e5e5;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .calendar-grid .day-header {
+            background: #f7faff;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: #666;
+        }
+        .calendar-grid .day-header.sun { color: #ef4444; }
+        .calendar-grid .day-header.sat { color: #3b82f6; }
+        .calendar-cell {
+            background: #fff;
+            min-height: 100px;
+            padding: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .calendar-cell:hover {
+            background: #f9fafb;
+        }
+        .calendar-cell.empty {
+            background: #fafafa;
+            cursor: default;
+        }
+        .calendar-cell.past {
+            background: #f5f5f5;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .calendar-cell .day-num {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .calendar-cell.sun .day-num { color: #ef4444; }
+        .calendar-cell.sat .day-num { color: #3b82f6; }
+        .calendar-cell .seats-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        .calendar-cell .seats-info .booked {
+            font-weight: 600;
+        }
+        .calendar-cell .seats-info.available .booked { color: #22c55e; }
+        .calendar-cell .seats-info.soldout .booked { color: #ef4444; }
+        .calendar-cell .seats-info.closed .booked { color: #9ca3af; }
+        .calendar-cell .price-info {
+            font-size: 11px;
+            color: #999;
+        }
+        .calendar-cell .status-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        .calendar-cell .status-badge.available { background: #dcfce7; color: #16a34a; }
+        .calendar-cell .status-badge.soldout { background: #fee2e2; color: #dc2626; }
+        .calendar-cell .status-badge.closed { background: #f3f4f6; color: #6b7280; }
+        .calendar-cell.outside-sales {
+            background: #f9fafb;
+            cursor: default;
+        }
+        .calendar-cell.outside-sales .day-num {
+            color: #d1d5db;
+        }
+        .calendar-cell.outside-sales .outside-sales-text {
+            color: #d1d5db;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .product-info-bar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 16px;
+            background: #f7faff;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .product-info-bar .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .product-info-bar .info-label {
+            font-size: 13px;
+            color: #666;
+        }
+        .product-info-bar .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        .no-product {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        /* Modal Base Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-content.modal-large {
+            max-width: 700px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .modal-close img {
+            width: 20px;
+            height: 20px;
+        }
+        .modal-body {
+            padding: 24px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid #e5e5e5;
+        }
+        /* Dialog modal fix */
+        dialog {
+            max-height: 90vh;
+            overflow-y: auto;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <header class="layout-header"></header>
+
+    <main class="layout-main">
+        <nav class="layout-nav"></nav>
+
+        <section class="layout-content">
+            <h1 class="page-title" data-lan-eng="Inventory Management">Inventory Management</h1>
+
+            <div class="card-panel jw-mgt32">
+                <!-- 헤더: 상품 선택 + 월 네비게이션 -->
+                <div class="inventory-header">
+                    <div class="product-search-wrapper">
+                        <input type="text" id="productNameDisplay" class="form-control" placeholder="Select a product" data-lan-eng-placeholder="Select a product" readonly style="min-width: 300px;">
+                        <button type="button" id="productSearchBtn" class="jw-button typeA">
+                            <img src="../image/search2.svg" alt=""><span data-lan-eng="Product Search">Product Search</span>
+                        </button>
+                        <input type="hidden" id="selectedPackageId">
+                    </div>
+
+                    <div class="calendar-nav">
+                        <button type="button" onclick="changeMonth(-1)" title="Previous month">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M10 12L6 8L10 4" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <span class="month-label" id="monthLabel">2026년 1월</span>
+                        <button type="button" onclick="changeMonth(1)" title="Next month">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M6 4L10 8L6 12" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <button type="button" class="jw-button typeB" onclick="openBulkModal()" id="bulkBtn" disabled>
+                        <span data-lan-eng="Bulk Registration">Bulk Registration</span>
+                    </button>
+                </div>
+
+                <!-- 상품 정보 바 -->
+                <div class="product-info-bar" id="productInfoBar" style="display:none;">
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="Product">Product:</span>
+                        <span class="info-value" id="infoProductName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="Max Capacity">Max Capacity:</span>
+                        <span class="info-value" id="infoMaxSeats">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="B2B Price">B2B Price:</span>
+                        <span class="info-value" id="infoBasePrice">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-lan-eng="Sales Period">Sales Period:</span>
+                        <span class="info-value" id="infoSalesPeriod">-</span>
+                    </div>
+                </div>
+
+                <!-- 달력 그리드 -->
+                <div id="calendarContainer">
+                    <div class="no-product" id="noProductMessage">
+                        <p data-lan-eng="Please select a product to view inventory">Please select a product to view inventory</p>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid" style="display:none;">
+                        <div class="day-header sun" data-lan-eng="Sun">Sun</div>
+                        <div class="day-header" data-lan-eng="Mon">Mon</div>
+                        <div class="day-header" data-lan-eng="Tue">Tue</div>
+                        <div class="day-header" data-lan-eng="Wed">Wed</div>
+                        <div class="day-header" data-lan-eng="Thu">Thu</div>
+                        <div class="day-header" data-lan-eng="Fri">Fri</div>
+                        <div class="day-header sat" data-lan-eng="Sat">Sat</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 상품 검색 모달 -->
+    <div id="product-search-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 data-lan-eng="Product Search">Product Search</h3>
+                <button type="button" class="modal-close" onclick="closeModal('product-search-modal')">
+                    <img src="../image/button-close2.svg" alt="">
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="search-box">
+                    <input type="text" id="product-search-input" class="form-control" placeholder="Enter product name" data-lan-eng-placeholder="Enter product name">
+                    <button type="button" id="product-search-submit" class="jw-button typeA" data-lan-eng="Search">Search</button>
+                </div>
+                <div class="search-results" id="product-search-results">
+                    <!-- 검색 결과가 여기에 표시됩니다 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="jw-button typeB" id="product-search-confirm" data-lan-eng="Select" disabled>Select</button>
+                <button type="button" class="jw-button typeD" onclick="closeModal('product-search-modal')" data-lan-eng="Cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        /* Product Search Modal Styles */
+        #product-search-modal .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        #product-search-modal .search-box .form-control {
+            flex: 1;
+            height: 44px;
+            padding: 0 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        #product-search-modal .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+        #product-search-modal .product-item {
+            cursor: pointer;
+            border: 1px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 10px;
+            background: #fff;
+        }
+        #product-search-modal .product-item:hover {
+            border-color: #9CA3AF;
+            background: #F9FAFB;
+        }
+        #product-search-modal .product-item.selected {
+            border: 2px solid #0050C8;
+            box-shadow: 0 0 0 3px rgba(0, 80, 200, 0.12);
+            background: #F7FAFF;
+        }
+        #product-search-modal .product-item-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        #product-search-modal .product-info {
+            flex: 1;
+            min-width: 0;
+        }
+        #product-search-modal .product-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: #111827;
+        }
+        #product-search-modal .product-meta {
+            margin-top: 6px;
+            color: #6B7280;
+            font-size: 13px;
+        }
+        #product-search-modal .product-price {
+            font-weight: 600;
+            color: #0050C8;
+            font-size: 14px;
+        }
+    </style>
+
+    <script src="../js/default.js"></script>
+    <script src="../js/super.js"></script>
+
+    <script>
+        // 전역 상태
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth() + 1;
+        let selectedPackageId = null;
+        let calendarData = [];
+        let productInfo = null;
+        let searchedProducts = [];
+        let selectedProductInModal = null;
+
+        // 초기화
+        init({
+            headerUrl: '../inc/header.html',
+            navUrl: '../inc/nav_super.html'
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 세션 확인
+            try {
+                const sessionResponse = await fetch('../backend/api/check-session.php', {
+                    credentials: 'same-origin'
+                });
+                const sessionData = await sessionResponse.json();
+                const isAdmin = sessionData && sessionData.authenticated &&
+                               (['admin_ph', 'admin_kr'].includes(sessionData.userType) || sessionData.userType === 'super');
+                if (!isAdmin) {
+                    window.location.href = '../index.html';
+                    return;
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+                window.location.href = '../index.html';
+                return;
+            }
+
+            updateMonthLabel();
+            setupProductSearchModal();
+        });
+
+        // 상품 검색 모달 설정
+        function setupProductSearchModal() {
+            // 상품 검색 버튼 클릭
+            const searchBtn = document.getElementById('productSearchBtn');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', openProductSearchModal);
+            }
+
+            // 상품명 입력 필드 클릭
+            const productNameDisplay = document.getElementById('productNameDisplay');
+            if (productNameDisplay) {
+                productNameDisplay.addEventListener('click', openProductSearchModal);
+            }
+
+            // 검색 버튼 클릭
+            const searchSubmit = document.getElementById('product-search-submit');
+            if (searchSubmit) {
+                searchSubmit.addEventListener('click', searchProducts);
+            }
+
+            // 검색 입력 필드 엔터키
+            const searchInput = document.getElementById('product-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchProducts();
+                    }
+                });
+            }
+
+            // 선택 확인 버튼
+            const confirmBtn = document.getElementById('product-search-confirm');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', confirmProductSelection);
+            }
+        }
+
+        // 상품 검색 모달 열기
+        function openProductSearchModal() {
+            selectedProductInModal = null;
+            const confirmBtn = document.getElementById('product-search-confirm');
+            if (confirmBtn) confirmBtn.disabled = true;
+            openModal('product-search-modal');
+            searchProducts(); // 모달 열릴 때 전체 상품 목록 로드
+        }
+
+        // 상품 검색
+        async function searchProducts() {
+            const searchInput = document.getElementById('product-search-input');
+            const searchTerm = searchInput ? searchInput.value.trim() : '';
+            const resultsContainer = document.getElementById('product-search-results');
+
+            try {
+                resultsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Searching...</div>';
+
+                const params = new URLSearchParams({
+                    action: 'getProducts',
+                    limit: '100'
+                });
+                if (searchTerm) params.set('search', searchTerm);
+
+                const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.products && result.data.products.length > 0) {
+                    searchedProducts = result.data.products;
+                    let html = '<div class="product-list">';
+                    result.data.products.forEach(pkg => {
+                        html += `
+                            <div class="product-item" data-package-id="${pkg.packageId}" onclick="selectProductInModal(${pkg.packageId})">
+                                <div class="product-item-content">
+                                    <div class="product-info">
+                                        <!-- (HTML 태그 수정) 디코딩 적용 -->
+                                        <div class="product-name">${escapeHtml(decodeHtmlEntities(pkg.packageName) || '')}</div>
+                                        <div class="product-meta">
+                                            Max: ${pkg.maxParticipants || '-'} seats |
+                                            <span class="product-price">${formatPrice(pkg.packagePrice)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultsContainer.innerHTML = html;
+                } else {
+                    resultsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No products found</div>';
+                }
+            } catch (error) {
+                console.error('Error searching products:', error);
+                resultsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">Failed to search products</div>';
+            }
+        }
+
+        // 모달에서 상품 선택
+        function selectProductInModal(packageId) {
+            // 이전 선택 제거
+            document.querySelectorAll('.product-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // 현재 선택 표시
+            const selectedItem = document.querySelector(`[data-package-id="${packageId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+            }
+
+            selectedProductInModal = packageId;
+            const confirmBtn = document.getElementById('product-search-confirm');
+            if (confirmBtn) confirmBtn.disabled = false;
+        }
+
+        // 상품 선택 확인
+        async function confirmProductSelection() {
+            if (!selectedProductInModal) {
+                alert('Please select a product');
+                return;
+            }
+
+            selectedPackageId = selectedProductInModal;
+
+            // 선택된 상품 정보 찾기
+            const pkg = searchedProducts.find(p => p.packageId === selectedPackageId);
+            if (pkg) {
+                document.getElementById('productNameDisplay').value = pkg.packageName;
+                document.getElementById('selectedPackageId').value = pkg.packageId;
+            }
+
+            document.getElementById('bulkBtn').disabled = false;
+            closeModal('product-search-modal');
+
+            // 먼저 캘린더 로드하여 판매 시작일 확인
+            await loadCalendar();
+
+            // 판매 시작일이 있으면 해당 월로 이동
+            if (productInfo && productInfo.salesStartDate) {
+                const startDate = new Date(productInfo.salesStartDate);
+                const startYear = startDate.getFullYear();
+                const startMonth = startDate.getMonth() + 1;
+
+                // 현재 표시 중인 월과 다르면 해당 월로 이동
+                if (startYear !== currentYear || startMonth !== currentMonth) {
+                    currentYear = startYear;
+                    currentMonth = startMonth;
+                    updateMonthLabel();
+                    await loadCalendar();
+                }
+            }
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // (HTML 태그 수정) HTML 엔티티 디코딩 함수
+        function decodeHtmlEntities(str) {
+            if (!str) return str;
+            const txt = document.createElement('textarea');
+            txt.innerHTML = str;
+            return txt.value;
+        }
+
+        // 모달 열기
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // 모달 닫기
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+
+        // 월 변경
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            } else if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+            updateMonthLabel();
+            if (selectedPackageId) {
+                loadCalendar();
+            }
+        }
+
+        // 월 라벨 업데이트
+        function updateMonthLabel() {
+            const label = document.getElementById('monthLabel');
+            label.textContent = `${currentYear}년 ${currentMonth}월`;
+        }
+
+        // 캘린더 데이터 로드
+        async function loadCalendar() {
+            if (!selectedPackageId) return;
+
+            try {
+                const params = new URLSearchParams({
+                    action: 'getInventoryCalendar',
+                    packageId: selectedPackageId,
+                    year: currentYear,
+                    month: currentMonth
+                });
+
+                const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    productInfo = result.data.product;
+                    calendarData = result.data.calendar;
+                    renderProductInfo();
+                    renderCalendar();
+                } else {
+                    alert(result.message || 'Failed to load calendar');
+                }
+            } catch (error) {
+                console.error('Failed to load calendar:', error);
+                alert('Failed to load calendar');
+            }
+        }
+
+        // 상품 정보 표시
+        function renderProductInfo() {
+            if (!productInfo) return;
+
+            document.getElementById('infoProductName').textContent = productInfo.packageName;
+            document.getElementById('infoMaxSeats').textContent = productInfo.maxParticipants + ' seats';
+            document.getElementById('infoBasePrice').textContent = formatPrice(productInfo.b2bPrice ?? productInfo.packagePrice);
+
+            // 판매 기간 표시
+            let salesPeriodText = '-';
+            if (productInfo.salesStartDate && productInfo.salesEndDate) {
+                salesPeriodText = productInfo.salesStartDate + ' ~ ' + productInfo.salesEndDate;
+            } else if (productInfo.salesStartDate) {
+                salesPeriodText = productInfo.salesStartDate + ' ~';
+            } else if (productInfo.salesEndDate) {
+                salesPeriodText = '~ ' + productInfo.salesEndDate;
+            }
+            document.getElementById('infoSalesPeriod').textContent = salesPeriodText;
+
+            document.getElementById('productInfoBar').style.display = 'flex';
+        }
+
+        // 달력 렌더링
+        function renderCalendar() {
+            document.getElementById('noProductMessage').style.display = 'none';
+            const grid = document.getElementById('calendarGrid');
+            grid.style.display = 'grid';
+
+            // 기존 셀 제거 (헤더 제외)
+            const cells = grid.querySelectorAll('.calendar-cell');
+            cells.forEach(c => c.remove());
+
+            // 첫째 날의 요일 계산
+            const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+            // 빈 셀 추가
+            for (let i = 0; i < firstDay; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell empty';
+                grid.appendChild(cell);
+            }
+
+            // 날짜 셀 추가
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayData = calendarData.find(d => d.day === day) || {};
+                const cell = createDayCell(day, dayData);
+                grid.appendChild(cell);
+            }
+
+            // 마지막 주 빈 셀 채우기
+            const totalCells = firstDay + daysInMonth;
+            const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let i = 0; i < remaining; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell empty';
+                grid.appendChild(cell);
+            }
+        }
+
+        // 날짜 셀 생성
+        function createDayCell(day, data) {
+            const cell = document.createElement('div');
+            const dow = new Date(currentYear, currentMonth - 1, day).getDay();
+
+            let classes = ['calendar-cell'];
+            if (dow === 0) classes.push('sun');
+            if (dow === 6) classes.push('sat');
+            if (data.isPast) classes.push('past');
+
+            // 판매 기간 외 날짜 체크 (data.date가 없으면 판매 기간 외)
+            const isOutsideSalesPeriod = !data.date;
+            if (isOutsideSalesPeriod) {
+                classes.push('outside-sales');
+            }
+
+            cell.className = classes.join(' ');
+
+            // 판매 기간 외 날짜는 간단히 표시
+            if (isOutsideSalesPeriod) {
+                cell.innerHTML = `
+                    <div class="day-num">${day}</div>
+                    <div class="outside-sales-text">-</div>
+                `;
+                return cell;
+            }
+
+            const status = data.status || 'available';
+            const remainingSeats = data.remainingSeats ?? 0;
+            const availableSeats = data.availableSeats ?? 0;
+            const bookedSeats = availableSeats - remainingSeats;
+            const price = data.b2bPrice ?? data.price ?? 0;
+
+            let statusText = '';
+            let statusClass = status;
+            if (status === 'available' && remainingSeats > 0) {
+                statusText = 'Available';
+            } else if (status === 'soldout' || (status === 'available' && remainingSeats <= 0 && availableSeats > 0)) {
+                statusText = 'Sold Out';
+                statusClass = 'soldout';
+            } else if (status === 'closed' || availableSeats <= 0) {
+                statusText = 'Closed';
+                statusClass = 'closed';
+            } else if (status === 'past') {
+                statusText = '';
+            }
+
+            cell.innerHTML = `
+                <div class="day-num">${day}</div>
+                <div class="seats-info ${statusClass}">
+                    <span class="booked">${bookedSeats}</span> / ${availableSeats} seats
+                </div>
+                <div class="price-info">${formatPrice(price)}</div>
+                ${statusText ? `<span class="status-badge ${statusClass}">${statusText}</span>` : ''}
+            `;
+
+            if (!data.isPast) {
+                cell.onclick = () => openEditModal(data);
+            }
+
+            return cell;
+        }
+
+        // 가격 포맷
+        function formatPrice(price) {
+            if (!price) return '₱0';
+            return '₱' + Number(price).toLocaleString();
+        }
+
+        // 단일 수정 모달 열기
+        function openEditModal(data) {
+            modal('inventory-management-m1.html', '800px', 'auto', {
+                packageId: selectedPackageId,
+                date: data.date,
+                availableSeats: data.availableSeats,
+                status: data.status || 'open',
+                price: data.b2bPrice ?? data.price,
+                childPrice: data.b2bChildPrice ?? data.childPrice,
+                infantPrice: data.b2bInfantPrice ?? data.infantPrice,
+                singlePrice: data.singlePrice,
+                onSave: () => loadCalendar()
+            });
+        }
+
+        // 일괄 등록 모달 열기
+        function openBulkModal() {
+            if (!selectedPackageId) {
+                alert('Please select a product first');
+                return;
+            }
+            modal('inventory-management-m2.html', '520px', 'auto', {
+                packageId: selectedPackageId,
+                defaultSeats: productInfo?.maxParticipants || 0,
+                defaultPrice: productInfo?.packagePrice || 0,
+                onSave: () => loadCalendar()
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,547 @@
+/* ══════════════════════════════════════════════════════
+   overview.css — Operating Status Page
+   Minimalist Material-inspired design
+   Follows root tokens from global stylesheet
+   ══════════════════════════════════════════════════════ */
+
+/* ── Spacing Utilities ────────────────────────────────── */
+.jw-mgt16 { margin-top: 16px; }
+.jw-mgt32 { margin-top: 32px; }
+.jw-mgt44 { margin-top: 44px; }
+.jw-mgt68 { margin-top: 68px; }
+
+.jw-cols   { display: flex; align-items: center; flex-wrap: wrap; }
+.jw-gap10  { gap: 10px; }
+.jw-w200   { width: 200px; }
+.jw-w400   { width: 400px; }
+.jw-mgt8   { margin-top: 8px; }
+
+/* ── Page Date ────────────────────────────────────────── */
+.page-date {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+/* ── Page Title ───────────────────────────────────────── */
+.page-title {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 600;
+  color: var(--body);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* ══════════════════════════════════════════════════════
+   OVERVIEW CARD GRID — 2 columns, fluid
+   ══════════════════════════════════════════════════════ */
+.overview-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .overview-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   CARD — shared surface
+   ══════════════════════════════════════════════════════ */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.card:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+}
+
+.card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+/* ── Card Title ───────────────────────────────────────── */
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Card Link ────────────────────────────────────────── */
+.card-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: color var(--dur-fast);
+  white-space: nowrap;
+}
+
+.card-link:hover {
+  color: var(--accent-hover);
+}
+
+/* ══════════════════════════════════════════════════════
+   STATUS LIST
+   ══════════════════════════════════════════════════════ */
+.status-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--dur-fast);
+}
+
+.status-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.status-item:first-child {
+  padding-top: 0;
+}
+
+/* ── Dot ──────────────────────────────────────────────── */
+.dot {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b5cf6;
+}
+
+.dot-blue   { background: #3b82f6; }
+.dot-orange { background: #f97316; }
+.dot-purple { background: #8b5cf6; }
+.dot-red    { background: #ef4444; }
+.dot-green  { background: #22c55e; }
+
+/* ── Status Labels & Counts ───────────────────────────── */
+.status-item .label {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--label);
+  line-height: 1.4;
+}
+
+.status-item .count {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--body);
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ══════════════════════════════════════════════════════
+   CARD PANEL — full-width section panels
+   ══════════════════════════════════════════════════════ */
+.card-panel {
+  background: var(--panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 28px 28px 32px;
+}
+
+.card-panel > .card-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Card Subtitle ────────────────────────────────────── */
+.card-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.card-subtitle strong {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--body);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  display: block;
+  margin-top: 8px;
+}
+
+.card-subtitle2 {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ══════════════════════════════════════════════════════
+   TABLE — jw-tableA typeB
+   ══════════════════════════════════════════════════════ */
+.tableA-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  margin-top: 20px;
+}
+
+.jw-tableA {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.jw-tableA.typeB thead tr {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.jw-tableA.typeB th {
+  padding: 11px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.jw-tableA.typeB td {
+  padding: 13px 14px;
+  color: var(--label);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.jw-tableA.typeB tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.jw-tableA.typeB tbody tr {
+  transition: background var(--dur-fast);
+}
+
+.jw-tableA.typeB tbody tr:hover {
+  background: var(--bg);
+}
+
+.is-center {
+  text-align: center;
+  color: var(--muted) !important;
+  font-size: 13px;
+}
+
+/* ══════════════════════════════════════════════════════
+   RADIO GROUP — jw-radio typeA
+   ══════════════════════════════════════════════════════ */
+.jw-radio.typeA {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.jw-radio.typeA input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-subtle);
+  background: var(--input-bg);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+  position: relative;
+}
+
+.jw-radio.typeA input[type="radio"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--input-bg);
+}
+
+.jw-radio.typeA input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent-glow);
+  outline-offset: 2px;
+}
+
+.jw-radio.typeA .text {
+  margin-left: 7px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--label);
+  transition: color var(--dur-fast);
+}
+
+.jw-radio.typeA:has(input:checked) .text {
+  color: var(--body);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════
+   INPUT BOX
+   ══════════════════════════════════════════════════════ */
+.input-box {
+  position: relative;
+}
+
+.input-box input[type="text"],
+.input-box input[type="date"],
+.input-box input[readonly],
+.input-box input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--input-text);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+  font-family: inherit;
+}
+
+.input-box input:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.input-box input[readonly] {
+  cursor: default;
+  background: var(--bg);
+  color: var(--label);
+}
+
+.input-box input::placeholder {
+  color: var(--input-ph);
+}
+
+/* ── Apply Button ─────────────────────────────────────── */
+.jw-button.typeB {
+  height: 40px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.jw-button.typeB:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+.jw-button.typeB:active {
+  transform: scale(0.97);
+}
+
+/* ══════════════════════════════════════════════════════
+   INFO TEXT — sales stats display
+   ══════════════════════════════════════════════════════ */
+.info-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 0;
+}
+
+.info-text2 {
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--body);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  margin-top: 6px;
+}
+
+/* ══════════════════════════════════════════════════════
+   CHART AREA
+   ══════════════════════════════════════════════════════ */
+.chart-wrap {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.chart {
+  width: 100%;
+  min-height: 280px;
+}
+
+/* ══════════════════════════════════════════════════════
+   SALES INFO — chart + table side by side
+   ══════════════════════════════════════════════════════ */
+.sales-info {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .sales-info {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sales-chart {
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.sales-product {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.sales-product .jw-tableA.typeB {
+  border: none;
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION SPACING — sales-range & product-sales-range
+   ══════════════════════════════════════════════════════ */
+/* .sales-range,
+.product-sales-range {
+
+} */
+
+/* Custom date row alignment */
+#productSalesCustomDateWrap {
+  align-items: center;
+  gap: 10px;
+}
+
+#productSalesCustomDateWrap span {
+  color: var(--muted);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+
+
+
+
+
+
+/* ── Card panel general structure ─────────────────── */
+
+.card-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle, #e8e5df);
+  margin-bottom: 18px;
+}
+
+.card-panel-header .card-title { margin: 0; }
+
+/* 50/50 grid — filters left, stats right */
+.card-panel-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.card-panel-filters {
+  padding-right: 24px;
+}
+
+.card-panel-stats {
+  padding-left: 24px;
+  border-left: 1px solid var(--border-subtle, #e8e5df);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card-panel-chart {
+  width: 100%;
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid var(--border-subtle, #e8e5df);
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE ADJUSTMENTS
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .card-panel {
+    padding: 20px 16px 24px;
+  }
+
+  .jw-w200,
+  .jw-w400 {
+    width: 100%;
+  }
+
+  .info-text2 {
+    font-size: 28px;
+  }
+
+  .card-subtitle strong {
+    font-size: 26px;
+  }
+}

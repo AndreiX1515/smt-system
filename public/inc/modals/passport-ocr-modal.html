@@ -1,0 +1,136 @@
+<!-- Passport OCR Review Modal -->
+<div class="modal" id="passportOcrModal" style="display:none; z-index: 1500;">
+	<div class="modal-content passport-ocr-modal-content">
+		<div class="modal-header">
+			<h3>Passport OCR Review</h3>
+			<button type="button" class="btn-close" onclick="closePassportOcrModal()">&times;</button>
+		</div>
+
+		<!-- Loading State -->
+		<div class="passport-ocr-loading" id="passportOcrLoading">
+			<div class="ocr-spinner"></div>
+			<p>Scanning passport...</p>
+			<p class="ocr-loading-sub">This may take a few seconds</p>
+		</div>
+
+		<!-- Error State -->
+		<div class="passport-ocr-error" id="passportOcrError" style="display:none;">
+			<div class="ocr-error-icon">!</div>
+			<p class="ocr-error-message" id="passportOcrErrorMsg">OCR processing failed</p>
+			<div class="ocr-error-actions">
+				<button type="button" class="jw-button typeA" onclick="retryPassportOcr()">Retry</button>
+				<button type="button" class="jw-button" onclick="skipOcrAndKeepImage()">Enter Manually</button>
+			</div>
+		</div>
+
+		<!-- Result State -->
+		<div class="passport-ocr-result" id="passportOcrResult" style="display:none;">
+			<div class="passport-ocr-body">
+				<!-- Side Viewer Panel (확대 시 왼쪽에 표시) -->
+				<div class="passport-viewer-side" id="passportViewerSide">
+					<div class="passport-viewer-side-header">
+						<span>Passport Image</span>
+						<div style="display:flex; align-items:center; gap:8px;">
+							<div class="passport-viewer-controls" style="padding:0; background:none; border:none;">
+								<button type="button" onclick="passportViewerZoom(-0.2)" style="padding:2px 10px; font-size:13px;">&#8722;</button>
+								<span id="passportViewerZoomLevel" style="font-size:12px; min-width:38px;">100%</span>
+								<button type="button" onclick="passportViewerZoom(0.2)" style="padding:2px 10px; font-size:13px;">&#43;</button>
+								<button type="button" onclick="passportViewerReset()" style="padding:2px 10px; font-size:12px;">Reset</button>
+							</div>
+							<button type="button" class="passport-viewer-side-close" onclick="closePassportImageViewer()">&times;</button>
+						</div>
+					</div>
+					<div class="passport-viewer-body" id="passportViewerBody">
+						<img id="passportViewerImg" src="" alt="Passport" draggable="false">
+					</div>
+					<div class="passport-viewer-actions">
+						<button type="button" class="jw-button typeA" onclick="confirmPassportOcr()">Confirm</button>
+						<button type="button" class="jw-button" onclick="closePassportOcrModal()">Cancel</button>
+					</div>
+				</div>
+
+				<!-- Left: Image Preview (small thumbnail) -->
+				<div class="passport-ocr-image-panel" id="passportOcrImagePanel">
+					<img id="passportOcrPreviewImg" src="" alt="Passport Preview" onclick="openPassportImageViewer()">
+					<div class="ocr-zoom-hint">Click image to enlarge</div>
+				</div>
+
+				<!-- Right: Extracted Fields -->
+				<div class="passport-ocr-fields-panel">
+					<div class="ocr-field-group">
+						<label>First Name</label>
+						<div class="ocr-field-row">
+							<input type="text" id="ocr_firstName" placeholder="First Name">
+							<span class="ocr-confidence-badge" id="conf_firstName"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Last Name</label>
+						<div class="ocr-field-row">
+							<input type="text" id="ocr_lastName" placeholder="Last Name">
+							<span class="ocr-confidence-badge" id="conf_lastName"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Middle Name</label>
+						<div class="ocr-field-row">
+							<input type="text" id="ocr_middleName" placeholder="Middle Name">
+							<span class="ocr-confidence-badge" id="conf_middleName"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Gender</label>
+						<div class="ocr-field-row">
+							<select id="ocr_gender">
+								<option value="">-</option>
+								<option value="male">Male</option>
+								<option value="female">Female</option>
+							</select>
+							<span class="ocr-confidence-badge" id="conf_gender"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Date of Birth</label>
+						<div class="ocr-field-row">
+							<input type="date" id="ocr_dateOfBirth">
+							<span class="ocr-confidence-badge" id="conf_dateOfBirth"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Passport Number</label>
+						<div class="ocr-field-row">
+							<input type="text" id="ocr_passportNumber" placeholder="Passport Number">
+							<span class="ocr-confidence-badge" id="conf_passportNumber"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Issue Date</label>
+						<div class="ocr-field-row">
+							<input type="date" id="ocr_passportIssueDate">
+							<span class="ocr-confidence-badge" id="conf_passportIssueDate"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Expiry Date</label>
+						<div class="ocr-field-row">
+							<input type="date" id="ocr_passportExpiryDate">
+							<span class="ocr-confidence-badge" id="conf_passportExpiryDate"></span>
+						</div>
+					</div>
+					<div class="ocr-field-group">
+						<label>Nationality</label>
+						<div class="ocr-field-row">
+							<input type="text" id="ocr_nationality" placeholder="Nationality">
+							<span class="ocr-confidence-badge" id="conf_nationality"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="passport-ocr-actions">
+				<button type="button" class="jw-button typeA" onclick="confirmPassportOcr()">Confirm</button>
+				<button type="button" class="jw-button" onclick="closePassportOcrModal()">Cancel</button>
+			</div>
+		</div>
+	</div>
+</div>

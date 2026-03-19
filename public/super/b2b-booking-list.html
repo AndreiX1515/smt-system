@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>SMART TRAVEL ADMIN</title>
+
+	<!--   -->
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20260311">
+
+	<!--   ( ) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+	<style>
+		/* 정렬 가능 컬럼 스타일 */
+		th.sortable {
+			user-select: none;
+		}
+		th.sortable:hover {
+			background-color: #f5f5f5;
+		}
+		th.sortable .th-content {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+		}
+		th.sortable .sort-icon {
+			display: inline-block;
+			width: 16px;
+			height: 16px;
+			vertical-align: middle;
+		}
+		th.sortable .sort-icon::after {
+			content: '⇅';
+			font-size: 12px;
+			color: #999;
+		}
+		th.sortable.sort-asc .sort-icon::after {
+			content: '▲';
+			color: #333;
+		}
+		th.sortable.sort-desc .sort-icon::after {
+			content: '▼';
+			color: #333;
+		}
+
+		/* 정렬 버튼 스타일 */
+		.sort-buttons {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 12px;
+		}
+		.sort-btn {
+			padding: 6px 12px;
+			border: 1px solid #d4d4d4;
+			background: #fff;
+			border-radius: 6px;
+			font-size: 13px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			color: #374151;
+			transition: all 0.2s;
+		}
+		.sort-btn:hover {
+			background: #f5f5f5;
+			border-color: #9ca3af;
+		}
+		.sort-btn.active {
+			background: #3b82f6;
+			color: #fff;
+			border-color: #3b82f6;
+		}
+		.sort-btn .sort-arrow {
+			font-size: 10px;
+		}
+
+		/* 페이지네이션 스타일 */
+		.pagination-wrap {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 4px;
+			margin-top: 16px;
+			padding: 12px 0;
+		}
+		.pagination-wrap:empty {
+			display: none;
+		}
+		.pagination-wrap .page-btn {
+			min-width: 32px;
+			height: 32px;
+			padding: 0 8px;
+			border: 1px solid #d4d4d4;
+			background: #fff;
+			border-radius: 6px;
+			font-size: 14px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.pagination-wrap .page-btn:hover {
+			background: #f5f5f5;
+		}
+		.pagination-wrap .page-btn.active {
+			background: #3b82f6;
+			color: #fff;
+			border-color: #3b82f6;
+		}
+		.pagination-wrap .page-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+		.pagination-wrap .page-info {
+			margin: 0 8px;
+			font-size: 14px;
+			color: #666;
+		}
+
+		/* 탭 스타일 */
+		.tab-wrap {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 16px;
+			border-bottom: 2px solid #e5e5e5;
+			padding-bottom: 0;
+			flex-wrap: wrap;
+		}
+		.tab-btn {
+			padding: 12px 20px;
+			border: none;
+			background: transparent;
+			font-size: 14px;
+			font-weight: 500;
+			color: #6b7280;
+			cursor: pointer;
+			border-bottom: 3px solid transparent;
+			margin-bottom: -2px;
+			transition: all 0.2s;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.tab-btn:hover {
+			color: #3b82f6;
+		}
+		.tab-btn.active {
+			color: #3b82f6;
+			border-bottom-color: #3b82f6;
+		}
+		.tab-btn .badge {
+			padding: 2px 8px;
+			border-radius: 10px;
+			font-size: 12px;
+			font-weight: 600;
+			color: #fff;
+			content: none !important;
+		}
+		.tab-btn .badge::before {
+			content: none !important;
+		}
+		.tab-content {
+			display: none;
+		}
+		.tab-content.active {
+			display: block;
+		}
+
+		/* Check Reject 배지 스타일 */
+		.badge-check-reject {
+			background-color: #dc2626 !important;
+			color: #fff !important;
+		}
+
+		/* Pending 배지 스타일 */
+		.badge-pending {
+			background-color: #8b5cf6 !important;
+			color: #fff !important;
+		}
+		.badge-pending-update {
+			background-color: #a855f7 !important;
+			color: #fff !important;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header   -->
+	<header class="layout-header"></header>
+
+	<!--   -->
+	<main class="layout-main">
+		<!-- nav   -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+			<h1 class="page-title" data-lan-eng="B2B Reservation List">B2B Reservation List</h1>
+
+			<!-- 검색 필터 영역 -->
+			<div class="card-panel jw-mgt32">
+				<div class="list-header">
+					<div class="result-count">
+						<span data-lan-eng="Total">Total</span> <span class="result-count__num" id="totalCount">0</span><span data-lan-eng="items">items</span>
+					</div>
+					<form class="search-form" action="" method="get" id="filterForm" onsubmit="applyFilters(); return false;">
+						<div class="field-row">
+							<input id="travelStartDate" type="text" class="jw-w form-control" placeholder="Date" data-lan-eng-placeholder="Date" readonly>
+							<button type="button" class="btn-icon calendar" aria-label="Open calendar" data-target="#travelStartDate">
+								<img src="../image/calendar.svg" alt="">
+							</button>
+						</div>
+						<select class="select" name="status" id="statusFilter" onchange="applyFilters()">
+							<option value="" data-lan-eng="All Status">All Status</option>
+							<optgroup label="Pending">
+								<option value="pending" data-lan-eng="Pending Approval">Pending Approval</option>
+								<option value="pending_update" data-lan-eng="Pending Update">Pending Update</option>
+							</optgroup>
+							<optgroup label="Waiting Payment">
+								<option value="waiting_down_payment" data-lan-eng="Waiting for Down Payment">Waiting for Down Payment</option>
+								<option value="waiting_second_payment" data-lan-eng="Waiting for Second Payment">Waiting for Second Payment</option>
+								<option value="waiting_balance" data-lan-eng="Waiting for Balance">Waiting for Balance</option>
+								<option value="waiting_full_payment" data-lan-eng="Waiting for Full Payment">Waiting for Full Payment</option>
+							</optgroup>
+							<optgroup label="Checking Payment">
+								<option value="checking_down_payment" data-lan-eng="Checking Down Payment">Checking Down Payment</option>
+								<option value="checking_second_payment" data-lan-eng="Checking Second Payment">Checking Second Payment</option>
+								<option value="checking_balance" data-lan-eng="Checking Balance">Checking Balance</option>
+								<option value="checking_full_payment" data-lan-eng="Checking Full Payment">Checking Full Payment</option>
+							</optgroup>
+							<optgroup label="Rejected">
+								<option value="rejected" data-lan-eng="Payment Rejected">Payment Rejected</option>
+								<option value="check_reject" data-lan-eng="Check Reject">Check Reject</option>
+							</optgroup>
+							<optgroup label="Completed">
+								<option value="confirmed" data-lan-eng="Reservation Confirmed">Reservation Confirmed</option>
+								<option value="completed" data-lan-eng="Trip Completed">Trip Completed</option>
+							</optgroup>
+							<optgroup label="Waiting Cancelled">
+								<option value="waiting_cancelled" data-lan-eng="Waiting for Cancellation">Waiting for Cancellation</option>
+							</optgroup>
+							<optgroup label="Cancelled">
+								<option value="cancelled" data-lan-eng="Reservation Cancelled">Reservation Cancelled</option>
+								<option value="refunded" data-lan-eng="Refund Completed">Refund Completed</option>
+							</optgroup>
+						</select>
+						<div class="search-field">
+							<select class="select" name="searchType" id="searchType" onchange="applyFilters()">
+								<option value="all" data-lan-eng="All">All</option>
+								<option value="product" data-lan-eng="Product Name">Product Name</option>
+								<option value="agent" data-lan-eng="Agent Name">Agent Name</option>
+							</select>
+							<input type="text" class="search-input" id="searchInput" placeholder=" " data-lan-eng="Search" onkeyup="if(event.key==='Enter') applyFilters()">
+							<button type="submit" class="jw-button search-btn" aria-label="" onclick="applyFilters(); return false;">
+								<span class="search-ico"><img src="../image/search.svg" alt=""></span>
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<!-- 탭 버튼 -->
+			<div class="card-panel jw-mgt24">
+				<div class="tab-wrap">
+					<button type="button" class="tab-btn active" data-tab="pending" onclick="switchTab('pending')">
+						<span data-lan-eng="Pending Approval">Pending Approval</span>
+						<span class="badge" id="pendingCount" style="background:#8b5cf6;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="waiting" onclick="switchTab('waiting')">
+						<span data-lan-eng="Waiting Payment">Waiting Payment</span>
+						<span class="badge" id="waitingCount" style="background:#3b82f6;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="checking" onclick="switchTab('checking')">
+						<span data-lan-eng="Checking Payment">Checking Payment</span>
+						<span class="badge" id="checkingCount" style="background:#f59e0b;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="waiting_cancelled" onclick="switchTab('waiting_cancelled')">
+						<span data-lan-eng="Waiting Cancelled">Waiting Cancelled</span>
+						<span class="badge" id="waiting_cancelledCount" style="background:#f97316;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="rejected" onclick="switchTab('rejected')">
+						<span data-lan-eng="Rejected">Rejected</span>
+						<span class="badge" id="rejectedCount" style="background:#ef4444;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="confirmed" onclick="switchTab('confirmed')">
+						<span data-lan-eng="Confirmed">Confirmed</span>
+						<span class="badge" id="confirmedCount" style="background:#22c55e;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="cancelled" onclick="switchTab('cancelled')">
+						<span data-lan-eng="Cancelled">Cancelled</span>
+						<span class="badge" id="cancelledCount" style="background:#6b7280;">0</span>
+					</button>
+					<button type="button" class="tab-btn" data-tab="check_reject" onclick="switchTab('check_reject')">
+						<span data-lan-eng="Check Reject">Check Reject</span>
+						<span class="badge" id="check_rejectCount" style="background:#dc2626;">0</span>
+					</button>
+				</div>
+
+				<!-- 정렬 버튼 영역 -->
+				<div class="sort-buttons">
+					<span style="font-size: 13px; color: #6b7280; margin-right: 4px;">Sort by:</span>
+					<button type="button" class="sort-btn" id="sortUpdatedAtBtn" onclick="toggleUpdatedAtSort()">
+						<span>Last Modified</span>
+						<span class="sort-arrow" id="sortUpdatedAtArrow"></span>
+					</button>
+					<button type="button" class="sort-btn" id="sortTravelDateBtn" onclick="toggleTravelDateSort()">
+						<span>Travel Date</span>
+						<span class="sort-arrow" id="sortTravelDateArrow"></span>
+					</button>
+					<button type="button" class="sort-btn" id="sortDateBookedBtn" onclick="toggleDateBookedSort()">
+						<span>Date Booked</span>
+						<span class="sort-arrow" id="sortDateBookedArrow"></span>
+					</button>
+					<button type="button" class="sort-btn" id="clearSortBtn" onclick="clearSort()" style="display: none;">
+						<span>Clear Sort</span>
+					</button>
+				</div>
+
+				<!-- Tab Content: Pending Approval -->
+				<div class="tab-content active" id="tab-pending">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-pending"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-pending"></div>
+				</div>
+
+				<!-- Tab Content: Waiting Payment -->
+				<div class="tab-content" id="tab-waiting">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-waiting"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-waiting"></div>
+				</div>
+
+				<!-- Tab Content: Checking Payment -->
+				<div class="tab-content" id="tab-checking">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-checking"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-checking"></div>
+				</div>
+
+				<!-- Tab Content: Waiting Cancelled -->
+				<div class="tab-content" id="tab-waiting_cancelled">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-waiting_cancelled"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-waiting_cancelled"></div>
+				</div>
+
+				<!-- Tab Content: Rejected -->
+				<div class="tab-content" id="tab-rejected">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-rejected"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-rejected"></div>
+				</div>
+
+				<!-- Tab Content: Confirmed -->
+				<div class="tab-content" id="tab-confirmed">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-confirmed"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-confirmed"></div>
+				</div>
+
+				<!-- Tab Content: Cancelled -->
+				<div class="tab-content" id="tab-cancelled">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-cancelled"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-cancelled"></div>
+				</div>
+
+				<!-- Tab Content: Check Reject -->
+				<div class="tab-content" id="tab-check_reject">
+					<table class="jw-tableA">
+						<colgroup>
+							<col style="width:50px;"><col style="width:200px;"><col style="width:100px;"><col style="width:100px;"><col style="width:130px;"><col style="width:50px;"><col style="width:110px;"><col style="width:180px;">
+						</colgroup>
+						<thead>
+							<tr>
+								<th class="no is-center">No</th>
+								<th data-lan-eng="Product Name">Product Name</th>
+								<th data-lan-eng="Travel start date" class="is-center sortable" onclick="toggleTravelDateSort()">
+									<span class="th-content">
+										<span class="th-text">Travel start date</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Date Booked" class="is-center sortable" data-sort="dateBooked" onclick="toggleDateBookedSort()">
+									<span class="th-content">
+										<span class="th-text">Date Booked</span>
+										<span class="sort-icon"></span>
+									</span>
+								</th>
+								<th data-lan-eng="Agency Name" class="is-center">Agency Name</th>
+								<th data-lan-eng="PAX" class="is-center">PAX</th>
+								<th data-lan-eng="Assignment Guide" class="is-center">Assignment Guide</th>
+								<th data-lan-eng="Status" class="is-center">Status</th>
+							</tr>
+						</thead>
+						<tbody id="tbody-check_reject"><tr><td colspan="8" class="is-center">Loading...</td></tr></tbody>
+					</table>
+					<div class="pagination-wrap" id="pagination-check_reject"></div>
+				</div>
+			</div>
+
+			<div class="controller">
+				<button type="button" class="jw-button typeA" id="downloadCsvBtn" data-lan-eng="Download">Download</button>
+			</div>
+
+
+
+		</section>
+
+	</main>
+
+	<!--   -->
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226_b2bbookingfix1"></script>
+	<script src="../js/datepicker.js?v=20251231"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		let currentFilters = {
+			search: '',
+			travelStartDate: '',
+			searchType: 'all',
+			travelStartDateSort: '',
+			dateBookedSort: '',
+			updatedAtSort: '',
+			status: ''
+		};
+
+		// 섹션별 상태 그룹 정의
+		const sectionGroups = {
+			pending: ['pending', 'pending_update'],
+			waiting: ['waiting_down_payment', 'waiting_second_payment', 'waiting_balance', 'waiting_full_payment'],
+			checking: ['checking_down_payment', 'checking_second_payment', 'checking_balance', 'checking_full_payment'],
+			waiting_cancelled: ['waiting_cancelled'],
+			rejected: ['rejected'],
+			confirmed: ['confirmed', 'completed'],
+			cancelled: ['cancelled', 'refunded'],
+			check_reject: ['check_reject']
+		};
+
+		// 현재 활성 탭
+		let currentTab = 'pending';
+
+		// 페이지네이션 설정
+		const PAGE_SIZE = 10;
+		const sectionData = {
+			pending: [],
+			waiting: [],
+			checking: [],
+			waiting_cancelled: [],
+			rejected: [],
+			confirmed: [],
+			cancelled: [],
+			check_reject: []
+		};
+		const sectionPage = {
+			pending: 1,
+			waiting: 1,
+			checking: 1,
+			waiting_cancelled: 1,
+			rejected: 1,
+			confirmed: 1,
+			cancelled: 1,
+			check_reject: 1
+		};
+
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				try {
+					if (window.jQuery) {
+						jQuery('#travelStartDate')
+							.on('apply.daterangepicker', function () { applyFilters(); })
+							.on('cancel.daterangepicker', function () { applyFilters(); });
+					}
+				} catch (_) { }
+
+				// sessionStorage에서 필터 상태 복원
+				restoreFiltersFromSession();
+
+				await loadAllBookings();
+				setupDownload();
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+				return;
+			}
+		});
+
+		function switchTab(tab, skipSave = false) {
+			currentTab = tab;
+			// 모든 탭 버튼 비활성화
+			document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+			// 모든 탭 컨텐츠 숨기기
+			document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+			// 선택된 탭 활성화
+			const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+			const activeContent = document.getElementById('tab-' + tab);
+			if (activeBtn) activeBtn.classList.add('active');
+			if (activeContent) activeContent.classList.add('active');
+			// 탭 변경 시 필터 저장 (복원 중이 아닐 때만)
+			if (!skipSave) saveFiltersToSession();
+		}
+
+		function applyFilters() {
+			currentFilters.search = document.getElementById('searchInput').value.trim();
+			// 날짜 필터: "~" 구분자를 ","로 변환하여 백엔드에 전달 (범위 검색 지원)
+			const dateValue = document.getElementById('travelStartDate').value.trim();
+			if (dateValue.includes(' ~ ')) {
+				// 기간 선택: "2024-01-01 ~ 2024-01-31" -> "2024-01-01,2024-01-31"
+				currentFilters.travelStartDate = dateValue.replace(' ~ ', ',');
+			} else {
+				// 단일 날짜 선택
+				currentFilters.travelStartDate = dateValue;
+			}
+			currentFilters.searchType = document.getElementById('searchType')?.value || 'all';
+			currentFilters.status = document.getElementById('statusFilter')?.value || '';
+
+			// status 필터가 선택되면 해당 탭으로 자동 이동
+			if (currentFilters.status) {
+				const targetSection = getSectionForStatus(currentFilters.status);
+				if (targetSection && targetSection !== currentTab) {
+					switchTab(targetSection);
+				}
+			}
+
+			// 필터 상태를 sessionStorage에 저장
+			saveFiltersToSession();
+
+			loadAllBookings();
+		}
+
+		// 필터 상태를 sessionStorage에 저장
+		function saveFiltersToSession() {
+			const filterState = {
+				...currentFilters,
+				currentTab: currentTab,
+				travelStartDateDisplay: document.getElementById('travelStartDate')?.value || ''
+			};
+			sessionStorage.setItem('b2bBookingListFilters', JSON.stringify(filterState));
+		}
+
+		// sessionStorage에서 필터 상태 복원
+		function restoreFiltersFromSession() {
+			try {
+				const saved = sessionStorage.getItem('b2bBookingListFilters');
+				if (!saved) return false;
+
+				const filterState = JSON.parse(saved);
+
+				// currentFilters 복원
+				currentFilters.search = filterState.search || '';
+				currentFilters.travelStartDate = filterState.travelStartDate || '';
+				currentFilters.searchType = filterState.searchType || 'all';
+				currentFilters.status = filterState.status || '';
+				currentFilters.travelStartDateSort = filterState.travelStartDateSort || '';
+				currentFilters.dateBookedSort = filterState.dateBookedSort || '';
+				currentFilters.updatedAtSort = filterState.updatedAtSort || '';
+
+				// UI 복원
+				const searchInput = document.getElementById('searchInput');
+				if (searchInput) searchInput.value = currentFilters.search;
+
+				const searchType = document.getElementById('searchType');
+				if (searchType) searchType.value = currentFilters.searchType;
+
+				const statusFilter = document.getElementById('statusFilter');
+				if (statusFilter) statusFilter.value = currentFilters.status;
+
+				const travelStartDate = document.getElementById('travelStartDate');
+				if (travelStartDate && filterState.travelStartDateDisplay) {
+					travelStartDate.value = filterState.travelStartDateDisplay;
+				}
+
+				// 탭 복원
+				if (filterState.currentTab) {
+					currentTab = filterState.currentTab;
+					switchTab(currentTab, true); // skipSave = true
+				}
+
+				// 정렬 UI 복원
+				if (typeof updateSortUI === 'function') {
+					updateSortUI();
+				}
+
+				return true;
+			} catch (e) {
+				console.error('Error restoring filters:', e);
+				return false;
+			}
+		}
+
+		function getSectionForStatus(statusKey) {
+			const key = String(statusKey || '').toLowerCase().trim();
+			for (const [section, statuses] of Object.entries(sectionGroups)) {
+				if (statuses.includes(key)) return section;
+			}
+			return 'waiting'; // 기본값
+		}
+
+		async function loadAllBookings() {
+			// 모든 섹션 로딩 상태로 변경
+			['pending', 'waiting', 'checking', 'waiting_cancelled', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
+				const tbody = document.getElementById('tbody-' + section);
+				if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="is-center">Loading...</td></tr>';
+			});
+
+			try {
+				// 전체 데이터를 가져오기 위해 limit을 크게 설정
+				const params = new URLSearchParams({
+					action: 'getB2BBookings',
+					page: 1,
+					limit: 1000
+				});
+
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.searchType) params.append('searchType', currentFilters.searchType);
+				if (currentFilters.travelStartDate) params.append('travelStartDate', currentFilters.travelStartDate);
+				if (currentFilters.travelStartDateSort) params.append('travelStartDateSort', currentFilters.travelStartDateSort);
+				if (currentFilters.dateBookedSort) params.append('dateBookedSort', currentFilters.dateBookedSort);
+				if (currentFilters.updatedAtSort) params.append('updatedAtSort', currentFilters.updatedAtSort);
+
+				const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+					credentials: 'same-origin'
+				});
+
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+
+				const result = await response.json();
+
+				if (result.success && result.data) {
+					const { bookings } = result.data;
+
+					// 섹션별로 그룹화
+					const grouped = {
+						pending: [],
+						waiting: [],
+						checking: [],
+						waiting_cancelled: [],
+						rejected: [],
+						confirmed: [],
+						cancelled: [],
+						check_reject: []
+					};
+
+					// status 필터 적용
+					const statusFilter = currentFilters.status;
+
+					bookings.forEach(booking => {
+						const statusKey = String(booking.statusKey || booking.bookingStatus || '').toLowerCase().trim();
+
+						// status 필터가 설정되어 있으면 해당 상태만 포함
+						if (statusFilter && statusKey !== statusFilter) {
+							return;
+						}
+
+						const section = getSectionForStatus(statusKey);
+						grouped[section].push(booking);
+					});
+
+					// 섹션별 데이터 저장 및 페이지 초기화
+					let totalCount = 0;
+					for (const [section, list] of Object.entries(grouped)) {
+						sectionData[section] = list;
+						sectionPage[section] = 1;
+						totalCount += list.length;
+						renderSection(section);
+					}
+
+					// 전체 카운트 표시
+					const totalCountEl = document.getElementById('totalCount');
+					if (totalCountEl) totalCountEl.textContent = totalCount;
+
+					// 다국어 적용
+					try {
+						const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+						if (typeof language_apply === 'function') language_apply(lang);
+					} catch (_) { }
+				} else {
+					['pending', 'waiting', 'checking', 'waiting_cancelled', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
+						const tbody = document.getElementById('tbody-' + section);
+						if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="is-center">Failed to load data.</td></tr>';
+					});
+				}
+			} catch (error) {
+				console.error('Error loading bookings:', error);
+				['pending', 'waiting', 'checking', 'waiting_cancelled', 'rejected', 'confirmed', 'cancelled', 'check_reject'].forEach(section => {
+					const tbody = document.getElementById('tbody-' + section);
+					if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="is-center">Error loading data.</td></tr>';
+				});
+			}
+		}
+
+		function renderSection(section) {
+			const tbody = document.getElementById('tbody-' + section);
+			const countEl = document.getElementById(section + 'Count');
+			const paginationEl = document.getElementById('pagination-' + section);
+			const bookings = sectionData[section] || [];
+			const currentPage = sectionPage[section] || 1;
+			const totalPages = Math.ceil(bookings.length / PAGE_SIZE);
+
+			if (countEl) countEl.textContent = bookings.length;
+
+			if (!tbody) return;
+
+			if (bookings.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="8" class="is-center" data-lan-eng="No data">No data</td></tr>';
+				if (paginationEl) paginationEl.innerHTML = '';
+				return;
+			}
+
+			// 현재 페이지 데이터만 추출
+			const startIdx = (currentPage - 1) * PAGE_SIZE;
+			const endIdx = startIdx + PAGE_SIZE;
+			const pageBookings = bookings.slice(startIdx, endIdx);
+
+			tbody.innerHTML = pageBookings.map((booking, index) => {
+				const st = getStatusUi(booking);
+				let dateBooked = '';
+				if (booking.createdAt) {
+					dateBooked = String(booking.createdAt).substring(0, 10);
+				}
+				const globalIndex = startIdx + index;
+
+				return `
+					<tr onclick="window.location.href='b2b-booking-detail.html?id=${escapeHtml(booking.bookingId)}'" style="cursor: pointer;">
+						<td class="no is-center">${globalIndex + 1}</td>
+						<!-- (HTML 태그 수정) 디코딩 적용 -->
+						<td class="td-ellipsis"><span>${escapeHtml(decodeHtmlEntities(booking.packageName) || '')}</span></td>
+						<td class="is-center">${escapeHtml(booking.departureDate || booking.travelStartDate || '')}</td>
+						<td class="is-center">${escapeHtml(dateBooked)}</td>
+						<td class="is-center">${escapeHtml(booking.agentName || booking.branchName || booking.companyName || '')}</td>
+						<td class="is-center">${Number(booking.numberOfPeople || 0)}</td>
+						<td class="is-center">${
+							booking.guideName
+								? escapeHtml(booking.guideName)
+								: '<span data-lan-eng="Unassigned">Unassigned</span>'
+						}</td>
+						<td class="is-center"><span class="badge ${escapeHtml(st.className)}" data-lan-eng="${escapeHtml(st.dataLanEng)}">${escapeHtml(st.label)}</span></td>
+					</tr>
+				`;
+			}).join('');
+
+			// 페이지네이션 렌더링
+			renderPagination(section, currentPage, totalPages);
+		}
+
+		function renderPagination(section, currentPage, totalPages) {
+			const paginationEl = document.getElementById('pagination-' + section);
+			if (!paginationEl) return;
+
+			if (totalPages <= 1) {
+				paginationEl.innerHTML = '';
+				return;
+			}
+
+			let html = '';
+
+			// 이전 버튼
+			html += `<button class="page-btn" onclick="goToPage('${section}', ${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+
+			// 페이지 번호들
+			const maxVisiblePages = 5;
+			let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+			let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+			if (endPage - startPage + 1 < maxVisiblePages) {
+				startPage = Math.max(1, endPage - maxVisiblePages + 1);
+			}
+
+			if (startPage > 1) {
+				html += `<button class="page-btn" onclick="goToPage('${section}', 1)">1</button>`;
+				if (startPage > 2) {
+					html += `<span class="page-info">...</span>`;
+				}
+			}
+
+			for (let i = startPage; i <= endPage; i++) {
+				html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage('${section}', ${i})">${i}</button>`;
+			}
+
+			if (endPage < totalPages) {
+				if (endPage < totalPages - 1) {
+					html += `<span class="page-info">...</span>`;
+				}
+				html += `<button class="page-btn" onclick="goToPage('${section}', ${totalPages})">${totalPages}</button>`;
+			}
+
+			// 다음 버튼
+			html += `<button class="page-btn" onclick="goToPage('${section}', ${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
+
+			paginationEl.innerHTML = html;
+		}
+
+		function goToPage(section, page) {
+			const bookings = sectionData[section] || [];
+			const totalPages = Math.ceil(bookings.length / PAGE_SIZE);
+
+			if (page < 1 || page > totalPages) return;
+
+			sectionPage[section] = page;
+			renderSection(section);
+
+			// 다국어 재적용
+			try {
+				const lang = (typeof getCookie === 'function' ? (getCookie('lang') || 'eng') : 'eng');
+				if (typeof language_apply === 'function') language_apply(lang);
+			} catch (_) { }
+		}
+
+		function getStatusUi(b) {
+			const statusKey = String(b.statusKey || b.bookingStatus || '').toLowerCase().trim();
+
+			const statusMap = {
+				'pending': { label: '승인 대기', className: 'badge-pending', dataLanEng: 'Pending Approval' },
+				'pending_update': { label: '변경 승인 대기', className: 'badge-pending-update', dataLanEng: 'Pending Update' },
+				'waiting_down_payment': { label: 'Down Payment 대기', className: 'badge-wait-down', dataLanEng: 'Waiting for Down Payment' },
+				'checking_down_payment': { label: 'Down Payment 확인중', className: 'badge-check-down', dataLanEng: 'Checking Down Payment' },
+				'waiting_second_payment': { label: 'Second Payment 대기', className: 'badge-wait-second', dataLanEng: 'Waiting for Second Payment' },
+				'checking_second_payment': { label: 'Second Payment 확인중', className: 'badge-check-second', dataLanEng: 'Checking Second Payment' },
+				'waiting_balance': { label: 'Balance 대기', className: 'badge-wait-balance', dataLanEng: 'Waiting for Balance' },
+				'checking_balance': { label: 'Balance 확인중', className: 'badge-check-balance', dataLanEng: 'Checking Balance' },
+				'waiting_full_payment': { label: 'Full Payment 대기', className: 'badge-wait-full', dataLanEng: 'Waiting for Full Payment' },
+				'checking_full_payment': { label: 'Full Payment 확인중', className: 'badge-check-full', dataLanEng: 'Checking Full Payment' },
+				'rejected': { label: '증빙 거절', className: 'badge-rejected', dataLanEng: 'Payment Rejected' },
+				'check_reject': { label: '거절 확인 필요', className: 'badge-check-reject', dataLanEng: 'Check Reject' },
+				'confirmed': { label: '예약 확정', className: 'badge-confirmed', dataLanEng: 'Reservation Confirmed' },
+				'completed': { label: '여행 완료', className: 'badge-completed', dataLanEng: 'Trip Completed' },
+				'cancelled': { label: '예약 취소', className: 'badge-cancelled', dataLanEng: 'Reservation Cancelled' },
+				'refunded': { label: '환불 완료', className: 'badge-refunded', dataLanEng: 'Refund Completed' },
+				'waiting_cancelled': { label: '취소 대기', className: 'badge-wait-cancelled', dataLanEng: 'Waiting for Cancellation' }
+			};
+
+			if (statusMap[statusKey]) {
+				return statusMap[statusKey];
+			}
+
+			if (statusKey === 'partial') return statusMap['waiting_second_payment'];
+
+			return { label: statusKey || '대기', className: 'badge-wait-down', dataLanEng: 'Waiting' };
+		}
+
+		function setupDownload() {
+			const btn = document.getElementById('downloadCsvBtn');
+			if (!btn || btn._bound) return;
+			btn.addEventListener('click', () => {
+				const params = new URLSearchParams({ action: 'exportB2BBookingsCsv' });
+				if (currentFilters.search) params.append('search', currentFilters.search);
+				if (currentFilters.searchType) params.append('searchType', currentFilters.searchType);
+				if (currentFilters.travelStartDate) params.append('travelStartDate', currentFilters.travelStartDate);
+				if (currentFilters.status) params.append('status', currentFilters.status);
+				window.location.href = `../backend/api/super-api.php?${params.toString()}`;
+			});
+			btn._bound = true;
+		}
+
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		// (HTML 태그 수정) HTML 엔티티 디코딩 함수
+		function decodeHtmlEntities(str) {
+			if (!str) return str;
+			const txt = document.createElement('textarea');
+			txt.innerHTML = str;
+			return txt.value;
+		}
+
+		// 정렬 상태 초기화 (하나의 정렬만 활성화)
+		function clearOtherSorts(except) {
+			if (except !== 'travelStartDateSort') currentFilters.travelStartDateSort = '';
+			if (except !== 'dateBookedSort') currentFilters.dateBookedSort = '';
+			if (except !== 'updatedAtSort') currentFilters.updatedAtSort = '';
+		}
+
+		// Travel start date 정렬 토글 기능
+		function toggleTravelDateSort() {
+			clearOtherSorts('travelStartDateSort');
+			// 정렬 상태 토글: '' -> 'asc' -> 'desc' -> ''
+			if (currentFilters.travelStartDateSort === '') {
+				currentFilters.travelStartDateSort = 'asc';
+			} else if (currentFilters.travelStartDateSort === 'asc') {
+				currentFilters.travelStartDateSort = 'desc';
+			} else {
+				currentFilters.travelStartDateSort = '';
+			}
+			updateSortUI();
+			saveFiltersToSession();
+			loadAllBookings();
+		}
+
+		// Date Booked 정렬 토글 기능
+		function toggleDateBookedSort() {
+			clearOtherSorts('dateBookedSort');
+			if (currentFilters.dateBookedSort === '') {
+				currentFilters.dateBookedSort = 'asc';
+			} else if (currentFilters.dateBookedSort === 'asc') {
+				currentFilters.dateBookedSort = 'desc';
+			} else {
+				currentFilters.dateBookedSort = '';
+			}
+			updateSortUI();
+			saveFiltersToSession();
+			loadAllBookings();
+		}
+
+		// Last Modified (updatedAt) 정렬 토글 기능
+		function toggleUpdatedAtSort() {
+			clearOtherSorts('updatedAtSort');
+			if (currentFilters.updatedAtSort === '') {
+				currentFilters.updatedAtSort = 'desc'; // 최신 수정 순이 기본
+			} else if (currentFilters.updatedAtSort === 'desc') {
+				currentFilters.updatedAtSort = 'asc';
+			} else {
+				currentFilters.updatedAtSort = '';
+			}
+			updateSortUI();
+			saveFiltersToSession();
+			loadAllBookings();
+		}
+
+		// 정렬 초기화
+		function clearSort() {
+			currentFilters.travelStartDateSort = '';
+			currentFilters.dateBookedSort = '';
+			currentFilters.updatedAtSort = '';
+			updateSortUI();
+			saveFiltersToSession();
+			loadAllBookings();
+		}
+
+		// 정렬 UI 업데이트
+		function updateSortUI() {
+			// 테이블 헤더 정렬 아이콘 업데이트
+			document.querySelectorAll('th.sortable').forEach(th => {
+				th.classList.remove('sort-asc', 'sort-desc');
+				const sortType = th.getAttribute('data-sort');
+				if (sortType === 'dateBooked') {
+					if (currentFilters.dateBookedSort === 'asc') th.classList.add('sort-asc');
+					else if (currentFilters.dateBookedSort === 'desc') th.classList.add('sort-desc');
+				} else {
+					// Travel Start Date (기존 sortable without data-sort)
+					if (currentFilters.travelStartDateSort === 'asc') th.classList.add('sort-asc');
+					else if (currentFilters.travelStartDateSort === 'desc') th.classList.add('sort-desc');
+				}
+			});
+
+			// 정렬 버튼 UI 업데이트
+			const travelBtn = document.getElementById('sortTravelDateBtn');
+			const travelArrow = document.getElementById('sortTravelDateArrow');
+			const dateBookedBtn = document.getElementById('sortDateBookedBtn');
+			const dateBookedArrow = document.getElementById('sortDateBookedArrow');
+			const updatedAtBtn = document.getElementById('sortUpdatedAtBtn');
+			const updatedAtArrow = document.getElementById('sortUpdatedAtArrow');
+			const clearBtn = document.getElementById('clearSortBtn');
+
+			// 버튼 활성화 상태
+			[travelBtn, dateBookedBtn, updatedAtBtn].forEach(btn => btn?.classList.remove('active'));
+
+			if (currentFilters.travelStartDateSort) {
+				travelBtn?.classList.add('active');
+				travelArrow.textContent = currentFilters.travelStartDateSort === 'asc' ? '▲' : '▼';
+			} else {
+				travelArrow.textContent = '';
+			}
+
+			if (currentFilters.dateBookedSort) {
+				dateBookedBtn?.classList.add('active');
+				dateBookedArrow.textContent = currentFilters.dateBookedSort === 'asc' ? '▲' : '▼';
+			} else {
+				dateBookedArrow.textContent = '';
+			}
+
+			if (currentFilters.updatedAtSort) {
+				updatedAtBtn?.classList.add('active');
+				updatedAtArrow.textContent = currentFilters.updatedAtSort === 'asc' ? '▲' : '▼';
+			} else {
+				updatedAtArrow.textContent = '';
+			}
+
+			// Clear 버튼 표시/숨김
+			const hasSort = currentFilters.travelStartDateSort || currentFilters.dateBookedSort || currentFilters.updatedAtSort;
+			if (clearBtn) clearBtn.style.display = hasSort ? 'flex' : 'none';
+		}
+
+		// 정렬 아이콘 UI 업데이트 (하위 호환성)
+		function updateSortIcon() {
+			updateSortUI();
+		}
+	</script>
+</body>
+
+</html>

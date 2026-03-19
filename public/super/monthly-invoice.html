@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>Monthly Invoice - SMART TRAVEL ADMIN</title>
+
+	<link rel="shortcut icon" href="../image/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="../css/a_reset.css">
+	<link rel="stylesheet" href="../css/a_variables.css">
+	<link rel="stylesheet" href="../css/a_components.css?v=20251231">
+	<link rel="stylesheet" href="../css/a_contents.css?v=20260311">
+
+	<!-- SheetJS with style support for Excel generation -->
+	<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+	<style>
+		.invoice-form {
+			max-width: 600px;
+			margin: 0 auto;
+		}
+		.form-group {
+			margin-bottom: 24px;
+		}
+		.form-group label {
+			display: block;
+			font-weight: 500;
+			margin-bottom: 8px;
+			color: #374151;
+		}
+		.form-group select,
+		.form-group input {
+			width: 100%;
+			padding: 12px 16px;
+			border: 1px solid #d4d4d4;
+			border-radius: 8px;
+			font-size: 14px;
+		}
+		.form-row {
+			display: flex;
+			gap: 16px;
+		}
+		.form-row .form-group {
+			flex: 1;
+		}
+		.download-btn {
+			width: 100%;
+			padding: 16px 24px;
+			background: #3b82f6;
+			color: #fff;
+			border: none;
+			border-radius: 8px;
+			font-size: 16px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+		.download-btn:hover {
+			background: #2563eb;
+		}
+		.download-btn:disabled {
+			background: #9ca3af;
+			cursor: not-allowed;
+		}
+		.preview-section {
+			margin-top: 32px;
+			padding: 24px;
+			background: #f9fafb;
+			border-radius: 8px;
+		}
+		.preview-title {
+			font-size: 16px;
+			font-weight: 600;
+			margin-bottom: 16px;
+			color: #374151;
+		}
+		.preview-stats {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: 16px;
+		}
+		.stat-card {
+			background: #fff;
+			padding: 16px;
+			border-radius: 8px;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+		}
+		.stat-label {
+			font-size: 12px;
+			color: #6b7280;
+			margin-bottom: 4px;
+		}
+		.stat-value {
+			font-size: 24px;
+			font-weight: 700;
+			color: #111827;
+		}
+		.loading-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0,0,0,0.5);
+			display: none;
+			justify-content: center;
+			align-items: center;
+			z-index: 9999;
+		}
+		.loading-overlay.active {
+			display: flex;
+		}
+		.loading-spinner {
+			background: #fff;
+			padding: 32px 48px;
+			border-radius: 12px;
+			text-align: center;
+		}
+		.spinner {
+			width: 48px;
+			height: 48px;
+			border: 4px solid #e5e7eb;
+			border-top-color: #3b82f6;
+			border-radius: 50%;
+			animation: spin 1s linear infinite;
+			margin: 0 auto 16px;
+		}
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+		.sheet-info {
+			margin-top: 24px;
+			padding: 16px;
+			background: #eff6ff;
+			border-radius: 8px;
+			border: 1px solid #bfdbfe;
+		}
+		.sheet-info h4 {
+			font-size: 14px;
+			font-weight: 600;
+			color: #1e40af;
+			margin-bottom: 12px;
+		}
+		.sheet-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+		.sheet-list li {
+			padding: 6px 0;
+			font-size: 13px;
+			color: #374151;
+			border-bottom: 1px solid #dbeafe;
+		}
+		.sheet-list li:last-child {
+			border-bottom: none;
+		}
+		.sheet-list li strong {
+			color: #1e40af;
+		}
+		.b2b-badge {
+			display: inline-block;
+			padding: 4px 10px;
+			background: #dbeafe;
+			color: #1e40af;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 600;
+			margin-left: 8px;
+		}
+		.account-info-box {
+			margin-top: 32px;
+			padding: 20px;
+			background: #fef3c7;
+			border: 1px solid #f59e0b;
+			border-radius: 8px;
+		}
+		.account-info-box h4 {
+			font-size: 14px;
+			font-weight: 600;
+			color: #92400e;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.account-info-box .info-row {
+			display: flex;
+			padding: 6px 0;
+			font-size: 13px;
+			border-bottom: 1px solid #fcd34d;
+		}
+		.account-info-box .info-row:last-child {
+			border-bottom: none;
+		}
+		.account-info-box .info-label {
+			width: 180px;
+			font-weight: 500;
+			color: #78350f;
+		}
+		.account-info-box .info-value {
+			color: #92400e;
+			font-family: monospace;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- header -->
+	<header class="layout-header"></header>
+
+	<!-- main -->
+	<main class="layout-main">
+		<!-- nav -->
+		<nav class="layout-nav"></nav>
+
+		<section class="layout-content">
+
+			<h1 class="page-title" data-lan-eng="Monthly Invoice Download">
+				Monthly Invoice Download
+				<span class="b2b-badge">B2B Only</span>
+			</h1>
+
+			<div class="card-panel jw-mgt32">
+				<div class="invoice-form">
+					<div class="form-row">
+						<div class="form-group">
+							<label for="startDate" data-lan-eng="Start Date">Start Date</label>
+							<input type="date" id="startDate" class="input">
+						</div>
+						<div class="form-group">
+							<label for="endDate" data-lan-eng="End Date">End Date</label>
+							<input type="date" id="endDate" class="input">
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label for="billToInput" data-lan-eng="BILL TO (Company Name)">BILL TO (Company Name)</label>
+						<input type="text" id="billToInput" class="input" placeholder="Enter company name for invoice">
+					</div>
+
+					<div class="form-group">
+						<label for="statusFilter" data-lan-eng="Status Filter">Status Filter</label>
+						<select id="statusFilter" class="select">
+							<option value="all" data-lan-eng="All Status">All Status</option>
+							<option value="payment" data-lan-eng="Payment Status">Payment Status</option>
+						</select>
+					</div>
+
+					<button type="button" class="download-btn" id="downloadBtn" data-lan-eng="Download Excel">
+						Download Excel
+					</button>
+
+					<div class="sheet-info">
+						<h4 data-lan-eng="Excel Sheets Included">Excel Sheets Included</h4>
+						<ul class="sheet-list">
+							<li><strong>ALL</strong> - Grouped summary by Departure Date + Package (PAX totals, Price totals)</li>
+							<li><strong>Summary</strong> - Invoice summary with all bookings (Departure Date, BK NO, Package, PAX, Price, Total)</li>
+							<li><strong>BK[ID] sheets</strong> - Individual invoice detail per booking (Agency info, price breakdown)</li>
+						</ul>
+					</div>
+
+					<div class="account-info-box">
+						<h4>ACCOUNT INFORMATION</h4>
+						<div class="info-row">
+							<span class="info-label">Acct Nam:</span>
+							<span class="info-value">SMART TRAVEL KOREA</span>
+						</div>
+						<div class="info-row">
+							<span class="info-label">Name of Account:</span>
+							<span class="info-value">SMART TRAVEL</span>
+						</div>
+						<div class="info-row">
+							<span class="info-label">BANK NAME:</span>
+							<span class="info-value">KOOKMIN BANK</span>
+						</div>
+						<div class="info-row">
+							<span class="info-label">BANK ACCOUNT NUMBER:</span>
+							<span class="info-value">293237-04-011950</span>
+						</div>
+					</div>
+
+					<div class="preview-section" id="previewSection" style="display: none;">
+						<div class="preview-title" data-lan-eng="Preview">Preview</div>
+						<div class="preview-stats">
+							<div class="stat-card">
+								<div class="stat-label" data-lan-eng="Total Bookings">Total Bookings</div>
+								<div class="stat-value" id="statTotalBookings">0</div>
+							</div>
+							<div class="stat-card">
+								<div class="stat-label" data-lan-eng="Total PAX">Total PAX</div>
+								<div class="stat-value" id="statTotalPax">0</div>
+							</div>
+							<div class="stat-card">
+								<div class="stat-label" data-lan-eng="Total Revenue">Total Revenue</div>
+								<div class="stat-value" id="statTotalRevenue">0</div>
+							</div>
+							<div class="stat-card">
+								<div class="stat-label" data-lan-eng="Excel Sheets">Excel Sheets</div>
+								<div class="stat-value" id="statSheets">0</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+	</main>
+
+	<!-- Loading Overlay -->
+	<div class="loading-overlay" id="loadingOverlay">
+		<div class="loading-spinner">
+			<div class="spinner"></div>
+			<div data-lan-eng="Generating Excel...">Generating Excel...</div>
+		</div>
+	</div>
+
+	<script src="../js/default.js?v=20260311"></script>
+	<script src="../js/super.js?v=20251226"></script>
+
+	<script>
+		init({
+			headerUrl: '../inc/header.html',
+			navUrl: '../inc/nav_super.html'
+		});
+
+		// Initialize date pickers to current month
+		function initDatePickers() {
+			const now = new Date();
+			const year = now.getFullYear();
+			const month = now.getMonth();
+
+			// First day of current month
+			const firstDay = new Date(year, month, 1);
+			// Last day of current month
+			const lastDay = new Date(year, month + 1, 0);
+
+			document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+			document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+		}
+
+		// Format currency (PHP peso)
+		function formatCurrency(amount) {
+			return Number(amount || 0).toLocaleString('en-US', {
+				minimumFractionDigits: 0,
+				maximumFractionDigits: 0
+			});
+		}
+
+		// Format date
+		function formatDate(dateStr) {
+			if (!dateStr) return '';
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return dateStr;
+			return d.toISOString().split('T')[0];
+		}
+
+		// Format date as YYMMDD
+		function formatDateYYMMDD(dateStr) {
+			if (!dateStr) return '';
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return '';
+			const yy = String(d.getFullYear()).slice(-2);
+			const mm = String(d.getMonth() + 1).padStart(2, '0');
+			const dd = String(d.getDate()).padStart(2, '0');
+			return yy + mm + dd;
+		}
+
+		// Show loading
+		function showLoading() {
+			document.getElementById('loadingOverlay').classList.add('active');
+		}
+
+		// Hide loading
+		function hideLoading() {
+			document.getElementById('loadingOverlay').classList.remove('active');
+		}
+
+		// Fetch invoice data
+		async function fetchInvoiceData() {
+			const startDate = document.getElementById('startDate').value;
+			const endDate = document.getElementById('endDate').value;
+			const statusFilter = document.getElementById('statusFilter').value;
+
+			if (!startDate || !endDate) {
+				throw new Error('Please select start and end dates');
+			}
+
+			const params = new URLSearchParams({
+				action: 'getMonthlyInvoiceData',
+				startDate: startDate,
+				endDate: endDate
+			});
+
+			const response = await fetch(`../backend/api/super-api.php?${params.toString()}`, {
+				credentials: 'same-origin'
+			});
+
+			if (!response.ok) {
+				throw new Error('HTTP ' + response.status);
+			}
+
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.message || 'Failed to fetch data');
+			}
+
+			// Add statusFilter to data for Excel generation
+			result.data.statusFilter = statusFilter;
+
+			return result.data;
+		}
+
+		// Style definitions - matching reference invoice style
+		const styles = {
+			// Title style - yellow background like INVOICE header
+			title: {
+				font: { bold: true, sz: 20, color: { rgb: "000000" } },
+				fill: { fgColor: { rgb: "FFFF00" } },
+				alignment: { horizontal: "center", vertical: "center" }
+			},
+			// Table header row style - yellow background
+			header: {
+				font: { bold: true, sz: 12, color: { rgb: "000000" } },
+				fill: { fgColor: { rgb: "FFFF00" } },
+				alignment: { horizontal: "center", vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			// Label style - light gray background
+			label: {
+				font: { bold: true, sz: 12 },
+				fill: { fgColor: { rgb: "F2F2F2" } },
+				alignment: { horizontal: "left", vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			// Value style - white background
+			value: {
+				font: { sz: 12 },
+				alignment: { horizontal: "left", vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			// Data row style with border
+			dataCell: {
+				font: { sz: 11 },
+				alignment: { vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			// Alternate row style - light gray
+			dataAlt: {
+				font: { sz: 11 },
+				fill: { fgColor: { rgb: "F2F2F2" } },
+				alignment: { vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			// Total row style - yellow background
+			total: {
+				font: { bold: true, sz: 12, color: { rgb: "000000" } },
+				fill: { fgColor: { rgb: "FFFF00" } },
+				alignment: { horizontal: "center", vertical: "center" },
+				border: {
+					top: { style: "medium", color: { rgb: "000000" } },
+					bottom: { style: "medium", color: { rgb: "000000" } },
+					left: { style: "medium", color: { rgb: "000000" } },
+					right: { style: "medium", color: { rgb: "000000" } }
+				}
+			},
+			// Section header style - light blue background like Air Tickets
+			section: {
+				font: { bold: true, sz: 12, color: { rgb: "000000" } },
+				fill: { fgColor: { rgb: "B4C6E7" } },
+				alignment: { horizontal: "left", vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			// Currency format
+			currency: {
+				font: { sz: 11 },
+				alignment: { horizontal: "right", vertical: "center" },
+				numFmt: "#,##0",
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			currencyAlt: {
+				font: { sz: 11 },
+				fill: { fgColor: { rgb: "F2F2F2" } },
+				alignment: { horizontal: "right", vertical: "center" },
+				numFmt: "#,##0",
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			currencyTotal: {
+				font: { bold: true, sz: 12 },
+				fill: { fgColor: { rgb: "FFFF00" } },
+				alignment: { horizontal: "right", vertical: "center" },
+				numFmt: "#,##0",
+				border: {
+					top: { style: "medium", color: { rgb: "000000" } },
+					bottom: { style: "medium", color: { rgb: "000000" } },
+					left: { style: "medium", color: { rgb: "000000" } },
+					right: { style: "medium", color: { rgb: "000000" } }
+				}
+			},
+			// Center aligned data cell
+			dataCellCenter: {
+				font: { sz: 11 },
+				alignment: { horizontal: "center", vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			},
+			dataCellCenterAlt: {
+				font: { sz: 11 },
+				fill: { fgColor: { rgb: "F2F2F2" } },
+				alignment: { horizontal: "center", vertical: "center" },
+				border: {
+					top: { style: "thin", color: { rgb: "000000" } },
+					bottom: { style: "thin", color: { rgb: "000000" } },
+					left: { style: "thin", color: { rgb: "000000" } },
+					right: { style: "thin", color: { rgb: "000000" } }
+				}
+			}
+		};
+
+		// Helper to apply style to a cell
+		function setCellStyle(ws, cellRef, style) {
+			if (!ws[cellRef]) ws[cellRef] = { v: '', t: 's' };
+			ws[cellRef].s = style;
+		}
+
+		// Helper to get cell reference
+		function cellRef(row, col) {
+			return XLSX.utils.encode_cell({ r: row, c: col });
+		}
+
+		// Calculate paid amount based on payment proof files
+		function calculatePaidAmount(booking) {
+			let paid = 0;
+			if (booking.downPaymentFile && booking.downPaymentFile.trim() !== '') {
+				paid += Number(booking.downPaymentAmount || 0);
+			}
+			if (booking.advancePaymentFile && booking.advancePaymentFile.trim() !== '') {
+				paid += Number(booking.advancePaymentAmount || 0);
+			}
+			if (booking.balanceFile && booking.balanceFile.trim() !== '') {
+				paid += Number(booking.balanceAmount || 0);
+			}
+			if (booking.fullPaymentFile && booking.fullPaymentFile.trim() !== '') {
+				paid += Number(booking.fullPaymentAmount || 0);
+			}
+			return paid;
+		}
+
+		// Hyperlink style
+		const linkStyle = {
+			font: { sz: 11, color: { rgb: "0000FF" }, underline: true },
+			alignment: { vertical: "center" },
+			border: {
+				top: { style: "thin", color: { rgb: "000000" } },
+				bottom: { style: "thin", color: { rgb: "000000" } },
+				left: { style: "thin", color: { rgb: "000000" } },
+				right: { style: "thin", color: { rgb: "000000" } }
+			}
+		};
+
+		// Generate Excel with new format
+		function generateExcel(data) {
+			const { bookings, year, month, startDate, endDate, statusFilter } = data;
+			const billTo = document.getElementById('billToInput').value.trim() || 'N/A';
+			const isPaymentStatus = statusFilter === 'payment';
+
+			if (!bookings || bookings.length === 0) {
+				alert('No B2B bookings found for the selected period.');
+				return;
+			}
+
+			// Sort bookings by departure date
+			bookings.sort((a, b) => {
+				const dateA = new Date(a.departureDate);
+				const dateB = new Date(b.departureDate);
+				if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+				return (a.packageId || 0) - (b.packageId || 0);
+			});
+
+			// Create workbook
+			const wb = XLSX.utils.book_new();
+
+			// ==========================================
+			// Sheet 1: ALL (Grouped by Departure Date + Package)
+			// ==========================================
+			const allData = [];
+
+			// Row 0: Title
+			allData.push(['ALL BOOKINGS SUMMARY', '', '', '']);
+
+			// Row 1: Empty
+			allData.push(['', '', '', '']);
+
+			// Row 2-3: Info section
+			allData.push(['DATE RANGE', `${startDate} ~ ${endDate}`, '', '']);
+			allData.push(['BILL TO', billTo, '', '']);
+
+			// Row 4: Empty
+			allData.push(['', '', '', '']);
+
+			// Row 5: Header
+			allData.push(['Departure Date', 'Package', 'PAX', 'Total']);
+
+			// Group bookings by departure date + package
+			const grouped = {};
+			bookings.forEach(b => {
+				const key = `${b.departureDate}_${b.packageId || 'unknown'}`;
+				if (!grouped[key]) {
+					grouped[key] = {
+						departureDate: b.departureDate,
+						packageName: b.packageName || '',
+						packageId: b.packageId,
+						pax: 0,
+						total: 0
+					};
+				}
+				const pax = Number(b.adults || 0) + Number(b.children || 0) + Number(b.infants || 0);
+				grouped[key].pax += pax;
+
+				if (isPaymentStatus) {
+					grouped[key].total += calculatePaidAmount(b);
+				} else {
+					grouped[key].total += Number(b.totalAmount || 0);
+				}
+			});
+
+			// Convert to array and sort by date
+			const groupedArray = Object.values(grouped).sort((a, b) => {
+				return new Date(a.departureDate) - new Date(b.departureDate);
+			});
+
+			// Add grouped data
+			let allGrandTotal = 0;
+			let allTotalPax = 0;
+			groupedArray.forEach(g => {
+				allData.push([
+					formatDate(g.departureDate),
+					g.packageName,
+					g.pax,
+					g.total
+				]);
+				allGrandTotal += g.total;
+				allTotalPax += g.pax;
+			});
+
+			// Total row
+			const allTotalRowIdx = allData.length;
+			allData.push(['TOTAL', '', allTotalPax, allGrandTotal]);
+
+			const wsAll = XLSX.utils.aoa_to_sheet(allData);
+
+			// Apply styles to ALL sheet
+			// Title row (row 0)
+			for (let c = 0; c < 4; c++) {
+				setCellStyle(wsAll, cellRef(0, c), styles.title);
+			}
+			wsAll['!merges'] = [
+				{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }
+			];
+
+			// Info section (rows 2-3)
+			for (let r = 2; r <= 3; r++) {
+				setCellStyle(wsAll, cellRef(r, 0), styles.label);
+				setCellStyle(wsAll, cellRef(r, 1), styles.value);
+				for (let c = 2; c < 4; c++) {
+					setCellStyle(wsAll, cellRef(r, c), styles.value);
+				}
+			}
+
+			// Header row (row 5)
+			for (let c = 0; c < 4; c++) {
+				setCellStyle(wsAll, cellRef(5, c), styles.header);
+			}
+
+			// Data rows
+			for (let r = 6; r < allTotalRowIdx; r++) {
+				const isAlt = (r - 6) % 2 === 1;
+				setCellStyle(wsAll, cellRef(r, 0), isAlt ? styles.dataCellCenterAlt : styles.dataCellCenter);
+				setCellStyle(wsAll, cellRef(r, 1), isAlt ? styles.dataAlt : styles.dataCell);
+				setCellStyle(wsAll, cellRef(r, 2), isAlt ? styles.dataCellCenterAlt : styles.dataCellCenter);
+				setCellStyle(wsAll, cellRef(r, 3), isAlt ? styles.currencyAlt : styles.currency);
+			}
+
+			// Total row
+			for (let c = 0; c < 2; c++) {
+				setCellStyle(wsAll, cellRef(allTotalRowIdx, c), styles.total);
+			}
+			setCellStyle(wsAll, cellRef(allTotalRowIdx, 2), styles.total);
+			setCellStyle(wsAll, cellRef(allTotalRowIdx, 3), styles.currencyTotal);
+
+			// Set column widths
+			wsAll['!cols'] = [
+				{ wch: 18 },  // Departure Date
+				{ wch: 55 },  // Package
+				{ wch: 10 },  // PAX
+				{ wch: 18 }   // Total
+			];
+
+			// Set row heights
+			wsAll['!rows'] = [];
+			wsAll['!rows'][0] = { hpt: 35 };
+			wsAll['!rows'][5] = { hpt: 25 };
+
+			XLSX.utils.book_append_sheet(wb, wsAll, 'ALL');
+
+			// ==========================================
+			// Sheet 2: Summary Invoice
+			// ==========================================
+			const summaryData = [];
+			const summaryColCount = isPaymentStatus ? 7 : 6;
+
+			// Row 0: Title
+			summaryData.push(['MONTHLY INVOICE', '', '', '', '', '', ''].slice(0, summaryColCount));
+
+			// Row 1: Empty
+			summaryData.push(Array(summaryColCount).fill(''));
+
+			// Row 2-5: Info section
+			summaryData.push(['DATE', `${startDate} ~ ${endDate}`, '', '', '', '', ''].slice(0, summaryColCount));
+			summaryData.push(['NO', formatDateYYMMDD(endDate), '', '', '', '', ''].slice(0, summaryColCount));
+			summaryData.push(['BILL TO', billTo, '', '', '', '', ''].slice(0, summaryColCount));
+			summaryData.push(['FROM', 'SMART TRAVEL', '', '', '', '', ''].slice(0, summaryColCount));
+
+			// Row 6: Empty
+			summaryData.push(Array(summaryColCount).fill(''));
+
+			// Row 7: Header
+			if (isPaymentStatus) {
+				summaryData.push(['Departure Date', 'BK NO.', 'PACKAGE', 'PAX', 'PRICE', 'TOTAL', 'STATUS']);
+			} else {
+				summaryData.push(['Departure Date', 'BK NO.', 'PACKAGE', 'PAX', 'PRICE', 'TOTAL']);
+			}
+
+			// Row 8+: Booking data
+			let grandTotal = 0;
+			const bookingSheetNames = [];
+			bookings.forEach(b => {
+				const pax = Number(b.adults || 0) + Number(b.children || 0) + Number(b.infants || 0);
+				const price = Number(b.b2b_price || b.basePrice || b.packagePrice || 0);
+				let total;
+
+				if (isPaymentStatus) {
+					total = calculatePaidAmount(b);
+				} else {
+					total = Number(b.totalAmount || 0);
+				}
+				grandTotal += total;
+
+				const sheetName = (b.bookingId || 'Unknown').substring(0, 31);
+				bookingSheetNames.push({ bookingId: b.bookingId, sheetName: sheetName });
+
+				if (isPaymentStatus) {
+					summaryData.push([
+						formatDate(b.departureDate),
+						b.bookingId || '',
+						b.packageName || '',
+						pax,
+						price,
+						total,
+						b.bookingStatus || ''
+					]);
+				} else {
+					summaryData.push([
+						formatDate(b.departureDate),
+						b.bookingId || '',
+						b.packageName || '',
+						pax,
+						price,
+						total
+					]);
+				}
+			});
+
+			// Last row: TOTAL
+			const totalRowIdx = summaryData.length;
+			if (isPaymentStatus) {
+				summaryData.push(['TOTAL', '', '', '', '', grandTotal, '']);
+			} else {
+				summaryData.push(['TOTAL', '', '', '', '', grandTotal]);
+			}
+
+			const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+			// Apply styles to Summary sheet
+			// Title row (row 0)
+			for (let c = 0; c < summaryColCount; c++) {
+				setCellStyle(wsSummary, cellRef(0, c), styles.title);
+			}
+			// Merge title cells
+			wsSummary['!merges'] = [
+				{ s: { r: 0, c: 0 }, e: { r: 0, c: summaryColCount - 1 } }
+			];
+
+			// Info section (rows 2-5)
+			for (let r = 2; r <= 5; r++) {
+				setCellStyle(wsSummary, cellRef(r, 0), styles.label);
+				setCellStyle(wsSummary, cellRef(r, 1), styles.value);
+				for (let c = 2; c < summaryColCount; c++) {
+					setCellStyle(wsSummary, cellRef(r, c), styles.value);
+				}
+			}
+
+			// Header row (row 7)
+			for (let c = 0; c < summaryColCount; c++) {
+				setCellStyle(wsSummary, cellRef(7, c), styles.header);
+			}
+
+			// Data rows (row 8 to totalRowIdx-1)
+			for (let r = 8; r < totalRowIdx; r++) {
+				const isAlt = (r - 8) % 2 === 1;
+				const bookingIdx = r - 8;
+
+				// Departure Date column - center aligned
+				setCellStyle(wsSummary, cellRef(r, 0), isAlt ? styles.dataCellCenterAlt : styles.dataCellCenter);
+
+				// BK NO column - with hyperlink
+				const bkCell = cellRef(r, 1);
+				setCellStyle(wsSummary, bkCell, linkStyle);
+				if (bookingSheetNames[bookingIdx]) {
+					wsSummary[bkCell].l = {
+						Target: "#'" + bookingSheetNames[bookingIdx].sheetName + "'!A1",
+						Tooltip: "Go to booking details"
+					};
+				}
+
+				// Package column
+				setCellStyle(wsSummary, cellRef(r, 2), isAlt ? styles.dataAlt : styles.dataCell);
+
+				// PAX column - center aligned
+				setCellStyle(wsSummary, cellRef(r, 3), isAlt ? styles.dataCellCenterAlt : styles.dataCellCenter);
+
+				// PRICE and TOTAL columns - currency format
+				setCellStyle(wsSummary, cellRef(r, 4), isAlt ? styles.currencyAlt : styles.currency);
+				setCellStyle(wsSummary, cellRef(r, 5), isAlt ? styles.currencyAlt : styles.currency);
+
+				// STATUS column (if payment status)
+				if (isPaymentStatus) {
+					setCellStyle(wsSummary, cellRef(r, 6), isAlt ? styles.dataCellCenterAlt : styles.dataCellCenter);
+				}
+			}
+
+			// Total row
+			for (let c = 0; c < 5; c++) {
+				setCellStyle(wsSummary, cellRef(totalRowIdx, c), styles.total);
+			}
+			setCellStyle(wsSummary, cellRef(totalRowIdx, 5), styles.currencyTotal);
+			if (isPaymentStatus) {
+				setCellStyle(wsSummary, cellRef(totalRowIdx, 6), styles.total);
+			}
+
+			// Set column widths - wider for better readability
+			if (isPaymentStatus) {
+				wsSummary['!cols'] = [
+					{ wch: 15 },  // Departure Date
+					{ wch: 25 },  // BK NO
+					{ wch: 45 },  // PACKAGE
+					{ wch: 8 },   // PAX
+					{ wch: 15 },  // PRICE
+					{ wch: 15 },  // TOTAL
+					{ wch: 12 }   // STATUS
+				];
+			} else {
+				wsSummary['!cols'] = [
+					{ wch: 15 },  // Departure Date
+					{ wch: 25 },  // BK NO
+					{ wch: 50 },  // PACKAGE
+					{ wch: 8 },   // PAX
+					{ wch: 15 },  // PRICE
+					{ wch: 15 }   // TOTAL
+				];
+			}
+
+			// Set row heights
+			wsSummary['!rows'] = [];
+			wsSummary['!rows'][0] = { hpt: 35 };  // Title row
+			wsSummary['!rows'][7] = { hpt: 25 };  // Header row
+			// Set default row height for data rows
+			for (let r = 8; r <= totalRowIdx; r++) {
+				wsSummary['!rows'][r] = { hpt: 22 };
+			}
+
+			XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+			// ==========================================
+			// Sheet 3+: Individual booking detail sheets (A4 format)
+			// ==========================================
+			bookings.forEach((b, bookingIndex) => {
+				const sheetName = (b.bookingId || 'Unknown').substring(0, 31);
+				const detailData = [];
+				const merges = [];
+				let rowIdx = 0;
+
+				// === HEADER SECTION ===
+				// Row 0: Empty (margin)
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// Row 1: Company Name (large, centered)
+				detailData.push(['SMART TRAVEL', '', '', '']);
+				merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 3 } });
+				rowIdx++;
+
+				// Row 2: Company Info
+				detailData.push(['Tel: +82-2-584-3002 / Fax: +82-2-584-0204', '', '', '']);
+				merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
+				rowIdx++;
+
+				// Row 3: Empty
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// Row 4: INVOICE title (yellow bar)
+				const invoiceTitleRow = rowIdx;
+				detailData.push(['INVOICE', '', '', '']);
+				merges.push({ s: { r: invoiceTitleRow, c: 0 }, e: { r: invoiceTitleRow, c: 3 } });
+				rowIdx++;
+
+				// Row 5: Empty
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// === INFO SECTION (2 columns layout) ===
+				// Row 6-9: Left = Invoice info, Right = Bill To info
+				const infoStartRow = rowIdx;
+				detailData.push(['Invoice No:', b.bookingId || '', 'BILL TO:', b.agentName || b.companyName || 'N/A']);
+				rowIdx++;
+				detailData.push(['Invoice Date:', formatDate(b.createdAt), 'Contact:', b.agencyContactPerson || 'N/A']);
+				rowIdx++;
+				detailData.push(['Departure Date:', formatDate(b.departureDate), 'Phone:', b.agencyPhone || 'N/A']);
+				rowIdx++;
+				// Package row - merge B, C, D columns to prevent name truncation
+				const packageRowIdx = rowIdx;
+				detailData.push(['Package:', b.packageName || '', '', '']);
+				merges.push({ s: { r: packageRowIdx, c: 1 }, e: { r: packageRowIdx, c: 3 } });
+				rowIdx++;
+
+				// Row 10: Empty
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// === PRICE TABLE ===
+				// Row 11: Table Header
+				const tableHeaderRow = rowIdx;
+				detailData.push(['Item', 'Quantity', 'Unit Price', 'Total']);
+				rowIdx++;
+
+				const adults = Number(b.adults || 0);
+				const children = Number(b.children || 0);
+				const infants = Number(b.infants || 0);
+
+				const adultPrice = Number(b.b2b_price || b.basePrice || b.packagePrice || 0);
+				const childPrice = Number(b.b2b_child_price || Math.round(adultPrice * 0.8) || 0);
+				const infantPrice = Number(b.b2b_infant_price || Math.round(adultPrice * 0.1) || 0);
+
+				let calculatedSubtotal = 0;
+				const tableDataStart = rowIdx;
+
+				// Adult row
+				if (adults > 0) {
+					const adultTotal = adults * adultPrice;
+					calculatedSubtotal += adultTotal;
+					detailData.push(['Adult', adults, adultPrice, adultTotal]);
+					rowIdx++;
+				}
+
+				// Child row
+				if (children > 0) {
+					const childTotal = children * childPrice;
+					calculatedSubtotal += childTotal;
+					detailData.push(['Child', children, childPrice, childTotal]);
+					rowIdx++;
+				}
+
+				// Infant row
+				if (infants > 0) {
+					const infantTotal = infants * infantPrice;
+					calculatedSubtotal += infantTotal;
+					detailData.push(['Infant', infants, infantPrice, infantTotal]);
+					rowIdx++;
+				}
+
+				// Visa Fee
+				const visaFee = Number(b.visaFee || 0);
+				if (visaFee > 0) {
+					calculatedSubtotal += visaFee;
+					detailData.push(['Visa Fee', 1, visaFee, visaFee]);
+					rowIdx++;
+				}
+
+				// Flight Option
+				const flightFee = Number(b.flightOptionFee || 0);
+				if (flightFee > 0) {
+					calculatedSubtotal += flightFee;
+					detailData.push(['Flight Option', 1, flightFee, flightFee]);
+					rowIdx++;
+				}
+
+				const tableDataEnd = rowIdx;
+
+				// Empty rows to fill table area (minimum 5 data rows for consistent look)
+				const minDataRows = 5;
+				const currentDataRows = tableDataEnd - tableDataStart;
+				for (let i = currentDataRows; i < minDataRows; i++) {
+					detailData.push(['', '', '', '']);
+					rowIdx++;
+				}
+
+				// === SUMMARY SECTION (right-aligned) ===
+				// Empty row before summary
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// Subtotal row
+				const subtotalRow = rowIdx;
+				detailData.push(['', '', 'Subtotal', calculatedSubtotal]);
+				rowIdx++;
+
+				// Discount row (if any) - saleDiscountAmount는 인당 할인금액
+				const saleDiscountPerPerson = Number(b.saleDiscountAmount || 0);
+				const discountableCount = adults; // 할인 대상: Adult (+ Child with Room은 invoice에서 미구분)
+				const totalSaleDiscount = saleDiscountPerPerson * discountableCount;
+				let discountRow = -1;
+				if (totalSaleDiscount > 0) {
+					discountRow = rowIdx;
+					const discountLabel = b.saleName ? `Discount (${b.saleName})` : 'Discount';
+					detailData.push(['', '', discountLabel, -totalSaleDiscount]);
+					rowIdx++;
+				}
+
+				// Empty row
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// Total row
+				const totalRow = rowIdx;
+				const finalTotal = Number(b.totalAmount || (calculatedSubtotal - totalSaleDiscount));
+				detailData.push(['', '', 'Total', finalTotal]);
+				rowIdx++;
+
+				// === FOOTER SECTION ===
+				// Empty rows
+				detailData.push(['', '', '', '']);
+				detailData.push(['', '', '', '']);
+				rowIdx += 2;
+
+				// Payment Info section
+				const paymentInfoRow = rowIdx;
+				detailData.push(['PAYMENT INFORMATION', '', '', '']);
+				merges.push({ s: { r: paymentInfoRow, c: 0 }, e: { r: paymentInfoRow, c: 3 } });
+				rowIdx++;
+
+				detailData.push(['Account Name:', 'SMART TRAVEL', 'Bank:', 'KOOKMIN BANK']);
+				rowIdx++;
+				detailData.push(['Account No:', '293237-04-011950', '', '']);
+				rowIdx++;
+
+				// Empty row before back link
+				detailData.push(['', '', '', '']);
+				rowIdx++;
+
+				// Back to Summary link
+				const backLinkRow = rowIdx;
+				detailData.push(['<< Back to Summary', '', '', '']);
+				rowIdx++;
+
+				// Create worksheet
+				const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+
+				// Apply merges
+				wsDetail['!merges'] = merges;
+
+				// === APPLY STYLES ===
+
+				// Company name style (Row 1)
+				const companyNameStyle = {
+					font: { bold: true, sz: 24, color: { rgb: "C65911" } },
+					alignment: { horizontal: "center", vertical: "center" }
+				};
+				for (let c = 0; c < 4; c++) {
+					setCellStyle(wsDetail, cellRef(1, c), companyNameStyle);
+				}
+
+				// Company info style (Row 2)
+				const companyInfoStyle = {
+					font: { sz: 10, color: { rgb: "666666" } },
+					alignment: { horizontal: "center", vertical: "center" }
+				};
+				for (let c = 0; c < 4; c++) {
+					setCellStyle(wsDetail, cellRef(2, c), companyInfoStyle);
+				}
+
+				// INVOICE title style (Row 4) - yellow bar
+				const invoiceBarStyle = {
+					font: { bold: true, sz: 22, color: { rgb: "000000" } },
+					fill: { fgColor: { rgb: "F4B183" } },
+					alignment: { horizontal: "center", vertical: "center" }
+				};
+				for (let c = 0; c < 4; c++) {
+					setCellStyle(wsDetail, cellRef(invoiceTitleRow, c), invoiceBarStyle);
+				}
+
+				// Info section labels (left side)
+				const infoLabelStyle = {
+					font: { bold: true, sz: 11, color: { rgb: "666666" } },
+					alignment: { horizontal: "left", vertical: "center" }
+				};
+				const infoValueStyle = {
+					font: { sz: 11 },
+					alignment: { horizontal: "left", vertical: "center" }
+				};
+				const billToLabelStyle = {
+					font: { bold: true, sz: 11, color: { rgb: "C65911" } },
+					alignment: { horizontal: "left", vertical: "center" }
+				};
+
+				for (let r = infoStartRow; r < infoStartRow + 4; r++) {
+					setCellStyle(wsDetail, cellRef(r, 0), infoLabelStyle);
+					setCellStyle(wsDetail, cellRef(r, 1), infoValueStyle);
+					setCellStyle(wsDetail, cellRef(r, 2), billToLabelStyle);
+					setCellStyle(wsDetail, cellRef(r, 3), infoValueStyle);
+				}
+
+				// Table header style - orange/brown
+				const tableHeaderStyle = {
+					font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+					fill: { fgColor: { rgb: "C65911" } },
+					alignment: { horizontal: "center", vertical: "center" },
+					border: {
+						top: { style: "thin", color: { rgb: "000000" } },
+						bottom: { style: "thin", color: { rgb: "000000" } },
+						left: { style: "thin", color: { rgb: "000000" } },
+						right: { style: "thin", color: { rgb: "000000" } }
+					}
+				};
+				for (let c = 0; c < 4; c++) {
+					setCellStyle(wsDetail, cellRef(tableHeaderRow, c), tableHeaderStyle);
+				}
+
+				// Table data rows
+				const tableRowStyle = {
+					font: { sz: 11 },
+					alignment: { horizontal: "left", vertical: "center" },
+					border: {
+						top: { style: "thin", color: { rgb: "D9D9D9" } },
+						bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+						left: { style: "thin", color: { rgb: "D9D9D9" } },
+						right: { style: "thin", color: { rgb: "D9D9D9" } }
+					}
+				};
+				const tableRowCenterStyle = {
+					font: { sz: 11 },
+					alignment: { horizontal: "center", vertical: "center" },
+					border: {
+						top: { style: "thin", color: { rgb: "D9D9D9" } },
+						bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+						left: { style: "thin", color: { rgb: "D9D9D9" } },
+						right: { style: "thin", color: { rgb: "D9D9D9" } }
+					}
+				};
+				const tableRowCurrencyStyle = {
+					font: { sz: 11 },
+					alignment: { horizontal: "right", vertical: "center" },
+					numFmt: "#,##0",
+					border: {
+						top: { style: "thin", color: { rgb: "D9D9D9" } },
+						bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+						left: { style: "thin", color: { rgb: "D9D9D9" } },
+						right: { style: "thin", color: { rgb: "D9D9D9" } }
+					}
+				};
+
+				// Apply to all table rows (including empty ones)
+				const actualTableEnd = tableDataStart + Math.max(currentDataRows, minDataRows);
+				for (let r = tableDataStart; r < actualTableEnd; r++) {
+					setCellStyle(wsDetail, cellRef(r, 0), tableRowStyle);
+					setCellStyle(wsDetail, cellRef(r, 1), tableRowCenterStyle);
+					setCellStyle(wsDetail, cellRef(r, 2), tableRowCurrencyStyle);
+					setCellStyle(wsDetail, cellRef(r, 3), tableRowCurrencyStyle);
+				}
+
+				// Summary section styles
+				const summaryLabelStyle = {
+					font: { sz: 11, color: { rgb: "666666" } },
+					alignment: { horizontal: "right", vertical: "center" }
+				};
+				const summaryValueStyle = {
+					font: { sz: 11 },
+					alignment: { horizontal: "right", vertical: "center" },
+					numFmt: "#,##0"
+				};
+
+				// Subtotal
+				setCellStyle(wsDetail, cellRef(subtotalRow, 2), summaryLabelStyle);
+				setCellStyle(wsDetail, cellRef(subtotalRow, 3), summaryValueStyle);
+
+				// Discount (if exists)
+				if (discountRow >= 0) {
+					const discountLabelStyle = {
+						font: { sz: 11, color: { rgb: "CC0000" } },
+						alignment: { horizontal: "right", vertical: "center" }
+					};
+					const discountValueStyle = {
+						font: { sz: 11, color: { rgb: "CC0000" } },
+						alignment: { horizontal: "right", vertical: "center" },
+						numFmt: "#,##0"
+					};
+					setCellStyle(wsDetail, cellRef(discountRow, 2), discountLabelStyle);
+					setCellStyle(wsDetail, cellRef(discountRow, 3), discountValueStyle);
+				}
+
+				// Total - bold and larger
+				const totalLabelStyle = {
+					font: { bold: true, sz: 14, color: { rgb: "000000" } },
+					alignment: { horizontal: "right", vertical: "center" }
+				};
+				const totalValueStyle = {
+					font: { bold: true, sz: 14, color: { rgb: "000000" } },
+					alignment: { horizontal: "right", vertical: "center" },
+					numFmt: "#,##0"
+				};
+				setCellStyle(wsDetail, cellRef(totalRow, 2), totalLabelStyle);
+				setCellStyle(wsDetail, cellRef(totalRow, 3), totalValueStyle);
+
+				// Payment info section
+				const paymentHeaderStyle = {
+					font: { bold: true, sz: 11, color: { rgb: "666666" } },
+					fill: { fgColor: { rgb: "F2F2F2" } },
+					alignment: { horizontal: "left", vertical: "center" }
+				};
+				for (let c = 0; c < 4; c++) {
+					setCellStyle(wsDetail, cellRef(paymentInfoRow, c), paymentHeaderStyle);
+				}
+
+				// Payment details
+				for (let r = paymentInfoRow + 1; r <= paymentInfoRow + 2; r++) {
+					setCellStyle(wsDetail, cellRef(r, 0), infoLabelStyle);
+					setCellStyle(wsDetail, cellRef(r, 1), infoValueStyle);
+					setCellStyle(wsDetail, cellRef(r, 2), infoLabelStyle);
+					setCellStyle(wsDetail, cellRef(r, 3), infoValueStyle);
+				}
+
+				// Back to Summary link style
+				const backLinkStyle = {
+					font: { sz: 11, color: { rgb: "0000FF" }, underline: true },
+					alignment: { horizontal: "left", vertical: "center" }
+				};
+				setCellStyle(wsDetail, cellRef(backLinkRow, 0), backLinkStyle);
+				wsDetail[cellRef(backLinkRow, 0)].l = {
+					Target: "#Summary!A1",
+					Tooltip: "Back to Summary"
+				};
+
+				// Set column widths - A4 optimized (total ~100 chars)
+				wsDetail['!cols'] = [
+					{ wch: 22 },  // Item / Labels
+					{ wch: 30 },  // Quantity / Values
+					{ wch: 22 },  // Unit Price / Labels
+					{ wch: 22 }   // Total / Values
+				];
+
+				// Set row heights
+				wsDetail['!rows'] = [];
+				wsDetail['!rows'][1] = { hpt: 40 };  // Company name
+				wsDetail['!rows'][invoiceTitleRow] = { hpt: 35 };  // INVOICE bar
+				wsDetail['!rows'][tableHeaderRow] = { hpt: 28 };  // Table header
+				wsDetail['!rows'][totalRow] = { hpt: 28 };  // Total row
+
+				XLSX.utils.book_append_sheet(wb, wsDetail, sheetName);
+			});
+
+			// Generate filename based on date range
+			const startDateFormatted = startDate.replace(/-/g, '');
+			const endDateFormatted = endDate.replace(/-/g, '');
+			const filename = `Invoice_${startDateFormatted}_${endDateFormatted}_B2B.xlsx`;
+
+			// Download
+			XLSX.writeFile(wb, filename);
+
+			// Update preview
+			updatePreview(bookings, grandTotal, isPaymentStatus);
+		}
+
+		// Update preview section
+		function updatePreview(bookings, grandTotal, isPaymentStatus) {
+			const totalBookings = bookings.length;
+			const totalPax = bookings.reduce((sum, b) =>
+				sum + Number(b.adults || 0) + Number(b.children || 0) + Number(b.infants || 0), 0);
+			const totalSheets = 2 + bookings.length; // ALL + Summary + individual sheets
+
+			document.getElementById('statTotalBookings').textContent = totalBookings.toLocaleString();
+			document.getElementById('statTotalPax').textContent = totalPax.toLocaleString();
+			document.getElementById('statTotalRevenue').textContent = formatCurrency(grandTotal) + (isPaymentStatus ? ' (Paid)' : '');
+			document.getElementById('statSheets').textContent = totalSheets.toLocaleString();
+
+			document.getElementById('previewSection').style.display = 'block';
+		}
+
+		// Download button click handler
+		async function handleDownload() {
+			const btn = document.getElementById('downloadBtn');
+			btn.disabled = true;
+			showLoading();
+
+			try {
+				const data = await fetchInvoiceData();
+				generateExcel(data);
+			} catch (error) {
+				console.error('Error:', error);
+				alert('Failed to generate invoice: ' + error.message);
+			} finally {
+				hideLoading();
+				btn.disabled = false;
+			}
+		}
+
+		// Initialize
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const sessionResponse = await fetch('../backend/api/check-session.php', {
+					credentials: 'same-origin'
+				});
+				const sessionData = await sessionResponse.json();
+
+				if (!sessionData.authenticated) {
+					window.location.href = '../index.html';
+					return;
+				}
+
+				initDatePickers();
+
+				document.getElementById('downloadBtn').addEventListener('click', handleDownload);
+
+			} catch (error) {
+				console.error('Session check error:', error);
+				window.location.href = '../index.html';
+			}
+		});
+	</script>
+</body>
+
+</html>
