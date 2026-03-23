@@ -1,4 +1,5 @@
 <?php
+
 /**
  * login.php
  *
@@ -80,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
  * @param string $message Human-readable description.
  * @param array  $context Optional key-value pairs appended as JSON.
  */
-function authLog(string $level, string $step, string $message, array $context = []): void {
+function authLog(string $level, string $step, string $message, array $context = []): void
+{
     $logDir = dirname(AUTH_LOG_FILE);
     if (!is_dir($logDir)) {
         @mkdir($logDir, 0755, true);
@@ -128,9 +130,15 @@ function saveLoginHistory(
         ");
 
         if ($stmt) {
-            $stmt->bind_param('issssss',
-                $accountId, $email, $accountType,
-                $status, $failureReason, $ip, $userAgent
+            $stmt->bind_param(
+                'issssss',
+                $accountId,
+                $email,
+                $accountType,
+                $status,
+                $failureReason,
+                $ip,
+                $userAgent
             );
             $stmt->execute();
             $stmt->close();
@@ -150,7 +158,8 @@ function saveLoginHistory(
  * @param string $default    Value to return if the column is not found.
  * @return string
  */
-function detectColumn(mysqli $conn, string $table, string $targetLower, string $default): string {
+function detectColumn(mysqli $conn, string $table, string $targetLower, string $default): string
+{
     $result = $conn->query("SHOW COLUMNS FROM `{$table}`");
     if (!$result) return $default;
     while ($col = $result->fetch_assoc()) {
@@ -212,7 +221,7 @@ try {
     }
     $emailCol    = $accCols['emailaddress'] ?? ($accCols['email']          ?? 'emailAddress');
     $passwordCol = $accCols['password']     ?? ($accCols['passwordhash']   ?? 'password');
-    $statusCol   = $accCols['accountstatus']?? ($accCols['status']         ?? 'accountStatus');
+    $statusCol   = $accCols['accountstatus'] ?? ($accCols['status']         ?? 'accountStatus');
 
     $sql = "SELECT
                 a.accountId,
@@ -289,6 +298,7 @@ try {
     $stored = (string) ($account['password'] ?? '');
     $ok     = false;
 
+
     if ($stored !== '') {
         /* Modern hashed passwords — bcrypt or argon2id */
         if (preg_match('/^\$2[ay]\$|^\$argon2id\$/', $stored)) {
@@ -304,6 +314,7 @@ try {
         }
     }
 
+
     if (!$ok) {
         authLog('WARN', 'AUTH', 'Password mismatch', ['accountId' => $account['accountId']]);
         saveLoginHistory($conn, (int)$account['accountId'], $username, $account['accountType'], 'failed', 'Invalid password');
@@ -317,7 +328,9 @@ try {
         exit;
     }
 
+
     authLog('INFO', 'AUTH', 'Password verified successfully', ['accountId' => $account['accountId']]);
+
 
     /* ── Step 6: Session creation ────────────────────────────────────────── */
     authLog('INFO', 'SESSION', 'Regenerating session ID');
@@ -329,6 +342,7 @@ try {
      */
     session_regenerate_id(true);
     $newSessionId = session_id();
+
 
     /*
      * Normalise accountType:
@@ -345,7 +359,7 @@ try {
         $_SESSION['admin_userType']           = $type;
         $_SESSION['admin_emailAddress']       = $emailOrUser;
         $_SESSION['admin_timeout']            = time();
-        $_SESSION['admin_defaultPasswordStat']= $account['defaultPasswordStat'] ?? 'N';
+        $_SESSION['admin_defaultPasswordStat'] = $account['defaultPasswordStat'] ?? 'N';
     } elseif ($type === 'agent') {
         $_SESSION['agent_accountId']    = (int) $account['accountId'];
         $_SESSION['agent_userType']     = 'agent';
@@ -375,6 +389,50 @@ try {
         'type'         => $type,
         'new_session'  => $newSessionId,
     ]);
+
+
+
+    /* ── Step 6b: Save default theme if available ───────────────────────── */
+    // Check if frontend sent a theme preference (via POST or fallback)
+    $preferredTheme = $_POST['theme'] ?? null; // optional: sent from login page toggle
+
+    if ($preferredTheme) {
+        // Detect column for account_id safety
+        $accountId = (int)$account['accountId'];
+
+        // Insert or update
+        $stmt = $conn->prepare("
+            INSERT INTO user_settings (account_id, setting_key, setting_value)
+            VALUES (?, 'theme', ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        if ($stmt) {
+            $stmt->bind_param('is', $accountId, $preferredTheme);
+            $stmt->execute();
+            $stmt->close();
+            authLog('INFO', 'SETTINGS', 'Theme saved to user_settings', [
+                'accountId' => $accountId,
+                'theme'     => $preferredTheme,
+            ]);
+        } else {
+            authLog('WARN', 'SETTINGS', 'Failed to save theme', ['error' => $conn->error]);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /* ── Step 7: DB session record ───────────────────────────────────────── */
     $tableCheck  = $conn->query("SHOW TABLES LIKE 'user_sessions'");
@@ -412,6 +470,7 @@ try {
         authLog('DEBUG', 'SESSION', 'user_sessions table not found — skipping DB record');
     }
 
+
     /* ── Step 8: Update lastLoginAt ──────────────────────────────────────── */
     $upd = $conn->prepare("UPDATE accounts SET lastLoginAt = NOW() WHERE accountId = ?");
     if ($upd) {
@@ -421,6 +480,7 @@ try {
         authLog('INFO', 'ACCOUNT', 'lastLoginAt updated', ['accountId' => $account['accountId']]);
     }
 
+
     /* ── Step 9: Login history ───────────────────────────────────────────── */
     saveLoginHistory($conn, (int)$account['accountId'], $emailOrUser, $rawType, 'success', null);
 
@@ -428,7 +488,7 @@ try {
     /* ── Step 10: Build redirect URL and respond ─────────────────────────── */
     $redirectUrl = './super/overview.php'; // default
 
-    
+
     if ($type === 'agent') {
         /* Agent must complete their profile before accessing the dashboard */
         $profileStmt = $conn->prepare(
@@ -471,7 +531,6 @@ try {
         'redirectUrl' => $redirectUrl,
         'userType'    => $type,
     ], JSON_UNESCAPED_UNICODE);
-
 } catch (Exception $e) {
     authLog('ERROR', 'LOGIN', 'Unhandled exception', [
         'error' => $e->getMessage(),
@@ -483,7 +542,6 @@ try {
         'success' => false,
         'message' => 'A login error occurred. Please try again.',
     ], JSON_UNESCAPED_UNICODE);
-
 } catch (Error $e) {
     authLog('ERROR', 'LOGIN', 'Fatal error', [
         'error' => $e->getMessage(),
@@ -497,4 +555,3 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 }
 exit;
-?>

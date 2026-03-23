@@ -1,41 +1,28 @@
-/* ══════════════════════════════════════════════════════
-   header.css
-   Covers:
-   · .layout-header bar (header.php)
-   · .header_memberinfo dropdown panel (header_memberinfo.html)
-   Depends on root design tokens. Load after layout.css.
-   ══════════════════════════════════════════════════════ */
+/* ═════════ HEADER.CSS ═════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;400;500;600&display=swap');
 
-/* ══════════════════════════════════════════════════════
-   HEADER BAR
-   ══════════════════════════════════════════════════════ */
-
+/* Layout header */
 .layout-header {
-  background: var(--panel, #ffffff);
+  background: var(--panel, #fff);
   border-bottom: 1px solid var(--border-subtle, #e8e5df);
-  font-family: 'DM Sans', sans-serif;
-}
-
-/* ── Left / right slots ────────────────────────────── */
-
-.header-left {
+  font-family: "DM Sans", sans-serif;
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  padding: 0 8px 0 5px;
 }
 
+/* Left / right flex slots */
+.header-left,
 .header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+.header-right {
   margin-left: auto;
 }
 
-/* ── Hamburger toggle ──────────────────────────────── */
-
+/* Nav toggle button */
 .nav-toggle-btn {
   width: 34px;
   height: 34px;
@@ -47,41 +34,29 @@
   background: transparent;
   color: var(--muted, #9a9690);
   cursor: pointer;
-  flex-shrink: 0;
   transition:
-    background 150ms cubic-bezier(0.22, 1, 0.36, 1),
-    color     150ms cubic-bezier(0.22, 1, 0.36, 1);
+    background 150ms,
+    color 150ms;
 }
-
 .nav-toggle-btn:hover {
   background: var(--accent-glow, rgba(200, 65, 10, 0.09));
   color: var(--accent, #c8410a);
 }
 
-.nav-toggle-btn:focus-visible {
-  outline: 2px solid var(--accent, #c8410a);
-  outline-offset: 2px;
-}
-
-/* ── Brand / logo ──────────────────────────────────── */
-
-.brand { display: flex; align-items: center; }
-
+/* Brand/logo */
 .brand a {
   display: flex;
   align-items: center;
   gap: 7px;
   text-decoration: none;
 }
-
 .brand img {
   height: 26px;
   width: auto;
   display: block;
 }
 
-/* ── Language button ───────────────────────────────── */
-
+/* JW Button */
 .jw-button.typeA {
   display: inline-flex;
   align-items: center;
@@ -92,39 +67,31 @@
   border-radius: 7px;
   background: transparent;
   color: var(--label, #3a3835);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans";
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition:
     border-color 150ms,
-    color        150ms,
-    background   150ms;
+    color 150ms,
+    background 150ms;
 }
-
 .jw-button.typeA:hover {
   border-color: var(--accent, #c8410a);
   color: var(--accent, #c8410a);
   background: var(--accent-glow, rgba(200, 65, 10, 0.06));
 }
-
-.lang-icon {
-  display: flex;
-  align-items: center;
-}
-
 .lang-icon img {
   width: 14px;
   height: 14px;
   opacity: 0.65;
-  display: block;
 }
 
-/* ── Member trigger button ─────────────────────────── */
-
-.membermenu { position: relative; }
-
+/* Member menu button */
+.membermenu {
+  position: relative;
+}
 .jw-button.memberbtn {
   display: inline-flex;
   align-items: center;
@@ -135,19 +102,15 @@
   border-radius: 7px;
   background: transparent;
   color: var(--label, #3a3835);
-  font-family: 'DM Sans', sans-serif;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 150ms, background 150ms;
 }
-
 .jw-button.memberbtn:hover {
   background: var(--bg, #f7f6f3);
 }
 
-/* Avatar square */
 .user-icon {
   display: flex;
   align-items: center;
@@ -156,195 +119,208 @@
   height: 22px;
   border-radius: 5px;
   background: var(--accent, #c8410a);
-  flex-shrink: 0;
   overflow: hidden;
 }
-
 .user-icon img {
   width: 14px;
   height: 14px;
   filter: brightness(0) invert(1);
-  display: block;
 }
 
 .user-name {
   font-size: 12px;
   font-weight: 500;
-  color: var(--label, #3a3835);
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .user-arrow {
   display: flex;
   align-items: center;
   opacity: 0.4;
 }
-
 .user-arrow img {
   width: 10px;
   height: 10px;
-  display: block;
 }
 
-/* ── Member dropdown shell ─────────────────────────── */
-
+/* Member dropdown */
 .membermenu .position {
+  display: none;
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100%+6px);
   right: 0;
   z-index: 200;
   min-width: 200px;
-  display: none; /* hidden until member_info() adds .on */
 }
-
 .membermenu .position.on {
   display: block;
 }
-
 .membermenu .position .wrap {
-  background: var(--panel, #ffffff);
+  background: var(--panel, #fff);
   border: 1px solid var(--border-subtle, #e8e5df);
   border-radius: 10px;
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.08),
-    0 1px 3px  rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
-
-/* No border or shadow while wrap is still empty */
 .membermenu .position .wrap:empty {
   border: none;
   box-shadow: none;
 }
 
-/* ══════════════════════════════════════════════════════
-   MEMBER INFO PANEL  (.header_memberinfo)
-   Rendered inside .membermenu .position .wrap
-   ══════════════════════════════════════════════════════ */
-
+/* Header member info */
 .header_memberinfo {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 22px 20px 18px;
-  font-family: 'DM Sans', sans-serif;
-  text-align: center;
+  padding: 10px 16px;
+  gap: 12px;
+  font-family: "DM Sans";
 }
-
-/* ── Avatar circle ─────────────────────────────────── */
-
+.header_memberinfo .member-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
 .header_memberinfo .avatar {
-  width: 54px;
-  height: 54px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: rgba(0, 101, 248, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  margin-bottom: 2px;
 }
-
 .header_memberinfo .avatar svg {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
 }
-
-/* ── Name ──────────────────────────────────────────── */
-
-.header_memberinfo .name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--body, #111110);
-  letter-spacing: -0.01em;
-  margin-top: 12px;
-  margin-bottom: 0;
-}
-
-/* ── Role ──────────────────────────────────────────── */
-
-.header_memberinfo .role {
-  font-size: 11.5px;
-  color: var(--muted, #9a9690);
-  margin-top: 3px;
-}
-
-/* ── Divider before actions ─────────────────────────── */
-
-.header_memberinfo .actions {
-  width: 100%;
+.header_memberinfo .member-text {
   display: flex;
   flex-direction: column;
+  gap: 1px;
+}
+.header_memberinfo .name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--body, #111110);
+  margin: 0;
+  line-height: 1.2;
+}
+.header_memberinfo .role {
+  font-size: 11px;
+  color: var(--muted, #9a9690);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.header_memberinfo .divider {
+  height: 0.5px;
+  width: 100%;
+  background: var(--border-subtle, #e8e5df);
+}
+.header_memberinfo .actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   gap: 6px;
-  margin-top: 16px;
-  padding-top: 14px;
+  padding-top: 10px;
   border-top: 1px solid var(--border-subtle, #e8e5df);
 }
-
-/* ── Action buttons ─────────────────────────────────── */
-
 .header_memberinfo .actions .jw-button.typeA {
   width: 100%;
-  justify-content: center;
-  height: 34px;
-  font-size: 12.5px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
   border-radius: 7px;
-  margin-top: 0; /* override jw-mgt classes inside this context */
+  justify-content: center;
 }
 
-/* Logout gets a slightly muted look */
-.header_memberinfo #logoutBtn {
-  color: var(--muted, #9a9690);
-  border-color: var(--border-subtle, #e8e5df);
+/* Pill toggle */
+.pill-toggle {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--toggle-track, #e8e5df);
+  border: 1.5px solid var(--border-subtle);
+  cursor: pointer;
+  flex-shrink: 0;
 }
-
-.header_memberinfo #logoutBtn:hover {
-  color: var(--error, #b91c1c);
-  border-color: var(--error, #b91c1c);
-  background: rgba(185, 28, 28, 0.05);
+.pill-toggle input {
+  display: none;
 }
-
-/* ── Close button (if present) ─────────────────────── */
-
-.header_memberinfo .closeMember_info {
+.pill-toggle__thumb {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 26px;
-  height: 26px;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--toggle-thumb, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform 0.22s ease-out;
+}
+.pill-toggle input:checked ~ .pill-toggle__thumb {
+  transform: translateX(28px);
+}
+
+.pill-toggle__sun,
+.pill-toggle__moon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted, #9a9690);
-  cursor: pointer;
-  transition: background 140ms, color 140ms;
+  transition:
+    opacity 0.2s,
+    stroke 0.22s;
+  z-index: 1;
+}
+.pill-toggle__sun {
+  left: 6px;
+}
+.pill-toggle__moon {
+  right: 6px;
+}
+.pill-toggle__sun svg,
+.pill-toggle__moon svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--body, #111);
+  transition:
+    stroke 0.22s,
+    opacity 0.2s;
 }
 
-.header_memberinfo .closeMember_info:hover {
-  background: var(--bg, #f7f6f3);
-  color: var(--body, #111110);
+/* Sun/moon visibility */
+.pill-toggle input:checked ~ .pill-toggle__sun {
+  opacity: 0;
+}
+.pill-toggle input:checked ~ .pill-toggle__moon {
+  opacity: 1;
+}
+.pill-toggle input:not(:checked) ~ .pill-toggle__sun {
+  opacity: 1;
+}
+.pill-toggle input:not(:checked) ~ .pill-toggle__moon {
+  opacity: 0;
 }
 
-/* ══════════════════════════════════════════════════════
-   DARK MODE
-   ══════════════════════════════════════════════════════ */
-
+/* Dark mode adjustments */
 [data-theme="dark"] .layout-header {
   border-bottom-color: var(--border-subtle, #2c2b28);
 }
-
 [data-theme="dark"] .membermenu .position .wrap {
   box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.30),
-    0 1px 4px  rgba(0, 0, 0, 0.15);
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.15);
 }
-
 [data-theme="dark"] .header_memberinfo .avatar {
   background: rgba(0, 101, 248, 0.12);
 }

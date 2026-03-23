@@ -28,30 +28,25 @@ $pageStyles  = $pageStyles  ?? [];
 
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= htmlspecialchars($pageTitle) ?></title>
 
-  <!-- <link rel="stylesheet" href="../../public/css/a_components.css">
-  <link rel="stylesheet" href="../../public/css/a_variables.css">
-  <link rel="stylesheet" href="../../public/css/a_components.css">
-  <link rel="stylesheet" href="../../public/css/a_contents.css"> -->
-
-
+  <!-- Tailwind + Flowbite -->
+  <link rel="stylesheet" href="../../public/css/app.css">
 
   <link rel="stylesheet" href="../../public/css/general/root.css">
   <link rel="stylesheet" href="../../public/css/general/layout.css">
-
   <link rel="stylesheet" href="../../public/css/components/header.css">
   <link rel="stylesheet" href="../../public/css/components/sidebar.css">
 
-  
   <?php foreach ($pageStyles as $href): ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>">
   <?php endforeach; ?>
-
 </head>
+
 <body>
 
   <header class="layout-header" id="layoutHeader"></header>
@@ -71,6 +66,8 @@ $pageStyles  = $pageStyles  ?? [];
     
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@2/dist/flowbite.min.js"></script>
+  
   <script src="../js/default.js?v=20260311"></script>
 
   <?php foreach ($pageScripts as $src): ?>
@@ -83,6 +80,8 @@ $pageStyles  = $pageStyles  ?? [];
       navUrl:    '<?= htmlspecialchars($navUrl) ?>'
     });
   </script>
+
+
 
 </body>
 </html>

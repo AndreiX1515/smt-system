@@ -19,9 +19,6 @@ $pageStyles  = ['../../public/css/pages/overview.css'];
 
 
 
-
-
-
 /* ── 1. Capture page HTML ─────────────────────────── */
 ob_start();
 ?>
@@ -252,10 +249,6 @@ ob_start();
   </div>
 </div>
 
-
-
-
-
 <!-- Today's itinerary, sales charts etc. — keep your existing markup here -->
 
 <?php
@@ -440,6 +433,7 @@ ob_start();
     window.__pageInit();
   }
 </script>
+
 <?php
 $pageContent .= ob_get_clean();
 

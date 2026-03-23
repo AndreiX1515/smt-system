@@ -308,7 +308,8 @@ html, body {
   transition: color var(--dur-theme);
 }
 
-/* Pill toggle */
+/* ── Pill Toggle ───────────────────────────────────────────── */
+
 .pill-toggle {
   position: relative;
   width: 56px;
@@ -328,10 +329,11 @@ html, body {
   height: 0;
 }
 
+/* Thumb */
 .pill-toggle__thumb {
   position: absolute;
   top: 3px;
-  left: 3px;
+  left: 4px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -344,6 +346,7 @@ html, body {
   transform: translateX(28px);
 }
 
+/* Sun and Moon icons */
 .pill-toggle__sun,
 .pill-toggle__moon {
   position: absolute;
@@ -354,22 +357,49 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s;
+  transition: opacity 0.22s, stroke 0.22s;
+  z-index: 1; /* on top of thumb */
 }
 
+/* Positions */
 .pill-toggle__sun  { left: 6px; }
 .pill-toggle__moon { right: 6px; }
 
+/* Icon stroke */
 .pill-toggle__sun svg,
 .pill-toggle__moon svg {
   width: 13px;
   height: 13px;
-  stroke: var(--toggle-icon);
-  transition: stroke var(--dur-theme);
+  stroke: var(--body);
+  transition: stroke 0.22s, opacity 0.22s;
 }
 
-.pill-toggle input:checked     ~ .pill-toggle__sun  { opacity: 0.3; }
-.pill-toggle input:not(:checked) ~ .pill-toggle__moon { opacity: 0.3; }
+
+
+/* Light mode */
+.pill-toggle input:not(:checked) ~ .pill-toggle__sun {
+  opacity: 1;
+  stroke: var(--body);
+}
+.pill-toggle input:not(:checked) ~ .pill-toggle__moon {
+  opacity: 0;
+  stroke: var(--muted);
+}
+
+/* Dark mode */
+.pill-toggle input:checked ~ .pill-toggle__sun {
+  opacity: 0;
+  stroke: var(--muted);
+}
+.pill-toggle input:checked ~ .pill-toggle__moon {
+  opacity: 1;
+  stroke: var(--body);
+}
+
+
+
+
+
 
 /* ── Form Header ──────────────────────────────────────── */
 .login-form-header { margin-bottom: 36px; }

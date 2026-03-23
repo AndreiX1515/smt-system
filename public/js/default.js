@@ -701,6 +701,7 @@ class Modal {
   }
 }
 
+
 /* ── shorthand functions ─────────────────────────── */
 
 /* NOTE: height param removed — pass only (page, width, sq) */
@@ -720,7 +721,6 @@ function modal_close() {
     last.remove();
   }, { once: true });
 }
-
 
 function member_info(btn, page) {
 	const root = btn.closest('.membermenu') || btn; // 버튼+메뉴 래퍼
@@ -807,6 +807,7 @@ function initLogoutButton(container) {
 		});
 	}
 }
+
 
 
 // Change Password 버튼은 header_memberinfo가 동적으로 로드되어 이벤트 바인딩 타이밍 이슈가 자주 발생함.
@@ -1170,6 +1171,7 @@ function waitForHeaderUserNameAndHydrate(timeoutMs = 3000) {
 
 
 
+
 /* ── Sidebar Toggle ── */
 function toggleLayoutNav() {
   const nav = document.getElementById('layoutNav');
@@ -1217,8 +1219,8 @@ function _execScripts(container) {
 
 
 
-/* ── Layout: nav accordion + active state ─────────── */
 
+/* ── Layout: nav accordion + active state ─────────── */
 const _nav = {
   init() {
     document.querySelectorAll('#layoutNav .nav-btn').forEach(btn => {
@@ -1287,9 +1289,7 @@ const _nav = {
 		const wrap = parentItem.querySelector(':scope > .nav-sub-wrap');
 		if (wrap) wrap.style.gridTemplateRows = '1fr';
 	}
-
-
-
+	
   },
 };
 
@@ -1397,7 +1397,11 @@ async function init({ headerUrl, navUrl }) {
     _loadFragment(navUrl,    '#layoutNav'),
   ]);
 
-  // Restore collapsed state after nav exists
+  // ← add this
+  if (typeof initFlowbite === 'function') {
+    initFlowbite();
+  }
+
   try {
     if (localStorage.getItem('navCollapsed') === '1') {
       document.getElementById('layoutNav')?.classList.add('is-collapsed');
@@ -1408,7 +1412,6 @@ async function init({ headerUrl, navUrl }) {
   _router.start();
   waitForHeaderUserNameAndHydrate();
 }
-
 
 
 

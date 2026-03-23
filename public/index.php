@@ -72,10 +72,24 @@
 
       <!-- Theme toggle — top-right of form panel -->
       <header class="theme-header">
+
         <span class="theme-label" id="themeLabel">Light</span>
+
         <label class="pill-toggle" aria-label="Toggle dark mode">
           <input type="checkbox" id="themeToggle">
-          <span class="pill-toggle__sun">
+
+          <!-- Moon icon -->
+          <!-- <span class="pill-toggle__moon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+            </svg>
+          </span> -->
+
+          <!-- Toggle thumb -->
+          <span class="pill-toggle__thumb"></span>
+
+          <!-- Sun icon -->
+          <!-- <span class="pill-toggle__sun">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="4" />
               <line x1="12" y1="2" x2="12" y2="4" />
@@ -87,13 +101,8 @@
               <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
               <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
             </svg>
-          </span>
-          <span class="pill-toggle__thumb"></span>
-          <span class="pill-toggle__moon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-            </svg>
-          </span>
+          </span> -->
+
         </label>
       </header>
 
@@ -177,6 +186,9 @@
       </div>
     </main>
 
+
+
+    
   </div><!-- /.login-split -->
 
   <!-- Dependencies -->
@@ -184,67 +196,124 @@
   <script src="./js/super.js?v=20251226_adminloginfix1"></script>
 
   <script>
-    
     /* ── Theme toggle ─────────────────────────────────────────────────────
        Runs immediately so the correct theme is applied before first paint,
        preventing a flash of the wrong theme on load.
     ─────────────────────────────────────────────────────────────────────── */
+
+    /* ── Theme toggle (Improved + DB Sync) ──────────────────────────────── */
     (function() {
-      const toggle = document.getElementById('themeToggle');
-      const label = document.getElementById('themeLabel');
 
-      function applyTheme(t) {
-        document.documentElement.setAttribute('data-theme', t);
-        label.textContent = t === 'dark' ? 'Dark' : 'Light';
-      }
-
-      let saved = 'light';
-      try {
-        saved = localStorage.getItem('st-theme') || 'light';
-      } catch (_) {}
-      if (saved === 'dark') {
-        toggle.checked = true;
-        applyTheme('dark');
-      }
-
-      toggle.addEventListener('change', function() {
-        const t = toggle.checked ? 'dark' : 'light';
-        applyTheme(t);
+      // ── Local storage helpers ──────────────────────────────
+      function getStorageTheme() {
         try {
-          localStorage.setItem('st-theme', t);
+          return localStorage.getItem('st-theme');
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function setStorageTheme(theme) {
+        try {
+          localStorage.setItem('st-theme', theme);
         } catch (_) {}
+      }
+
+      // ── Apply theme immediately to prevent flash ─────────────
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        const label = document.getElementById('themeLabel');
+        if (label) label.textContent = theme === 'dark' ? 'Dark' : 'Light';
+      }
+
+      // ── Step 1: Apply theme ASAP (first paint) ─────────────
+      let theme = getStorageTheme() || 'light';
+      applyTheme(theme);
+
+      // ── Step 2: Wait for DOM before accessing toggle ────────
+      document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('themeToggle');
+        if (!toggle) return;
+
+        // 3. Sync toggle UI with current theme
+        toggle.checked = theme === 'dark';
+
+        // 4. Toggle handler
+        toggle.addEventListener('change', function() {
+          const newTheme = toggle.checked ? 'dark' : 'light';
+          applyTheme(newTheme);
+          setStorageTheme(newTheme);
+
+          // 5. Sync change to backend (if user logged in)
+          if (window.accountId) { // Make sure accountId is set in JS
+            fetch('./api/save-user-setting.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                accountId: window.accountId,
+                settingKey: 'theme',
+                settingValue: newTheme
+              })
+            });
+          }
+        });
+
+        // 6. Optional: Initial sync to backend after login
+        if (window.accountId && theme) {
+          fetch('./api/save-user-setting.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              accountId: window.accountId,
+              settingKey: 'theme',
+              settingValue: theme
+            })
+          });
+        }
       });
+
     })();
 
+
+
+
+
     /* ── Site init (header compatibility) ────────────────────────────────
-       Pass headerUrl: null so default.js does not try to load a header
-       include on the login page.
+    Pass headerUrl: null so default.js does not try to load a header
+    include on the login page.
     ─────────────────────────────────────────────────────────────────────── */
     if (typeof init === 'function') init({
       headerUrl: null
     });
 
+
+
     /* ══════════════════════════════════════════════════════════════════════
-       PAGE BOOTSTRAP  (runs after DOM is ready)
+    PAGE BOOTSTRAP (runs after DOM is ready)
 
-       Step 1 — Session check:
-         If the user already has a valid session, skip the login form and
-         redirect straight to their dashboard.
+    Step 1 — Session check:
+    If the user already has a valid session, skip the login form and
+    redirect straight to their dashboard.
 
-         Redirect map:
-           agent → ./public/agent/overview.php
-           guide → ./public/guide/full-list.php
-           cs    → ./public/cs/inquiry-list.php
-           *     → ./public/super/overview.php  (admin default)
+    Redirect map:
+    agent → ./public/agent/overview.php
+    guide → ./public/guide/full-list.php
+    cs → ./public/cs/inquiry-list.php
+    * → ./public/super/overview.php (admin default)
 
-       Step 2 — Restore saved username:
-         Pre-fill the ID field if "Remember ID" was checked before.
+    Step 2 — Restore saved username:
+    Pre-fill the ID field if "Remember ID" was checked before.
 
-       Step 3 — Attach form handler:
-         Wire the submit listener once the DOM is confirmed ready.
+    Step 3 — Attach form handler:
+    Wire the submit listener once the DOM is confirmed ready.
     ══════════════════════════════════════════════════════════════════════ */
     document.addEventListener('DOMContentLoaded', async function() {
-
 
       /* Step 1 — Session check */
       try {
@@ -268,7 +337,7 @@
         }
       } catch (_) {
         /* Network or parse failure — fall through and show the login form.
-           Never block the user from logging in due to a check-session error. */
+        Never block the user from logging in due to a check-session error. */
       }
 
 
@@ -291,8 +360,9 @@
 
     });
 
+
     /* ── Password visibility toggle ───────────────────────────────────────
-       Swaps between password and text input type, updates the eye icon.
+    Swaps between password and text input type, updates the eye icon.
     ─────────────────────────────────────────────────────────────────────── */
     document.getElementById('eyeBtn').addEventListener('click', function() {
       const inp = document.getElementById('password');
@@ -309,17 +379,19 @@
       }
     });
 
-    /* ══════════════════════════════════════════════════════════════════════
-       LOGIN HANDLER
 
-       Flow:
-         1. Client-side presence validation.
-         2. POST to login.php.
-         3. Guard against non-JSON responses (PHP fatal, gateway errors).
-         4. On success  — save cookie, store accountType, redirect.
-         5. On failure  — route message to the specific field ('field' key)
-                          or the global error banner.
-         6. On network  — show generic connection error, no console output.
+
+    /* ══════════════════════════════════════════════════════════════════════
+    LOGIN HANDLER
+
+    Flow:
+    1. Client-side presence validation.
+    2. POST to login.php.
+    3. Guard against non-JSON responses (PHP fatal, gateway errors).
+    4. On success — save cookie, store accountType, redirect.
+    5. On failure — route message to the specific field ('field' key)
+    or the global error banner.
+    6. On network — show generic connection error, no console output.
     ══════════════════════════════════════════════════════════════════════ */
     async function handleLogin(e) {
       e.preventDefault();
@@ -401,10 +473,11 @@
       btn.textContent = 'Sign In';
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-       ERROR HELPERS
-    ══════════════════════════════════════════════════════════════════════ */
 
+
+    /* ══════════════════════════════════════════════════════════════════════
+    ERROR HELPERS
+    ══════════════════════════════════════════════════════════════════════ */
     /**
      * Clears all visible error states — field highlights and error messages.
      * Called at the start of every validation attempt and form submission.
@@ -421,6 +494,7 @@
       });
     }
 
+
     /**
      * Highlights a specific field and shows its error message below it.
      *
@@ -429,7 +503,7 @@
      * function — e.g. 'username' → #usernameError, 'password' → #passwordError.
      *
      * @param {string} field - The input element's id.
-     * @param {string} msg   - Error message to display.
+     * @param {string} msg - Error message to display.
      */
     function showFieldError(field, msg) {
       clearErrors();
@@ -445,6 +519,8 @@
       }
     }
 
+
+
     /**
      * Shows a global error banner not tied to any specific field.
      * Used for account-level rejections (inactive, suspended, banned),
@@ -452,6 +528,7 @@
      *
      * @param {string} msg - Error message to display.
      */
+
     function showLoginError(msg) {
       clearErrors();
       const el = document.getElementById('loginError');
@@ -461,8 +538,10 @@
       }
     }
 
+
+
     /* ── Modals ───────────────────────────────────────────────────────────
-       Loaded via the Modal class in default.js.
+    Loaded via the Modal class in default.js.
     ─────────────────────────────────────────────────────────────────────── */
     function openIdFind() {
       if (typeof modal === 'function') modal('../public/member/agent-id-find.html', '480px');
@@ -471,7 +550,6 @@
     function openPasswordReset() {
       if (typeof modal === 'function') modal('../public/member/agent-password-reset.html', '480px');
     }
-
   </script>
 
 </body>
