@@ -4,15 +4,22 @@
    Uses root design tokens throughout.
    ══════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
 
 /* ── Reset ─────────────────────────────────────────── */
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-html, body {
+html,
+body {
   height: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--body, #111110);
@@ -20,24 +27,13 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── CSS custom properties for shell dimensions ─────── */
-
-:root {
-  --header-h: 56px;
-  --nav-w:    220px;
-}
-
-
 /* ══════════════════════════════════════════════════════
    SHELL LAYOUT
    ══════════════════════════════════════════════════════ */
 
 /* ── Header ────────────────────────────────────────── */
-
 .layout-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  position: relative;
   width: 100%;
   height: var(--header-h);
   background: var(--panel, #ffffff);
@@ -45,9 +41,11 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 2.8%;
   flex-shrink: 0;
   gap: 12px;
+
+  /* border: 1px solid gainsboro; */
 }
 
 .header-left {
@@ -55,13 +53,17 @@ html, body {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+
+  /* border: 1px solid gainsboro; */
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  padding: 0;
   gap: 10px;
-  margin-left: auto;
+
+  /* border: 1px solid gainsboro; */
 }
 
 /* Hamburger toggle */
@@ -76,28 +78,39 @@ html, body {
   background: transparent;
   color: var(--muted, #9a9690);
   cursor: pointer;
-  transition: background var(--dur-fast, 180ms), color var(--dur-fast, 180ms);
+  transition:
+    background var(--dur-fast, 180ms),
+    color var(--dur-fast, 180ms);
   flex-shrink: 0;
 }
 .nav-toggle-btn:hover {
-  background: var(--accent-glow, rgba(200,65,10,0.08));
+  background: var(--accent-glow, rgba(200, 65, 10, 0.08));
   color: var(--accent, #c8410a);
 }
 
 /* Brand / logo */
-.brand a { display: flex; align-items: center; }
-.brand img { height: 28px; width: auto; display: block; }
+.brand a {
+  display: flex;
+  align-items: center;
+}
+.brand img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
 
 /* ── Main row ──────────────────────────────────────── */
 
 .layout-main {
   display: flex;
   height: calc(100dvh - var(--header-h));
-  overflow: hidden;
+  gap: 1.5rem;
+  overflow: clip;
+  padding: 0 5% 0 5%;
+
+  
+  /* border: 1px solid gainsboro; */
 }
-
-
-
 
 /* ── Sidebar nav ───────────────────────────────────── */
 
@@ -107,14 +120,24 @@ html, body {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--panel, #ffffff);
+
   border-right: 1px solid var(--border-subtle, #d0cdc7);
-  padding: 12px 0 24px;
+  padding: 15px 20px 20px 0px;
   scrollbar-width: none;
-  transition: transform 240ms cubic-bezier(0.22,1,0.36,1),
-              width    240ms cubic-bezier(0.22,1,0.36,1);
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 240ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* border: 1px solid gainsboro; */
 }
-.layout-nav::-webkit-scrollbar { display: none; }
+
+
+.layout-nav::-webkit-scrollbar {
+  display: none;
+}
+
+
+
 
 
 /* ── Content area ──────────────────────────────────── */
@@ -125,12 +148,34 @@ html, body {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 32px 36px 80px;
-  scroll-behavior: smooth;
+  padding-top: 10px;
+  display: flex;
+  
+
+  /* border: 1px solid gainsboro; */
 
   /* Scope View Transition to content only */
   view-transition-name: page-content;
 }
+
+.content-wrapper {
+  width: 100%;
+  max-width: 1280px;
+
+
+  /* border: 1px solid gainsboro; */
+}
+
+.dashboard-section {
+  /* background: var(--panel, #fff);
+  border: 1px solid var(--border-subtle, #d0cdc7);
+  border-radius: 12px; */
+  padding: 20px;
+
+  /* border: 1px solid gainsboro; */
+}
+
+
 
 /* ══════════════════════════════════════════════════════
    VIEW TRANSITIONS
@@ -138,13 +183,25 @@ html, body {
    ══════════════════════════════════════════════════════ */
 
 @keyframes vt-fade-out {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(-6px); }
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
 }
 
 @keyframes vt-slide-in {
-  from { opacity: 0; transform: translateX(8px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -174,7 +231,9 @@ html, body {
 
 /* ── Nav item ──────────────────────────────────────── */
 
-.nav-item { position: relative; }
+.nav-item {
+  position: relative;
+}
 
 /* ── Nav button (parent row) ────────────────────────── */
 
@@ -188,26 +247,28 @@ html, body {
   border-radius: 0;
   background: transparent;
   color: var(--label, #3a3835);
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 13px;
   font-weight: 500;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition: background var(--dur-fast, 180ms), color var(--dur-fast, 180ms);
+  transition:
+    background var(--dur-fast, 180ms),
+    color var(--dur-fast, 180ms);
   white-space: nowrap;
   overflow: hidden;
 }
 
 .nav-btn:hover {
-  background: var(--accent-glow, rgba(200,65,10,0.08));
+  background: var(--accent-glow, rgba(200, 65, 10, 0.08));
   color: var(--accent, #c8410a);
 }
 
 /* Active direct-link nav-btn (e.g. Inquiries) */
 a.nav-btn.is-active {
   color: var(--accent, #c8410a);
-  background: var(--accent-glow, rgba(200,65,10,0.10));
+  background: var(--accent-glow, rgba(200, 65, 10, 0.1));
 }
 
 /* Parent with active child */
@@ -232,7 +293,9 @@ a.nav-btn.is-active {
 .nav-btn:hover .nav-icon,
 .nav-item.is-open > .nav-btn .nav-icon,
 .nav-item.has-active > .nav-btn .nav-icon,
-a.nav-btn.is-active .nav-icon { opacity: 1; }
+a.nav-btn.is-active .nav-icon {
+  opacity: 1;
+}
 
 .nav-icon svg,
 .nav-icon path {
@@ -254,26 +317,40 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
   height: 16px;
   position: relative;
   opacity: 0.45;
-  transition: transform 220ms cubic-bezier(0.22,1,0.36,1), opacity var(--dur-fast,180ms);
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--dur-fast, 180ms);
 }
 
 .nav-chevron::before,
 .nav-chevron::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   width: 6px;
   height: 1.5px;
   background: currentColor;
   border-radius: 1px;
-  transition: transform 220ms cubic-bezier(0.22,1,0.36,1);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.nav-chevron::before { left: 2px;  transform: translateY(-50%) rotate(45deg); }
-.nav-chevron::after  { right: 2px; transform: translateY(-50%) rotate(-45deg); }
+.nav-chevron::before {
+  left: 2px;
+  transform: translateY(-50%) rotate(45deg);
+}
+.nav-chevron::after {
+  right: 2px;
+  transform: translateY(-50%) rotate(-45deg);
+}
 
-.nav-item.is-open > .nav-btn .nav-chevron::before { transform: translateY(-50%) rotate(-45deg); }
-.nav-item.is-open > .nav-btn .nav-chevron::after  { transform: translateY(-50%) rotate(45deg); }
-.nav-item.is-open > .nav-btn .nav-chevron { opacity: 0.8; }
+.nav-item.is-open > .nav-btn .nav-chevron::before {
+  transform: translateY(-50%) rotate(-45deg);
+}
+.nav-item.is-open > .nav-btn .nav-chevron::after {
+  transform: translateY(-50%) rotate(45deg);
+}
+.nav-item.is-open > .nav-btn .nav-chevron {
+  opacity: 0.8;
+}
 
 /* ── Unread badge ──────────────────────────────────── */
 
@@ -298,7 +375,7 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
 .nav-sub {
   overflow: hidden;
   max-height: 0;
-  transition: max-height 260ms cubic-bezier(0.22,1,0.36,1);
+  transition: max-height 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-item.is-open > .nav-sub {
@@ -310,8 +387,8 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
 
 .side-link {
   display: block;
-  padding: 8px 16px 8px 46px;  /* 46px = icon width + gap + indent */
-  font-family: 'Inter', sans-serif;
+  padding: 8px 16px 8px 46px; /* 46px = icon width + gap + indent */
+  font-family: "Inter", sans-serif;
   font-size: 12.5px;
   font-weight: 400;
   color: var(--muted, #9a9690);
@@ -319,21 +396,23 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color var(--dur-fast, 180ms), background var(--dur-fast, 180ms);
+  transition:
+    color var(--dur-fast, 180ms),
+    background var(--dur-fast, 180ms);
   border-left: 2px solid transparent;
   margin-left: 0;
 }
 
 .side-link:hover {
   color: var(--label, #3a3835);
-  background: var(--accent-glow, rgba(200,65,10,0.05));
+  background: var(--accent-glow, rgba(200, 65, 10, 0.05));
 }
 
 .side-link.is-active {
   color: var(--accent, #c8410a);
   font-weight: 500;
   border-left-color: var(--accent, #c8410a);
-  background: var(--accent-glow, rgba(200,65,10,0.08));
+  background: var(--accent-glow, rgba(200, 65, 10, 0.08));
 }
 
 /* ══════════════════════════════════════════════════════
@@ -341,12 +420,20 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
    ══════════════════════════════════════════════════════ */
 
 /* Member dropdown */
-.membermenu { position: relative; }
-.memberbtn  { gap: 6px; }
+.membermenu {
+  position: relative;
+}
+.memberbtn {
+  gap: 6px;
+}
 
 .user-icon img,
 .user-arrow img,
-.lang-icon img { width: 16px; height: 16px; display: block; }
+.lang-icon img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
 
 .user-name {
   font-size: 13px;
@@ -390,12 +477,17 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
    ══════════════════════════════════════════════════════ */
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.35; }
-  50%       { opacity: 0.8;  }
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .layout-header:empty::after {
-  content: '';
+  content: "";
   display: block;
   width: 100px;
   height: 14px;
@@ -414,7 +506,7 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
 
 .layout-nav:empty::before,
 .layout-nav:empty::after {
-  content: '';
+  content: "";
   display: block;
   height: 36px;
   border-radius: 3px;
@@ -451,7 +543,7 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
     bottom: 0;
     z-index: 90;
     transform: translateX(-100%);
-    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
   }
 
   .layout-nav.is-open {
@@ -463,22 +555,17 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
   }
 }
 
-
-
-
-
-
-
-
 /* Progress bar during router fetch */
 .layout-content.is-loading {
   position: relative;
 }
 
 .layout-content.is-loading::before {
-  content: '';
+  content: "";
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 2px;
   background: var(--accent, #c8410a);
   animation: router-progress 600ms ease-in-out infinite alternate;
@@ -486,18 +573,47 @@ a.nav-btn.is-active .nav-icon { opacity: 1; }
 }
 
 @keyframes router-progress {
-  from { transform: scaleX(0.3); transform-origin: left; }
-  to   { transform: scaleX(1);   transform-origin: left; }
+  from {
+    transform: scaleX(0.3);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
 }
-
-
 
 /* ══════════════════════════════════════════════════════
    UTILITY SPACERS
    ══════════════════════════════════════════════════════ */
 
-.jw-mgt16 { margin-top: 16px; }
-.jw-mgt32 { margin-top: 32px; }
-.jw-mgt44 { margin-top: 44px; }
-.jw-mgt50 { margin-top: 50px; }
-.jw-mgt68 { margin-top: 68px; }
+.jw-mgt16 {
+  margin-top: 16px;
+}
+.jw-mgt32 {
+  margin-top: 32px;
+}
+.jw-mgt44 {
+  margin-top: 44px;
+}
+.jw-mgt50 {
+  margin-top: 50px;
+}
+.jw-mgt68 {
+  margin-top: 68px;
+}
+
+/* ══════════════════════════════════════════════════════
+   FLYONUI MODAL FIX
+   ══════════════════════════════════════════════════════ */
+
+/* Allow modal to escape layout-content clipping */
+.layout-content:has(.overlay.modal.overlay-open) {
+  overflow: visible !important;
+}
+
+/* Fix modal's own overflow so content isn't clipped */
+#my-modal,
+.overlay.modal {
+  overflow: visible !important;
+}

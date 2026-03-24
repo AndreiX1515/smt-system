@@ -11,6 +11,7 @@
  * Nothing else. No <html>, no <head>, no <body>.
  */
 
+
 $pageTitle   = 'Operating Status';
 $pageSlug    = 'overview';            /* must match data-page in nav */
 $navUrl      = '../inc/nav_super.php';
@@ -18,238 +19,287 @@ $pageScripts = ['../js/super.js?v=20260311'];
 $pageStyles  = ['../../public/css/pages/overview.css'];
 
 
+// In overview.php — REMOVE modal from ob_start() content
+$pageModals = '
+<div id="my-modal" class="overlay modal overlay-open:opacity-100 hidden overlay-open:duration-300" role="dialog" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Modal Title</h3>
+        <button type="button" class="btn btn-text btn-circle btn-sm absolute end-3 top-3" aria-label="Close" data-overlay="#my-modal">
+          <span class="icon-[tabler--x] size-4"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>This is the modal body content.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft btn-secondary" data-overlay="#my-modal">Close</button>
+        <button type="button" class="btn btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>';
+
+
+
+
 
 /* ── 1. Capture page HTML ─────────────────────────── */
 ob_start();
 ?>
 
-<time class="page-date" id="currentDate" datetime=""></time>
-<h1 class="page-title" data-lan-eng="Operating Status">Operating Status</h1>
-
-<div class="overview-card-grid jw-mgt32">
-
-  <article class="card">
-    <div>
-      <h2 class="card-title" data-lan-eng="Reservation Status">Reservation Status</h2>
-      <a href="b2b-booking-list.php" class="card-link" data-lan-eng="See All">See All →</a>
-    </div>
-    <ul class="status-list">
-      <li class="status-item">
-        <i class="dot" style="background:#8b5cf6;" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Pending">Pending</span>
-        <strong class="count" id="pendingCount">0</strong>
-      </li>
-      <li class="status-item">
-        <i class="dot dot-blue" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Waiting for Down Payment">Waiting for Down Payment</span>
-        <strong class="count" id="waitingDownCount">0</strong>
-      </li>
-      <li class="status-item">
-        <i class="dot dot-orange" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Waiting for Second Payment">Waiting for Second Payment</span>
-        <strong class="count" id="waitingSecondCount">0</strong>
-      </li>
-      <li class="status-item">
-        <i class="dot dot-purple" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Waiting for Balance">Waiting for Balance</span>
-        <strong class="count" id="waitingBalanceCount">0</strong>
-      </li>
-      <li class="status-item">
-        <i class="dot dot-red" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Payment Rejected">Payment Rejected</span>
-        <strong class="count" id="rejectedCount">0</strong>
-      </li>
-    </ul>
-  </article>
-
-  <article class="card">
-    <div>
-      <h2 class="card-title" data-lan-eng="Inquiry Status">Inquiry Status</h2>
-      <a href="user-inquiry-list.php" class="card-link" data-lan-eng="See All">See All →</a>
-    </div>
-    <ul class="status-list">
-      <li class="status-item">
-        <i class="dot dot-blue" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Unanswered">Unanswered</span>
-        <strong class="count" id="unansweredCount"><span>0</span></strong>
-      </li>
-      <li class="status-item">
-        <i class="dot dot-green" aria-hidden="true"></i>
-        <span class="label" data-lan-eng="Processing">Processing</span>
-        <strong class="count" id="processingCount"><span>0</span></strong>
-      </li>
-    </ul>
-  </article>
-
-</div>
-
-<!-- Today Travel Itinerary -->
-<div class="card-panel jw-mgt32">
-  <h2 class="card-title" data-lan-eng="Today's Travel Itinerary">Today's Travel Itinerary</h2>
-  <p class="card-subtitle"><strong><span id="todayBookingsCount">0</span></strong></p>
-
-  <div class="tableA-scroll">
-    <div class="jw-tableA typeB">
-      <table>
-        <colgroup>
-          <col style="width:60px;"><!-- No -->
-          <col><!--  -->
-          <col style="width:220px;"><!--   -->
-          <col style="width:120px;"><!--   -->
-          <col style="width:100px;"><!--   -->
-          <col style="width:140px;"><!--   -->
-        </colgroup>
-        <thead>
-          <tr>
-            <th>No</th>
-            <th data-lan-eng="Product Name">Product Name</th>
-            <th data-lan-eng="Travel period">Travel period</th>
-            <th data-lan-eng="Customer Type">Customer Type</th>
-            <th data-lan-eng="Number of people">Number of people</th>
-            <th data-lan-eng="Assignment Guide">Assignment Guide</th>
-          </tr>
-        </thead>
-        <tbody id="todayBookingsTableBody">
-          <tr>
-            <td colspan="6" class="is-center" style="padding: 40px;"> ...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+<div class="page-header">
+  <div class="page-header-left">
+    <time class="page-date" id="currentDate" datetime="<?= date('Y-m-d') ?>"></time>
+    <h1 class="page-title" data-lan-eng="<?= htmlspecialchars($pageTitle) ?>">
+      <?= htmlspecialchars($pageTitle) ?>
+    </h1>
   </div>
 
+  <div class="page-header-right">
+    <!-- actions / buttons here -->
+  </div>
 </div>
 
-<!-- Sales Statistics -->
-<div class="card-panel jw-mgt32 sales-range">
+<div class="page-content">
+  <div class="overview-card-grid jw-mgt32">
 
-  <div class="card-panel-header">
-    <h2 class="card-title" data-lan-eng="Sales Statistics">Sales Statistics</h2>
-  </div>
-
-  <div class="card-panel-body">
-
-    <div class="card-panel-stats">
-      <div class="info-text" data-lan-eng="Total sales amount (₱)">Total sales amount (₱)</div>
-      <div class="info-text2" id="totalSalesAmount">0</div>
-    </div>
-
-    <div class="card-panel-filters">
-      <h3 class="card-subtitle2" data-lan-eng="Select period">Select period</h3>
-      <div class="jw-cols jw-gap10 jw-mgt16">
-        <label class="jw-radio typeA">
-          <input type="radio" name="salesPeriod" value="daily" checked>
-          <p class="text" data-lan-eng="Daily">Daily</p>
-        </label>
-        <label class="jw-radio typeA">
-          <input type="radio" name="salesPeriod" value="weekly">
-          <p class="text" data-lan-eng="Weekly">Weekly</p>
-        </label>
-        <label class="jw-radio typeA">
-          <input type="radio" name="salesPeriod" value="monthly">
-          <p class="text" data-lan-eng="Monthly">Monthly</p>
-        </label>
-        <label class="jw-radio typeA">
-          <input type="radio" name="salesPeriod" value="yearly">
-          <p class="text" data-lan-eng="Yearly">Yearly</p>
-        </label>
+    <article class="card">
+      <div>
+        <h2 class="card-title" data-lan-eng="Reservation Status">Reservation Status</h2>
+        <a href="b2b-booking-list.php" class="card-link" data-lan-eng="See All">See All →</a>
       </div>
-      <div class="input-box jw-mgt16">
-        <input id="salesDateRange" name="salesDateRange" readonly>
+      <ul class="status-list">
+        <li class="status-item">
+          <i class="dot" style="background:#8b5cf6;" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Pending">Pending</span>
+          <strong class="count" id="pendingCount">0</strong>
+        </li>
+        <li class="status-item">
+          <i class="dot dot-blue" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Waiting for Down Payment">Waiting for Down Payment</span>
+          <strong class="count" id="waitingDownCount">0</strong>
+        </li>
+        <li class="status-item">
+          <i class="dot dot-orange" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Waiting for Second Payment">Waiting for Second Payment</span>
+          <strong class="count" id="waitingSecondCount">0</strong>
+        </li>
+        <li class="status-item">
+          <i class="dot dot-purple" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Waiting for Balance">Waiting for Balance</span>
+          <strong class="count" id="waitingBalanceCount">0</strong>
+        </li>
+        <li class="status-item">
+          <i class="dot dot-red" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Payment Rejected">Payment Rejected</span>
+          <strong class="count" id="rejectedCount">0</strong>
+        </li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <div>
+        <h2 class="card-title" data-lan-eng="Inquiry Status">Inquiry Status</h2>
+        <a href="user-inquiry-list.php" class="card-link" data-lan-eng="See All">See All →</a>
+      </div>
+      <ul class="status-list">
+        <li class="status-item">
+          <i class="dot dot-blue" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Unanswered">Unanswered</span>
+          <strong class="count" id="unansweredCount"><span>0</span></strong>
+        </li>
+        <li class="status-item">
+          <i class="dot dot-green" aria-hidden="true"></i>
+          <span class="label" data-lan-eng="Processing">Processing</span>
+          <strong class="count" id="processingCount"><span>0</span></strong>
+        </li>
+      </ul>
+    </article>
+
+  </div>
+
+  <!-- Today Travel Itinerary -->
+  <div class="card-panel jw-mgt32">
+    <h2 class="card-title" data-lan-eng="Today's Travel Itinerary">Today's Travel Itinerary</h2>
+    <p class="card-subtitle"><strong><span id="todayBookingsCount">0</span></strong></p>
+
+    <div class="tableA-scroll">
+      <div class="jw-tableA typeB">
+        <table>
+          <colgroup>
+            <col style="width:60px;"><!-- No -->
+            <col><!--  -->
+            <col style="width:220px;"><!--   -->
+            <col style="width:120px;"><!--   -->
+            <col style="width:100px;"><!--   -->
+            <col style="width:140px;"><!--   -->
+          </colgroup>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th data-lan-eng="Product Name">Product Name</th>
+              <th data-lan-eng="Travel period">Travel period</th>
+              <th data-lan-eng="Customer Type">Customer Type</th>
+              <th data-lan-eng="Number of people">Number of people</th>
+              <th data-lan-eng="Assignment Guide">Assignment Guide</th>
+            </tr>
+          </thead>
+          <tbody id="todayBookingsTableBody">
+            <tr>
+              <td colspan="6" class="is-center" style="padding: 40px;"> ...</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
   </div>
 
-  <div class="card-panel-chart jw-mgt30">
-    <div id="myChart" class="chart"></div>
+  <!-- Sales Statistics -->
+  <div class="card-panel jw-mgt32 sales-range">
+
+    <div class="card-panel-header">
+      <h2 class="card-title" data-lan-eng="Sales Statistics">Sales Statistics</h2>
+    </div>
+
+    <div class="card-panel-body">
+
+      <div class="card-panel-stats">
+        <div class="info-text" data-lan-eng="Total sales amount (₱)">Total sales amount (₱)</div>
+        <div class="info-text2" id="totalSalesAmount">0</div>
+      </div>
+
+      <div class="card-panel-filters">
+        <h3 class="card-subtitle2" data-lan-eng="Select period">Select period</h3>
+        <div class="jw-cols jw-gap10 jw-mgt16">
+          <label class="jw-radio typeA">
+            <input type="radio" name="salesPeriod" value="daily" checked>
+            <p class="text" data-lan-eng="Daily">Daily</p>
+          </label>
+          <label class="jw-radio typeA">
+            <input type="radio" name="salesPeriod" value="weekly">
+            <p class="text" data-lan-eng="Weekly">Weekly</p>
+          </label>
+          <label class="jw-radio typeA">
+            <input type="radio" name="salesPeriod" value="monthly">
+            <p class="text" data-lan-eng="Monthly">Monthly</p>
+          </label>
+          <label class="jw-radio typeA">
+            <input type="radio" name="salesPeriod" value="yearly">
+            <p class="text" data-lan-eng="Yearly">Yearly</p>
+          </label>
+        </div>
+        <div class="input-box jw-mgt16">
+          <input id="salesDateRange" name="salesDateRange" readonly>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="card-panel-chart jw-mgt30">
+      <div id="myChart" class="chart"></div>
+    </div>
+
   </div>
 
+  <!-- Sales Status by Product -->
+  <div class="card-panel jw-mgt32 product-sales-range">
+    <h2 class="card-title" data-lan-eng="Sales Status by Product">Sales Status by Product</h2>
+    <h3 class="card-subtitle2 jw-mgt44" data-lan-eng="Select period">Select period</h3>
+
+    <div class="jw-cols jw-gap10 jw-mgt16">
+      <label class="jw-radio typeA">
+        <input type="radio" name="productSalesPeriod" value="daily" checked>
+        <p class="text" data-lan-eng="Daily">Daily</p>
+      </label>
+      <label class="jw-radio typeA">
+        <input type="radio" name="productSalesPeriod" value="weekly">
+        <p class="text" data-lan-eng="Weekly">Weekly</p>
+      </label>
+      <label class="jw-radio typeA">
+        <input type="radio" name="productSalesPeriod" value="monthly">
+        <p class="text" data-lan-eng="Monthly">Monthly</p>
+      </label>
+      <label class="jw-radio typeA">
+        <input type="radio" name="productSalesPeriod" value="yearly">
+        <p class="text" data-lan-eng="Yearly">Yearly</p>
+      </label>
+      <label class="jw-radio typeA">
+        <input type="radio" name="productSalesPeriod" value="all">
+        <p class="text" data-lan-eng="All">All</p>
+      </label>
+      <label class="jw-radio typeA">
+        <input type="radio" name="productSalesPeriod" value="custom" id="productSalesPeriodCustom">
+        <p class="text" data-lan-eng="Select Period">Select Period</p>
+      </label>
+    </div>
+    <div class="input-box jw-mgt16 jw-w400" id="productSalesDateRangeWrap">
+      <input id="productSalesDateRange" name="productSalesDateRange" readonly>
+    </div>
+    <div class="jw-cols jw-gap10 jw-mgt16" id="productSalesCustomDateWrap" style="display: none;">
+      <div class="input-box jw-w200">
+        <input type="date" id="productSalesStartDate" name="productSalesStartDate" value="">
+      </div>
+      <span class="jw-mgt8">~</span>
+      <div class="input-box jw-w200">
+        <input type="date" id="productSalesEndDate" name="productSalesEndDate" value="">
+      </div>
+      <button type="button" class="jw-button typeB" id="productSalesApplyBtn" data-lan-eng="Apply">Apply</button>
+    </div>
+    <div class="info-text jw-mgt44" data-lan-eng="Total number of sales">Total number of sales</div>
+    <div class="info-text2" id="totalProductSalesCount">0</div>
+
+
+    <div class="sales-info jw-mgt32">
+      <div class="sales-chart">
+        <div style="padding: 40px; text-align: center; color: #999;"> ...</div>
+      </div>
+      <div class="sales-product">
+        <table class="jw-tableA typeB">
+          <colgroup>
+            <col style="width:60px;"> <!-- No -->
+            <col> <!--  -->
+            <col style="width:120px;"> <!--  -->
+            <col style="width:120px;"> <!--  -->
+            <col style="width:120px;"> <!--  -->
+            <col style="width:160px;"> <!--  -->
+          </colgroup>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th data-lan-eng="Product Name">Product Name</th>
+              <th data-lan-eng="Views">Views</th>
+              <th data-lan-eng="Number of reservations">Number of reservations</th>
+              <th data-lan-eng="Reservation rate">Reservation rate</th>
+              <th data-lan-eng="Sales amount">Sales amount</th>
+            </tr>
+          </thead>
+          <tbody id="productSalesTableBody">
+            <tr>
+              <td colspan="6" class="is-center" style="padding: 40px;"> ...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Sales Status by Product -->
-<div class="card-panel jw-mgt32 product-sales-range">
-  <h2 class="card-title" data-lan-eng="Sales Status by Product">Sales Status by Product</h2>
-  <h3 class="card-subtitle2 jw-mgt44" data-lan-eng="Select period">Select period</h3>
-
-  <div class="jw-cols jw-gap10 jw-mgt16">
-    <label class="jw-radio typeA">
-      <input type="radio" name="productSalesPeriod" value="daily" checked>
-      <p class="text" data-lan-eng="Daily">Daily</p>
-    </label>
-    <label class="jw-radio typeA">
-      <input type="radio" name="productSalesPeriod" value="weekly">
-      <p class="text" data-lan-eng="Weekly">Weekly</p>
-    </label>
-    <label class="jw-radio typeA">
-      <input type="radio" name="productSalesPeriod" value="monthly">
-      <p class="text" data-lan-eng="Monthly">Monthly</p>
-    </label>
-    <label class="jw-radio typeA">
-      <input type="radio" name="productSalesPeriod" value="yearly">
-      <p class="text" data-lan-eng="Yearly">Yearly</p>
-    </label>
-    <label class="jw-radio typeA">
-      <input type="radio" name="productSalesPeriod" value="all">
-      <p class="text" data-lan-eng="All">All</p>
-    </label>
-    <label class="jw-radio typeA">
-      <input type="radio" name="productSalesPeriod" value="custom" id="productSalesPeriodCustom">
-      <p class="text" data-lan-eng="Select Period">Select Period</p>
-    </label>
-  </div>
-  <div class="input-box jw-mgt16 jw-w400" id="productSalesDateRangeWrap">
-    <input id="productSalesDateRange" name="productSalesDateRange" readonly>
-  </div>
-  <div class="jw-cols jw-gap10 jw-mgt16" id="productSalesCustomDateWrap" style="display: none;">
-    <div class="input-box jw-w200">
-      <input type="date" id="productSalesStartDate" name="productSalesStartDate" value="">
-    </div>
-    <span class="jw-mgt8">~</span>
-    <div class="input-box jw-w200">
-      <input type="date" id="productSalesEndDate" name="productSalesEndDate" value="">
-    </div>
-    <button type="button" class="jw-button typeB" id="productSalesApplyBtn" data-lan-eng="Apply">Apply</button>
-  </div>
-  <div class="info-text jw-mgt44" data-lan-eng="Total number of sales">Total number of sales</div>
-  <div class="info-text2" id="totalProductSalesCount">0</div>
 
 
-  <div class="sales-info jw-mgt32">
-    <div class="sales-chart">
-      <div style="padding: 40px; text-align: center; color: #999;"> ...</div>
-    </div>
-    <div class="sales-product">
-      <table class="jw-tableA typeB">
-        <colgroup>
-          <col style="width:60px;"> <!-- No -->
-          <col> <!--  -->
-          <col style="width:120px;"> <!--  -->
-          <col style="width:120px;"> <!--  -->
-          <col style="width:120px;"> <!--  -->
-          <col style="width:160px;"> <!--  -->
-        </colgroup>
-        <thead>
-          <tr>
-            <th>No</th>
-            <th data-lan-eng="Product Name">Product Name</th>
-            <th data-lan-eng="Views">Views</th>
-            <th data-lan-eng="Number of reservations">Number of reservations</th>
-            <th data-lan-eng="Reservation rate">Reservation rate</th>
-            <th data-lan-eng="Sales amount">Sales amount</th>
-          </tr>
-        </thead>
-        <tbody id="productSalesTableBody">
-          <tr>
-            <td colspan="6" class="is-center" style="padding: 40px;"> ...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+<!-- Trigger -->
+<!-- <button type="button" class="btn btn-primary"
+  aria-haspopup="dialog"
+  aria-expanded="false"
+  aria-controls="my-modal"
+  data-overlay="#my-modal">
+  Open Modal
+</button> -->
 
-<!-- Today's itinerary, sales charts etc. — keep your existing markup here -->
+
+
 
 <?php
 $pageContent = ob_get_clean();
@@ -263,6 +313,9 @@ $pageContent = ob_get_clean();
    ─────────────────────────────────────────────────── */
 ob_start();
 ?>
+
+
+<!-- in your <head> or before </body> -->
 
 <script>
   window.__pageInit = async function initOverview() {
@@ -294,8 +347,10 @@ ob_start();
       return;
     }
 
+
     /* ── Load data ────────────────────────────────────── */
     await loadOverviewData();
+
 
     /* ── Sales period radios ──────────────────────────── */
     const salesDateInput = document.getElementById('salesDateRange');
@@ -305,6 +360,7 @@ ob_start();
         loadSalesData(radio.value);
       });
     });
+
 
     /* ── Product period radios ────────────────────────── */
     const productDateInput = document.getElementById('productSalesDateRange');

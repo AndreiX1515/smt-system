@@ -7,6 +7,19 @@
    ROOT TOKENS
    ══════════════════════════════════════════════════════ */
 
+
+/* ── CSS custom properties for shell dimensions ─────── */
+
+
+/* ── Custom Page Specifics ─────── */
+:root {
+  --header-h: 60px;
+  --nav-w:    220px;
+  --control-h: 36px;
+  --control-radius: 8px;
+}
+
+
 :root,
 [data-theme="light"] {
 

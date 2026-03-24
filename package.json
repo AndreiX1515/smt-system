@@ -24,7 +24,7 @@
   "homepage": "https://github.com/AndreiX1515/smt-system#readme",
   "dependencies": {
     "@tailwindcss/cli": "^4.2.2",
-    "flowbite": "^4.0.1",
+    "flyonui": "^2.4.1",
     "tailwindcss": "^4.2.2"
   }
 }
