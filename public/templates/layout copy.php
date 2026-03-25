@@ -5,7 +5,7 @@
  */
 
 $pageTitle   = $pageTitle   ?? 'Dashboard';
-$navUrl      = $navUrl      ?? '../public/inc/nav_super.php';
+$navUrl      = $navUrl      ?? '../../public/inc/nav_super.php';
 $pageContent = $pageContent ?? '';
 $pageSlug    = $pageSlug    ?? '';
 $pageStyles  = $pageStyles  ?? [];
