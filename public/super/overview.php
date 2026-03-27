@@ -7,7 +7,7 @@ $navPath     = __DIR__ . '/../../public/templates/nav_super.php';
 
 /* Page-specific CSS/JS (merged with layout defaults) */
 $pageCSS     = ['../../public/css/pages/overview.css'];
-$pageJS      = ['../../public/assets/js/super.js?v=20260311'];
+$pageJS      = ['../../public/assets/js/super.js'];
 
 /* Optional modals for the page */
 $pageModals  = <<<HTML
@@ -33,7 +33,8 @@ $pageModals  = <<<HTML
 HTML;
 
 /* ── Page Content ───────────────────────── */
-$pageContent = <<<HTML
+$content = <<<HTML
+
 <div class="page-header">
   <div class="page-header-left">
     <time class="page-date" id="currentDate" datetime=""></time>
@@ -98,7 +99,7 @@ window.__pageInit = async function initOverview() {
 };
 JS;
 
-// If you want inline JS injected in layout, push to $pageJS as a blob
+// Inject inline JS as a base64 data URI into the page JS list
 $pageJS[] = "data:text/javascript;base64," . base64_encode($inlineJS);
 
 /* ── Include layout.php ───────────────── */

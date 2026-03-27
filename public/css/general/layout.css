@@ -1,12 +1,15 @@
 /* ══════════════════════════════════════════════════════
    layout.css
-   Shell structure: header, nav accordion, content area.
-   Uses root design tokens throughout.
+   Shell structure: header · sidebar nav · content area.
+   UI library: Preline UI  |  No Tailwind, no Bootstrap.
    ══════════════════════════════════════════════════════ */
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
 
-/* ── Reset ─────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────────
+   § 1. RESET
+   ────────────────────────────────────────────────────── */
 
 *,
 *::before,
@@ -27,11 +30,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ══════════════════════════════════════════════════════
-   SHELL LAYOUT
-   ══════════════════════════════════════════════════════ */
 
-/* ── Header ────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────
+   § 2. SHELL — header · main row · sidebar · content
+   ────────────────────────────────────────────────────── */
+
+/* Header — fixed bar at the top */
 .layout-header {
   position: relative;
   width: 100%;
@@ -44,8 +48,6 @@ body {
   padding: 0 2.8%;
   flex-shrink: 0;
   gap: 12px;
-
-  /* border: 1px solid gainsboro; */
 }
 
 .header-left {
@@ -53,17 +55,23 @@ body {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-
-  /* border: 1px solid gainsboro; */
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  padding: 0;
   gap: 10px;
+}
 
-  /* border: 1px solid gainsboro; */
+/* Brand / logo */
+.brand a {
+  display: flex;
+  align-items: center;
+}
+.brand img {
+  height: 28px;
+  width: auto;
+  display: block;
 }
 
 /* Hamburger toggle */
@@ -78,70 +86,44 @@ body {
   background: transparent;
   color: var(--muted, #9a9690);
   cursor: pointer;
+  flex-shrink: 0;
   transition:
     background var(--dur-fast, 180ms),
     color var(--dur-fast, 180ms);
-  flex-shrink: 0;
 }
 .nav-toggle-btn:hover {
   background: var(--accent-glow, rgba(200, 65, 10, 0.08));
   color: var(--accent, #c8410a);
 }
 
-/* Brand / logo */
-.brand a {
-  display: flex;
-  align-items: center;
-}
-.brand img {
-  height: 28px;
-  width: auto;
-  display: block;
-}
-
-/* ── Main row ──────────────────────────────────────── */
-
+/* Main row — sidebar + content sit side by side */
 .layout-main {
   display: flex;
   height: calc(100dvh - var(--header-h));
   gap: 1.5rem;
   overflow: clip;
-  padding: 0 5% 0 5%;
-
-  
-  /* border: 1px solid gainsboro; */
+  padding: 0 5%;
 }
 
-/* ── Sidebar nav ───────────────────────────────────── */
-
+/* Sidebar */
 .layout-nav {
   width: var(--nav-w);
   flex-shrink: 0;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-
   border-right: 1px solid var(--border-subtle, #d0cdc7);
-  padding: 15px 20px 20px 0px;
+  padding: 15px 20px 20px 0;
   scrollbar-width: none;
   transition:
     transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
     width 240ms cubic-bezier(0.22, 1, 0.36, 1);
-
-  /* border: 1px solid gainsboro; */
 }
-
-
 .layout-nav::-webkit-scrollbar {
   display: none;
 }
 
-
-
-
-
-/* ── Content area ──────────────────────────────────── */
-
+/* Content area */
 .layout-content {
   flex: 1;
   min-width: 0;
@@ -150,9 +132,6 @@ body {
   overflow-x: hidden;
   padding-top: 10px;
   display: flex;
-  
-
-  /* border: 1px solid gainsboro; */
 
   /* Scope View Transition to content only */
   view-transition-name: page-content;
@@ -161,47 +140,26 @@ body {
 .content-wrapper {
   width: 100%;
   max-width: 1280px;
-
-
-  /* border: 1px solid gainsboro; */
 }
 
 .dashboard-section {
-  /* background: var(--panel, #fff);
-  border: 1px solid var(--border-subtle, #d0cdc7);
-  border-radius: 12px; */
   padding: 20px;
-
-  /* border: 1px solid gainsboro; */
 }
 
 
-
-/* ══════════════════════════════════════════════════════
-   VIEW TRANSITIONS
-   Content slides in; header and nav stay still.
-   ══════════════════════════════════════════════════════ */
+/* ──────────────────────────────────────────────────────
+   § 3. VIEW TRANSITIONS
+   Content slides; header and nav stay frozen.
+   ────────────────────────────────────────────────────── */
 
 @keyframes vt-fade-out {
-  from {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-6px);
-  }
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-6px); }
 }
 
 @keyframes vt-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -212,16 +170,21 @@ body {
     animation: 200ms ease both vt-slide-in;
   }
 
-  /* Freeze header and nav — they must not animate */
+  /* Header and nav must not animate during page transitions */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
   }
 }
 
-/* ══════════════════════════════════════════════════════
-   NAV — ACCORDION
-   ══════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────
+   § 4. NAV ACCORDION
+   Sub-menus animate via grid-template-rows, which is
+   in sync with what default.js sets in JS:
+     wrap.style.gridTemplateRows = "1fr" | "0fr"
+   This avoids the max-height timing stutter.
+   ────────────────────────────────────────────────────── */
 
 .nav-list {
   list-style: none;
@@ -229,14 +192,11 @@ body {
   margin: 0;
 }
 
-/* ── Nav item ──────────────────────────────────────── */
-
 .nav-item {
   position: relative;
 }
 
-/* ── Nav button (parent row) ────────────────────────── */
-
+/* Parent row button */
 .nav-btn {
   width: 100%;
   display: flex;
@@ -253,31 +213,29 @@ body {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
   transition:
     background var(--dur-fast, 180ms),
     color var(--dur-fast, 180ms);
-  white-space: nowrap;
-  overflow: hidden;
 }
-
 .nav-btn:hover {
   background: var(--accent-glow, rgba(200, 65, 10, 0.08));
   color: var(--accent, #c8410a);
 }
 
-/* Active direct-link nav-btn (e.g. Inquiries) */
+/* Active direct-link (e.g. a nav-btn that is itself a link) */
 a.nav-btn.is-active {
   color: var(--accent, #c8410a);
   background: var(--accent-glow, rgba(200, 65, 10, 0.1));
 }
 
-/* Parent with active child */
+/* Parent whose child link is active */
 .nav-item.has-active > .nav-btn {
   color: var(--accent, #c8410a);
 }
 
-/* ── Nav icon ──────────────────────────────────────── */
-
+/* Nav icon */
 .nav-icon {
   display: flex;
   align-items: center;
@@ -289,27 +247,23 @@ a.nav-btn.is-active {
   opacity: 0.6;
   transition: opacity var(--dur-fast, 180ms);
 }
-
 .nav-btn:hover .nav-icon,
 .nav-item.is-open > .nav-btn .nav-icon,
 .nav-item.has-active > .nav-btn .nav-icon,
 a.nav-btn.is-active .nav-icon {
   opacity: 1;
 }
-
 .nav-icon svg,
 .nav-icon path {
   fill: currentColor;
 }
-
-/* Product icon uses stroke, not fill */
+/* Stroke-based icons (e.g. product icons) */
 .nav-icon .stroke {
   fill: none;
   stroke: currentColor;
 }
 
-/* ── Chevron ───────────────────────────────────────── */
-
+/* Chevron — CSS-only rotate, no JS needed */
 .nav-chevron {
   margin-left: auto;
   flex-shrink: 0;
@@ -321,7 +275,6 @@ a.nav-btn.is-active .nav-icon {
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity var(--dur-fast, 180ms);
 }
-
 .nav-chevron::before,
 .nav-chevron::after {
   content: "";
@@ -341,7 +294,6 @@ a.nav-btn.is-active .nav-icon {
   right: 2px;
   transform: translateY(-50%) rotate(-45deg);
 }
-
 .nav-item.is-open > .nav-btn .nav-chevron::before {
   transform: translateY(-50%) rotate(-45deg);
 }
@@ -352,8 +304,7 @@ a.nav-btn.is-active .nav-icon {
   opacity: 0.8;
 }
 
-/* ── Unread badge ──────────────────────────────────── */
-
+/* Unread badge */
 .nav-unread-badge {
   margin-left: auto;
   min-width: 18px;
@@ -370,21 +321,26 @@ a.nav-btn.is-active .nav-icon {
   line-height: 1;
 }
 
-/* ── Sub-menu ──────────────────────────────────────── */
-
+/*
+  Sub-menu wrapper — uses CSS grid for a smooth open/close.
+  JS sets gridTemplateRows to "1fr" (open) or "0fr" (closed).
+  The inner .nav-sub element must have min-height: 0 so the
+  grid can collapse it fully when gridTemplateRows is "0fr".
+*/
+.nav-sub-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-item.is-open > .nav-sub-wrap {
+  grid-template-rows: 1fr;
+}
 .nav-sub {
   overflow: hidden;
-  max-height: 0;
-  transition: max-height 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  min-height: 0;
 }
 
-.nav-item.is-open > .nav-sub {
-  /* Large enough for any sub-menu — CSS clamps at actual content height */
-  max-height: 600px;
-}
-
-/* ── Sub-menu links ─────────────────────────────────── */
-
+/* Sub-menu links */
 .side-link {
   display: block;
   padding: 8px 16px 8px 46px; /* 46px = icon width + gap + indent */
@@ -396,18 +352,15 @@ a.nav-btn.is-active .nav-icon {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-left: 2px solid transparent;
   transition:
     color var(--dur-fast, 180ms),
     background var(--dur-fast, 180ms);
-  border-left: 2px solid transparent;
-  margin-left: 0;
 }
-
 .side-link:hover {
   color: var(--label, #3a3835);
   background: var(--accent-glow, rgba(200, 65, 10, 0.05));
 }
-
 .side-link.is-active {
   color: var(--accent, #c8410a);
   font-weight: 500;
@@ -415,14 +368,15 @@ a.nav-btn.is-active .nav-icon {
   background: var(--accent-glow, rgba(200, 65, 10, 0.08));
 }
 
-/* ══════════════════════════════════════════════════════
-   HEADER INTERNALS
-   ══════════════════════════════════════════════════════ */
 
-/* Member dropdown */
+/* ──────────────────────────────────────────────────────
+   § 5. HEADER INTERNALS — member dropdown
+   ────────────────────────────────────────────────────── */
+
 .membermenu {
   position: relative;
 }
+
 .memberbtn {
   gap: 6px;
 }
@@ -445,6 +399,7 @@ a.nav-btn.is-active .nav-icon {
   white-space: nowrap;
 }
 
+/* Dropdown panel — positioned below the trigger button */
 .membermenu .position {
   position: absolute;
   top: calc(100% + 6px);
@@ -452,9 +407,10 @@ a.nav-btn.is-active .nav-icon {
   z-index: 200;
 }
 
-/* ══════════════════════════════════════════════════════
-   PAGE CONTENT TYPOGRAPHY
-   ══════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────
+   § 6. PAGE CONTENT TYPOGRAPHY
+   ────────────────────────────────────────────────────── */
 
 .page-date {
   display: block;
@@ -472,18 +428,15 @@ a.nav-btn.is-active .nav-icon {
   line-height: 1.2;
 }
 
-/* ══════════════════════════════════════════════════════
-   SKELETON — loading placeholders for header/nav
-   ══════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────
+   § 7. SKELETON — loading placeholders for header / nav
+   Shown while fragments are fetching on first load.
+   ────────────────────────────────────────────────────── */
 
 @keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.8;
-  }
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.8;  }
 }
 
 .layout-header:empty::after {
@@ -503,7 +456,6 @@ a.nav-btn.is-active .nav-icon {
   gap: 8px;
   padding: 20px 16px;
 }
-
 .layout-nav:empty::before,
 .layout-nav:empty::after {
   content: "";
@@ -513,53 +465,21 @@ a.nav-btn.is-active .nav-icon {
   background: var(--border-subtle, #d0cdc7);
   animation: skeleton-pulse 1.4s ease-in-out infinite;
 }
-
 .layout-nav:empty::after {
   width: 70%;
   animation-delay: 0.2s;
 }
 
-/* ══════════════════════════════════════════════════════
-   DARK MODE
-   ══════════════════════════════════════════════════════ */
 
-[data-theme="dark"] .layout-nav {
-  box-shadow: inset -1px 0 0 var(--border-subtle, #3e3c38);
-}
+/* ──────────────────────────────────────────────────────
+   § 8. ROUTER — progress indicator
+   A thin bar crawls across the top of the content area
+   while the SPA router is fetching the next page.
+   ────────────────────────────────────────────────────── */
 
-[data-theme="dark"] .layout-header {
-  box-shadow: inset 0 -1px 0 var(--border-subtle, #3e3c38);
-}
-
-/* ══════════════════════════════════════════════════════
-   RESPONSIVE — mobile nav drawer
-   ══════════════════════════════════════════════════════ */
-
-@media (max-width: 768px) {
-  .layout-nav {
-    position: fixed;
-    top: var(--header-h);
-    left: 0;
-    bottom: 0;
-    z-index: 90;
-    transform: translateX(-100%);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
-  }
-
-  .layout-nav.is-open {
-    transform: translateX(0);
-  }
-
-  .layout-content {
-    padding: 24px 20px 80px;
-  }
-}
-
-/* Progress bar during router fetch */
 .layout-content.is-loading {
   position: relative;
 }
-
 .layout-content.is-loading::before {
   content: "";
   position: absolute;
@@ -573,47 +493,53 @@ a.nav-btn.is-active .nav-icon {
 }
 
 @keyframes router-progress {
-  from {
-    transform: scaleX(0.3);
-    transform-origin: left;
+  from { transform: scaleX(0.3); transform-origin: left; }
+  to   { transform: scaleX(1);   transform-origin: left; }
+}
+
+
+/* ──────────────────────────────────────────────────────
+   § 9. DARK MODE
+   ────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .layout-header {
+  box-shadow: inset 0 -1px 0 var(--border-subtle, #3e3c38);
+}
+
+[data-theme="dark"] .layout-nav {
+  box-shadow: inset -1px 0 0 var(--border-subtle, #3e3c38);
+}
+
+
+/* ──────────────────────────────────────────────────────
+   § 10. RESPONSIVE — mobile nav drawer
+   ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .layout-nav {
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    bottom: 0;
+    z-index: 90;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
   }
-  to {
-    transform: scaleX(1);
-    transform-origin: left;
+  .layout-nav.is-open {
+    transform: translateX(0);
+  }
+  .layout-content {
+    padding: 24px 20px 80px;
   }
 }
 
-/* ══════════════════════════════════════════════════════
-   UTILITY SPACERS
-   ══════════════════════════════════════════════════════ */
 
-.jw-mgt16 {
-  margin-top: 16px;
-}
-.jw-mgt32 {
-  margin-top: 32px;
-}
-.jw-mgt44 {
-  margin-top: 44px;
-}
-.jw-mgt50 {
-  margin-top: 50px;
-}
-.jw-mgt68 {
-  margin-top: 68px;
-}
+/* ──────────────────────────────────────────────────────
+   § 11. UTILITY SPACERS
+   ────────────────────────────────────────────────────── */
 
-/* ══════════════════════════════════════════════════════
-   FLYONUI MODAL FIX
-   ══════════════════════════════════════════════════════ */
-
-/* Allow modal to escape layout-content clipping */
-.layout-content:has(.overlay.modal.overlay-open) {
-  overflow: visible !important;
-}
-
-/* Fix modal's own overflow so content isn't clipped */
-#my-modal,
-.overlay.modal {
-  overflow: visible !important;
-}
+.jw-mgt16 { margin-top: 16px; }
+.jw-mgt32 { margin-top: 32px; }
+.jw-mgt44 { margin-top: 44px; }
+.jw-mgt50 { margin-top: 50px; }
+.jw-mgt68 { margin-top: 68px; }

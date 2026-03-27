@@ -3767,3 +3767,17 @@
 [2026-03-25 14:27:14] [INFO] [CHECK] [127.0.0.1] Authenticated session found {"role":"admin","accountId":708,"userType":"admin_kr"}
 [2026-03-25 14:27:14] [DEBUG] [CHECK] [127.0.0.1] Session check requested {"session_id":"sckqmnqk19o1aje4gg6qj0f3qc"}
 [2026-03-25 14:27:14] [INFO] [CHECK] [127.0.0.1] Authenticated session found {"role":"admin","accountId":708,"userType":"admin_kr"}
+[2026-03-27 08:52:12] [DEBUG] [CHECK] [127.0.0.1] Session check requested {"session_id":"1id60nmpa9igbl14kng3ng5la1"}
+[2026-03-27 08:52:12] [DEBUG] [CHECK] [127.0.0.1] No authenticated session found
+[2026-03-27 08:52:18] [INFO] [INPUT] [127.0.0.1] Login attempt received {"username":"smart"}
+[2026-03-27 08:52:18] [INFO] [LOOKUP] [127.0.0.1] Querying accounts table {"username":"smart"}
+[2026-03-27 08:52:18] [INFO] [LOOKUP] [127.0.0.1] Account found {"accountId":708,"accountType":"admin_kr"}
+[2026-03-27 08:52:18] [INFO] [AUTH] [127.0.0.1] Verifying password {"accountId":708}
+[2026-03-27 08:52:18] [WARN] [AUTH] [127.0.0.1] Plain-text password match — consider upgrading to bcrypt {"accountId":708}
+[2026-03-27 08:52:18] [INFO] [AUTH] [127.0.0.1] Password verified successfully {"accountId":708}
+[2026-03-27 08:52:18] [INFO] [SESSION] [127.0.0.1] Regenerating session ID
+[2026-03-27 08:52:18] [INFO] [SESSION] [127.0.0.1] Session created {"accountId":708,"type":"admin_kr","new_session":"1hctpdov19lql15gq1068sdn9s"}
+[2026-03-27 08:52:18] [INFO] [SESSION] [127.0.0.1] DB session record written {"session_id":"1hctpdov19lql15gq1068sdn9s"}
+[2026-03-27 08:52:18] [INFO] [ACCOUNT] [127.0.0.1] lastLoginAt updated {"accountId":708}
+[2026-03-27 08:52:18] [ERROR] [HISTORY] [127.0.0.1] Failed to save login history {"error":"Data truncated for column 'account_type' at row 1"}
+[2026-03-27 08:52:18] [INFO] [LOGIN] [127.0.0.1] Login successful {"accountId":708,"type":"admin_kr","redirectUrl":".\/super\/overview.php"}

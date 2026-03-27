@@ -1,6 +1,6 @@
 <nav class="layout-nav" id="layoutNav">
 
-  <ul class="menu p-0 gap-0.5" id="navSuperList">
+  <ul class="menu" id="navSuperList">
 
     <!-- ── Dashboard ─────────────────────────────── -->
     <li class="menu-item" data-menu="dashboard">
@@ -16,7 +16,7 @@
         <span data-lan-eng="Dashboard">Dashboard</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-dashboard" class="collapse hidden nav-submenu">
+      <ul id="sub-dashboard" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="overview" href="../super/overview.php" data-lan-eng="Operating Status">Operating Status</a></li>
         <li><a class="menu-link side-link" data-page="reservation-status" href="../super/reservation-status.php" data-lan-eng="Reservation Status">Reservation Status</a></li>
         <li><a class="menu-link side-link" data-page="email-notification-logs" href="../super/email-notification-logs.php" data-lan-eng="Email Logs">Email Logs</a></li>
@@ -37,7 +37,7 @@
         <span data-lan-eng="Member Management">Member Management</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-member" class="collapse hidden nav-submenu">
+      <ul id="sub-member" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="member-list" href="../super/member-list.php" data-lan-eng="Member List">Member List</a></li>
         <li><a class="menu-link side-link" data-page="b2b-customer-list,b2b-customer-detail" href="../super/b2b-customer-list.php" data-lan-eng="B2B Customer List">B2B Customer List</a></li>
         <li><a class="menu-link side-link" data-page="agent-list,agent-detail,agent-registration" href="../super/agent-list.php" data-lan-eng="Agent List">Agent List</a></li>
@@ -59,7 +59,7 @@
         <span data-lan-eng="Reservation Management">Reservation Management</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-reservation" class="collapse hidden nav-submenu">
+      <ul id="sub-reservation" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="b2b-pending-list" href="../super/b2b-pending-list.php" data-lan-eng="B2B Pending List">B2B Pending List</a></li>
         <li><a class="menu-link side-link" data-page="b2b-booking-list,b2b-booking-detail" href="../super/b2b-booking-list.php" data-lan-eng="B2B Reservation List">B2B Reservation List</a></li>
         <li><a class="menu-link side-link" data-page="rooming-list" href="../super/rooming-list.php" data-lan-eng="Rooming List">Rooming List</a></li>
@@ -81,7 +81,7 @@
         <span data-lan-eng="Sales Management">Sales Management</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-sales" class="collapse hidden nav-submenu">
+      <ul id="sub-sales" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="sales-date" href="../super/sales-date.php" data-lan-eng="Sales Dashboard">Sales Dashboard</a></li>
         <li><a class="menu-link side-link" data-page="sales-product" href="../super/sales-product.php" data-lan-eng="Sales by product">Sales by product</a></li>
         <li><a class="menu-link side-link" data-page="monthly-invoice" href="../super/monthly-invoice.php" data-lan-eng="Monthly Invoice">Monthly Invoice</a></li>
@@ -106,7 +106,7 @@
         <span data-lan-eng="Product Management">Product Management</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-product" class="collapse hidden nav-submenu">
+      <ul id="sub-product" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="product-list,product-update,product-detail" href="../super/product-list.php" data-lan-eng="Product List">Product List</a></li>
         <li><a class="menu-link side-link" data-page="product-registration" href="../super/product-registration.php" data-lan-eng="Product Registration">Product Registration</a></li>
         <li><a class="menu-link side-link" data-page="sight-list,sight-registration" href="../super/sight-list.php" data-lan-eng="Sight Management">Sight Management</a></li>
@@ -148,7 +148,7 @@
         <span data-lan-eng="Announcements">Announcements</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-announcements" class="collapse hidden nav-submenu">
+      <ul id="sub-announcements" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="announcements-list" href="../super/announcements-list.php" data-lan-eng="Announcements List">Announcements List</a></li>
       </ul>
     </li>
@@ -169,7 +169,7 @@
         <span data-lan-eng="Shopping Management">Shopping Management</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-shopping" class="collapse hidden nav-submenu">
+      <ul id="sub-shopping" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="shop-category-list" href="../shop/category-list.php" data-lan-eng="Category List">Category List</a></li>
         <li><a class="menu-link side-link" data-page="shop-product-list,shop-product-form" href="../shop/product-list.php" data-lan-eng="Product List">Product List</a></li>
         <li><a class="menu-link side-link" data-page="shop-order-list,shop-order-detail" href="../shop/order-list.php" data-lan-eng="Order List">Order List</a></li>
@@ -190,7 +190,7 @@
         <span data-lan-eng="Site Settings">Site Settings</span>
         <span class="nav-chevron-icon ms-auto" aria-hidden="true"></span>
       </button>
-      <ul id="sub-settings" class="collapse hidden nav-submenu">
+      <ul id="sub-settings" class="nav-submenu">
         <li><a class="menu-link side-link" data-page="popup-management" href="../super/popup-management.php" data-lan-eng="Popup Management">Popup Management</a></li>
         <li><a class="menu-link side-link" data-page="banner-management" href="../super/banner-management.php" data-lan-eng="Banner Management">Banner Management</a></li>
         <li><a class="menu-link side-link" data-page="notice" href="../super/notice.php" data-lan-eng="Announcements">Announcements</a></li>
@@ -208,16 +208,52 @@
 </nav>
 
 <!-- ══════════════════════════════════════════════════════════
-     Accordion JS
-     — drop-in replacement for FlyonUI's collapse plugin
-     — zero-lag: height+opacity CSS transition, no display toggle
-     — accordion: siblings close atomically, no event race
-     — active state: reads window.__currentPage (set by PHP)
-       or falls back to ?page= query param
+     Accordion JS + NavLogger
+     Logs to: console (always) + PHP endpoint (always)
+     Endpoint: log_js_error.php  ← adjust path if needed
      ══════════════════════════════════════════════════════════ -->
 <script>
   (function () {
     'use strict';
+
+    var LOG_SOURCE   = 'nav_super.php';
+    var LOG_ENDPOINT = '../../public/inc/general/log_js_error.php'; // TODO: adjust path
+
+    /* ── NavLogger ────────────────────────────────────────────
+       Mirrors AppLogger's API: error / warn / info / debug
+       Each call writes to console AND fires a remote POST.
+    ──────────────────────────────────────────────────────────── */
+    var NavLogger = {
+      _send: function (level, message, context) {
+        /* 1. Console */
+        var prefix = '[' + level.toUpperCase() + '] [' + LOG_SOURCE + '] ' + message;
+        if (level === 'error')      console.error(prefix, context || '');
+        else if (level === 'warn')  console.warn(prefix,  context || '');
+        else                        console.log(prefix,   context || '');
+
+        /* 2. Remote — fire-and-forget, never throws */
+        try {
+          fetch(LOG_ENDPOINT, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              message: message,
+              source:  LOG_SOURCE,
+              level:   level,
+              context: context || {}
+            })
+          }).catch(function (fetchErr) {
+            console.warn('[NavLogger] Remote log failed:', fetchErr.message);
+          });
+        } catch (e) {
+          console.warn('[NavLogger] Remote log threw:', e.message);
+        }
+      },
+      error: function (msg, ctx) { this._send('error', msg, ctx); },
+      warn:  function (msg, ctx) { this._send('warn',  msg, ctx); },
+      info:  function (msg, ctx) { this._send('info',  msg, ctx); },
+      debug: function (msg, ctx) { this._send('debug', msg, ctx); }
+    };
 
     /* ── open / close helpers ─────────────────────────────── */
     function closePanel(panel, btn) {
@@ -235,42 +271,106 @@
         closePanel(p, sibBtn);
       });
 
-      /* write natural height into CSS var, then open */
-      panel.style.setProperty('--nav-submenu-h', panel.scrollHeight + 'px');
+      /* max-height is handled entirely by CSS — just toggle the class */
       panel.classList.add('is-open');
       if (btn) btn.setAttribute('aria-expanded', 'true');
     }
 
     /* ── click handler ────────────────────────────────────── */
     document.querySelectorAll('#navSuperList .collapse-toggle').forEach(function (btn) {
+      /* Validate data-collapse attribute */
+      var collapseAttr = btn.getAttribute('data-collapse');
+      if (!collapseAttr || collapseAttr.trim() === '') {
+        NavLogger.warn('collapse-toggle missing data-collapse attribute', {
+          element: btn.textContent.trim().slice(0, 40)
+        });
+        return; // skip wiring this button
+      }
+
       btn.addEventListener('click', function () {
-        var panel = document.querySelector(btn.getAttribute('data-collapse'));
-        if (!panel) return;
-        panel.classList.contains('is-open') ? closePanel(panel, btn) : openPanel(panel, btn);
+        try {
+          var panel = document.querySelector(collapseAttr);
+          if (!panel) {
+            NavLogger.error('Submenu panel not found', {
+              selector: collapseAttr,
+              button:   btn.textContent.trim().slice(0, 40)
+            });
+            return;
+          }
+          panel.classList.contains('is-open') ? closePanel(panel, btn) : openPanel(panel, btn);
+        } catch (err) {
+          NavLogger.error('Accordion click handler threw', {
+            selector: collapseAttr,
+            error:    err.message
+          });
+        }
       });
     });
 
     /* ── active state on page load ────────────────────────── */
-    var currentPage = (typeof window.__currentPage !== 'undefined')
-      ? window.__currentPage
-      : new URLSearchParams(location.search).get('page') || '';
+    var currentPage = '';
 
-    if (!currentPage) return;
+    try {
+      currentPage = (typeof window.__currentPage !== 'undefined' && window.__currentPage)
+        ? String(window.__currentPage)
+        : new URLSearchParams(location.search).get('page') || '';
+    } catch (err) {
+      NavLogger.error('Failed to resolve currentPage', { error: err.message });
+    }
+
+    if (!currentPage) {
+      NavLogger.debug('currentPage is empty — active nav state skipped', {
+        url: location.href
+      });
+      return;
+    }
+
+    var activeFound = false;
 
     /* sub-links */
     document.querySelectorAll('#navSuperList .side-link[data-page]').forEach(function (link) {
-      var pages = link.getAttribute('data-page').split(',');
+      var rawAttr = link.getAttribute('data-page');
+      if (!rawAttr || rawAttr.trim() === '') {
+        NavLogger.warn('side-link missing or empty data-page', {
+          href: link.getAttribute('href') || '(no href)'
+        });
+        return;
+      }
+
+      var pages = rawAttr.split(',').map(function (p) { return p.trim(); });
       if (pages.indexOf(currentPage) === -1) return;
 
       link.classList.add('is-active');
+      activeFound = true;
 
       /* open parent submenu */
       var submenu = link.closest('.nav-submenu');
       if (submenu) {
-        var toggle = document.querySelector(
-          '#navSuperList .collapse-toggle[data-collapse="#' + submenu.id + '"]'
-        );
-        if (!submenu.classList.contains('is-open')) openPanel(submenu, toggle);
+        if (!submenu.id) {
+          NavLogger.warn('Parent submenu has no id — cannot wire toggle', {
+            page: currentPage
+          });
+        } else {
+          var toggle = document.querySelector(
+            '#navSuperList .collapse-toggle[data-collapse="#' + submenu.id + '"]'
+          );
+          if (!toggle) {
+            NavLogger.warn('No collapse-toggle found for submenu', {
+              submenuId: submenu.id,
+              page:      currentPage
+            });
+          }
+          if (!submenu.classList.contains('is-open')) {
+            try {
+              openPanel(submenu, toggle);
+            } catch (err) {
+              NavLogger.error('openPanel threw during active-state init', {
+                submenuId: submenu.id,
+                error:     err.message
+              });
+            }
+          }
+        }
       }
 
       /* mark parent li */
@@ -280,11 +380,26 @@
 
     /* direct links (Inquiries) */
     document.querySelectorAll('#navSuperList .nav-direct-link[data-page]').forEach(function (a) {
-      if (a.getAttribute('data-page') !== currentPage) return;
+      var rawAttr = a.getAttribute('data-page');
+      if (!rawAttr || rawAttr.trim() === '') {
+        NavLogger.warn('nav-direct-link missing or empty data-page', {
+          href: a.getAttribute('href') || '(no href)'
+        });
+        return;
+      }
+
+      if (rawAttr !== currentPage) return;
+
       a.classList.add('is-active');
+      activeFound = true;
+
       var item = a.closest('.menu-item[data-menu]');
       if (item) item.classList.add('has-active');
     });
+
+    if (!activeFound) {
+      NavLogger.info('No nav item matched currentPage', { currentPage: currentPage });
+    }
 
   })();
 </script>

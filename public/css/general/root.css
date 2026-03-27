@@ -1,57 +1,72 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
-/* ── Reset ────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   RESET
+   ══════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ul     { list-style: none; }
+button { background: none; border: none; cursor: pointer; font: inherit; }
+a      { text-decoration: none; color: inherit; }
 
-/* ══════════════════════════════════════════════════════
-   ROOT TOKENS
-   ══════════════════════════════════════════════════════ */
-
-
-/* ── CSS custom properties for shell dimensions ─────── */
-
-
-/* ── Custom Page Specifics ─────── */
+/* ══════════════════════════════════════════════════════════════
+   LAYOUT TOKENS  — shell dimensions, shared across all files
+   ══════════════════════════════════════════════════════════════ */
 :root {
-  --header-h: 60px;
-  --nav-w:    220px;
-  --control-h: 36px;
+  --header-h:       80px;
+  --nav-w:          220px;
+  --control-h:      36px;
   --control-radius: 8px;
+
+  /* ── Nav-specific tokens ────────────────────────────────── */
+  --nav-item-h:       38px;   /* height of every top-level row  */
+  --nav-sub-item-h:   32px;   /* height of every sub-menu row   */
+  --nav-px:           12px;   /* horizontal padding inside rows */
+  --nav-icon-size:    16px;   /* icon box size                  */
+  --nav-indent:       36px;   /* sub-menu left indent           */
+  --nav-radius:       7px;    /* pill radius on active/hover    */
+  --nav-chevron-size: 10px;   /* chevron arrow size             */
+  --nav-dur:          160ms;  /* accordion / hover motion       */
+
+  /* ── Badge ──────────────────────────────────────────────── */
+  --badge-size: 18px;
+  --badge-font: 10px;
 }
 
-
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME  (default)
+   ══════════════════════════════════════════════════════════════ */
 :root,
 [data-theme="light"] {
 
   /* — Surfaces — */
-  --bg:              #fafaf8;        /* page background */
-  --panel:           #ffffff;        /* form panel */
-  --border-subtle:   #d0cdc7;        /* dividers, toggle track border */
+  --bg:            #fafaf8;
+  --panel:         #ffffff;
+  --border-subtle: #d0cdc7;
 
   /* — Text — */
-  --body:            #111110;        /* primary text */
-  --label:           #3a3835;        /* field labels */
-  --muted:           #9a9690;        /* hints, placeholders, footer */
+  --body:  #111110;
+  --label: #3a3835;
+  --muted: #9a9690;
 
-  /* — Accent (brick-red) — */
-  --accent:          #c8410a;
-  --accent-hover:    #a83408;
-  --accent-glow:     rgba(200, 65, 10, 0.13);
+  /* — Accent — */
+  --accent:       #c8410a;
+  --accent-hover: #a83408;
+  --accent-glow:  rgba(200, 65, 10, 0.13);
 
-  /* — Highlight (amber-yellow, used sparingly) — */
-  --yellow:          #f5c842;
+  /* — Highlight — */
+  --yellow: #f5c842;
 
   /* — Inputs — */
-  --input-bg:        #ffffff;        /* white fill */
-  --input-border:    #1a19173f;        /* dark border */
-  --input-focus:     #c8410a;        /* accent on focus */
-  --input-text:      #111110;
-  --input-ph:        #b0ada6;        /* placeholder */
+  --input-bg:     #ffffff;
+  --input-border: rgba(26, 25, 23, 0.25);
+  --input-focus:  #c8410a;
+  --input-text:   #111110;
+  --input-ph:     #b0ada6;
 
   /* — Error — */
-  --error:           #b91c1c;
-  --error-bg:        rgba(185, 28, 28, 0.06);
-  --error-border:    rgba(185, 28, 28, 0.20);
+  --error:        #b91c1c;
+  --error-bg:     rgba(185, 28, 28, 0.06);
+  --error-border: rgba(185, 28, 28, 0.20);
 
   /* — Image panel — */
   --image-overlay-a: rgba(17, 13, 7, 0.96);
@@ -60,56 +75,98 @@
   --image-bg:        #110d07;
 
   /* — Toggle — */
-  --toggle-track:    #e8e5df;
-  --toggle-thumb:    #ffffff;
-  --toggle-icon:     #9a9690;
+  --toggle-track: #e8e5df;
+  --toggle-thumb: #ffffff;
+  --toggle-icon:  #9a9690;
 
   /* — Motion — */
-  --ease-out:        cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast:        180ms;
-  --dur-theme:       250ms;
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast:  180ms;
+  --dur-theme: 250ms;
+
+  /* — Nav surfaces — */
+  --nav-bg:               #ffffff;
+  --nav-border:           var(--border-subtle);
+  --nav-item-color:       var(--label);
+  --nav-item-color-hover: var(--body);
+  --nav-item-bg-hover:    rgba(17, 17, 16, 0.05);
+  --nav-item-bg-active:   var(--accent-glow);
+  --nav-item-color-active:var(--accent);
+  --nav-sub-color:        var(--muted);
+  --nav-sub-color-hover:  var(--label);
+  --nav-sub-color-active: var(--accent);
+  --nav-divider:          var(--border-subtle);
+  --nav-brand-bg:         var(--bg);
+  --nav-footer-border:    var(--border-subtle);
+  --nav-badge-bg:         var(--accent);
+  --nav-badge-color:      #ffffff;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   DARK THEME
+   ══════════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
 
   /* — Surfaces — */
-  --bg:              #1a1a1a;
-  --panel:           #242424;
-  --border-subtle:   #3e3c38;
+  --bg:            #1a1a1a;
+  --panel:         #242424;
+  --border-subtle: #3e3c38;
 
   /* — Text — */
-  --body:            #f0ede8;
-  --label:           #c8c4bc;
-  --muted:           #6e6b65;
+  --body:  #f0ede8;
+  --label: #c8c4bc;
+  --muted: #6e6b65;
 
   /* — Accent — */
-  --accent:          #e05a1e;
-  --accent-hover:    #f06830;
-  --accent-glow:     rgba(224, 90, 30, 0.18);
+  --accent:       #e05a1e;
+  --accent-hover: #f06830;
+  --accent-glow:  rgba(224, 90, 30, 0.18);
 
   /* — Highlight — */
-  --yellow:          #f5c842;
+  --yellow: #f5c842;
 
   /* — Inputs — */
-  --input-bg:        #1a1a1a;        /* dark fill */
-  --input-border:    #f0ede84b;        /* light border */
-  --input-focus:     #e05a1e;
-  --input-text:      #f0ede8;
-  --input-ph:        #5a5752;
+  --input-bg:     #1a1a1a;
+  --input-border: rgba(240, 237, 232, 0.29);
+  --input-focus:  #e05a1e;
+  --input-text:   #f0ede8;
+  --input-ph:     #5a5752;
 
   /* — Error — */
-  --error:           #f87171;
-  --error-bg:        rgba(248, 113, 113, 0.08);
-  --error-border:    rgba(248, 113, 113, 0.25);
+  --error:        #f87171;
+  --error-bg:     rgba(248, 113, 113, 0.08);
+  --error-border: rgba(248, 113, 113, 0.25);
 
-  /* — Image panel (unchanged, always dark) — */
+  /* — Image panel — */
   --image-overlay-a: rgba(17, 13, 7, 0.96);
   --image-overlay-b: rgba(17, 13, 7, 0.28);
   --image-overlay-c: rgba(17, 13, 7, 0.22);
   --image-bg:        #110d07;
 
   /* — Toggle — */
-  --toggle-track:    #333330;
-  --toggle-thumb:    #f0ede8;
-  --toggle-icon:     #c8c4bc;
+  --toggle-track: #333330;
+  --toggle-thumb: #f0ede8;
+  --toggle-icon:  #c8c4bc;
+
+  /* — Motion — */
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast:  180ms;
+  --dur-theme: 250ms;
+
+  /* — Nav surfaces — */
+  --nav-bg:               #1f1f1f;
+  --nav-border:           var(--border-subtle);
+  --nav-item-color:       var(--label);
+  --nav-item-color-hover: var(--body);
+  --nav-item-bg-hover:    rgba(240, 237, 232, 0.06);
+  --nav-item-bg-active:   var(--accent-glow);
+  --nav-item-color-active:var(--accent);
+  --nav-sub-color:        var(--muted);
+  --nav-sub-color-hover:  var(--label);
+  --nav-sub-color-active: var(--accent);
+  --nav-divider:          var(--border-subtle);
+  --nav-brand-bg:         #191919;
+  --nav-footer-border:    var(--border-subtle);
+  --nav-badge-bg:         var(--accent);
+  --nav-badge-color:      #ffffff;
 }

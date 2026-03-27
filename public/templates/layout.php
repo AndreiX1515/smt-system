@@ -1,117 +1,92 @@
 <?php
-/**
- * layout.php
- * Dynamic layout template for pages
- *
- * Variables that pages can define:
- *   - $pageTitle    : string
- *   - $bodyClass    : string
- *   - $content      : string (HTML content)
- *   - $pageCSS      : array of CSS URLs
- *   - $pageJS       : array of JS URLs
- *   - $pageModals   : string (HTML for modals)
- *   - $headerPath   : string (header template path)
- *   - $navPath      : string (nav template path)
- */
+require_once '../../public/inc/general/error_logger.php';
+const LOG_SOURCE = 'layout.php';
 
-$pageTitle  = $pageTitle ?? 'Default Title';
-$bodyClass  = $bodyClass ?? '';
-$content    = $content ?? '';
-$pageCSS    = is_array($pageCSS) ? $pageCSS : [];
-$pageJS     = is_array($pageJS) ? $pageJS : [];
+// ── Defaults ──────────────────────────────────────────────────────────────────
+$pageTitle  = $pageTitle  ?? 'Default Title';
+$bodyClass  = $bodyClass  ?? '';
 $pageModals = $pageModals ?? '';
 
-$headerPath = $headerPath ?? __DIR__ . '../../../public/templates/header.php';
-$navPath    = $navPath ?? __DIR__ . '../../../public/templates/nav_super.php';
+$headerPath = $headerPath ?? __DIR__ . '/../../../public/templates/header.php';
+$navPath    = $navPath    ?? __DIR__ . '/../../../public/templates/nav_super.php';
 
-// Default CSS
-$defaultCSS = [
-    '../../public/css/general/root.css',
-    '../../public/css/general/layout.css',
-    '../../public/css/components/header.css',
-    '../../public/css/components/sidebar.css',
-    '../../public/css/app.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css'
-];
+$content = $content ?? '';
+if (!is_string($content)) {
+    AppLogger::warn('$content is not a string — defaulting to empty.', LOG_SOURCE);
+    $content = '';
+}
 
-// Default JS
-$defaultJS = [
-    '../../public/assets/js/default.js',
-    '../../node_modules/flyonui/flyonui.js'
-];
-
-// Merge page-specific with defaults
-$pageCSS = array_merge($defaultCSS, $pageCSS);
-$pageJS  = array_merge($defaultJS, $pageJS);
+// DEV cache-busting
+$version = time();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= htmlspecialchars($pageTitle) ?></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?= htmlspecialchars($pageTitle) ?></title>
 
-  <!-- CSS -->
-  <?php foreach ($pageCSS as $css): ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($css) ?>">
-  <?php endforeach; ?>
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../public/css/app.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="../../public/css/general/layout.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="../../public/css/components/header.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="../../public/css/components/sidebar.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 </head>
 
 <body class="<?= htmlspecialchars($bodyClass) ?>">
 
-  <!-- Header -->
-  <?php
-  if (file_exists($headerPath)) {
-      include $headerPath;
-  } else {
-      error_log("[layout.php] Header template not found: {$headerPath}");
-      echo "<!-- Header missing -->";
-  }
-  ?>
-
-  <main class="layout-main" id="layoutMain">
-
-    <!-- Navigation -->
+    <!-- Header -->
     <?php
-    if (file_exists($navPath)) {
-        include $navPath;
+    if (file_exists($headerPath)) {
+        include $headerPath;
     } else {
-        error_log("[layout.php] Nav template not found: {$navPath}");
-        echo "<!-- Nav missing -->";
+        AppLogger::error('Header template not found.', LOG_SOURCE, ['path'=>$headerPath]);
+        echo '<!-- Header missing -->';
     }
     ?>
 
-    <div class="layout-content" id="layoutContent">
-      <div class="content-wrapper">
-        <div class="dashboard-section">
-          <?= $content ?>
-        </div>
-      </div>
-    </div>
+    <main class="layout-main flex min-h-screen" id="layoutMain">
 
-  </main>
-
-  <!-- Page Modals -->
-  <?= $pageModals ?>
-
-  <!-- JS -->
-  <?php foreach ($pageJS as $js): ?>
-    <script src="<?= htmlspecialchars($js) ?>"></script>
-  <?php endforeach; ?>
-
-  <!-- FlyonUI init -->
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      try {
-        if (window.FlyonUI && typeof FlyonUI.initAll === 'function') {
-          FlyonUI.initAll(); // initialize all FlyonUI components
+        <!-- Sidebar -->
+        <?php
+        if (file_exists($navPath)) {
+            include $navPath;
+        } else {
+            AppLogger::error('Nav template not found.', LOG_SOURCE, ['path'=>$navPath]);
+            echo '<!-- Nav missing -->';
         }
-      } catch (err) {
-        console.error('[layout.php] FlyonUI init error:', err);
-      }
-    });
-  </script>
+        ?>
+
+        <!-- Content -->
+        <div class="layout-content" id="layoutContent">
+            <div class="content-wrapper">
+                <div class="dashboard-section">
+                    <?= $content ?>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals -->
+    <?= $pageModals ?>
+
+    <!-- JS -->
+    <script src="https://unpkg.com/@preline/preline/dist/preline.js"></script>
+    <script src="../../public/assets/js/default.js?v=<?= $version ?>"></script>
+
+    <!-- Preline Init -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.Preline) {
+                Preline.init();
+            } else {
+                console.error('Preline failed to load.');
+            }
+        });
+    </script>
 
 </body>
 </html>

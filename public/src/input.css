@@ -1,4 +1,11 @@
 @import "tailwindcss";
-@plugin "flyonui";
-@import "../../node_modules/flyonui/variants.css";
-@source "../../node_modules/flyonui/dist/index.js";
+
+/* Preline UI */
+@source "../../node_modules/preline/dist/*.js";
+@import "../../node_modules/preline/variants.css";
+
+/* Plugins */
+@plugin "@tailwindcss/forms";
+
+/* Preline Themes */
+@import "../../node_modules/preline/css/themes/theme.css";

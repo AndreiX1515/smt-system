@@ -1,224 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-
 /* ══════════════════════════════════════════════════════════════
-   RESET
+   SIDEBAR  —  sidebar.css
+   Depends on: root.css (all --nav-* and theme tokens)
    ══════════════════════════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-ul { list-style: none; }
-button { background: none; border: none; cursor: pointer; font: inherit; }
-a { text-decoration: none; color: inherit; }
 
-/* ══════════════════════════════════════════════════════════════
-   ROOT TOKENS  (your original, untouched + nav additions)
-   ══════════════════════════════════════════════════════════════ */
-:root {
-  --header-h:       60px;
-  --nav-w:          220px;
-  --control-h:      36px;
-  --control-radius: 8px;
-
-  /* ── Nav-specific tokens (extend here, never hard-code below) */
-  --nav-item-h:         38px;   /* height of every top-level row   */
-  --nav-sub-item-h:     32px;   /* height of every sub-menu row    */
-  --nav-px:             12px;   /* horizontal padding inside rows  */
-  --nav-icon-size:      16px;   /* icon box size                   */
-  --nav-indent:         36px;   /* sub-menu left indent            */
-  --nav-radius:         7px;    /* pill radius on active/hover     */
-  --nav-chevron-size:   10px;   /* chevron arrow size              */
-
-  /* ── Badge */
-  --badge-size:         18px;
-  --badge-font:         10px;
-
-  /* ── Motion (re-uses your ease tokens) */
-  --nav-dur:            160ms;
-}
-
-:root,
-[data-theme="light"] {
-  /* — Surfaces — */
-  --bg:              #fafaf8;
-  --panel:           #ffffff;
-  --border-subtle:   #d0cdc7;
-
-  /* — Text — */
-  --body:            #111110;
-  --label:           #3a3835;
-  --muted:           #9a9690;
-
-  /* — Accent — */
-  --accent:          #c8410a;
-  --accent-hover:    #a83408;
-  --accent-glow:     rgba(200, 65, 10, 0.13);
-
-  /* — Highlight — */
-  --yellow:          #f5c842;
-
-  /* — Inputs — */
-  --input-bg:        #ffffff;
-  --input-border:    #1a19173f;
-  --input-focus:     #c8410a;
-  --input-text:      #111110;
-  --input-ph:        #b0ada6;
-
-  /* — Error — */
-  --error:           #b91c1c;
-  --error-bg:        rgba(185, 28, 28, 0.06);
-  --error-border:    rgba(185, 28, 28, 0.20);
-
-  /* — Image panel — */
-  --image-overlay-a: rgba(17, 13, 7, 0.96);
-  --image-overlay-b: rgba(17, 13, 7, 0.28);
-  --image-overlay-c: rgba(17, 13, 7, 0.22);
-  --image-bg:        #110d07;
-
-  /* — Toggle — */
-  --toggle-track:    #e8e5df;
-  --toggle-thumb:    #ffffff;
-  --toggle-icon:     #9a9690;
-
-  /* — Motion — */
-  --ease-out:        cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast:        180ms;
-  --dur-theme:       250ms;
-
-  /* ── Nav surface tokens (light) */
-  --nav-bg:               #ffffff;
-  --nav-border:           var(--border-subtle);
-  --nav-item-color:       var(--label);
-  --nav-item-color-hover: var(--body);
-  --nav-item-bg-hover:    rgba(17, 17, 16, 0.05);
-  --nav-item-bg-active:   var(--accent-glow);
-  --nav-item-color-active:var(--accent);
-  --nav-sub-color:        var(--muted);
-  --nav-sub-color-hover:  var(--label);
-  --nav-sub-color-active: var(--accent);
-  --nav-divider:          var(--border-subtle);
-  --nav-brand-bg:         var(--bg);
-  --nav-footer-border:    var(--border-subtle);
-  --nav-badge-bg:         var(--accent);
-  --nav-badge-color:      #ffffff;
-}
-
-[data-theme="dark"] {
-  /* — Surfaces — */
-  --bg:              #1a1a1a;
-  --panel:           #242424;
-  --border-subtle:   #3e3c38;
-
-  /* — Text — */
-  --body:            #f0ede8;
-  --label:           #c8c4bc;
-  --muted:           #6e6b65;
-
-  /* — Accent — */
-  --accent:          #e05a1e;
-  --accent-hover:    #f06830;
-  --accent-glow:     rgba(224, 90, 30, 0.18);
-
-  /* — Highlight — */
-  --yellow:          #f5c842;
-
-  /* — Inputs — */
-  --input-bg:        #1a1a1a;
-  --input-border:    #f0ede84b;
-  --input-focus:     #e05a1e;
-  --input-text:      #f0ede8;
-  --input-ph:        #5a5752;
-
-  /* — Error — */
-  --error:           #f87171;
-  --error-bg:        rgba(248, 113, 113, 0.08);
-  --error-border:    rgba(248, 113, 113, 0.25);
-
-  /* — Image panel — */
-  --image-overlay-a: rgba(17, 13, 7, 0.96);
-  --image-overlay-b: rgba(17, 13, 7, 0.28);
-  --image-overlay-c: rgba(17, 13, 7, 0.22);
-  --image-bg:        #110d07;
-
-  /* — Toggle — */
-  --toggle-track:    #333330;
-  --toggle-thumb:    #f0ede8;
-  --toggle-icon:     #c8c4bc;
-
-  /* — Motion — */
-  --ease-out:        cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast:        180ms;
-  --dur-theme:       250ms;
-
-  /* ── Nav surface tokens (dark) */
-  --nav-bg:               #1f1f1f;
-  --nav-border:           var(--border-subtle);
-  --nav-item-color:       var(--label);
-  --nav-item-color-hover: var(--body);
-  --nav-item-bg-hover:    rgba(240, 237, 232, 0.06);
-  --nav-item-bg-active:   var(--accent-glow);
-  --nav-item-color-active:var(--accent);
-  --nav-sub-color:        var(--muted);
-  --nav-sub-color-hover:  var(--label);
-  --nav-sub-color-active: var(--accent);
-  --nav-divider:          var(--border-subtle);
-  --nav-brand-bg:         #191919;
-  --nav-footer-border:    var(--border-subtle);
-  --nav-badge-bg:         var(--accent);
-  --nav-badge-color:      #ffffff;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   DEMO SHELL  (remove in production, keep only sidebar + nav)
-   ══════════════════════════════════════════════════════════════ */
-html, body {
-  height: 100%;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--body);
-  font-size: 14px;
-  line-height: 1.5;
-  transition: background var(--dur-theme), color var(--dur-theme);
-}
-
-.shell {
-  display: flex;
-  min-height: 100vh;
-}
-
-.layout-main {
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
-}
-
-.demo-content h1 {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--body);
-  margin-bottom: 8px;
-}
-
-.demo-content p {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   SIDEBAR SHELL
-   ══════════════════════════════════════════════════════════════ */
+/* ── Shell ────────────────────────────────────────────────── */
 .layout-sidebar {
   width: var(--nav-w);
   min-height: 100vh;
+  height: 100vh;
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition:
-    background var(--dur-theme),
-    border-color var(--dur-theme);
   position: sticky;
   top: 0;
-  height: 100vh;
   overflow: hidden;
+  transition:
+    width          var(--dur-theme) var(--ease-out),
+    background     var(--dur-theme),
+    border-color   var(--dur-theme);
 }
 
 /* ── Brand / Logo ─────────────────────────────────────────── */
@@ -231,7 +32,10 @@ html, body {
   background: var(--nav-brand-bg);
   border-bottom: 1px solid var(--nav-border);
   flex-shrink: 0;
-  transition: background var(--dur-theme), border-color var(--dur-theme);
+  overflow: hidden;
+  transition:
+    background   var(--dur-theme),
+    border-color var(--dur-theme);
 }
 
 .sidebar-brand-icon {
@@ -252,7 +56,12 @@ html, body {
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--body);
-  transition: color var(--dur-theme);
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    opacity var(--dur-theme),
+    color   var(--dur-theme);
 }
 
 /* ── Nav scroll area ──────────────────────────────────────── */
@@ -261,22 +70,18 @@ html, body {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px 0;
-  /* thin scrollbar */
   scrollbar-width: thin;
   scrollbar-color: var(--border-subtle) transparent;
 }
 
-.layout-nav::-webkit-scrollbar        { width: 4px; }
-.layout-nav::-webkit-scrollbar-track  { background: transparent; }
-.layout-nav::-webkit-scrollbar-thumb  { background: var(--border-subtle); border-radius: 4px; }
+.layout-nav::-webkit-scrollbar       { width: 4px; }
+.layout-nav::-webkit-scrollbar-track { background: transparent; }
+.layout-nav::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
 
-/* ══════════════════════════════════════════════════════════════
-   NAV LIST
-   ══════════════════════════════════════════════════════════════ */
-.nav-list {
+/* ── Nav list ─────────────────────────────────────────────── */
+.menu {
   display: flex;
   flex-direction: column;
-  gap: 1px;
   padding: 0 8px;
 }
 
@@ -289,7 +94,7 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   MENU LINK  (shared by button + anchor top-level rows)
+   MENU LINK  —  shared by top-level buttons and anchors
    ══════════════════════════════════════════════════════════════ */
 .menu-link {
   display: flex;
@@ -302,6 +107,8 @@ html, body {
   color: var(--nav-item-color);
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
   transition:
     background var(--nav-dur) var(--ease-out),
     color      var(--nav-dur) var(--ease-out);
@@ -312,7 +119,7 @@ html, body {
   color: var(--nav-item-color-hover);
 }
 
-/* ── Active top-level (has-active marks the li, is-active marks the link) */
+/* active top-level — marks both the li (has-active) and the link (is-active) */
 .menu-item.has-active > .collapse-toggle,
 .menu-item.has-active > .nav-direct-link {
   color: var(--nav-item-color-active);
@@ -335,16 +142,7 @@ html, body {
   opacity: 1;
 }
 
-/* ── Nav label ────────────────────────────────────────────── */
-.nav-label {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1;
-}
-
-/* ── Chevron (nav-chevron = our class, nav-chevron-icon = original PHP class) */
+/* ── Chevron ──────────────────────────────────────────────── */
 .nav-chevron,
 .nav-chevron-icon {
   display: block;
@@ -354,10 +152,11 @@ html, body {
   flex-shrink: 0;
   position: relative;
   opacity: 0.45;
-  transition: transform var(--nav-dur) var(--ease-out), opacity var(--nav-dur);
+  transition:
+    transform var(--nav-dur) var(--ease-out),
+    opacity   var(--nav-dur);
 }
 
-/* draw the chevron via pseudo-elements — no extra SVG needed */
 .nav-chevron::before, .nav-chevron-icon::before,
 .nav-chevron::after,  .nav-chevron-icon::after {
   content: '';
@@ -370,20 +169,19 @@ html, body {
   transition: transform var(--nav-dur) var(--ease-out);
 }
 
-.nav-chevron::before,
-.nav-chevron-icon::before { left: 1px;  transform: translateY(-50%) rotate(45deg); }
-.nav-chevron::after,
-.nav-chevron-icon::after  { right: 1px; transform: translateY(-50%) rotate(-45deg); }
+.nav-chevron::before, .nav-chevron-icon::before { left: 1px;  transform: translateY(-50%) rotate(45deg);  }
+.nav-chevron::after,  .nav-chevron-icon::after  { right: 1px; transform: translateY(-50%) rotate(-45deg); }
 
-/* open state — chevron points down */
 .collapse-toggle[aria-expanded="true"] .nav-chevron,
 .collapse-toggle[aria-expanded="true"] .nav-chevron-icon {
   opacity: 0.8;
 }
+
 .collapse-toggle[aria-expanded="true"] .nav-chevron::before,
 .collapse-toggle[aria-expanded="true"] .nav-chevron-icon::before {
   transform: translateY(-50%) rotate(-45deg);
 }
+
 .collapse-toggle[aria-expanded="true"] .nav-chevron::after,
 .collapse-toggle[aria-expanded="true"] .nav-chevron-icon::after {
   transform: translateY(-50%) rotate(45deg);
@@ -405,37 +203,35 @@ html, body {
   margin-left: auto;
   flex-shrink: 0;
   line-height: 1;
+  transition:
+    background var(--dur-theme),
+    color      var(--dur-theme);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SUB-MENU  —  zero-lag CSS-only transition
-   ─────────────────────────────────────────────────────────────
-   WHY NOT display:none?
-   display is not transitionable — toggling it forces a full
-   layout recalc every time, which is the source of the lag.
-
-   FIX: keep the element in the render tree always.
-   Closed  → height:0  overflow:hidden  opacity:0
-   Open    → height:var(--nav-submenu-h)  opacity:1
-   CSS does the rest. JS only toggles one class: .is-open.
+   SUB-MENU  —  max-height transition (no JS measurement needed)
+   Closed: max-height 0, opacity 0
+   Open:   max-height large enough, opacity 1
+   JS only toggles .is-open — zero dependency on scrollHeight
    ══════════════════════════════════════════════════════════════ */
 .nav-submenu {
-  --nav-submenu-h: 0px;          /* written by JS on first open */
-  overflow: hidden;
-  height: 0;
+  max-height: 0;
   opacity: 0;
+  overflow: hidden;
   padding-top: 0;
   padding-bottom: 0;
+  border-left: 1px solid var(--nav-divider);
+  margin-left: calc(var(--nav-indent) - 8px);
+  padding-left: 8px;
   transition:
-    height  200ms var(--ease-out),
-    opacity 160ms var(--ease-out);
-  will-change: height, opacity;
+    max-height   280ms var(--ease-out),
+    opacity      180ms var(--ease-out),
+    padding      180ms var(--ease-out),
+    border-color var(--dur-theme);
 }
 
-/* original markup keeps .hidden — we ignore it visually;
-   our JS drives state through .is-open only             */
 .nav-submenu.is-open {
-  height: var(--nav-submenu-h);
+  max-height: 600px;
   opacity: 1;
   padding-top: 2px;
   padding-bottom: 4px;
@@ -448,16 +244,7 @@ html, body {
   font-weight: 400;
   color: var(--nav-sub-color);
   padding: 0 var(--nav-px) 0 10px;
-  border-radius: var(--nav-radius);
   position: relative;
-}
-
-/* subtle left accent line for the entire sub-group */
-.nav-submenu {
-  border-left: 1px solid var(--nav-divider);
-  margin-left: calc(var(--nav-indent) - 8px);
-  padding-left: 8px;
-  transition: border-color var(--dur-theme);
 }
 
 .nav-submenu .menu-link:hover {
@@ -465,18 +252,17 @@ html, body {
   color: var(--nav-sub-color-hover);
 }
 
-/* active sub-link */
 .nav-submenu .menu-link.is-active {
   background: var(--nav-item-bg-active);
   color: var(--nav-sub-color-active);
   font-weight: 500;
 }
 
-/* accent dot on active sub-link */
+/* accent dot on the border-left line */
 .nav-submenu .menu-link.is-active::before {
   content: '';
   position: absolute;
-  left: -9px;       /* sits on the border-left line */
+  left: -9px;
   top: 50%;
   transform: translateY(-50%);
   width: 4px;
@@ -486,12 +272,13 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SIDEBAR FOOTER  (theme toggle, future: avatar / logout)
+   SIDEBAR FOOTER  —  theme toggle + future avatar / logout
    ══════════════════════════════════════════════════════════════ */
 .sidebar-footer {
   flex-shrink: 0;
   padding: 10px 8px;
   border-top: 1px solid var(--nav-footer-border);
+  overflow: hidden;
   transition: border-color var(--dur-theme);
 }
 
@@ -506,6 +293,8 @@ html, body {
   color: var(--muted);
   font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
   transition:
     background var(--nav-dur) var(--ease-out),
     color      var(--nav-dur) var(--ease-out);
@@ -516,14 +305,116 @@ html, body {
   color: var(--nav-item-color-hover);
 }
 
-/* show/hide sun & moon based on active theme */
-[data-theme="light"]  .icon-moon { display: none; }
-[data-theme="dark"]   .icon-sun  { display: none; }
-[data-theme="light"]  .icon-sun  { display: block; }
-[data-theme="dark"]   .icon-moon { display: block; }
+/* show sun/moon based on active theme */
+[data-theme="light"] .icon-moon { display: none;  }
+[data-theme="light"] .icon-sun  { display: block; }
+[data-theme="dark"]  .icon-sun  { display: none;  }
+[data-theme="dark"]  .icon-moon { display: block; }
 
 /* ══════════════════════════════════════════════════════════════
-   SECTION LABELS  — optional: uncomment to add group headings
+   COLLAPSED / ICON-ONLY MODE
+   Add .sidebar-collapsed to .layout-sidebar to activate.
+   Works alongside the sticky layout — no JS needed for CSS.
+   ══════════════════════════════════════════════════════════════ */
+.layout-sidebar.sidebar-collapsed {
+  width: 56px;
+}
+
+.layout-sidebar.sidebar-collapsed .sidebar-brand-name,
+.layout-sidebar.sidebar-collapsed .sidebar-theme-toggle span,
+.layout-sidebar.sidebar-collapsed [data-lan-eng],
+.layout-sidebar.sidebar-collapsed .nav-chevron,
+.layout-sidebar.sidebar-collapsed .nav-chevron-icon,
+.layout-sidebar.sidebar-collapsed .nav-unread-badge {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+}
+
+.layout-sidebar.sidebar-collapsed .menu-link {
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+}
+
+.layout-sidebar.sidebar-collapsed .nav-icon {
+  opacity: 1;
+  width: var(--nav-icon-size);
+}
+
+/* hide sub-menus entirely in collapsed mode */
+.layout-sidebar.sidebar-collapsed .nav-submenu {
+  display: none;
+}
+
+/* tooltip on hover when collapsed */
+.layout-sidebar.sidebar-collapsed .menu-item {
+  position: relative;
+}
+
+.layout-sidebar.sidebar-collapsed .menu-item:hover::after {
+  content: attr(data-menu);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--panel);
+  color: var(--body);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--nav-radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+  pointer-events: none;
+  z-index: 100;
+  text-transform: capitalize;
+  transition: opacity var(--nav-dur);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE  —  mobile overlay drawer
+   Below 768px the sidebar slides in/out as an overlay.
+   Toggle .sidebar-open on .layout-sidebar from JS.
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .layout-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition:
+      transform    var(--dur-theme) var(--ease-out),
+      background   var(--dur-theme),
+      border-color var(--dur-theme);
+    box-shadow: none;
+  }
+
+  .layout-sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  }
+
+  /* dim overlay behind the drawer */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+  }
+
+  .sidebar-backdrop.is-visible {
+    display: block;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION LABELS  —  optional group headings
    Usage: <li class="nav-section-label">Core</li>
    ══════════════════════════════════════════════════════════════ */
 /*
@@ -539,16 +430,35 @@ html, body {
 */
 
 /* ══════════════════════════════════════════════════════════════
-   COLLAPSED / ICON-ONLY MODE  — optional narrow sidebar
-   Add  .sidebar-collapsed  to  .layout-sidebar  to activate.
+   FLYONUI / TAILWIND RESET
+   Hard-override any .menu, .collapse, .hidden utility classes
+   that FlyonUI's compiled CSS may inject onto nav elements.
    ══════════════════════════════════════════════════════════════ */
-/*
-.layout-sidebar.sidebar-collapsed { width: 56px; }
-.layout-sidebar.sidebar-collapsed .nav-label,
-.layout-sidebar.sidebar-collapsed .nav-chevron,
-.layout-sidebar.sidebar-collapsed .sidebar-brand-name,
-.layout-sidebar.sidebar-collapsed .sidebar-theme-toggle span { display: none; }
-.layout-sidebar.sidebar-collapsed .menu-link { justify-content: center; padding: 0; }
-.layout-sidebar.sidebar-collapsed .nav-icon { opacity: 1; }
-.layout-sidebar.sidebar-collapsed .nav-submenu { display: none; }
-*/
+
+/* Ensure our nav list is never affected by FlyonUI .menu flex gaps */
+#navSuperList.menu {
+  gap: 0 !important;
+  padding: 0 8px !important;
+}
+
+/* Neutralize FlyonUI .collapse — our .nav-submenu drives its own state */
+#navSuperList .nav-submenu {
+  display: block !important;   /* never let Tailwind .hidden or FlyonUI collapse hide it */
+  visibility: visible !important;
+}
+
+/* Closed state — CSS controls via max-height + opacity, not display */
+#navSuperList .nav-submenu:not(.is-open) {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  pointer-events: none;
+}
+
+/* Open state */
+#navSuperList .nav-submenu.is-open {
+  max-height: 600px !important;
+  opacity: 1 !important;
+  pointer-events: auto;
+}
