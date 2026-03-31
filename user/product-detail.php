@@ -353,18 +353,37 @@ $commonTransportation = $product['common_transportation_description'] ?? '';
 function normalize_product_image_src($raw): string {
     $s = trim((string)$raw);
     if ($s === '') return '';
+
     $s = str_replace('\\', '/', $s);
-    // absolute
+
+    // absolute URL (leave untouched)
     if (preg_match('/^https?:\/\//i', $s)) return $s;
-    if (str_starts_with($s, '/')) return $s;
-    // legacy
-    if (str_starts_with($s, 'uploads/')) return '/' . $s;
-    if (str_starts_with($s, 'products/')) return '/uploads/' . $s;
-    // built-in image assets saved in DB like "@img_..."
-    if (str_starts_with($s, '@')) return '/images/' . $s;
-    // filename only (most uploaded product images)
-    if (!str_contains($s, '/')) return '/uploads/products/' . $s;
-    return $s;
+
+    // remove leading slash so we can rebuild consistently
+    $s = ltrim($s, '/');
+
+    // already full uploads path
+    if (str_starts_with($s, 'uploads/')) {
+        return '/smt-system/' . $s;
+    }
+
+    // products/ → assume uploads/products/
+    if (str_starts_with($s, 'products/')) {
+        return '/smt-system/uploads/' . $s;
+    }
+
+    // image alias system
+    if (str_starts_with($s, '@')) {
+        return '/smt-system/images/' . $s;
+    }
+
+    // filename only
+    if (!str_contains($s, '/')) {
+        return '/smt-system/uploads/products/' . $s;
+    }
+
+    // fallback safety
+    return '/smt-system/uploads/products/' . $s;
 }
 
 $productImages = [];
@@ -801,7 +820,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                                             <?php endif; ?>
                                         </div>
                                         <?php if (!empty($att['attraction_image'])): ?>
-                                        <img style="width: 100%; height: auto; border-radius: 8px;" src="../uploads/products/<?php echo htmlspecialchars($att['attraction_image']); ?>" alt="<?php echoI18nText('product_images', $currentLang); ?>">
+                                        <img style="width: 100%; height: auto; border-radius: 8px;" src="/smt-system/uploads/sights/<?php echo htmlspecialchars($att['attraction_image']); ?>" alt="<?php echoI18nText('product_images', $currentLang); ?>">
                                         <?php endif; ?>
                                         <?php if (!empty($att['attraction_description'])): ?>
                                         <div class="text fz12 fw500 lh16 black12" style="letter-spacing: 0.2px;"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($att['attraction_description']))); ?></div>
@@ -833,7 +852,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                                         <?php endif; ?>
                                     </div>
                                     <?php if (!empty($schedule['airport_image'])): ?>
-                                    <img style="width: 100%; height: 193px; object-fit: cover; border-radius: 8px;" src="../uploads/products/<?php echo htmlspecialchars($schedule['airport_image']); ?>" alt="<?php echoI18nText('airport', $currentLang); ?>">
+                                    <img style="width: 100%; height: 193px; object-fit: cover; border-radius: 8px;" src="/smt-system/uploads/products/<?php echo htmlspecialchars($schedule['airport_image']); ?>" alt="<?php echoI18nText('airport', $currentLang); ?>">
                                     <?php endif; ?>
                                     <?php if (!empty($schedule['airport_description'])): ?>
                                     <div class="text fz12 fw500 lh16 black12" style="letter-spacing: 0.2px;"><?php echo nl2br(htmlspecialchars(cleanHtmlToText($schedule['airport_description']))); ?></div>
@@ -889,7 +908,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
                 <div class="card-type7 mt8">
                     <div class="pt10">
                         <?php if (!empty($accom['image'])): ?>
-                        <img style="width: 152px; height: auto; border-radius: 4px;" src="../uploads/products/<?php echo htmlspecialchars($accom['image']); ?>" alt="<?php echoI18nText('accommodation', $currentLang); ?>">
+                        <img style="width: 152px; height: auto; border-radius: 4px;" src="/smt-system/uploads/products/<?php echo htmlspecialchars($accom['image']); ?>" alt="<?php echoI18nText('accommodation', $currentLang); ?>">
                         <?php endif; ?>
                         <?php if (!empty($accom['name'])): ?>
                         <div class="text fz14 fw600 lh22 black12 mt8"><?php echo htmlspecialchars($accom['name']); ?></div>
@@ -956,7 +975,7 @@ function formatDuration($startTime, $endTime, $lang = null) {
             <div class="text fz14 fw400 lh22 black12 mt20"><?php echoI18nText('default_usage_guide', $currentLang); ?></div>
             <?php endif; ?>
             <?php if (!empty($product['usage_guide_file'])): ?>
-                <a class="btn line lg active ico2 mt16" href="../uploads/usage_guides/<?php echo htmlspecialchars($product['usage_guide_file']); ?>" download="<?php echo htmlspecialchars($product['usage_guide_name'] ?? 'usage_guide.pdf'); ?>">
+                <a class="btn line lg active ico2 mt16" href="/smt-system/uploads/usage_guides/<?php echo htmlspecialchars($product['usage_guide_file']); ?>" download="<?php echo htmlspecialchars($product['usage_guide_name'] ?? 'usage_guide.pdf'); ?>">
                     <?php echoI18nText('download_guide', $currentLang); ?>
                 </a>
             <?php endif; ?>

@@ -399,27 +399,32 @@ function updateProductImages(images) {
             imageAlt: '  ' + (index + 1)
         }));
     } else {
+        const BASE_URL = window.location.origin + '/smt-system';
+
         processedImages = images.map((image, index) => {
             let imageUrl;
-            let imageAlt = '  ' + (index + 1);
+            let imageAlt = 'Image ' + (index + 1);
 
             if (typeof image === 'string') {
-                // uploads/products   
-                if (image.includes('Product image') || image.includes('uploads/products')) {
-                    imageUrl = '../uploads/products/' + image;
+                if (image.startsWith('http')) {
+                    imageUrl = image;
                 } else {
-                    imageUrl = image.startsWith('../images/') ? image : '../images/' + image;
+                    imageUrl = BASE_URL + '/' + image.replace(/^\/+/, '');
                 }
             } else if (image && image.imageUrl) {
-                imageUrl = image.imageUrl.startsWith('../images/') ? image.imageUrl : '../images/' + image.imageUrl;
+                if (image.imageUrl.startsWith('http')) {
+                    imageUrl = image.imageUrl;
+                } else {
+                    imageUrl = BASE_URL + '/' + image.imageUrl.replace(/^\/+/, '');
+                }
                 imageAlt = image.imageAlt || imageAlt;
             } else {
                 imageUrl = defaultImages[index % defaultImages.length];
             }
 
             return {
-                imageUrl: imageUrl,
-                imageAlt: imageAlt
+                imageUrl,
+                imageAlt
             };
         });
 
