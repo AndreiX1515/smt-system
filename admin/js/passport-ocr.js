@@ -84,7 +84,7 @@ async function performOcrRequest(file) {
         const formData = new FormData();
         formData.append('passport_image', file);
 
-        const response = await fetch('/backend/api/passport-ocr.php', {
+        const response = await fetch('/smt-system/backend/api/passport-ocr.php', {
             method: 'POST',
             credentials: 'same-origin',
             body: formData

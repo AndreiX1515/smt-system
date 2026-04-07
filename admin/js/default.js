@@ -796,7 +796,7 @@ function initLogoutButton(container) {
 // 헤더/프로필 카드 사용자 표시 동기화
 async function hydrateAdminIdentityUI(root) {
 	try {
-		const res = await fetch('/admin/backend/api/check-session.php', { credentials: 'same-origin', cache: 'no-store' });
+		const res = await fetch('../backend/api/check-session.php', { credentials: 'same-origin', cache: 'no-store' });
 		const data = await res.json().catch(() => ({}));
 		if (!data || !data.authenticated) return;
 

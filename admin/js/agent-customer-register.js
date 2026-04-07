@@ -81,7 +81,7 @@ async function populateCountryCodeSelect(selectEl, preferredCode = '+63') {
     const desired = (selectEl.getAttribute('data-selected') || selectEl.value || preferredCode || '+63').toString().trim() || '+63';
     selectEl.setAttribute('data-selected', desired);
     try {
-        const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+        const res = await fetch('/smt-system/backend/api/countries.php', { credentials: 'same-origin' });
         const json = await res.json();
         const countries = Array.isArray(json?.countries) ? json.countries : [];
         if (!countries.length) throw new Error('No countries');

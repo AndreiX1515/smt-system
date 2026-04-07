@@ -99,7 +99,7 @@ async function loadSaleInfo(data) {
         const year = dateObj.getFullYear();
         const month = dateObj.getMonth() + 1;
 
-        const response = await fetch(`${window.location.origin}/backend/api/product_availability.php?id=${packageId}&year=${year}&month=${month}`, {
+        const response = await fetch(`/smt-system/backend/api/product_availability.php?id=${packageId}&year=${year}&month=${month}`, {
             credentials: 'same-origin'
         });
 

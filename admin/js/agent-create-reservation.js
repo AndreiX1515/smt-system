@@ -553,7 +553,7 @@ async function populateCountryCodeSelect(selectEl, preferredCode = '+63') {
     const desired = (selectEl.getAttribute('data-selected') || selectEl.value || preferredCode || '+63').toString().trim() || '+63';
     selectEl.setAttribute('data-selected', desired);
     try {
-        const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+        const res = await fetch('/smt-system/backend/api/countries.php', { credentials: 'same-origin' });
         const json = await res.json();
         const countries = Array.isArray(json?.countries) ? json.countries : [];
         if (!countries.length) throw new Error('No countries');
@@ -2756,7 +2756,7 @@ async function searchProducts() {
         qs.set('salesTarget', 'B2B');
         if (searchTerm) qs.set('search', searchTerm);
         if (currentProductCategory) qs.set('category', currentProductCategory);
-        const apiUrl = `${window.location.origin}/backend/api/packages.php?${qs.toString()}`;
+        const apiUrl = `/smt-system/backend/api/packages.php?${qs.toString()}`;
         const response = await fetch(apiUrl, { credentials: 'same-origin' });
         const responseText = await response.text();
         if (!response.ok) {
@@ -2916,7 +2916,7 @@ async function loadProductDetail(packageId) {
     try {
         // NOTE: agent 예약 생성 화면은 상품의 인원별 요금(option_name/price)을 그대로 보여야 함
         // - packages.php는 리스트용으로 pricingOptions가 누락될 수 있어 package-detail.php를 사용한다.
-        const apiUrl = `${window.location.origin}/backend/api/package-detail.php?id=${encodeURIComponent(packageId)}`;
+        const apiUrl = `/smt-system/backend/api/package-detail.php?id=${encodeURIComponent(packageId)}`;
         const response = await fetch(apiUrl, { credentials: 'same-origin' });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result?.success) {
@@ -2984,7 +2984,7 @@ async function loadAvailableDates(packageId, year = null, month = null) {
         }
         
         // product_availability.php API 호출
-        const availabilityUrl = `${window.location.origin}/backend/api/product_availability.php?id=${encodeURIComponent(packageId)}&year=${targetYear}&month=${targetMonth}`;
+        const availabilityUrl = `/smt-system/backend/api/product_availability.php?id=${encodeURIComponent(packageId)}&year=${targetYear}&month=${targetMonth}`;
         const response = await fetch(availabilityUrl);
         const responseText = await response.text();
         if (!response.ok) {
@@ -3498,7 +3498,7 @@ async function confirmDateSelection() {
 async function loadDateDetailInfo(packageId, date) {
     try {
         // 패키지 상세 정보에서 미팅 정보 가져오기
-        const detailUrl = `${window.location.origin}/backend/api/packages.php?id=${encodeURIComponent(packageId)}`;
+        const detailUrl = `/smt-system/backend/api/packages.php?id=${encodeURIComponent(packageId)}`;
         const response = await fetch(detailUrl, { credentials: 'same-origin' });
         const responseText = await response.text();
         if (!response.ok) {
@@ -6240,7 +6240,7 @@ async function fillTestData() {
         clearDepositProofFile();
         
         // 1. DB에서 상품 정보 가져오기
-        const packagesUrl = `${window.location.origin}/backend/api/packages.php?limit=10`;
+        const packagesUrl = `/smt-system/backend/api/packages.php?limit=10`;
         const packagesResponse = await fetch(packagesUrl, { credentials: 'same-origin' });
         const packagesText = await packagesResponse.text();
         if (!packagesResponse.ok) {

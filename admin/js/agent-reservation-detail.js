@@ -5486,20 +5486,23 @@ function isPdfFile(filePath) {
 // 파일 URL 정규화
 function getFileUrl(filePath) {
     if (!filePath) return '';
-    // 이미 절대 경로면 그대로 반환
+
+    const base = '/smt-system/'; // 🔥 ADD THIS
+
+    // Absolute URL
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
         return filePath;
     }
-    // /uploads로 시작하면 앞에 경로 추가
+
     if (filePath.startsWith('/uploads/')) {
-        return filePath;
+        return base + filePath.substring(1);
     }
-    // uploads/로 시작하면 /를 추가
+
     if (filePath.startsWith('uploads/')) {
-        return '/' + filePath;
+        return base + filePath;
     }
-    // 그 외의 경우 /uploads/ 추가
-    return '/uploads/' + filePath;
+
+    return base + 'uploads/' + filePath;
 }
 
 // 결제 증빙 파일 뷰어 열기
