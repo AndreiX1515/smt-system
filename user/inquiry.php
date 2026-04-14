@@ -9,8 +9,8 @@
     <script src="../js/auth-guard.js" defer></script>
     <script src="../js/tab-type1.js" defer></script>
     <script src="../js/inquiry.js" defer></script>
-    <link rel="stylesheet" href="/css/i18n-boot.css">
-    <script src="/js/i18n-boot.js"></script>
+    <link rel="stylesheet" href="../css/i18n-boot.css">
+    <script src="../js/i18n-boot.js"></script>
     <script src="../js/i18n.js" defer></script>
 </head>
 <body>

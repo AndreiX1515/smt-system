@@ -285,8 +285,8 @@ try {
     <script src="../js/api.js" defer></script>
     <script src="../js/tab.js" defer></script>
     <script src="../js/reservation-detail.js" defer></script>
-    <link rel="stylesheet" href="/css/i18n-boot.css">
-    <script src="/js/i18n-boot.js"></script>
+    <link rel="stylesheet" href="../css/i18n-boot.css">
+    <script src="../js/i18n-boot.js"></script>
     <script src="../js/i18n.js" defer></script>
 </head>
 <body>

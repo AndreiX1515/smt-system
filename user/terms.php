@@ -12,8 +12,8 @@ $currentLang = getCurrentLanguage();
     <script src="../js/api.js" defer></script>
     <script src="../js/company-info.js" defer></script>
     <script src="../js/button.js" defer></script>
-    <link rel="stylesheet" href="/css/i18n-boot.css">
-    <script src="/js/i18n-boot.js"></script>
+    <link rel="stylesheet" href="../css/i18n-boot.css">
+    <script src="../js/i18n-boot.js"></script>
     <script src="../js/i18n.js" defer></script>
     <script src="../js/terms-page.js" defer></script>
 </head>
