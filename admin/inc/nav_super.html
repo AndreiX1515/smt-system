@@ -1,256 +1,503 @@
 <ul class="nav-list">
+  <!-- 대시보드 -->
+  <li class="nav-item" data-menu="dashboard">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M6.46289 12.5107C7.51338 12.6174 8.33284 13.5044 8.33301 14.583V16.667C8.33283 17.8174 7.40048 18.75 6.25 18.75H2.08301C1.00435 18.7498 0.117255 17.9295 0.0107422 16.8789L0 16.667V14.583C0.000175588 13.4327 0.932673 12.5002 2.08301 12.5H6.25L6.46289 12.5107ZM16.8789 8.34473C17.8597 8.44416 18.6398 9.22332 18.7393 10.2041L18.75 10.417V16.667C18.7498 17.7456 17.9295 18.6327 16.8789 18.7393L16.667 18.75H12.5C11.3495 18.75 10.4172 17.8174 10.417 16.667V10.417L10.4277 10.2041C10.5272 9.22342 11.3065 8.44429 12.2871 8.34473L12.5 8.33301H16.667L16.8789 8.34473ZM2.08301 14.0625C1.79562 14.0627 1.56268 14.2956 1.5625 14.583V16.667C1.56268 16.9544 1.79562 17.1873 2.08301 17.1875H6.25C6.53754 17.1875 6.77033 16.9545 6.77051 16.667V14.583C6.77033 14.2955 6.53754 14.0625 6.25 14.0625H2.08301ZM12.5 9.89551C12.2124 9.89551 11.9795 10.1293 11.9795 10.417V16.667C11.9797 16.9545 12.2125 17.1875 12.5 17.1875H16.667C16.9544 17.1873 17.1873 16.9544 17.1875 16.667V10.417C17.1875 10.1295 16.9545 9.89568 16.667 9.89551H12.5ZM6.46289 0.0107422C7.51338 0.117364 8.33284 1.00443 8.33301 2.08301V8.33301C8.33301 9.4836 7.40059 10.417 6.25 10.417H2.08301C1.00435 10.4168 0.117255 9.5965 0.0107422 8.5459L0 8.33301V2.08301C0.000175979 0.932673 0.932673 0.000175845 2.08301 0H6.25L6.46289 0.0107422ZM2.08301 1.5625C1.79562 1.56268 1.56268 1.79562 1.5625 2.08301V8.33301C1.5625 8.62055 1.79551 8.85432 2.08301 8.85449H6.25C6.53765 8.85449 6.77051 8.62066 6.77051 8.33301V2.08301C6.77033 1.79551 6.53754 1.5625 6.25 1.5625H2.08301ZM16.667 0L16.8789 0.0107422C17.8597 0.110177 18.6398 0.890311 18.7393 1.87109L18.75 2.08301V4.16699C18.7498 5.24565 17.9295 6.13275 16.8789 6.23926L16.667 6.25H12.5C11.3495 6.25 10.4172 5.31744 10.417 4.16699V2.08301L10.4277 1.87109C10.5272 0.890389 11.3064 0.110278 12.2871 0.0107422L12.5 0H16.667ZM12.5 1.5625C12.2125 1.5625 11.9797 1.79551 11.9795 2.08301V4.16699C11.9797 4.45449 12.2125 4.6875 12.5 4.6875H16.667C16.9544 4.68732 17.1873 4.45438 17.1875 4.16699V2.08301C17.1873 1.79562 16.9544 1.56268 16.667 1.5625H12.5Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Dashboard">Dashboard</span>
+    </button>
 
-	<!-- 대시보드 -->
-	<li class="nav-item" data-menu="dashboard">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M6.46289 12.5107C7.51338 12.6174 8.33284 13.5044 8.33301 14.583V16.667C8.33283 17.8174 7.40048 18.75 6.25 18.75H2.08301C1.00435 18.7498 0.117255 17.9295 0.0107422 16.8789L0 16.667V14.583C0.000175588 13.4327 0.932673 12.5002 2.08301 12.5H6.25L6.46289 12.5107ZM16.8789 8.34473C17.8597 8.44416 18.6398 9.22332 18.7393 10.2041L18.75 10.417V16.667C18.7498 17.7456 17.9295 18.6327 16.8789 18.7393L16.667 18.75H12.5C11.3495 18.75 10.4172 17.8174 10.417 16.667V10.417L10.4277 10.2041C10.5272 9.22342 11.3065 8.44429 12.2871 8.34473L12.5 8.33301H16.667L16.8789 8.34473ZM2.08301 14.0625C1.79562 14.0627 1.56268 14.2956 1.5625 14.583V16.667C1.56268 16.9544 1.79562 17.1873 2.08301 17.1875H6.25C6.53754 17.1875 6.77033 16.9545 6.77051 16.667V14.583C6.77033 14.2955 6.53754 14.0625 6.25 14.0625H2.08301ZM12.5 9.89551C12.2124 9.89551 11.9795 10.1293 11.9795 10.417V16.667C11.9797 16.9545 12.2125 17.1875 12.5 17.1875H16.667C16.9544 17.1873 17.1873 16.9544 17.1875 16.667V10.417C17.1875 10.1295 16.9545 9.89568 16.667 9.89551H12.5ZM6.46289 0.0107422C7.51338 0.117364 8.33284 1.00443 8.33301 2.08301V8.33301C8.33301 9.4836 7.40059 10.417 6.25 10.417H2.08301C1.00435 10.4168 0.117255 9.5965 0.0107422 8.5459L0 8.33301V2.08301C0.000175979 0.932673 0.932673 0.000175845 2.08301 0H6.25L6.46289 0.0107422ZM2.08301 1.5625C1.79562 1.56268 1.56268 1.79562 1.5625 2.08301V8.33301C1.5625 8.62055 1.79551 8.85432 2.08301 8.85449H6.25C6.53765 8.85449 6.77051 8.62066 6.77051 8.33301V2.08301C6.77033 1.79551 6.53754 1.5625 6.25 1.5625H2.08301ZM16.667 0L16.8789 0.0107422C17.8597 0.110177 18.6398 0.890311 18.7393 1.87109L18.75 2.08301V4.16699C18.7498 5.24565 17.9295 6.13275 16.8789 6.23926L16.667 6.25H12.5C11.3495 6.25 10.4172 5.31744 10.417 4.16699V2.08301L10.4277 1.87109C10.5272 0.890389 11.3064 0.110278 12.2871 0.0107422L12.5 0H16.667ZM12.5 1.5625C12.2125 1.5625 11.9797 1.79551 11.9795 2.08301V4.16699C11.9797 4.45449 12.2125 4.6875 12.5 4.6875H16.667C16.9544 4.68732 17.1873 4.45438 17.1875 4.16699V2.08301C17.1873 1.79562 16.9544 1.56268 16.667 1.5625H12.5Z" />
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Dashboard" >Dashboard</span>
-		</button>
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="overview"
+        data-menu="overview"
+        href="../super/overview.html"
+        data-lan-eng="Operating Status"
+      >
+        Operating Status
+      </a>
+      <a
+        class="side-link"
+        data-page="reservation-status"
+        data-menu="reservation-status"
+        href="../super/reservation-status.html"
+        data-lan-eng="Reservation Status"
+      >
+        Reservation Status
+      </a>
+      <a
+        class="side-link"
+        data-page="email-notification-logs"
+        data-menu="email-notification-logs"
+        href="../super/email-notification-logs.html"
+        data-lan-eng="Email Logs"
+      >
+        Email Logs
+      </a>
+    </div>
+  </li>
 
-		<div class="nav-sub">
-			<a class="side-link" data-page="overview" data-menu="overview" href="../super/overview.html" data-lan-eng="Operating Status">
-				Operating Status
-			</a>
-			<a class="side-link" data-page="reservation-status" data-menu="reservation-status" href="../super/reservation-status.html" data-lan-eng="Reservation Status">
-				Reservation Status
-			</a>
-			<a class="side-link" data-page="email-notification-logs" data-menu="email-notification-logs" href="../super/email-notification-logs.html" data-lan-eng="Email Logs">
-				Email Logs
-			</a>
-		</div>
-	</li>
+  <!-- 회원관리 -->
+  <li class="nav-item" data-menu="member-management">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M10.417 12.5C12.718 12.5002 14.583 14.3659 14.583 16.667V18.75H13.0205V16.667C13.0205 15.2289 11.8551 14.0627 10.417 14.0625H4.16699C2.72875 14.0625 1.5625 15.2288 1.5625 16.667V18.75H0V16.667C0 14.3658 1.86581 12.5 4.16699 12.5H10.417ZM14.583 12.5C16.8842 12.5 18.75 14.3658 18.75 16.667V18.75H17.1875V16.667C17.1875 15.3289 16.1777 14.2271 14.8789 14.0801C14.4087 13.4656 13.7362 12.9266 12.916 12.5H14.583ZM7.29199 0C10.1682 0.00017606 12.4998 2.33178 12.5 5.20801C12.5 8.08438 10.1683 10.4168 7.29199 10.417C4.41551 10.417 2.08301 8.08449 2.08301 5.20801C2.08318 2.33167 4.41562 0 7.29199 0ZM13.1104 2.12891C15.1221 2.4243 16.667 4.15622 16.667 6.25C16.667 8.55119 14.8012 10.417 12.5 10.417C12.0617 10.417 11.639 10.3481 11.2422 10.2227C11.6582 9.8082 12.0252 9.34487 12.3398 8.8457C12.3927 8.84891 12.4463 8.85449 12.5 8.85449C13.9382 8.85449 15.1045 7.68824 15.1045 6.25C15.1045 5.16421 14.4396 4.23366 13.4951 3.84277C13.4313 3.24885 13.2997 2.67536 13.1104 2.12891ZM7.29199 1.5625C5.27856 1.5625 3.64568 3.19462 3.64551 5.20801C3.64551 7.22155 5.27845 8.85449 7.29199 8.85449C9.30538 8.85432 10.9375 7.22144 10.9375 5.20801C10.9373 3.19473 9.30527 1.56268 7.29199 1.5625Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Member Management">Member Management</span>
+    </button>
 
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="member-list"
+        data-menu="member-list"
+        href="../super/member-list.html"
+        data-lan-eng="Member List"
+      >
+        Member List
+      </a>
+      <a
+        class="side-link"
+        data-page="b2b-customer-list, b2b-customer-detail"
+        data-menu="b2b-customer-list"
+        href="../super/b2b-customer-list.html"
+        data-lan-eng="B2B Customer List"
+      >
+        B2B Customer List
+      </a>
+      <a
+        class="side-link"
+        data-page="agent-list, agent-detail, agent-registration"
+        data-menu="agent-list"
+        href="../super/agent-list.html"
+        data-lan-eng="Agent List"
+      >
+        Agent List
+      </a>
+      <a
+        class="side-link"
+        data-page="guide-list, guide-detail, guide-registration"
+        data-menu="guide-list"
+        href="../super/guide-list.html"
+        data-lan-eng="Guide List"
+      >
+        Guide List
+      </a>
+    </div>
+  </li>
 
-	<!-- 회원관리 -->
-	<li class="nav-item" data-menu="member-management">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M10.417 12.5C12.718 12.5002 14.583 14.3659 14.583 16.667V18.75H13.0205V16.667C13.0205 15.2289 11.8551 14.0627 10.417 14.0625H4.16699C2.72875 14.0625 1.5625 15.2288 1.5625 16.667V18.75H0V16.667C0 14.3658 1.86581 12.5 4.16699 12.5H10.417ZM14.583 12.5C16.8842 12.5 18.75 14.3658 18.75 16.667V18.75H17.1875V16.667C17.1875 15.3289 16.1777 14.2271 14.8789 14.0801C14.4087 13.4656 13.7362 12.9266 12.916 12.5H14.583ZM7.29199 0C10.1682 0.00017606 12.4998 2.33178 12.5 5.20801C12.5 8.08438 10.1683 10.4168 7.29199 10.417C4.41551 10.417 2.08301 8.08449 2.08301 5.20801C2.08318 2.33167 4.41562 0 7.29199 0ZM13.1104 2.12891C15.1221 2.4243 16.667 4.15622 16.667 6.25C16.667 8.55119 14.8012 10.417 12.5 10.417C12.0617 10.417 11.639 10.3481 11.2422 10.2227C11.6582 9.8082 12.0252 9.34487 12.3398 8.8457C12.3927 8.84891 12.4463 8.85449 12.5 8.85449C13.9382 8.85449 15.1045 7.68824 15.1045 6.25C15.1045 5.16421 14.4396 4.23366 13.4951 3.84277C13.4313 3.24885 13.2997 2.67536 13.1104 2.12891ZM7.29199 1.5625C5.27856 1.5625 3.64568 3.19462 3.64551 5.20801C3.64551 7.22155 5.27845 8.85449 7.29199 8.85449C9.30538 8.85432 10.9375 7.22144 10.9375 5.20801C10.9373 3.19473 9.30527 1.56268 7.29199 1.5625Z" />
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Member Management">Member Management</span>
-		</button>
+  <!-- 예약관리 -->
+  <li class="nav-item" data-menu="reservation-management">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="19" height="21" viewBox="0 0 19 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M12.5 0C13.0753 2.57623e-07 13.542 0.466696 13.542 1.04199V2.08398H16.667C17.8174 2.08416 18.75 3.01651 18.75 4.16699V18.75C18.75 19.8288 17.9296 20.7157 16.8789 20.8223L16.667 20.834H2.08301L1.87109 20.8223C0.89031 20.7228 0.110177 19.9437 0.0107422 18.9629L0 18.75V4.16699C0 3.01651 0.932564 2.08416 2.08301 2.08398H5.20801V1.04199C5.20801 0.466696 5.6747 0 6.25 0C6.8253 0 7.29199 0.466696 7.29199 1.04199V2.08398H11.458V1.04199C11.458 0.466696 11.9247 0 12.5 0ZM1.5625 9.375V18.75C1.5625 19.0375 1.79551 19.2713 2.08301 19.2715H16.667C16.9545 19.2713 17.1875 19.0375 17.1875 18.75V9.375H1.5625ZM7.91699 15.625C8.14696 15.6252 8.33301 15.812 8.33301 16.042V17.292C8.33301 17.522 8.14696 17.7088 7.91699 17.709H6.66699C6.43687 17.709 6.25 17.5221 6.25 17.292V16.042C6.25 15.8119 6.43687 15.625 6.66699 15.625H7.91699ZM12.083 15.625C12.3131 15.625 12.5 15.8119 12.5 16.042V17.292C12.5 17.5221 12.3131 17.709 12.083 17.709H10.833C10.603 17.7088 10.417 17.522 10.417 17.292V16.042C10.417 15.812 10.603 15.6252 10.833 15.625H12.083ZM7.91699 11.459C8.14685 11.4592 8.33283 11.6451 8.33301 11.875V13.125C8.33301 13.355 8.14696 13.5418 7.91699 13.542H6.66699C6.43687 13.542 6.25 13.3551 6.25 13.125V11.875C6.25018 11.645 6.43698 11.459 6.66699 11.459H7.91699ZM12.083 11.459C12.313 11.459 12.4998 11.645 12.5 11.875V13.125C12.5 13.3551 12.3131 13.542 12.083 13.542H10.833C10.603 13.5418 10.417 13.355 10.417 13.125V11.875C10.4172 11.6451 10.6031 11.4592 10.833 11.459H12.083ZM2.08301 3.64648C1.79551 3.64666 1.5625 3.87945 1.5625 4.16699V7.8125H17.1875V4.16699C17.1875 3.87945 16.9545 3.64666 16.667 3.64648H13.542V4.16699C13.542 4.74229 13.0753 5.20898 12.5 5.20898C11.9247 5.20898 11.458 4.74229 11.458 4.16699V3.64648H7.29199V4.16699C7.29199 4.74229 6.8253 5.20898 6.25 5.20898C5.6747 5.20898 5.20801 4.74229 5.20801 4.16699V3.64648H2.08301Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Reservation Management">Reservation Management</span>
+    </button>
 
-		<div class="nav-sub">
-			<a class="side-link" data-page="member-list" data-menu="member-list" href="../super/member-list.html" data-lan-eng="Member List">
-				Member List
-			</a>
-			<a class="side-link" data-page="b2b-customer-list, b2b-customer-detail" data-menu="b2b-customer-list" href="../super/b2b-customer-list.html" data-lan-eng="B2B Customer List">
-				B2B Customer List
-			</a>
-			<a class="side-link" data-page="agent-list, agent-detail, agent-registration" data-menu="agent-list" href="../super/agent-list.html" data-lan-eng="Agent List">
-				Agent List
-			</a>
-			<a class="side-link" data-page="guide-list, guide-detail, guide-registration" data-menu="guide-list" href="../super/guide-list.html" data-lan-eng="Guide List">
-				Guide List
-			</a>
-		</div>
-	</li>
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="b2b-pending-list"
+        data-menu="b2b-pending-list"
+        href="../super/b2b-pending-list.html"
+        data-lan-eng="B2B Pending List"
+      >
+        B2B Pending List
+      </a>
+      <a
+        class="side-link"
+        data-page="b2b-booking-list, b2b-booking-detail"
+        data-menu="b2b-booking-list"
+        href="../super/b2b-booking-list.html"
+        data-lan-eng="B2B Reservation List"
+      >
+        B2B Reservation List
+      </a>
+      <a
+        class="side-link"
+        data-page="rooming-list"
+        data-menu="rooming-list"
+        href="../super/rooming-list.html"
+        data-lan-eng="Rooming List"
+      >
+        Rooming List
+      </a>
+      <a
+        class="side-link"
+        data-page="travel-document-list, travel-document-detail"
+        data-menu="travel-document-list"
+        href="../super/travel-document-list.html"
+        data-lan-eng="Travel Document"
+      >
+        Travel Document
+      </a>
+    </div>
+  </li>
 
+  <!-- 매출관리 -->
+  <li class="nav-item" data-menu="sales-management">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M19.0098 0C19.0402 2.21634e-07 19.0701 0.00150631 19.0996 0.00488281C19.1088 0.0059293 19.1178 0.00741871 19.127 0.00878906C19.1695 0.0151992 19.2109 0.0250909 19.251 0.0380859C19.3155 0.0589802 19.3778 0.0885829 19.4365 0.126953C19.442 0.130563 19.4477 0.133951 19.4531 0.137695C19.4784 0.155162 19.5027 0.174482 19.5264 0.195312C19.5345 0.202498 19.542 0.21033 19.5498 0.217773C19.5568 0.224475 19.5636 0.231326 19.5703 0.238281C19.6343 0.30423 19.6835 0.379042 19.7197 0.458984C19.7371 0.497339 19.7526 0.536758 19.7637 0.578125C19.7644 0.580721 19.765 0.583335 19.7656 0.585938C19.7772 0.630777 19.7847 0.677034 19.7881 0.724609C19.7886 0.731445 19.7887 0.73827 19.7891 0.745117C19.7896 0.757003 19.791 0.769232 19.791 0.78125V5.98926C19.791 6.42073 19.4412 6.7705 19.0098 6.77051C18.5783 6.77051 18.2285 6.42073 18.2285 5.98926V2.84668L11.7832 10.1514C11.5289 10.4396 11.1027 10.5002 10.7783 10.2939L5.6582 7.03613L1.40527 12.708C1.14633 13.0529 0.656593 13.1231 0.311523 12.8643C-0.0333031 12.6053 -0.102407 12.1156 0.15625 11.7705L4.84375 5.52051L4.94434 5.40918C5.20017 5.17768 5.58643 5.13853 5.8877 5.33008L11.0527 8.61719L17.2773 1.5625H13.8018C13.3704 1.5625 13.0207 1.21257 13.0205 0.78125C13.0205 0.349778 13.3703 0 13.8018 0H19.0098Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Sales Management">Sales Management</span>
+    </button>
 
-	<!-- 예약관리 -->
-	<li class="nav-item" data-menu="reservation-management">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="19" height="21" viewBox="0 0 19 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M12.5 0C13.0753 2.57623e-07 13.542 0.466696 13.542 1.04199V2.08398H16.667C17.8174 2.08416 18.75 3.01651 18.75 4.16699V18.75C18.75 19.8288 17.9296 20.7157 16.8789 20.8223L16.667 20.834H2.08301L1.87109 20.8223C0.89031 20.7228 0.110177 19.9437 0.0107422 18.9629L0 18.75V4.16699C0 3.01651 0.932564 2.08416 2.08301 2.08398H5.20801V1.04199C5.20801 0.466696 5.6747 0 6.25 0C6.8253 0 7.29199 0.466696 7.29199 1.04199V2.08398H11.458V1.04199C11.458 0.466696 11.9247 0 12.5 0ZM1.5625 9.375V18.75C1.5625 19.0375 1.79551 19.2713 2.08301 19.2715H16.667C16.9545 19.2713 17.1875 19.0375 17.1875 18.75V9.375H1.5625ZM7.91699 15.625C8.14696 15.6252 8.33301 15.812 8.33301 16.042V17.292C8.33301 17.522 8.14696 17.7088 7.91699 17.709H6.66699C6.43687 17.709 6.25 17.5221 6.25 17.292V16.042C6.25 15.8119 6.43687 15.625 6.66699 15.625H7.91699ZM12.083 15.625C12.3131 15.625 12.5 15.8119 12.5 16.042V17.292C12.5 17.5221 12.3131 17.709 12.083 17.709H10.833C10.603 17.7088 10.417 17.522 10.417 17.292V16.042C10.417 15.812 10.603 15.6252 10.833 15.625H12.083ZM7.91699 11.459C8.14685 11.4592 8.33283 11.6451 8.33301 11.875V13.125C8.33301 13.355 8.14696 13.5418 7.91699 13.542H6.66699C6.43687 13.542 6.25 13.3551 6.25 13.125V11.875C6.25018 11.645 6.43698 11.459 6.66699 11.459H7.91699ZM12.083 11.459C12.313 11.459 12.4998 11.645 12.5 11.875V13.125C12.5 13.3551 12.3131 13.542 12.083 13.542H10.833C10.603 13.5418 10.417 13.355 10.417 13.125V11.875C10.4172 11.6451 10.6031 11.4592 10.833 11.459H12.083ZM2.08301 3.64648C1.79551 3.64666 1.5625 3.87945 1.5625 4.16699V7.8125H17.1875V4.16699C17.1875 3.87945 16.9545 3.64666 16.667 3.64648H13.542V4.16699C13.542 4.74229 13.0753 5.20898 12.5 5.20898C11.9247 5.20898 11.458 4.74229 11.458 4.16699V3.64648H7.29199V4.16699C7.29199 4.74229 6.8253 5.20898 6.25 5.20898C5.6747 5.20898 5.20801 4.74229 5.20801 4.16699V3.64648H2.08301Z" />
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Reservation Management">Reservation Management</span>
-		</button>
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="sales-date"
+        data-menu="sales-date"
+        href="../super/sales-date.html"
+        data-lan-eng="Sales Dashboard"
+      >
+        Sales Dashboard
+      </a>
+      <a
+        class="side-link"
+        data-page="sales-product"
+        data-menu="sales-product"
+        href="../super/sales-product.html"
+        data-lan-eng="Sales by product"
+      >
+        Sales by product
+      </a>
+      <a
+        class="side-link"
+        data-page="monthly-invoice"
+        data-menu="monthly-invoice"
+        href="../super/monthly-invoice.html"
+        data-lan-eng="Monthly Invoice"
+      >
+        Monthly Invoice
+      </a>
+    </div>
+  </li>
 
-		<div class="nav-sub">
-			<a class="side-link" data-page="b2b-pending-list" data-menu="b2b-pending-list" href="../super/b2b-pending-list.html" data-lan-eng="B2B Pending List">
-				B2B Pending List
-			</a>
-			<a class="side-link" data-page="b2b-booking-list, b2b-booking-detail" data-menu="b2b-booking-list" href="../super/b2b-booking-list.html" data-lan-eng="B2B Reservation List">
-				B2B Reservation List
-			</a>
-			<a class="side-link" data-page="rooming-list" data-menu="rooming-list" href="../super/rooming-list.html" data-lan-eng="Rooming List">
-				Rooming List
-			</a>
-			<a class="side-link" data-page="travel-document-list, travel-document-detail" data-menu="travel-document-list" href="../super/travel-document-list.html" data-lan-eng="Travel Document">
-				Travel Document
-			</a>
-		</div>
-	</li>
+  <!-- 상품관리 -->
+  <li class="nav-item" data-menu="product-management">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M4.71501 7.86219L12.0483 4.13638C12.333 3.99176 12.6696 3.99176 12.9543 4.13638L20.2876 7.86219C20.6232 8.03271 20.8346 8.37726 20.8346 8.75372V17.2418C20.8346 17.5982 20.645 17.9277 20.3368 18.1066L13.0034 22.3647C12.693 22.545 12.3097 22.545 11.9992 22.3647L4.66583 18.1066C4.35764 17.9277 4.16797 17.5982 4.16797 17.2418V8.75372C4.16797 8.37726 4.37939 8.03271 4.71501 7.86219Z"
+            class="stroke"
+            fill="none"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <path
+            d="M4.16797 8.07422L12.5013 12.2409"
+            class="stroke"
+            fill="none"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <path
+            d="M19.7917 8.07422L12.5 12.2409"
+            class="stroke"
+            fill="none"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <path d="M12.5 21.6133V12.2383" class="stroke" fill="none" stroke-width="1.5" stroke-linecap="round" />
+          <path
+            d="M15.8091 10.5654C16.1796 10.7506 16.6301 10.6004 16.8154 10.2299C17.0006 9.85946 16.8504 9.40895 16.4799 9.22371L16.1445 9.89453L15.8091 10.5654ZM8.33203 5.98828L7.99662 6.6591L15.8091 10.5654L16.1445 9.89453L16.4799 9.22371L8.66744 5.31746L8.33203 5.98828Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Product Management">Product Management</span>
+    </button>
 
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="product-list, product-update, product-detail"
+        data-menu="product-list"
+        href="../super/product-list.html"
+        data-lan-eng="Product List"
+      >
+        Product List
+      </a>
+      <a
+        class="side-link"
+        data-page="product-registration"
+        data-menu="product-registration"
+        href="../super/product-registration.html"
+        data-lan-eng="Product Registration"
+      >
+        Product Registration
+      </a>
+      <a
+        class="side-link"
+        data-page="sight-list, sight-registration"
+        data-menu="sight-list"
+        href="../super/sight-list.html"
+        data-lan-eng="Sight Management"
+      >
+        Sight Management
+      </a>
+      <a
+        class="side-link"
+        data-page="inventory-management"
+        data-menu="inventory-management"
+        href="../super/inventory-management.html"
+        data-lan-eng="Inventory Management"
+      >
+        Inventory Management
+      </a>
+      <a
+        class="side-link"
+        data-page="template-list, template-detail, template-registration"
+        data-menu="template-list"
+        href="../super/template-list.html"
+        data-lan-eng="Template List"
+      >
+        Template List
+      </a>
+      <a
+        class="side-link"
+        data-page="category-management"
+        data-menu="category-management"
+        href="../super/category-management.html"
+        data-lan-eng="Category Management"
+      >
+        Category Management
+      </a>
+      <a
+        class="side-link"
+        data-page="option-management"
+        data-menu="option-management"
+        href="../super/option-management.html"
+        data-lan-eng="Option Management"
+      >
+        Option Management
+      </a>
+      <a
+        class="side-link"
+        data-page="sale-management"
+        data-menu="sale-management"
+        href="../super/sale-management.html"
+        data-lan-eng="Sale Management"
+      >
+        Sale Management
+      </a>
+    </div>
+  </li>
 
-	<!-- 매출관리 -->
-	<li class="nav-item" data-menu="sales-management">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M19.0098 0C19.0402 2.21634e-07 19.0701 0.00150631 19.0996 0.00488281C19.1088 0.0059293 19.1178 0.00741871 19.127 0.00878906C19.1695 0.0151992 19.2109 0.0250909 19.251 0.0380859C19.3155 0.0589802 19.3778 0.0885829 19.4365 0.126953C19.442 0.130563 19.4477 0.133951 19.4531 0.137695C19.4784 0.155162 19.5027 0.174482 19.5264 0.195312C19.5345 0.202498 19.542 0.21033 19.5498 0.217773C19.5568 0.224475 19.5636 0.231326 19.5703 0.238281C19.6343 0.30423 19.6835 0.379042 19.7197 0.458984C19.7371 0.497339 19.7526 0.536758 19.7637 0.578125C19.7644 0.580721 19.765 0.583335 19.7656 0.585938C19.7772 0.630777 19.7847 0.677034 19.7881 0.724609C19.7886 0.731445 19.7887 0.73827 19.7891 0.745117C19.7896 0.757003 19.791 0.769232 19.791 0.78125V5.98926C19.791 6.42073 19.4412 6.7705 19.0098 6.77051C18.5783 6.77051 18.2285 6.42073 18.2285 5.98926V2.84668L11.7832 10.1514C11.5289 10.4396 11.1027 10.5002 10.7783 10.2939L5.6582 7.03613L1.40527 12.708C1.14633 13.0529 0.656593 13.1231 0.311523 12.8643C-0.0333031 12.6053 -0.102407 12.1156 0.15625 11.7705L4.84375 5.52051L4.94434 5.40918C5.20017 5.17768 5.58643 5.13853 5.8877 5.33008L11.0527 8.61719L17.2773 1.5625H13.8018C13.3704 1.5625 13.0207 1.21257 13.0205 0.78125C13.0205 0.349778 13.3703 0 13.8018 0H19.0098Z" />
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Sales Management">Sales Management</span>
-		</button>
+  <!-- 메시지 관리 -->
+  <li class="nav-item" data-menu="message-management">
+    <a
+      class="nav-btn"
+      href="../super/agent-message-list.html"
+      data-page="agent-message-list"
+      data-menu="agent-message-list"
+    >
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M14.583 0C15.7335 0 16.6658 0.932606 16.666 2.08301V10.8799C16.6659 12.0303 15.7335 12.9629 14.583 12.9629H4.82129L4.72949 12.9668C4.51884 12.9854 4.31789 13.0678 4.1543 13.2041L1.70898 15.2422L1.57715 15.3369C0.949886 15.7191 0.1199 15.33 0.0117188 14.6035L0 14.4434V2.08301C0.000225362 0.932606 0.932554 0 2.08301 0H14.583ZM2.08301 1.5625C1.7955 1.5625 1.56273 1.79555 1.5625 2.08301V13.3301L3.1543 12.0039L3.33496 11.8662C3.76969 11.5641 4.28829 11.4004 4.82129 11.4004H14.583C14.8706 11.4004 15.1034 11.1674 15.1035 10.8799V2.08301C15.1033 1.79555 14.8705 1.5625 14.583 1.5625H2.08301Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Inquiries">Inquiries</span>
+      <span class="nav-unread-badge" id="inquiryUnreadBadge" style="display: none">0</span>
+    </a>
+  </li>
 
-		<div class="nav-sub">
-			<a class="side-link" data-page="sales-date" data-menu="sales-date" href="../super/sales-date.html" data-lan-eng="Sales Dashboard">
-				Sales Dashboard
-			</a>
-			<a class="side-link" data-page="sales-product" data-menu="sales-product" href="../super/sales-product.html" data-lan-eng="Sales by product">
-				Sales by product
-			</a>
-			<a class="side-link" data-page="monthly-invoice" data-menu="monthly-invoice" href="../super/monthly-invoice.html" data-lan-eng="Monthly Invoice">
-				Monthly Invoice
-			</a>
-		</div>
-	</li>
+  <!-- Announcements -->
+  <li class="nav-item" data-menu="announcements">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M16.5 0C17.3284 0 18 0.671573 18 1.5V12C18 12.8284 17.3284 13.5 16.5 13.5H13.5L9 18V13.5H1.5C0.671573 13.5 0 12.8284 0 12V1.5C0 0.671573 0.671573 0 1.5 0H16.5ZM16.5 1.5H1.5V12H10.5V14.379L12.879 12H16.5V1.5ZM13.5 6.75V8.25H4.5V6.75H13.5ZM13.5 3.75V5.25H4.5V3.75H13.5Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Announcements">Announcements</span>
+    </button>
 
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="announcements-list"
+        data-menu="announcements-list"
+        href="../super/announcements-list.html"
+        data-lan-eng="Announcements List"
+      >
+        Announcements List
+      </a>
+    </div>
+  </li>
 
-	<!-- 상품관리 -->
-	<li class="nav-item" data-menu="product-management">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M4.71501 7.86219L12.0483 4.13638C12.333 3.99176 12.6696 3.99176 12.9543 4.13638L20.2876 7.86219C20.6232 8.03271 20.8346 8.37726 20.8346 8.75372V17.2418C20.8346 17.5982 20.645 17.9277 20.3368 18.1066L13.0034 22.3647C12.693 22.545 12.3097 22.545 11.9992 22.3647L4.66583 18.1066C4.35764 17.9277 4.16797 17.5982 4.16797 17.2418V8.75372C4.16797 8.37726 4.37939 8.03271 4.71501 7.86219Z" class="stroke" fill="none" stroke-width="1.5" stroke-linecap="round"/>
-				<path d="M4.16797 8.07422L12.5013 12.2409" class="stroke" fill="none" stroke-width="1.5" stroke-linecap="round"/>
-				<path d="M19.7917 8.07422L12.5 12.2409" class="stroke" fill="none" stroke-width="1.5" stroke-linecap="round"/>
-				<path d="M12.5 21.6133V12.2383" class="stroke" fill="none" stroke-width="1.5" stroke-linecap="round"/>
-				<path d="M15.8091 10.5654C16.1796 10.7506 16.6301 10.6004 16.8154 10.2299C17.0006 9.85946 16.8504 9.40895 16.4799 9.22371L16.1445 9.89453L15.8091 10.5654ZM8.33203 5.98828L7.99662 6.6591L15.8091 10.5654L16.1445 9.89453L16.4799 9.22371L8.66744 5.31746L8.33203 5.98828Z"/>
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Product Management">Product Management</span>
-		</button>
+  <!-- Shopping Management -->
+  <li class="nav-item" data-menu="shopping-management">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M6.33301 17.4167C6.97734 17.4167 7.49967 16.8943 7.49967 16.25C7.49967 15.6057 6.97734 15.0833 6.33301 15.0833C5.68868 15.0833 5.16634 15.6057 5.16634 16.25C5.16634 16.8943 5.68868 17.4167 6.33301 17.4167Z"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M14.833 17.4167C15.4773 17.4167 15.9997 16.8943 15.9997 16.25C15.9997 15.6057 15.4773 15.0833 14.833 15.0833C14.1887 15.0833 13.6663 15.6057 13.6663 16.25C13.6663 16.8943 14.1887 17.4167 14.833 17.4167Z"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M0.5 0.916672H3.66667L5.89 11.2617C5.96572 11.6282 6.16727 11.9568 6.46009 12.1908C6.75291 12.4247 7.11856 12.5492 7.49333 12.5417H14.3667C14.7414 12.5492 15.1071 12.4247 15.3999 12.1908C15.6927 11.9568 15.8943 11.6282 15.97 11.2617L17.1667 4.83334H4.83333"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Shopping Management">Shopping Management</span>
+    </button>
 
-		<div class="nav-sub">
-			<a class="side-link" data-page="product-list, product-update, product-detail" data-menu="product-list" href="../super/product-list.html" data-lan-eng="Product List">
-				Product List
-			</a>
-			<a class="side-link" data-page="product-registration" data-menu="product-registration" href="../super/product-registration.html" data-lan-eng="Product Registration">
-				Product Registration
-			</a>
-			<a class="side-link" data-page="sight-list, sight-registration" data-menu="sight-list" href="../super/sight-list.html" data-lan-eng="Sight Management">
-				Sight Management
-			</a>
-			<a class="side-link" data-page="inventory-management" data-menu="inventory-management" href="../super/inventory-management.html" data-lan-eng="Inventory Management">
-				Inventory Management
-			</a>
-			<a class="side-link" data-page="template-list, template-detail, template-registration" data-menu="template-list" href="../super/template-list.html" data-lan-eng="Template List">
-				Template List
-			</a>
-			<a class="side-link" data-page="category-management" data-menu="category-management" href="../super/category-management.html" data-lan-eng="Category Management">
-				Category Management
-			</a>
-			<a class="side-link" data-page="option-management" data-menu="option-management" href="../super/option-management.html" data-lan-eng="Option Management">
-				Option Management
-			</a>
-			<a class="side-link" data-page="sale-management" data-menu="sale-management" href="../super/sale-management.html" data-lan-eng="Sale Management">
-				Sale Management
-			</a>
-		</div>
-	</li>
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="shop-category-list"
+        data-menu="shop-category-list"
+        href="../shop/category-list.html"
+        data-lan-eng="Category List"
+      >
+        Category List
+      </a>
+      <a
+        class="side-link"
+        data-page="shop-product-list, shop-product-form"
+        data-menu="shop-product-list"
+        href="../shop/product-list.html"
+        data-lan-eng="Product List"
+      >
+        Product List
+      </a>
+      <a
+        class="side-link"
+        data-page="shop-order-list, shop-order-detail"
+        data-menu="shop-order-list"
+        href="../shop/order-list.html"
+        data-lan-eng="Order List"
+      >
+        Order List
+      </a>
+    </div>
+  </li>
 
+  <!-- 사이트설정 -->
+  <li class="nav-item" data-menu="site-settings">
+    <button class="nav-btn">
+      <i class="nav-icon" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M15.3049 8.88326C15.1689 8.73121 15.0939 8.53573 15.0939 8.33333C15.0939 8.13094 15.1689 7.93546 15.3049 7.78341L16.3906 6.58357C16.5103 6.45248 16.5846 6.28753 16.6029 6.11239C16.6212 5.93725 16.5825 5.76092 16.4924 5.6087L14.796 2.72576C14.7068 2.57372 14.5711 2.4532 14.4081 2.38138C14.2452 2.30957 14.0633 2.29012 13.8884 2.32582L12.2937 2.64244C12.0908 2.68363 11.8796 2.65043 11.6999 2.54912C11.5202 2.44781 11.3844 2.28539 11.3183 2.09252L10.8008 0.567723C10.7439 0.402228 10.6355 0.258486 10.4909 0.156814C10.3463 0.0551416 10.1729 0.000682237 9.99503 0.00113314H6.60212C6.41715 -0.0083506 6.23411 0.0418996 6.08094 0.144209C5.92778 0.246518 5.81292 0.395262 5.7539 0.567723L5.27889 2.09252C5.21273 2.28539 5.07699 2.44781 4.89728 2.54912C4.71758 2.65043 4.50634 2.68363 4.30343 2.64244L2.66636 2.32582C2.50057 2.3028 2.33156 2.3285 2.18062 2.39967C2.02967 2.47084 1.90355 2.58431 1.81813 2.72576L0.121679 5.6087C0.029358 5.75922 -0.0121525 5.93456 0.00308207 6.10966C0.0183166 6.28475 0.089516 6.45062 0.206501 6.58357L1.28375 7.78341C1.41973 7.93546 1.49473 8.13094 1.49473 8.33333C1.49473 8.53573 1.41973 8.73121 1.28375 8.88326L0.206501 10.0831C0.089516 10.216 0.0183166 10.3819 0.00308207 10.557C-0.0121525 10.7321 0.029358 10.9074 0.121679 11.058L1.81813 13.9409C1.90728 14.0929 2.04301 14.2135 2.20598 14.2853C2.36896 14.3571 2.55085 14.3765 2.72573 14.3408L4.3204 14.0242C4.52331 13.983 4.73455 14.0162 4.91425 14.1175C5.09395 14.2189 5.22969 14.3813 5.29586 14.5742L5.81327 16.0989C5.87229 16.2714 5.98716 16.4201 6.14032 16.5225C6.29348 16.6248 6.47653 16.675 6.6615 16.6655H10.0544C10.2322 16.666 10.4057 16.6115 10.5503 16.5099C10.6949 16.4082 10.8033 16.2644 10.8602 16.0989L11.3776 14.5742C11.4438 14.3813 11.5795 14.2189 11.7592 14.1175C11.9389 14.0162 12.1502 13.983 12.3531 14.0242L13.9478 14.3408C14.1226 14.3765 14.3045 14.3571 14.4675 14.2853C14.6305 14.2135 14.7662 14.0929 14.8554 13.9409L16.5518 11.058C16.6419 10.9057 16.6805 10.7294 16.6622 10.5543C16.644 10.3791 16.5697 10.2142 16.45 10.0831L15.3049 8.88326ZM14.0411 9.99977L14.7196 10.7497L13.6339 12.5994L12.633 12.3994C12.0221 12.2768 11.3866 12.3787 10.8471 12.6859C10.3077 12.9931 9.90184 13.4842 9.70663 14.0659L9.3843 14.9991H7.21284L6.90748 14.0492C6.71227 13.4675 6.30642 12.9764 5.76696 12.6692C5.22751 12.3621 4.59202 12.2601 3.98111 12.3828L2.9802 12.5828L1.87751 10.7413L2.55609 9.99144C2.97338 9.53315 3.20407 8.93986 3.20407 8.325C3.20407 7.71014 2.97338 7.11685 2.55609 6.65856L1.87751 5.90866L2.96323 4.07558L3.96414 4.27555C4.57505 4.39822 5.21055 4.29628 5.75 3.98909C6.28945 3.6819 6.6953 3.19083 6.89052 2.60911L7.21284 1.66757H9.3843L9.70663 2.61744C9.90184 3.19916 10.3077 3.69023 10.8471 3.99742C11.3866 4.30462 12.0221 4.40655 12.633 4.28388L13.6339 4.08391L14.7196 5.93366L14.0411 6.68356C13.6285 7.1408 13.4006 7.73065 13.4006 8.34167C13.4006 8.95268 13.6285 9.54254 14.0411 9.99977ZM8.29857 5.00045C7.62752 5.00045 6.97154 5.19592 6.41358 5.56215C5.85562 5.92837 5.42074 6.44889 5.16394 7.0579C4.90714 7.6669 4.83995 8.33703 4.97086 8.98355C5.10178 9.63006 5.42492 10.2239 5.89943 10.69C6.37394 11.1561 6.97849 11.4736 7.63665 11.6022C8.29481 11.7308 8.97701 11.6648 9.59698 11.4125C10.217 11.1603 10.7469 10.7331 11.1197 10.185C11.4925 9.63689 11.6915 8.99252 11.6915 8.33333C11.6915 7.4494 11.334 6.60167 10.6977 5.97663C10.0614 5.35159 9.19843 5.00045 8.29857 5.00045ZM8.29857 9.99977C7.96305 9.99977 7.63506 9.90204 7.35608 9.71893C7.0771 9.53582 6.85966 9.27555 6.73126 8.97105C6.60286 8.66655 6.56926 8.33148 6.63472 8.00823C6.70018 7.68497 6.86175 7.38804 7.099 7.15498C7.33625 6.92193 7.63853 6.76321 7.96761 6.69891C8.29669 6.63461 8.63779 6.66761 8.94778 6.79374C9.25776 6.91987 9.52271 7.13346 9.70912 7.40751C9.89553 7.68155 9.99503 8.00374 9.99503 8.33333C9.99503 8.7753 9.81629 9.19917 9.49815 9.51168C9.18 9.8242 8.7485 9.99977 8.29857 9.99977Z"
+          />
+        </svg>
+      </i>
+      <span class="nav-btn-label" data-lan-eng="Site Settings">Site Settings</span>
+    </button>
 
-	<!-- 메시지 관리 -->
-	<li class="nav-item" data-menu="message-management">
-		<a class="nav-btn" href="../super/agent-message-list.html" data-page="agent-message-list" data-menu="agent-message-list">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M14.583 0C15.7335 0 16.6658 0.932606 16.666 2.08301V10.8799C16.6659 12.0303 15.7335 12.9629 14.583 12.9629H4.82129L4.72949 12.9668C4.51884 12.9854 4.31789 13.0678 4.1543 13.2041L1.70898 15.2422L1.57715 15.3369C0.949886 15.7191 0.1199 15.33 0.0117188 14.6035L0 14.4434V2.08301C0.000225362 0.932606 0.932554 0 2.08301 0H14.583ZM2.08301 1.5625C1.7955 1.5625 1.56273 1.79555 1.5625 2.08301V13.3301L3.1543 12.0039L3.33496 11.8662C3.76969 11.5641 4.28829 11.4004 4.82129 11.4004H14.583C14.8706 11.4004 15.1034 11.1674 15.1035 10.8799V2.08301C15.1033 1.79555 14.8705 1.5625 14.583 1.5625H2.08301Z" />
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Inquiries">Inquiries</span>
-			<span class="nav-unread-badge" id="inquiryUnreadBadge" style="display:none;">0</span>
-		</a>
-	</li>
-
-
-
-	<!-- Announcements -->
-	<li class="nav-item" data-menu="announcements">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M16.5 0C17.3284 0 18 0.671573 18 1.5V12C18 12.8284 17.3284 13.5 16.5 13.5H13.5L9 18V13.5H1.5C0.671573 13.5 0 12.8284 0 12V1.5C0 0.671573 0.671573 0 1.5 0H16.5ZM16.5 1.5H1.5V12H10.5V14.379L12.879 12H16.5V1.5ZM13.5 6.75V8.25H4.5V6.75H13.5ZM13.5 3.75V5.25H4.5V3.75H13.5Z"/>
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Announcements">Announcements</span>
-		</button>
-
-		<div class="nav-sub">
-			<a class="side-link" data-page="announcements-list" data-menu="announcements-list" href="../super/announcements-list.html" data-lan-eng="Announcements List">
-				Announcements List
-			</a>
-		</div>
-	</li>
-
-
-	<!-- Shopping Management -->
-	<li class="nav-item" data-menu="shopping-management">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M6.33301 17.4167C6.97734 17.4167 7.49967 16.8943 7.49967 16.25C7.49967 15.6057 6.97734 15.0833 6.33301 15.0833C5.68868 15.0833 5.16634 15.6057 5.16634 16.25C5.16634 16.8943 5.68868 17.4167 6.33301 17.4167Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-				<path d="M14.833 17.4167C15.4773 17.4167 15.9997 16.8943 15.9997 16.25C15.9997 15.6057 15.4773 15.0833 14.833 15.0833C14.1887 15.0833 13.6663 15.6057 13.6663 16.25C13.6663 16.8943 14.1887 17.4167 14.833 17.4167Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-				<path d="M0.5 0.916672H3.66667L5.89 11.2617C5.96572 11.6282 6.16727 11.9568 6.46009 12.1908C6.75291 12.4247 7.11856 12.5492 7.49333 12.5417H14.3667C14.7414 12.5492 15.1071 12.4247 15.3999 12.1908C15.6927 11.9568 15.8943 11.6282 15.97 11.2617L17.1667 4.83334H4.83333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Shopping Management">Shopping Management</span>
-		</button>
-
-		<div class="nav-sub">
-			<a class="side-link" data-page="shop-category-list" data-menu="shop-category-list" href="../shop/category-list.html" data-lan-eng="Category List">
-				Category List
-			</a>
-			<a class="side-link" data-page="shop-product-list, shop-product-form" data-menu="shop-product-list" href="../shop/product-list.html" data-lan-eng="Product List">
-				Product List
-			</a>
-			<a class="side-link" data-page="shop-order-list, shop-order-detail" data-menu="shop-order-list" href="../shop/order-list.html" data-lan-eng="Order List">
-				Order List
-			</a>
-		</div>
-	</li>
-
-
-	<!-- 사이트설정 -->
-	<li class="nav-item" data-menu="site-settings">
-		<button class="nav-btn">
-			<i class="nav-icon" aria-hidden="true">
-				<svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M15.3049 8.88326C15.1689 8.73121 15.0939 8.53573 15.0939 8.33333C15.0939 8.13094 15.1689 7.93546 15.3049 7.78341L16.3906 6.58357C16.5103 6.45248 16.5846 6.28753 16.6029 6.11239C16.6212 5.93725 16.5825 5.76092 16.4924 5.6087L14.796 2.72576C14.7068 2.57372 14.5711 2.4532 14.4081 2.38138C14.2452 2.30957 14.0633 2.29012 13.8884 2.32582L12.2937 2.64244C12.0908 2.68363 11.8796 2.65043 11.6999 2.54912C11.5202 2.44781 11.3844 2.28539 11.3183 2.09252L10.8008 0.567723C10.7439 0.402228 10.6355 0.258486 10.4909 0.156814C10.3463 0.0551416 10.1729 0.000682237 9.99503 0.00113314H6.60212C6.41715 -0.0083506 6.23411 0.0418996 6.08094 0.144209C5.92778 0.246518 5.81292 0.395262 5.7539 0.567723L5.27889 2.09252C5.21273 2.28539 5.07699 2.44781 4.89728 2.54912C4.71758 2.65043 4.50634 2.68363 4.30343 2.64244L2.66636 2.32582C2.50057 2.3028 2.33156 2.3285 2.18062 2.39967C2.02967 2.47084 1.90355 2.58431 1.81813 2.72576L0.121679 5.6087C0.029358 5.75922 -0.0121525 5.93456 0.00308207 6.10966C0.0183166 6.28475 0.089516 6.45062 0.206501 6.58357L1.28375 7.78341C1.41973 7.93546 1.49473 8.13094 1.49473 8.33333C1.49473 8.53573 1.41973 8.73121 1.28375 8.88326L0.206501 10.0831C0.089516 10.216 0.0183166 10.3819 0.00308207 10.557C-0.0121525 10.7321 0.029358 10.9074 0.121679 11.058L1.81813 13.9409C1.90728 14.0929 2.04301 14.2135 2.20598 14.2853C2.36896 14.3571 2.55085 14.3765 2.72573 14.3408L4.3204 14.0242C4.52331 13.983 4.73455 14.0162 4.91425 14.1175C5.09395 14.2189 5.22969 14.3813 5.29586 14.5742L5.81327 16.0989C5.87229 16.2714 5.98716 16.4201 6.14032 16.5225C6.29348 16.6248 6.47653 16.675 6.6615 16.6655H10.0544C10.2322 16.666 10.4057 16.6115 10.5503 16.5099C10.6949 16.4082 10.8033 16.2644 10.8602 16.0989L11.3776 14.5742C11.4438 14.3813 11.5795 14.2189 11.7592 14.1175C11.9389 14.0162 12.1502 13.983 12.3531 14.0242L13.9478 14.3408C14.1226 14.3765 14.3045 14.3571 14.4675 14.2853C14.6305 14.2135 14.7662 14.0929 14.8554 13.9409L16.5518 11.058C16.6419 10.9057 16.6805 10.7294 16.6622 10.5543C16.644 10.3791 16.5697 10.2142 16.45 10.0831L15.3049 8.88326ZM14.0411 9.99977L14.7196 10.7497L13.6339 12.5994L12.633 12.3994C12.0221 12.2768 11.3866 12.3787 10.8471 12.6859C10.3077 12.9931 9.90184 13.4842 9.70663 14.0659L9.3843 14.9991H7.21284L6.90748 14.0492C6.71227 13.4675 6.30642 12.9764 5.76696 12.6692C5.22751 12.3621 4.59202 12.2601 3.98111 12.3828L2.9802 12.5828L1.87751 10.7413L2.55609 9.99144C2.97338 9.53315 3.20407 8.93986 3.20407 8.325C3.20407 7.71014 2.97338 7.11685 2.55609 6.65856L1.87751 5.90866L2.96323 4.07558L3.96414 4.27555C4.57505 4.39822 5.21055 4.29628 5.75 3.98909C6.28945 3.6819 6.6953 3.19083 6.89052 2.60911L7.21284 1.66757H9.3843L9.70663 2.61744C9.90184 3.19916 10.3077 3.69023 10.8471 3.99742C11.3866 4.30462 12.0221 4.40655 12.633 4.28388L13.6339 4.08391L14.7196 5.93366L14.0411 6.68356C13.6285 7.1408 13.4006 7.73065 13.4006 8.34167C13.4006 8.95268 13.6285 9.54254 14.0411 9.99977ZM8.29857 5.00045C7.62752 5.00045 6.97154 5.19592 6.41358 5.56215C5.85562 5.92837 5.42074 6.44889 5.16394 7.0579C4.90714 7.6669 4.83995 8.33703 4.97086 8.98355C5.10178 9.63006 5.42492 10.2239 5.89943 10.69C6.37394 11.1561 6.97849 11.4736 7.63665 11.6022C8.29481 11.7308 8.97701 11.6648 9.59698 11.4125C10.217 11.1603 10.7469 10.7331 11.1197 10.185C11.4925 9.63689 11.6915 8.99252 11.6915 8.33333C11.6915 7.4494 11.334 6.60167 10.6977 5.97663C10.0614 5.35159 9.19843 5.00045 8.29857 5.00045ZM8.29857 9.99977C7.96305 9.99977 7.63506 9.90204 7.35608 9.71893C7.0771 9.53582 6.85966 9.27555 6.73126 8.97105C6.60286 8.66655 6.56926 8.33148 6.63472 8.00823C6.70018 7.68497 6.86175 7.38804 7.099 7.15498C7.33625 6.92193 7.63853 6.76321 7.96761 6.69891C8.29669 6.63461 8.63779 6.66761 8.94778 6.79374C9.25776 6.91987 9.52271 7.13346 9.70912 7.40751C9.89553 7.68155 9.99503 8.00374 9.99503 8.33333C9.99503 8.7753 9.81629 9.19917 9.49815 9.51168C9.18 9.8242 8.7485 9.99977 8.29857 9.99977Z" />
-				</svg>
-			</i>
-			<span class="nav-btn-label" data-lan-eng="Site Settings">Site Settings</span>
-		</button>
-
-		<div class="nav-sub">
-			<a class="side-link" data-page="popup-management" data-menu="popup-management" href="../super/popup-management.html" data-lan-eng="Popup Management">
-				Popup Management
-			</a>
-			<a class="side-link" data-page="banner-management" data-menu="banner-management" href="../super/banner-management.html" data-lan-eng="Banner Management">
-				Banner Management
-			</a>
-			<a class="side-link" data-page="notice" data-menu="notice" href="../super/notice.html" data-lan-eng="Announcements">
-				Announcements
-			</a>
-			<a class="side-link" data-page="terms" data-menu="terms" href="../super/terms.html" data-lan-eng="Terms of Use">
-				Terms of Use
-			</a>
-			<a class="side-link" data-page="company-information" data-menu="company-information" href="../super/company-information.html" data-lan-eng="Company Information">
-				Company Information
-			</a>
-			<a class="side-link" data-page="partner-management" data-menu="partner-management" href="../super/partner-management.html" data-lan-eng="Partner Management">
-				Partner Management
-			</a>
-			<a class="side-link" data-page="login-history" data-menu="login-history" href="../super/login-history.html" data-lan-eng="Login History">
-				Login History
-			</a>
-			<a class="side-link" data-page="status-history" data-menu="status-history" href="../super/status-history.html" data-lan-eng="Status Change History">
-				Status Change History
-			</a>
-			<a class="side-link" data-page="menu-permission" data-menu="menu-permission" href="../super/menu-permission.html" data-lan-eng="Menu Permission">
-				Menu Permission
-			</a>
-		</div>
-	</li>
-
+    <div class="nav-sub">
+      <a
+        class="side-link"
+        data-page="popup-management"
+        data-menu="popup-management"
+        href="../super/popup-management.html"
+        data-lan-eng="Popup Management"
+      >
+        Popup Management
+      </a>
+      <a
+        class="side-link"
+        data-page="banner-management"
+        data-menu="banner-management"
+        href="../super/banner-management.html"
+        data-lan-eng="Banner Management"
+      >
+        Banner Management
+      </a>
+      <a
+        class="side-link"
+        data-page="notice"
+        data-menu="notice"
+        href="../super/notice.html"
+        data-lan-eng="Announcements"
+      >
+        Announcements
+      </a>
+      <a class="side-link" data-page="terms" data-menu="terms" href="../super/terms.html" data-lan-eng="Terms of Use">
+        Terms of Use
+      </a>
+      <a
+        class="side-link"
+        data-page="company-information"
+        data-menu="company-information"
+        href="../super/company-information.html"
+        data-lan-eng="Company Information"
+      >
+        Company Information
+      </a>
+      <a
+        class="side-link"
+        data-page="partner-management"
+        data-menu="partner-management"
+        href="../super/partner-management.html"
+        data-lan-eng="Partner Management"
+      >
+        Partner Management
+      </a>
+      <a
+        class="side-link"
+        data-page="login-history"
+        data-menu="login-history"
+        href="../super/login-history.html"
+        data-lan-eng="Login History"
+      >
+        Login History
+      </a>
+      <a
+        class="side-link"
+        data-page="status-history"
+        data-menu="status-history"
+        href="../super/status-history.html"
+        data-lan-eng="Status Change History"
+      >
+        Status Change History
+      </a>
+      <a
+        class="side-link"
+        data-page="menu-permission"
+        data-menu="menu-permission"
+        href="../super/menu-permission.html"
+        data-lan-eng="Menu Permission"
+      >
+        Menu Permission
+      </a>
+    </div>
+  </li>
 </ul>

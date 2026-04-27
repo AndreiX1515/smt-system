@@ -1,4 +1,5 @@
 <?php
+
 /**
  * error_logger.php
  * General-purpose error logging utility.
@@ -97,8 +98,9 @@ class AppLogger
         self::log($message, $source, 'debug', $context);
     }
 
-    // ── Context sanitizer ────────────────────────────────────────────────────
 
+    
+    // ── Context sanitizer ────────────────────────────────────────────────────
     /**
      * Truncate any data: URIs in context values to keep logs readable.
      * e.g. "data:text/javascript;base64,d2luZG93Ll…[base64]"

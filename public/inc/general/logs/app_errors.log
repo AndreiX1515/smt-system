@@ -199,3 +199,19 @@
 [2026-03-27 15:43:17] [ERROR] [layout.php] Asset not found | context: {"path":"public/css/components/header.css"}
 [2026-03-27 15:43:17] [ERROR] [layout.php] Asset not found | context: {"path":"public/css/components/sidebar.css"}
 [2026-03-27 15:43:17] [ERROR] [layout.php] Asset not found | context: {"path":"public/assets/js/default.js"}
+[2026-03-30 10:48:07] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:07] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:08] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:10] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:10] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}
+[2026-03-30 10:48:18] [ERROR] [layout.php] Header template not found. | context: {"path":"../../public/templates/header.php"}
+[2026-03-30 10:48:18] [ERROR] [layout.php] Nav template not found. | context: {"path":"../../public/templates/nav_super.php"}

@@ -22,6 +22,7 @@ $version = time();
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -42,7 +43,7 @@ $version = time();
     if (file_exists($headerPath)) {
         include $headerPath;
     } else {
-        AppLogger::error('Header template not found.', LOG_SOURCE, ['path'=>$headerPath]);
+        AppLogger::error('Header template not found.', LOG_SOURCE, ['path' => $headerPath]);
         echo '<!-- Header missing -->';
     }
     ?>
@@ -54,7 +55,7 @@ $version = time();
         if (file_exists($navPath)) {
             include $navPath;
         } else {
-            AppLogger::error('Nav template not found.', LOG_SOURCE, ['path'=>$navPath]);
+            AppLogger::error('Nav template not found.', LOG_SOURCE, ['path' => $navPath]);
             echo '<!-- Nav missing -->';
         }
         ?>
@@ -74,19 +75,10 @@ $version = time();
     <?= $pageModals ?>
 
     <!-- JS -->
-    <script src="https://unpkg.com/@preline/preline/dist/preline.js"></script>
-    <script src="../../public/assets/js/default.js?v=<?= $version ?>"></script>
+    <script src="../../public/assets/js/default.js"></script>
 
-    <!-- Preline Init -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (window.Preline) {
-                Preline.init();
-            } else {
-                console.error('Preline failed to load.');
-            }
-        });
-    </script>
+
 
 </body>
+
 </html>

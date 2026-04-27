@@ -19,7 +19,7 @@
 
     <div class="brand">
       <a href="/admin" data-no-router>
-        <img src="../image/logo.png" alt="JW Admin">
+        <img src="../public/assets/image/logo.png" alt="JW Admin">
         <span class="brand-name">SMT-ESCAPE</span>
       </a>
     </div>
@@ -53,11 +53,11 @@
         aria-expanded="false"
         data-dropdown-toggle>
         <span class="user-icon">
-          <img src="../image/person.svg" alt="" aria-hidden="true">
+          <img src="../public/assets/image/person.svg" alt="" aria-hidden="true">
         </span>
         <span class="user-name">ADMIN</span>
         <span class="user-arrow">
-          <img src="../image/arrowVector.svg" alt="" aria-hidden="true">
+          <img src="../../public/assets/image/arrowVector.svg" alt="" aria-hidden="true">
         </span>
       </button>
 
