@@ -77,7 +77,7 @@ function runInit(options) {
 // 메뉴 권한 필터링 함수
 async function filterMenusByPermission() {
 	try {
-		const response = await fetch('../backend/api/menu-api.php?action=getMenus', {
+		const response = await fetch('../admin/backend/api/menu-api.php?action=getMenus', {
 			credentials: 'same-origin'
 		});
 		const data = await response.json();
@@ -2025,7 +2025,7 @@ function template_detail_save(it) {
 			if (action !== 'createTemplate') return null;
 
 			// 1) 우선 템플릿 생성 (파일 없이 data만)
-			const res = await fetch('../backend/api/super-api.php', {
+			const res = await fetch('../admin/backend/api/super-api.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
@@ -2065,7 +2065,7 @@ function template_detail_save(it) {
 		.then(async () => {
 			// 2) 최종 반영은 updateTemplate로 통일(생성이든 수정이든)
 			const finalAction = (templateId ? 'updateTemplate' : action);
-			const res = await fetch('../backend/api/super-api.php', {
+			const res = await fetch('../admin/backend/api/super-api.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
@@ -2503,7 +2503,7 @@ function template_detail_delete_confirm() {
 		return;
 	}
 
-	fetch('../backend/api/super-api.php', {
+	fetch('../admin/backend/api/super-api.php', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'same-origin',
@@ -2563,7 +2563,7 @@ function startInquiryUnreadPolling() {
 }
 
 function fetchInquiryUnreadCount() {
-	fetch('../backend/api/super-api.php?action=getMessageUnreadCount', { credentials: 'same-origin' })
+	fetch('../admin/backend/api/super-api.php?action=getMessageUnreadCount', { credentials: 'same-origin' })
 		.then(res => res.json())
 		.then(data => {
 			const badge = document.getElementById('inquiryUnreadBadge');

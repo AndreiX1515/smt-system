@@ -847,7 +847,7 @@ async function handleLogout(e) {
 	try {
 		// 상대경로 계산 오류로 /index.html(사용자 언어설정)로 튀는 문제 방지:
 		// - API/리다이렉트 모두 절대경로 사용
-		const apiPath = '/admin/backend/api/logout.php';
+		const apiPath = '../admin/backend/api/logout.php';
 		
 		const response = await fetch(apiPath, {
 			method: 'POST',
@@ -867,7 +867,7 @@ async function handleLogout(e) {
 			// B2B/B2C 판별용 localStorage 정리
 			try { localStorage.removeItem('accountType'); } catch (_) {}
 			// 항상 관리자 로그인으로 이동
-			window.location.href = '/admin/index.html';
+			window.location.href = '/smt-system/admin/index.html';
 		} else {
 			isLoggingOut = false; // 실패 시 플래그 리셋
 			alert(data.message || 'Logout failed.');
@@ -878,7 +878,7 @@ async function handleLogout(e) {
 		// B2B/B2C 판별용 localStorage 정리
 		try { localStorage.removeItem('accountType'); } catch (_) {}
 		// 에러가 발생해도 관리자 로그인으로 이동(요구사항: 불필요한 오류 알럿 노출 금지)
-		window.location.href = '/admin/index.html';
+		window.location.href = '/smt-system/admin/index.html';
 	}
 }
 
