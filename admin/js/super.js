@@ -77,7 +77,7 @@ function runInit(options) {
 // 메뉴 권한 필터링 함수
 async function filterMenusByPermission() {
 	try {
-		const response = await fetch('../admin/backend/api/menu-api.php?action=getMenus', {
+		const response = await fetch('../backend/api/menu-api.php?action=getMenus', {
 			credentials: 'same-origin'
 		});
 		const data = await response.json();
@@ -2563,7 +2563,7 @@ function startInquiryUnreadPolling() {
 }
 
 function fetchInquiryUnreadCount() {
-	fetch('../admin/backend/api/super-api.php?action=getMessageUnreadCount', { credentials: 'same-origin' })
+	fetch('../backend/api/super-api.php?action=getMessageUnreadCount', { credentials: 'same-origin' })
 		.then(res => res.json())
 		.then(data => {
 			const badge = document.getElementById('inquiryUnreadBadge');
