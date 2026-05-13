@@ -138,8 +138,8 @@
 	</style>
 
 	<!--   -->
-	<script src="../js/default.js?v=20260311"></script>
-	<script src="../js/super.js?v=20251226_agentdetailfix1"></script>
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
 
 	<script>
 		init({
@@ -191,7 +191,7 @@
 			if (!sel) return;
 			try {
 				const current = (sel.value || '').trim() || '+63';
-				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const res = await fetch('../../backend/api/countries.php', { credentials: 'same-origin' });
 				const json = await res.json();
 				if (!json?.success || !Array.isArray(json.countries)) return;
 				sel.innerHTML = '';
@@ -284,11 +284,11 @@
 					if ($('memo')) $('memo').value = agent.memo || '';
 					
 					//   
-					await loadActivityLogs();
+					// await loadActivityLogs();
 				}
 			} catch (error) {
 				console.error('Error loading agent detail:', error);
-				alert('     .');
+				alert('	 : ' + (error?.message || ''));
 			}
 		}
 
@@ -296,36 +296,36 @@
 			// Contract Information 삭제됨 - 호환성을 위해 빈 함수 유지
 		}
 		
-		async function loadActivityLogs() {
-			try {
-				const response = await fetch(`../backend/api/super-api.php?action=getAgentActivityLogs&agentId=${agentId}`, {
-					credentials: 'same-origin'
-				});
+		// async function loadActivityLogs() {
+		// 	try {
+		// 		const response = await fetch(`../backend/api/super-api.php?action=getAgentActivityLogs&agentId=${agentId}`, {
+		// 			credentials: 'same-origin'
+		// 		});
 				
-				if (!response.ok) throw new Error('HTTP ' + response.status);
+		// 		if (!response.ok) throw new Error('HTTP ' + response.status);
 				
-				const result = await response.json();
-				const tbody = document.getElementById('activityLogsTableBody');
+		// 		const result = await response.json();
+		// 		const tbody = document.getElementById('activityLogsTableBody');
 				
-				if (result.success && result.data && result.data.logs && result.data.logs.length > 0) {
-					tbody.innerHTML = result.data.logs.map((log, index) => `
-						<tr>
-							<td class="no is-center">${index + 1}</td>
-							<td class="is-center">${log.action || '-'}</td>
-							<td class="td-ellipsis"><span>${log.description || '-'}</span></td>
-							<td class="is-center">${log.createdAt || '-'}</td>
-							<td class="is-center">${log.actor || ''}</td>
-						</tr>
-					`).join('');
-				} else {
-					tbody.innerHTML = '<tr><td colspan="5" class="is-center">  .</td></tr>';
-				}
-			} catch (error) {
-				console.error('Error loading activity logs:', error);
-				const tbody = document.getElementById('activityLogsTableBody');
-				if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="is-center">    .</td></tr>';
-			}
-		}
+		// 		if (result.success && result.data && result.data.logs && result.data.logs.length > 0) {
+		// 			tbody.innerHTML = result.data.logs.map((log, index) => `
+		// 				<tr>
+		// 					<td class="no is-center">${index + 1}</td>
+		// 					<td class="is-center">${log.action || '-'}</td>
+		// 					<td class="td-ellipsis"><span>${log.description || '-'}</span></td>
+		// 					<td class="is-center">${log.createdAt || '-'}</td>
+		// 					<td class="is-center">${log.actor || ''}</td>
+		// 				</tr>
+		// 			`).join('');
+		// 		} else {
+		// 			tbody.innerHTML = '<tr><td colspan="5" class="is-center">  .</td></tr>';
+		// 		}
+		// 	} catch (error) {
+		// 		console.error('Error loading activity logs:', error);
+		// 		const tbody = document.getElementById('activityLogsTableBody');
+		// 		if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="is-center">    .</td></tr>';
+		// 	}
+		// }
 
 		async function handleSave() {
 			try {
@@ -389,14 +389,14 @@
 				const result = await response.json();
 				
 				if (result.success) {
-					alert('  .');
+					alert('Changes have been saved successfully.');
 					await loadAgentDetail();
 				} else {
-					alert(' : ' + (result.message || '   '));
+					alert('Error saving agent: ' + (result.message || 'Failed to save changes.'));
 				}
 			} catch (error) {
 				console.error('Error saving agent:', error);
-				alert('   : ' + (error?.message || ''));
+				alert('Error saving agent: ' + (error?.message || 'Failed to save changes.'));
 			}
 		}
 

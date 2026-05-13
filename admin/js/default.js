@@ -764,7 +764,7 @@ function initLogoutButton(container) {
 			e.preventDefault();
 			e.stopPropagation();
 			// 절대경로 사용: 현재 위치(super/agent/guide 등)와 무관하게 동작
-			modal('/admin/member/change-password.html', '580px', '520px');
+			modal('../smt-system/user/change-password.html', '580px', '520px');
 		});
 	}
 }
@@ -783,7 +783,7 @@ function initLogoutButton(container) {
 			e.preventDefault();
 			e.stopPropagation();
 			try {
-				modal('/admin/member/change-password.html', '580px', '520px');
+				modal('../smt-system/user/change-password.html', '580px', '520px');
 			} catch (err) {
 				// 최소한의 가시성 확보
 				console.error('Failed to open change-password modal:', err);

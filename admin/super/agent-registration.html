@@ -197,7 +197,7 @@
 			if (!sel) return;
 			try {
 				const current = (sel.value || '').trim() || '+63';
-				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const res = await fetch('../../backend/api/countries.php', { credentials: 'same-origin' });
 				const json = await res.json().catch(() => ({}));
 				if (!json?.success || !Array.isArray(json.countries)) return;
 				sel.innerHTML = '';
