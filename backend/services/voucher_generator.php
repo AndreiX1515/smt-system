@@ -219,7 +219,7 @@ function generateServiceVoucher($conn, $bookingId) {
     }
 
     // 13. Insert into booking_documents
-    $filePath = '/uploads/travel_documents/' . $fileName;
+    $filePath = 'smt-system/uploads/travel_documents/' . $fileName;
     $fileSize = strlen($pdfContent);
     $mimeType = 'application/pdf';
     $documentType = 'voucher';

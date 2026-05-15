@@ -10,11 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-$conn = new mysqli("localhost", "root", "cloud1234", "smarttravel");
-if ($conn->connect_error) {
-    echo json_encode(['error' => 'Database connection failed']);
-    exit();
-}
+require_once __DIR__ . '/../../conn.php';
 $conn->set_charset("utf8mb4");
 
 $method = $_SERVER['REQUEST_METHOD'];
