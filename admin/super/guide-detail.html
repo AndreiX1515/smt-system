@@ -297,9 +297,9 @@
 	</style>
 
 	<!-- 기본 스크립트 -->
-	<script src="../js/default.js?v=20260311"></script>
-	<script src="../js/super.js?v=20251226_guidedetailfix1"></script>
-	<script src="../js/multi-editor.js?v=20251226_guidedetailfix1"></script>
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
+	<script src="../js/multi-editor.js"></script>
 
 	<script>
 		init({
@@ -541,7 +541,7 @@
 			if (!sel) return;
 			try {
 				const current = (sel.value || '').trim() || '+63';
-				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const res = await fetch('../../backend/api/countries.php', { credentials: 'same-origin' });
 				const json = await res.json();
 				if (!json?.success || !Array.isArray(json.countries)) return;
 				sel.innerHTML = '';
@@ -654,7 +654,7 @@
 					}
 					
 					// 배정된 일정 로드
-					await loadGuideAssignments();
+					// await loadGuideAssignments();
 				}
 			} catch (error) {
 				console.error('Error loading guide detail:', error);
@@ -662,37 +662,37 @@
 			}
 		}
 		
-		async function loadGuideAssignments() {
-			try {
-				const response = await fetch(`../backend/api/super-api.php?action=getGuideAssignments&guideId=${guideId}`, {
-					credentials: 'same-origin'
-				});
+		// async function loadGuideAssignments() {
+		// 	try {
+		// 		const response = await fetch(`../backend/api/super-api.php?action=getGuideAssignments&guideId=${guideId}`, {
+		// 			credentials: 'same-origin'
+		// 		});
 				
-				if (!response.ok) throw new Error('HTTP ' + response.status);
+		// 		if (!response.ok) throw new Error('HTTP ' + response.status);
 				
-				const result = await response.json();
-				const tbody = document.getElementById('assignmentsTableBody');
+		// 		const result = await response.json();
+		// 		const tbody = document.getElementById('assignmentsTableBody');
 				
-				if (result.success && result.data && result.data.assignments && result.data.assignments.length > 0) {
-					tbody.innerHTML = result.data.assignments.map((item, index) => `
-						<tr>
-							<td class="no is-center">${index + 1}</td>
-							<td class="td-ellipsis"><span>${item.productName || '-'}</span></td>
-							<td class="is-center">${item.tourDate || '-'}</td>
-							<td class="is-center">${item.customerName || '-'}</td>
-							<td class="is-center">${item.participants || '-'}</td>
-							<td class="is-center">${item.status || '-'}</td>
-						</tr>
-					`).join('');
-				} else {
-					tbody.innerHTML = '<tr><td colspan="6" class="is-center">No assigned schedules.</td></tr>';
-				}
-			} catch (error) {
-				console.error('Error loading assignments:', error);
-				const tbody = document.getElementById('assignmentsTableBody');
-				if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load schedules.</td></tr>';
-			}
-		}
+		// 		if (result.success && result.data && result.data.assignments && result.data.assignments.length > 0) {
+		// 			tbody.innerHTML = result.data.assignments.map((item, index) => `
+		// 				<tr>
+		// 					<td class="no is-center">${index + 1}</td>
+		// 					<td class="td-ellipsis"><span>${item.productName || '-'}</span></td>
+		// 					<td class="is-center">${item.tourDate || '-'}</td>
+		// 					<td class="is-center">${item.customerName || '-'}</td>
+		// 					<td class="is-center">${item.participants || '-'}</td>
+		// 					<td class="is-center">${item.status || '-'}</td>
+		// 				</tr>
+		// 			`).join('');
+		// 		} else {
+		// 			tbody.innerHTML = '<tr><td colspan="6" class="is-center">No assigned schedules.</td></tr>';
+		// 		}
+		// 	} catch (error) {
+		// 		console.error('Error loading assignments:', error);
+		// 		const tbody = document.getElementById('assignmentsTableBody');
+		// 		if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="is-center">Failed to load schedules.</td></tr>';
+		// 	}
+		// }
 		
 
 		async function handleSave() {

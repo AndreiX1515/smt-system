@@ -86,8 +86,8 @@
 	</main>
 
 	<!--   -->
-	<script src="../js/default.js?v=20260311"></script>
-	<script src="../js/super.js?v=20251226_companyinfofix1"></script>
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
 
 	<script>
 		init({
@@ -133,7 +133,7 @@
 
 			try {
 				// admin    (/admin/backend/api    )
-				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const res = await fetch('../../backend/api/countries.php', { credentials: 'same-origin' });
 				const json = await res.json().catch(() => ({}));
 				const list = Array.isArray(json?.countries) ? json.countries : [];
 				const countries = list

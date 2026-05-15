@@ -216,11 +216,11 @@
 	</main>
 
 	<!--   -->
-	<script src="../js/default.js?v=20260311"></script>
-	<script src="../js/super.js?v=20251226_guideregfix1"></script>
+	<script src="../js/default.js"></script>
+	<script src="../js/super.js"></script>
 	<script src="../js/datepicker.js"></script>
 	<script src="../js/multi-editor.js"></script>
-	<script src="../js/passport-photo.js?v=20251226_guideregfix1"></script>
+	<script src="../js/passport-photo.js"></script>
 
 	<script>
 		init({
@@ -331,7 +331,7 @@
 			if (!sel) return;
 			try {
 				const current = (sel.value || '').trim() || '+63';
-				const res = await fetch('/backend/api/countries.php', { credentials: 'same-origin' });
+				const res = await fetch('../../backend/api/countries.php', { credentials: 'same-origin' });
 				const json = await res.json().catch(() => ({}));
 				if (!json?.success || !Array.isArray(json.countries)) return;
 				sel.innerHTML = '';
