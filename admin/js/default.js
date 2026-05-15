@@ -847,7 +847,7 @@ async function handleLogout(e) {
 	try {
 		// 상대경로 계산 오류로 /index.html(사용자 언어설정)로 튀는 문제 방지:
 		// - API/리다이렉트 모두 절대경로 사용
-		const apiPath = '../admin/backend/api/logout.php';
+		const apiPath = '/smt-system/admin/backend/api/logout.php';
 		
 		const response = await fetch(apiPath, {
 			method: 'POST',
